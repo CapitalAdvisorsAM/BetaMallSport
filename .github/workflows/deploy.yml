@@ -44,6 +44,10 @@ jobs:
             --region "${{ env.REGION }}" \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "ALLOWED_EMAIL_DOMAIN=capitaladvisors.cl,NEXTAUTH_URL=https://mallsport-1075337700685.southamerica-west1.run.app" \
-            --set-env-vars "GCS_BUCKET_NAME=mall-sport-contratos"
-            
+            --set-env-vars "ALLOWED_EMAIL_DOMAIN=capitaladvisors.cl" \
+            --set-env-vars "NEXTAUTH_URL=https://mallsport-1075337700685.southamerica-west1.run.app" \
+            --set-env-vars "GCS_BUCKET_NAME=mall-sport-contratos" \
+            --set-env-vars "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" \
+            --set-env-vars "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+            --set-env-vars "NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}" \
+            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}"
