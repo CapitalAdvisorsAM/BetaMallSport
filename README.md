@@ -1,172 +1,82 @@
 # Mall Sport
 
-Sistema de gestion de activos inmobiliarios desplegable en Google Cloud Platform con Next.js 14, Prisma, PostgreSQL y autenticacion Google Workspace.
+Sistema de gestion de activos inmobiliarios con Next.js 14, Prisma, PostgreSQL y despliegue en GCP.
 
 ## Requisitos
 
 - Docker y Docker Compose
-- Node.js 20+ (solo para desarrollo local fuera de contenedores)
-- Cuenta de GCP con permisos para Cloud Run, Artifact Registry, Cloud SQL y Secret Manager
-- Proyecto de Google Cloud con Google OAuth configurado
+- Node.js 20+ (opcional para ejecucion fuera de contenedores)
+- Proyecto GCP con OAuth Google Workspace
 
 ## Setup local
 
-1. Clonar el repositorio y entrar a la carpeta:
-
-   ```bash
-   cd mall-sport
-   ```
-
-2. Revisar variables de entorno:
-
-   - `docker-compose.yml` usa `.env` por defecto.
-   - Se incluye `.env.example` como plantilla.
-
-3. Levantar servicios:
-
-   ```bash
-   docker-compose up --build
-   ```
-
-4. Abrir app:
-
-   - `http://localhost:3000`
-
-5. Primera inicializacion de base de datos:
-
-   - El contenedor de app ejecuta `npx prisma db push` automaticamente.
-
-## Setup GCP
-
-### 1. Servicios que debes habilitar
-
-Ejecuta en tu proyecto:
+1. Copiar variables:
 
 ```bash
-gcloud services enable \
-  run.googleapis.com \
-  artifactregistry.googleapis.com \
-  cloudbuild.googleapis.com \
-  iamcredentials.googleapis.com \
-  secretmanager.googleapis.com \
-  sqladmin.googleapis.com
+cp .env.example .env
 ```
 
-### 2. Artifact Registry
+2. Levantar servicios:
 
 ```bash
-gcloud artifacts repositories create mall-sport \
-  --repository-format=docker \
-  --location=southamerica-west1 \
-  --description="Mall Sport images"
+docker-compose up --build
 ```
 
-### 3. Cloud SQL (PostgreSQL)
+3. Abrir la app en `http://localhost:3000`.
 
-```bash
-gcloud sql instances create mall-sport-pg \
-  --database-version=POSTGRES_15 \
-  --tier=db-custom-1-3840 \
-  --region=southamerica-west1
+## Modulo operativo implementado
 
-gcloud sql databases create mallsport --instance=mall-sport-pg
-gcloud sql users set-password postgres --instance=mall-sport-pg --password='CHANGEME'
-```
+- Selector de proyecto por query param (`proyecto`) reutilizado en rent roll, cargas y contratos.
+- Rent Roll:
+  - Vista principal con filtros por estado y busqueda.
+  - Estado de ultima carga y acceso a detalle.
+  - Carga masiva CSV/XLSX con preview y aplicacion por lote.
+  - Descarga de errores por fila en CSV.
+- Contratos:
+  - Listado por proyecto.
+  - Crear/editar contrato.
+  - Gestion de Tarifas, GGCC y Anexos.
+- Seguridad por rol:
+  - `ADMIN` y `OPERACIONES`: escritura.
+  - `CONTABILIDAD` y `GERENCIA`: solo lectura.
 
-Luego construye el `DATABASE_URL` y guardalo en Secret Manager.
+## Endpoints nuevos
 
-### 4. Secret Manager
+- `POST /api/rent-roll/upload/preview`
+- `POST /api/rent-roll/upload/apply`
+- `GET /api/rent-roll/upload/errors?cargaId=...`
+- `GET /api/contracts?proyectoId=...`
+- `POST /api/contracts`
+- `PUT /api/contracts/:id`
 
-Crear secretos requeridos:
+## Deploy GCP
 
-- `DATABASE_URL`
-- `NEXTAUTH_SECRET`
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
+El workflow de CI/CD en `.github/workflows/deploy.yml`:
 
-Ejemplo:
+1. Autentica con Workload Identity Federation.
+2. Construye y publica imagen en Artifact Registry.
+3. Despliega en Cloud Run usando secretos de Secret Manager.
 
-```bash
-printf "postgresql://postgres:CHANGEME@/mallsport?host=/cloudsql/PROJECT:REGION:INSTANCE" | \
-gcloud secrets create DATABASE_URL --data-file=-
-```
-
-Si ya existe, usar `gcloud secrets versions add`.
-
-### 5. Workload Identity Federation (GitHub Actions sin keys)
-
-1. Crear Workload Identity Pool.
-2. Crear Workload Identity Provider para GitHub OIDC.
-3. Crear service account para CI/CD.
-4. Otorgar roles al service account:
-   - `roles/run.admin`
-   - `roles/artifactregistry.writer`
-   - `roles/iam.serviceAccountUser`
-   - `roles/secretmanager.secretAccessor`
-   - `roles/cloudsql.client`
-5. Permitir que el principal de GitHub impersonifique el service account.
-6. Configurar secretos en GitHub:
-   - `GCP_WORKLOAD_IDENTITY_PROVIDER`
-   - `GCP_SERVICE_ACCOUNT_EMAIL`
-7. Configurar variables en GitHub (`Repository Variables`):
-   - `GCP_PROJECT_ID`
-   - `GCP_REGION`
-   - `ARTIFACT_REGISTRY_REPO`
-   - `CLOUD_RUN_SERVICE`
-   - `CLOUD_SQL_INSTANCE`
-   - `ALLOWED_EMAIL_DOMAIN`
-   - `NEXTAUTH_URL`
-
-## Primer deploy
-
-1. Push a `main`:
-
-   ```bash
-   git push origin main
-   ```
-
-2. GitHub Actions ejecutara:
-
-   - Build y push de imagen a Artifact Registry:
-     - `REGION-docker.pkg.dev/PROJECT_ID/REPO/mall-sport:SHA`
-   - Deploy a Cloud Run con secretos desde Secret Manager.
-
-3. Verificar servicio desplegado:
-
-   ```bash
-   gcloud run services describe <CLOUD_RUN_SERVICE> --region <GCP_REGION>
-   ```
-
-## Estructura del proyecto
+## Estructura principal
 
 ```text
-mall-sport/
+.
 ├── prisma/
-│   ├── schema.prisma
-│   └── migrations/
 ├── src/
 │   ├── app/
-│   │   ├── (auth)/
-│   │   │   └── login/page.tsx
 │   │   ├── (dashboard)/
-│   │   │   ├── layout.tsx
-│   │   │   ├── page.tsx
-│   │   │   └── rent-roll/page.tsx
-│   │   ├── api/
-│   │   │   ├── auth/[...nextauth]/route.ts
-│   │   │   └── rent-roll/route.ts
-│   │   └── layout.tsx
+│   │   │   ├── rent-roll/
+│   │   │   │   ├── page.tsx
+│   │   │   │   └── upload/page.tsx
+│   │   │   └── contratos/page.tsx
+│   │   └── api/
+│   │       ├── contracts/
+│   │       └── rent-roll/upload/
 │   ├── components/
-│   │   ├── ui/
-│   │   └── rent-roll/ContractTable.tsx
-│   ├── lib/
-│   │   ├── prisma.ts
-│   │   ├── auth.ts
-│   │   └── utils.ts
-│   └── types/
-│       └── index.ts
-├── .github/workflows/deploy.yml
+│   │   ├── contracts/
+│   │   └── rent-roll/
+│   └── lib/
 ├── Dockerfile
 ├── docker-compose.yml
-└── .env.example
+└── .github/workflows/deploy.yml
 ```

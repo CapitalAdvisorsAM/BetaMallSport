@@ -29,6 +29,12 @@ export default async function DashboardLayout({
             <Link className="font-medium text-brand-700 hover:text-brand-500" href="/rent-roll">
               Rent Roll
             </Link>
+            <Link className="font-medium text-brand-700 hover:text-brand-500" href="/rent-roll/upload">
+              Cargas
+            </Link>
+            <Link className="font-medium text-brand-700 hover:text-brand-500" href="/contratos">
+              Contratos
+            </Link>
           </nav>
           <a
             href="/api/auth/signout?callbackUrl=/login"
