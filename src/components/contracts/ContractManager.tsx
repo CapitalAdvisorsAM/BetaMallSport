@@ -1,13 +1,14 @@
 "use client";
 
 import { EstadoContrato } from "@prisma/client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ContractFormPayload } from "@/types";
 
 type ContractListItem = {
   id: string;
   numeroContrato: string;
   estado: EstadoContrato;
+  pdfUrl: string | null;
   fechaInicio: string;
   fechaTermino: string;
   local: { id: string; codigo: string; nombre: string };
@@ -75,28 +76,34 @@ export function ContractManager({
   arrendatarios,
   contracts
 }: ContractManagerProps): JSX.Element {
+  const [contractList, setContractList] = useState<ContractListItem[]>(contracts);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploadingPdfId, setUploadingPdfId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [payload, setPayload] = useState<ContractFormPayload>(
     createEmptyPayload(proyectoId, locals[0]?.id ?? "", arrendatarios[0]?.id ?? "")
   );
 
+  useEffect(() => {
+    setContractList(contracts);
+  }, [contracts]);
+
   const visibleContracts = useMemo(() => {
     const q = search.toLowerCase().trim();
     if (!q) {
-      return contracts;
+      return contractList;
     }
-    return contracts.filter((contract) =>
+    return contractList.filter((contract) =>
       [contract.numeroContrato, contract.local.codigo, contract.arrendatario.nombreComercial]
         .join(" ")
         .toLowerCase()
         .includes(q)
     );
-  }, [contracts, search]);
+  }, [contractList, search]);
 
-  const selectedContract = contracts.find((contract) => contract.id === selectedId) ?? null;
+  const selectedContract = contractList.find((contract) => contract.id === selectedId) ?? null;
 
   function loadContract(contract: ContractListItem): void {
     setSelectedId(contract.id);
@@ -113,7 +120,7 @@ export function ContractManager({
       pctRentaVariable: null,
       pctFondoPromocion: null,
       codigoCC: null,
-      pdfUrl: null,
+      pdfUrl: contract.pdfUrl,
       notas: null,
       tarifas:
         contract.tarifas.length > 0
@@ -149,6 +156,40 @@ export function ContractManager({
     }
   }
 
+  async function uploadContractPdf(contractId: string, file: File): Promise<void> {
+    if (!canEdit) {
+      return;
+    }
+
+    setUploadingPdfId(contractId);
+    setMessage(null);
+    try {
+      const formData = new FormData();
+      formData.set("pdf", file);
+
+      const response = await fetch(`/api/contracts/${contractId}/pdf`, {
+        method: "POST",
+        body: formData
+      });
+      const data = (await response.json()) as { pdfUrl?: string; message?: string };
+      if (!response.ok || !data.pdfUrl) {
+        throw new Error(data.message ?? "No se pudo subir el PDF.");
+      }
+
+      setContractList((previous) =>
+        previous.map((item) => (item.id === contractId ? { ...item, pdfUrl: data.pdfUrl ?? null } : item))
+      );
+      if (selectedId === contractId) {
+        setPayload((previous) => ({ ...previous, pdfUrl: data.pdfUrl ?? null }));
+      }
+      setMessage("PDF actualizado correctamente.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Error inesperado al subir el PDF.");
+    } finally {
+      setUploadingPdfId(null);
+    }
+  }
+
   return (
     <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
       <aside className="rounded-xl bg-white p-4 shadow-sm">
@@ -163,19 +204,58 @@ export function ContractManager({
         />
         <div className="mt-3 max-h-[540px] space-y-2 overflow-auto pr-1">
           {visibleContracts.map((contract) => (
-            <button
+            <div
               key={contract.id}
-              type="button"
-              onClick={() => loadContract(contract)}
-              className={`w-full rounded-md border px-3 py-2 text-left text-sm ${
+              className={`rounded-md border px-3 py-2 text-sm ${
                 selectedId === contract.id ? "border-brand-500 bg-brand-50" : "border-slate-200"
               }`}
             >
-              <p className="font-semibold text-slate-900">{contract.numeroContrato}</p>
-              <p className="text-xs text-slate-600">
-                {contract.local.codigo} - {contract.arrendatario.nombreComercial}
-              </p>
-            </button>
+              <button type="button" onClick={() => loadContract(contract)} className="w-full text-left">
+                <p className="font-semibold text-slate-900">{contract.numeroContrato}</p>
+                <p className="text-xs text-slate-600">
+                  {contract.local.codigo} - {contract.arrendatario.nombreComercial}
+                </p>
+              </button>
+              <div className="mt-2 flex items-center gap-2">
+                {contract.pdfUrl ? (
+                  <a
+                    href={contract.pdfUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    Ver PDF
+                  </a>
+                ) : (
+                  <span className="text-xs text-slate-500">Sin PDF</span>
+                )}
+                {canEdit ? (
+                  <label
+                    className={`rounded-md border px-2 py-1 text-xs font-medium ${
+                      uploadingPdfId === contract.id
+                        ? "cursor-not-allowed border-slate-200 text-slate-400"
+                        : "cursor-pointer border-brand-200 text-brand-700 hover:bg-brand-50"
+                    }`}
+                  >
+                    {uploadingPdfId === contract.id ? "Subiendo..." : "Subir PDF"}
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      disabled={uploadingPdfId === contract.id}
+                      className="hidden"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = "";
+                        if (!file) {
+                          return;
+                        }
+                        void uploadContractPdf(contract.id, file);
+                      }}
+                    />
+                  </label>
+                ) : null}
+              </div>
+            </div>
           ))}
         </div>
       </aside>

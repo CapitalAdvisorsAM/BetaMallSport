@@ -4,7 +4,12 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Mall Sport",
-  description: "Sistema de gestion de activos inmobiliarios"
+  description: "Sistema de gestion de activos inmobiliarios",
+  icons: {
+    icon: "/MallSportLogo.png",
+    shortcut: "/MallSportLogo.png",
+    apple: "/MallSportLogo.png"
+  }
 };
 
 export default function RootLayout({
