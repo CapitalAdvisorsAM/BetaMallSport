@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: mall-sport-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mallsport
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d mallsport"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: deps
+    container_name: mall-sport-app
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://user:password@db:5432/mallsport
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: dev-secret-local
+      ALLOWED_EMAIL_DOMAIN: capitaladvisors.cl
+      GOOGLE_CLIENT_ID: local-dev
+      GOOGLE_CLIENT_SECRET: local-dev
+    command: sh -c "npm install && npx prisma db push && npm run dev"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./:/app
+      - app_node_modules:/app/node_modules
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  app_node_modules:

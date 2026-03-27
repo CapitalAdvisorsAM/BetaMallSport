@@ -1,0 +1,290 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LocalTipo {
+  TIENDA
+  MODULO
+  BODEGA
+  OTRO
+}
+
+enum EstadoMaestro {
+  ACTIVO
+  INACTIVO
+}
+
+enum EstadoContrato {
+  VIGENTE
+  TERMINADO
+  TERMINADO_ANTICIPADO
+  GRACIA
+}
+
+enum TipoTarifaContrato {
+  FIJO_UF_M2
+  FIJO_UF
+  PORCENTAJE
+}
+
+enum EstadoDiaContrato {
+  OCUPADO
+  GRACIA
+  VACANTE
+}
+
+enum TipoCargaDatos {
+  RENT_ROLL
+  VENTAS
+  CONTABLE
+  BANCO
+}
+
+enum EstadoCargaDatos {
+  PENDIENTE
+  PROCESANDO
+  OK
+  ERROR
+}
+
+enum UserRole {
+  ADMIN
+  CONTABILIDAD
+  OPERACIONES
+  GERENCIA
+}
+
+model Proyecto {
+  id          String         @id @default(cuid())
+  nombre      String
+  slug        String         @unique
+  color       String
+  activo      Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  locales     Local[]
+  arrendatarios Arrendatario[]
+  contratos   Contrato[]
+  contratosDia ContratoDia[]
+  cargasDatos CargaDatos[]
+
+  @@index([activo])
+}
+
+model ValorUF {
+  id      String   @id @default(cuid())
+  fecha   DateTime @unique @db.Date
+  valor   Decimal  @db.Decimal(10, 4)
+}
+
+model Local {
+  id         String        @id @default(cuid())
+  proyectoId String
+  codigo     String
+  nombre     String
+  glam2      Decimal       @db.Decimal(10, 2)
+  piso       String
+  tipo       LocalTipo
+  zona       String?
+  esGLA      Boolean       @default(true)
+  estado     EstadoMaestro @default(ACTIVO)
+  createdAt  DateTime      @default(now())
+
+  proyecto   Proyecto      @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  contratos  Contrato[]
+  contratosDia ContratoDia[]
+
+  @@index([proyectoId])
+  @@index([estado])
+  @@unique([proyectoId, codigo])
+}
+
+model Arrendatario {
+  id             String   @id @default(cuid())
+  proyectoId     String
+  rut            String
+  razonSocial    String
+  nombreComercial String
+  vigente        Boolean  @default(true)
+  email          String?
+  telefono       String?
+  createdAt      DateTime @default(now())
+
+  proyecto       Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  contratos      Contrato[]
+
+  @@index([proyectoId])
+  @@index([vigente])
+  @@unique([proyectoId, rut])
+}
+
+model Contrato {
+  id                  String         @id @default(cuid())
+  proyectoId          String
+  localId             String
+  arrendatarioId      String
+  numeroContrato      String
+  fechaInicio         DateTime       @db.Date
+  fechaTermino        DateTime       @db.Date
+  fechaEntrega        DateTime?      @db.Date
+  fechaApertura       DateTime?      @db.Date
+  pctRentaVariable    Decimal?       @db.Decimal(6, 3)
+  pctFondoPromocion   Decimal?       @db.Decimal(6, 3)
+  codigoCC            String?
+  estado              EstadoContrato
+  pdfUrl              String?
+  notas               String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  proyecto            Proyecto       @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  local               Local          @relation(fields: [localId], references: [id], onDelete: Restrict)
+  arrendatario        Arrendatario   @relation(fields: [arrendatarioId], references: [id], onDelete: Restrict)
+  tarifas             ContratoTarifa[]
+  anexos              ContratoAnexo[]
+  ggcc                ContratoGGCC[]
+  contratosDia        ContratoDia[]
+
+  @@index([proyectoId])
+  @@index([localId])
+  @@index([arrendatarioId])
+  @@index([estado])
+  @@unique([proyectoId, numeroContrato])
+}
+
+model ContratoTarifa {
+  id            String             @id @default(cuid())
+  contratoId    String
+  tipo          TipoTarifaContrato
+  valor         Decimal            @db.Decimal(10, 4)
+  vigenciaDesde DateTime           @db.Date
+  vigenciaHasta DateTime?          @db.Date
+  esDiciembre   Boolean            @default(false)
+  createdAt     DateTime           @default(now())
+
+  contrato      Contrato           @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+
+  @@index([contratoId])
+  @@index([vigenciaDesde, vigenciaHasta])
+}
+
+model ContratoAnexo {
+  id               String   @id @default(cuid())
+  contratoId       String
+  fecha            DateTime @db.Date
+  descripcion      String
+  camposModificados Json
+  snapshotAntes    Json
+  snapshotDespues  Json
+  usuarioId        String
+  createdAt        DateTime @default(now())
+
+  contrato         Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+
+  @@index([contratoId])
+  @@index([usuarioId])
+}
+
+model ContratoGGCC {
+  id                 String   @id @default(cuid())
+  contratoId         String
+  tarifaBaseUfM2     Decimal  @db.Decimal(10, 4)
+  pctAdministracion  Decimal  @db.Decimal(6, 3)
+  vigenciaDesde      DateTime @db.Date
+  vigenciaHasta      DateTime? @db.Date
+  proximoReajuste    DateTime? @db.Date
+  createdAt          DateTime @default(now())
+
+  contrato           Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+
+  @@index([contratoId])
+}
+
+model ContratoDia {
+  id         String            @id @default(cuid())
+  proyectoId String
+  localId    String
+  contratoId String?
+  fecha      DateTime          @db.Date
+  tarifaDia  Decimal           @db.Decimal(10, 4)
+  estadoDia  EstadoDiaContrato
+  glam2      Decimal           @db.Decimal(10, 2)
+  ufDia      Decimal?          @db.Decimal(10, 4)
+  createdAt  DateTime          @default(now())
+
+  proyecto   Proyecto          @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  local      Local             @relation(fields: [localId], references: [id], onDelete: Restrict)
+  contrato   Contrato?         @relation(fields: [contratoId], references: [id], onDelete: SetNull)
+
+  @@index([proyectoId])
+  @@index([contratoId])
+  @@unique([localId, fecha])
+}
+
+model CargaDatos {
+  id               String           @id @default(cuid())
+  proyectoId       String
+  tipo             TipoCargaDatos
+  usuarioId        String
+  archivoNombre    String
+  archivoUrl       String
+  registrosCargados Int
+  estado           EstadoCargaDatos
+  errorDetalle     String?
+  createdAt        DateTime         @default(now())
+
+  proyecto         Proyecto         @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  @@index([proyectoId])
+  @@index([tipo])
+  @@index([estado])
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          UserRole  @default(OPERACIONES)
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
