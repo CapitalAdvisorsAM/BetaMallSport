@@ -12,7 +12,8 @@ const projectSchema = z.object({
     .string()
     .trim()
     .regex(/^#[0-9a-fA-F]{6}$/, "Color invalido. Usa formato hexadecimal #RRGGBB.")
-    .optional()
+    .optional(),
+  activo: z.boolean().optional()
 });
 
 function slugify(value: string): string {
@@ -26,9 +27,9 @@ function slugify(value: string): string {
 }
 
 async function buildUniqueSlug(baseSlug: string): Promise<string> {
+  const MAX_SLUG_ATTEMPTS = 50;
   let candidate = baseSlug;
-  let index = 2;
-  while (true) {
+  for (let attempt = 1; attempt <= MAX_SLUG_ATTEMPTS; attempt += 1) {
     const exists = await prisma.proyecto.findUnique({
       where: { slug: candidate },
       select: { id: true }
@@ -36,9 +37,11 @@ async function buildUniqueSlug(baseSlug: string): Promise<string> {
     if (!exists) {
       return candidate;
     }
-    candidate = `${baseSlug}-${index}`;
-    index += 1;
+    candidate = `${baseSlug}-${attempt + 1}`;
   }
+  throw new Error(
+    `No se pudo generar un slug único para "${baseSlug}" tras ${MAX_SLUG_ATTEMPTS} intentos.`
+  );
 }
 
 export async function GET(): Promise<NextResponse> {
@@ -76,7 +79,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         nombre: result.data.nombre,
         color: result.data.color ?? "#0f766e",
         slug,
-        activo: true
+        activo: result.data.activo ?? true
       },
       select: { id: true, nombre: true, slug: true, color: true, activo: true }
     });

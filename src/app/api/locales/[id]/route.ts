@@ -1,34 +1,10 @@
-import { EstadoMaestro, LocalTipo, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { localeSchema } from "@/lib/locales/schema";
 import { requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
-
-const localeSchema = z.object({
-  proyectoId: z.string().min(1),
-  codigo: z.string().trim().min(1, "Codigo es obligatorio."),
-  nombre: z.string().trim().min(1, "Nombre es obligatorio."),
-  glam2: z
-    .string()
-    .trim()
-    .min(1)
-    .refine((value) => {
-      try {
-        // eslint-disable-next-line no-new
-        new Prisma.Decimal(value);
-        return true;
-      } catch {
-        return false;
-      }
-    }, "GLA m2 debe ser numerico."),
-  piso: z.string().trim().min(1, "Piso es obligatorio."),
-  tipo: z.nativeEnum(LocalTipo),
-  zona: z.string().trim().nullable(),
-  esGLA: z.boolean(),
-  estado: z.nativeEnum(EstadoMaestro)
-});
 
 export async function PUT(
   request: Request,

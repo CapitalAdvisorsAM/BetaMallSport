@@ -66,7 +66,7 @@ model Proyecto {
   slug        String         @unique
   color       String
   activo      Boolean        @default(true)
-  createdAt   DateTime       @default(now())
+  createdAt   DateTime       @default(now()) @db.Timestamptz(3)
   locales     Local[]
   arrendatarios Arrendatario[]
   contratos   Contrato[]
@@ -74,6 +74,7 @@ model Proyecto {
   cargasDatos CargaDatos[]
 
   @@index([activo])
+  @@index([nombre])
 }
 
 model ValorUF {
@@ -93,7 +94,7 @@ model Local {
   zona       String?
   esGLA      Boolean       @default(true)
   estado     EstadoMaestro @default(ACTIVO)
-  createdAt  DateTime      @default(now())
+  createdAt  DateTime      @default(now()) @db.Timestamptz(3)
 
   proyecto   Proyecto      @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   contratos  Contrato[]
@@ -113,7 +114,7 @@ model Arrendatario {
   vigente        Boolean  @default(true)
   email          String?
   telefono       String?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
 
   proyecto       Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   contratos      Contrato[]
@@ -139,8 +140,8 @@ model Contrato {
   estado              EstadoContrato
   pdfUrl              String?
   notas               String?
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  createdAt           DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime       @updatedAt @db.Timestamptz(3)
 
   proyecto            Proyecto       @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   local               Local          @relation(fields: [localId], references: [id], onDelete: Restrict)
@@ -154,6 +155,8 @@ model Contrato {
   @@index([localId])
   @@index([arrendatarioId])
   @@index([estado])
+  @@index([proyectoId, estado])
+  @@index([proyectoId, updatedAt])
   @@unique([proyectoId, numeroContrato])
 }
 
@@ -165,7 +168,7 @@ model ContratoTarifa {
   vigenciaDesde DateTime           @db.Date
   vigenciaHasta DateTime?          @db.Date
   esDiciembre   Boolean            @default(false)
-  createdAt     DateTime           @default(now())
+  createdAt     DateTime           @default(now()) @db.Timestamptz(3)
 
   contrato      Contrato           @relation(fields: [contratoId], references: [id], onDelete: Cascade)
 
@@ -182,11 +185,12 @@ model ContratoAnexo {
   snapshotAntes    Json
   snapshotDespues  Json
   usuarioId        String
-  createdAt        DateTime @default(now())
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
 
   contrato         Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
 
   @@index([contratoId])
+  @@index([contratoId, fecha])
   @@index([usuarioId])
 }
 
@@ -198,7 +202,7 @@ model ContratoGGCC {
   vigenciaDesde      DateTime @db.Date
   vigenciaHasta      DateTime? @db.Date
   proximoReajuste    DateTime? @db.Date
-  createdAt          DateTime @default(now())
+  createdAt          DateTime @default(now()) @db.Timestamptz(3)
 
   contrato           Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
 
@@ -215,13 +219,14 @@ model ContratoDia {
   estadoDia  EstadoDiaContrato
   glam2      Decimal           @db.Decimal(10, 2)
   ufDia      Decimal?          @db.Decimal(10, 4)
-  createdAt  DateTime          @default(now())
+  createdAt  DateTime          @default(now()) @db.Timestamptz(3)
 
   proyecto   Proyecto          @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   local      Local             @relation(fields: [localId], references: [id], onDelete: Restrict)
   contrato   Contrato?         @relation(fields: [contratoId], references: [id], onDelete: SetNull)
 
   @@index([proyectoId])
+  @@index([proyectoId, fecha])
   @@index([contratoId])
   @@unique([localId, fecha])
 }
@@ -233,15 +238,16 @@ model CargaDatos {
   usuarioId        String
   archivoNombre    String
   archivoUrl       String
-  registrosCargados Int
+  registrosCargados Int             @default(0)
   estado           EstadoCargaDatos
-  errorDetalle     String?
-  createdAt        DateTime         @default(now())
+  errorDetalle     Json?
+  createdAt        DateTime         @default(now()) @db.Timestamptz(3)
 
   proyecto         Proyecto         @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
 
   @@index([proyectoId])
   @@index([tipo])
+  @@index([proyectoId, tipo])
   @@index([estado])
 }
 
@@ -249,7 +255,7 @@ model User {
   id            String    @id @default(cuid())
   name          String?
   email         String?   @unique
-  emailVerified DateTime?
+  emailVerified DateTime?  @db.Timestamptz(3)
   image         String?
   role          UserRole  @default(OPERACIONES)
   accounts      Account[]
@@ -278,7 +284,7 @@ model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique
   userId       String
-  expires      DateTime
+  expires      DateTime @db.Timestamptz(3)
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 

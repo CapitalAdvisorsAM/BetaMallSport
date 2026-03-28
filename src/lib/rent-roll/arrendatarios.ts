@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { formatUf } from "@/lib/kpi";
 
 export type ArrendatariosFilters = {
   q: string;
@@ -14,6 +15,22 @@ export type ContractMetricsInput = {
   }>;
 };
 
+function formatRentRollUf(value: { toString(): string } | null | undefined): string {
+  const normalized = formatUf(value);
+  if (normalized === "\u2014") {
+    return normalized;
+  }
+  return Number(normalized).toLocaleString("es-CL", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+/**
+ * Parses the vigente filter query param into a boolean value.
+ * @param value - Raw filter value from query params
+ * @returns `true`, `false`, or `undefined` when no filter applies
+ */
 export function parseVigenteFilter(value?: string): boolean | undefined {
   if (value === "vigente") {
     return true;
@@ -24,6 +41,12 @@ export function parseVigenteFilter(value?: string): boolean | undefined {
   return undefined;
 }
 
+/**
+ * Builds the Prisma `where` clause for arrendatarios listing.
+ * @param proyectoId - Project identifier used to scope the query
+ * @param filters - Search and vigente filters
+ * @returns Prisma where input for arrendatarios
+ */
 export function buildArrendatariosWhere(
   proyectoId: string,
   filters: ArrendatariosFilters
@@ -44,16 +67,11 @@ export function buildArrendatariosWhere(
   };
 }
 
-export function formatUf(value: { toString(): string } | null | undefined): string {
-  if (!value) {
-    return "\u2014";
-  }
-  return Number(value.toString()).toLocaleString("es-CL", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
-}
-
+/**
+ * Maps contract data into display-ready metrics for rent-roll tables.
+ * @param contract - Contract with locale, tariff, and GGCC details
+ * @returns Contract metrics formatted for UI rendering
+ */
 export function toContractMetrics(contract: ContractMetricsInput | null): {
   localActual: string;
   tarifaVigenteUfM2: string;
@@ -72,9 +90,9 @@ export function toContractMetrics(contract: ContractMetricsInput | null): {
   const ggccRecord = contract.ggcc[0];
   return {
     localActual: contract.local ? `${contract.local.codigo} - ${contract.local.nombre}` : "\u2014",
-    tarifaVigenteUfM2: formatUf(contract.tarifas[0]?.valor),
-    ggccTarifaBaseUfM2: formatUf(ggccRecord?.tarifaBaseUfM2),
-    ggccPctAdministracion: formatUf(ggccRecord?.pctAdministracion)
+    tarifaVigenteUfM2: formatRentRollUf(contract.tarifas[0]?.valor),
+    ggccTarifaBaseUfM2: formatRentRollUf(ggccRecord?.tarifaBaseUfM2),
+    ggccPctAdministracion: formatRentRollUf(ggccRecord?.pctAdministracion)
   };
 }
 

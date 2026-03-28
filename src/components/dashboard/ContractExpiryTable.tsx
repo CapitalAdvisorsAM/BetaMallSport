@@ -1,39 +1,46 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { formatShortDate, type ContractExpiryBuckets } from "@/lib/kpi";
+import {
+  CONTRACT_EXPIRY_ROW_LIMIT,
+  CONTRACT_EXPIRY_WINDOWS,
+  formatShortDate,
+  type ContractExpiryBuckets,
+  type ExpiryWindow
+} from "@/lib/kpi";
 import { cn } from "@/lib/utils";
-
-type ExpiryWindow = 30 | 60 | 90;
 
 type ContractExpiryTableProps = {
   rowsByWindow: ContractExpiryBuckets;
 };
 
-const windows: ExpiryWindow[] = [30, 60, 90];
+const windows: readonly ExpiryWindow[] = CONTRACT_EXPIRY_WINDOWS;
 
 export function ContractExpiryTable({ rowsByWindow }: ContractExpiryTableProps): JSX.Element {
-  const [activeWindow, setActiveWindow] = useState<ExpiryWindow>(30);
-  const rows = useMemo(() => rowsByWindow[activeWindow], [activeWindow, rowsByWindow]);
+  const [activeWindow, setActiveWindow] = useState<ExpiryWindow>(CONTRACT_EXPIRY_WINDOWS[0]);
+  const rows = useMemo(
+    () => rowsByWindow[activeWindow].slice(0, CONTRACT_EXPIRY_ROW_LIMIT),
+    [activeWindow, rowsByWindow]
+  );
 
   return (
     <section className="overflow-hidden rounded-xl bg-white shadow-sm">
       <div className="border-b border-slate-200 px-4 py-3">
         <h3 className="text-base font-semibold text-slate-900">Contratos por vencer</h3>
         <div className="mt-3 flex flex-wrap gap-2">
-          {windows.map((window) => (
+          {windows.map((expiryWindow) => (
             <button
-              key={window}
+              key={expiryWindow}
               type="button"
-              onClick={() => setActiveWindow(window)}
+              onClick={() => setActiveWindow(expiryWindow)}
               className={cn(
                 "rounded-md border px-3 py-1.5 text-sm font-medium",
-                activeWindow === window
+                activeWindow === expiryWindow
                   ? "border-brand-300 bg-brand-50 text-brand-700"
                   : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
               )}
             >
-              {window} d\u00edas ({rowsByWindow[window].length})
+              {expiryWindow} d\u00edas ({rowsByWindow[expiryWindow].length})
             </button>
           ))}
         </div>

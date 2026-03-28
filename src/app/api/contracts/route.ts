@@ -1,8 +1,8 @@
 import { Prisma, TipoTarifaContrato } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { contractPayloadSchema } from "@/lib/contracts/schema";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import type { ContractFormPayload } from "@/types";
 
 export const runtime = "nodejs";
 
@@ -12,24 +12,6 @@ function toDate(value: string | null): Date | null {
 
 function toDecimal(value: string | null): Prisma.Decimal | null {
   return value ? new Prisma.Decimal(value) : null;
-}
-
-function validatePayload(payload: ContractFormPayload): string | null {
-  if (!payload.proyectoId || !payload.localId || !payload.arrendatarioId || !payload.numeroContrato) {
-    return "Faltan campos obligatorios del contrato.";
-  }
-  if (new Date(payload.fechaInicio) > new Date(payload.fechaTermino)) {
-    return "fechaInicio no puede ser mayor que fechaTermino.";
-  }
-  const keys = new Set<string>();
-  for (const tarifa of payload.tarifas) {
-    const key = `${tarifa.tipo}-${tarifa.vigenciaDesde}`;
-    if (keys.has(key)) {
-      return "Hay tarifas duplicadas con mismo tipo + vigenciaDesde.";
-    }
-    keys.add(key);
-  }
-  return null;
 }
 
 export async function GET(request: Request): Promise<NextResponse> {
@@ -65,11 +47,14 @@ export async function GET(request: Request): Promise<NextResponse> {
 export async function POST(request: Request): Promise<NextResponse> {
   try {
     const session = await requireWriteAccess();
-    const payload = (await request.json()) as ContractFormPayload;
-    const validationError = validatePayload(payload);
-    if (validationError) {
-      return NextResponse.json({ message: validationError }, { status: 400 });
+    const parsed = contractPayloadSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json(
+        { message: parsed.error.issues[0].message, issues: parsed.error.issues },
+        { status: 400 }
+      );
     }
+    const payload = parsed.data;
 
     const contract = await prisma.$transaction(async (tx) => {
       const created = await tx.contrato.create({
@@ -91,29 +76,29 @@ export async function POST(request: Request): Promise<NextResponse> {
         }
       });
 
-      for (const tarifa of payload.tarifas) {
-        await tx.contratoTarifa.create({
-          data: {
+      if (payload.tarifas.length > 0) {
+        await tx.contratoTarifa.createMany({
+          data: payload.tarifas.map((t) => ({
             contratoId: created.id,
-            tipo: tarifa.tipo as TipoTarifaContrato,
-            valor: new Prisma.Decimal(tarifa.valor),
-            vigenciaDesde: new Date(tarifa.vigenciaDesde),
-            vigenciaHasta: toDate(tarifa.vigenciaHasta),
-            esDiciembre: tarifa.esDiciembre
-          }
+            tipo: t.tipo as TipoTarifaContrato,
+            valor: new Prisma.Decimal(t.valor),
+            vigenciaDesde: new Date(t.vigenciaDesde),
+            vigenciaHasta: toDate(t.vigenciaHasta),
+            esDiciembre: t.esDiciembre
+          }))
         });
       }
 
-      for (const item of payload.ggcc) {
-        await tx.contratoGGCC.create({
-          data: {
+      if (payload.ggcc.length > 0) {
+        await tx.contratoGGCC.createMany({
+          data: payload.ggcc.map((g) => ({
             contratoId: created.id,
-            tarifaBaseUfM2: new Prisma.Decimal(item.tarifaBaseUfM2),
-            pctAdministracion: new Prisma.Decimal(item.pctAdministracion),
-            vigenciaDesde: new Date(item.vigenciaDesde),
-            vigenciaHasta: toDate(item.vigenciaHasta),
-            proximoReajuste: toDate(item.proximoReajuste)
-          }
+            tarifaBaseUfM2: new Prisma.Decimal(g.tarifaBaseUfM2),
+            pctAdministracion: new Prisma.Decimal(g.pctAdministracion),
+            vigenciaDesde: new Date(g.vigenciaDesde),
+            vigenciaHasta: toDate(g.vigenciaHasta),
+            proximoReajuste: toDate(g.proximoReajuste)
+          }))
         });
       }
 

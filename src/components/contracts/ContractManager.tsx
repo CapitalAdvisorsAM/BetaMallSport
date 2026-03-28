@@ -2,6 +2,12 @@
 
 import { EstadoContrato } from "@prisma/client";
 import { useEffect, useMemo, useState } from "react";
+import { GgccListEditor, type GgccListItem } from "@/components/contracts/GgccListEditor";
+import {
+  createEmptyTarifaItem,
+  TarifaListEditor,
+  type TarifaListItem
+} from "@/components/contracts/TarifaListEditor";
 import type { ContractFormPayload } from "@/types";
 
 type ContractListItem = {
@@ -39,7 +45,40 @@ type ContractManagerProps = {
   contracts: ContractListItem[];
 };
 
-function createEmptyPayload(proyectoId: string, localId = "", arrendatarioId = ""): ContractFormPayload {
+type ContractDraftPayload = Omit<ContractFormPayload, "tarifas" | "ggcc"> & {
+  tarifas: TarifaListItem[];
+  ggcc: GgccListItem[];
+};
+
+function toDraftTarifa(item: ContractFormPayload["tarifas"][number]): TarifaListItem {
+  return { ...item, _key: crypto.randomUUID() };
+}
+
+function toDraftGgcc(item: ContractFormPayload["ggcc"][number]): GgccListItem {
+  return { ...item, _key: crypto.randomUUID() };
+}
+
+function toApiPayload(payload: ContractDraftPayload): ContractFormPayload {
+  return {
+    ...payload,
+    tarifas: payload.tarifas.map((tarifa) => ({
+      tipo: tarifa.tipo,
+      valor: tarifa.valor,
+      vigenciaDesde: tarifa.vigenciaDesde,
+      vigenciaHasta: tarifa.vigenciaHasta,
+      esDiciembre: tarifa.esDiciembre
+    })),
+    ggcc: payload.ggcc.map((item) => ({
+      tarifaBaseUfM2: item.tarifaBaseUfM2,
+      pctAdministracion: item.pctAdministracion,
+      vigenciaDesde: item.vigenciaDesde,
+      vigenciaHasta: item.vigenciaHasta,
+      proximoReajuste: item.proximoReajuste
+    }))
+  };
+}
+
+function createEmptyPayload(proyectoId: string, localId = "", arrendatarioId = ""): ContractDraftPayload {
   return {
     proyectoId,
     localId,
@@ -55,15 +94,7 @@ function createEmptyPayload(proyectoId: string, localId = "", arrendatarioId = "
     codigoCC: null,
     pdfUrl: null,
     notas: null,
-    tarifas: [
-      {
-        tipo: "FIJO_UF_M2",
-        valor: "",
-        vigenciaDesde: "",
-        vigenciaHasta: null,
-        esDiciembre: false
-      }
-    ],
+    tarifas: [createEmptyTarifaItem()],
     ggcc: [],
     anexo: null
   };
@@ -84,7 +115,7 @@ export function ContractManager({
   const [deleting, setDeleting] = useState(false);
   const [uploadingPdfId, setUploadingPdfId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [payload, setPayload] = useState<ContractFormPayload>(
+  const [payload, setPayload] = useState<ContractDraftPayload>(
     createEmptyPayload(proyectoId, locals[0]?.id ?? "", arrendatarios[0]?.id ?? "")
   );
 
@@ -124,11 +155,8 @@ export function ContractManager({
       codigoCC: null,
       pdfUrl: contract.pdfUrl,
       notas: null,
-      tarifas:
-        contract.tarifas.length > 0
-          ? contract.tarifas
-          : [{ tipo: "FIJO_UF_M2", valor: "", vigenciaDesde: "", vigenciaHasta: null, esDiciembre: false }],
-      ggcc: contract.ggcc,
+      tarifas: contract.tarifas.length > 0 ? contract.tarifas.map(toDraftTarifa) : [createEmptyTarifaItem()],
+      ggcc: contract.ggcc.map(toDraftGgcc),
       anexo: null
     });
   }
@@ -141,7 +169,7 @@ export function ContractManager({
       const response = await fetch(isEditing ? `/api/contracts/${selectedId}` : "/api/contracts", {
         method: isEditing ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(toApiPayload(payload))
       });
       const data = (await response.json()) as { message?: string };
       if (!response.ok) {
@@ -332,7 +360,9 @@ export function ContractManager({
             <span className="mb-1 block text-slate-700">Numero contrato</span>
             <input
               value={payload.numeroContrato}
-              onChange={(event) => setPayload({ ...payload, numeroContrato: event.target.value })}
+              onChange={(event) =>
+                setPayload((previous) => ({ ...previous, numeroContrato: event.target.value }))
+              }
               className="w-full rounded-md border border-slate-300 px-3 py-2"
             />
           </label>
@@ -340,7 +370,12 @@ export function ContractManager({
             <span className="mb-1 block text-slate-700">Estado</span>
             <select
               value={payload.estado}
-              onChange={(event) => setPayload({ ...payload, estado: event.target.value as EstadoContrato })}
+              onChange={(event) =>
+                setPayload((previous) => ({
+                  ...previous,
+                  estado: event.target.value as EstadoContrato
+                }))
+              }
               className="w-full rounded-md border border-slate-300 px-3 py-2"
             >
               <option value="VIGENTE">VIGENTE</option>
@@ -353,7 +388,9 @@ export function ContractManager({
             <span className="mb-1 block text-slate-700">Local</span>
             <select
               value={payload.localId}
-              onChange={(event) => setPayload({ ...payload, localId: event.target.value })}
+              onChange={(event) =>
+                setPayload((previous) => ({ ...previous, localId: event.target.value }))
+              }
               className="w-full rounded-md border border-slate-300 px-3 py-2"
             >
               {locals.map((local) => (
@@ -367,7 +404,9 @@ export function ContractManager({
             <span className="mb-1 block text-slate-700">Arrendatario</span>
             <select
               value={payload.arrendatarioId}
-              onChange={(event) => setPayload({ ...payload, arrendatarioId: event.target.value })}
+              onChange={(event) =>
+                setPayload((previous) => ({ ...previous, arrendatarioId: event.target.value }))
+              }
               className="w-full rounded-md border border-slate-300 px-3 py-2"
             >
               {arrendatarios.map((arrendatario) => (
@@ -382,7 +421,9 @@ export function ContractManager({
             <input
               type="date"
               value={payload.fechaInicio}
-              onChange={(event) => setPayload({ ...payload, fechaInicio: event.target.value })}
+              onChange={(event) =>
+                setPayload((previous) => ({ ...previous, fechaInicio: event.target.value }))
+              }
               className="w-full rounded-md border border-slate-300 px-3 py-2"
             />
           </label>
@@ -391,174 +432,25 @@ export function ContractManager({
             <input
               type="date"
               value={payload.fechaTermino}
-              onChange={(event) => setPayload({ ...payload, fechaTermino: event.target.value })}
+              onChange={(event) =>
+                setPayload((previous) => ({ ...previous, fechaTermino: event.target.value }))
+              }
               className="w-full rounded-md border border-slate-300 px-3 py-2"
             />
           </label>
         </div>
 
-        <div className="rounded-lg border border-slate-200 p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-slate-900">Tarifas</h4>
-            <button
-              type="button"
-              onClick={() =>
-                setPayload({
-                  ...payload,
-                  tarifas: [
-                    ...payload.tarifas,
-                    { tipo: "FIJO_UF_M2", valor: "", vigenciaDesde: "", vigenciaHasta: null, esDiciembre: false }
-                  ]
-                })
-              }
-              className="text-sm font-medium text-brand-700"
-            >
-              + Agregar
-            </button>
-          </div>
-          <div className="space-y-2">
-            {payload.tarifas.map((tarifa, index) => (
-              <div key={`${tarifa.tipo}-${index}`} className="grid gap-2 md:grid-cols-5">
-                <select
-                  value={tarifa.tipo}
-                  onChange={(event) => {
-                    const next = [...payload.tarifas];
-                    next[index] = { ...tarifa, tipo: event.target.value as ContractFormPayload["tarifas"][0]["tipo"] };
-                    setPayload({ ...payload, tarifas: next });
-                  }}
-                  className="rounded-md border border-slate-300 px-2 py-2 text-sm"
-                >
-                  <option value="FIJO_UF_M2">FIJO_UF_M2</option>
-                  <option value="FIJO_UF">FIJO_UF</option>
-                  <option value="PORCENTAJE">PORCENTAJE</option>
-                </select>
-                <input
-                  placeholder="Valor"
-                  value={tarifa.valor}
-                  onChange={(event) => {
-                    const next = [...payload.tarifas];
-                    next[index] = { ...tarifa, valor: event.target.value };
-                    setPayload({ ...payload, tarifas: next });
-                  }}
-                  className="rounded-md border border-slate-300 px-2 py-2 text-sm"
-                />
-                <input
-                  type="date"
-                  value={tarifa.vigenciaDesde}
-                  onChange={(event) => {
-                    const next = [...payload.tarifas];
-                    next[index] = { ...tarifa, vigenciaDesde: event.target.value };
-                    setPayload({ ...payload, tarifas: next });
-                  }}
-                  className="rounded-md border border-slate-300 px-2 py-2 text-sm"
-                />
-                <input
-                  type="date"
-                  value={tarifa.vigenciaHasta ?? ""}
-                  onChange={(event) => {
-                    const next = [...payload.tarifas];
-                    next[index] = { ...tarifa, vigenciaHasta: event.target.value || null };
-                    setPayload({ ...payload, tarifas: next });
-                  }}
-                  className="rounded-md border border-slate-300 px-2 py-2 text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = payload.tarifas.filter((_, i) => i !== index);
-                    setPayload({
-                      ...payload,
-                      tarifas: next.length > 0 ? next : [{ tipo: "FIJO_UF_M2", valor: "", vigenciaDesde: "", vigenciaHasta: null, esDiciembre: false }]
-                    });
-                  }}
-                  className="rounded-md border border-rose-200 px-2 py-2 text-sm text-rose-700"
-                >
-                  Quitar
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
+        <TarifaListEditor
+          tarifas={payload.tarifas}
+          onChange={(updated) => setPayload((previous) => ({ ...previous, tarifas: updated }))}
+          disabled={!canEdit}
+        />
 
-        <div className="rounded-lg border border-slate-200 p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-slate-900">GGCC</h4>
-            <button
-              type="button"
-              onClick={() =>
-                setPayload({
-                  ...payload,
-                  ggcc: [
-                    ...payload.ggcc,
-                    {
-                      tarifaBaseUfM2: "",
-                      pctAdministracion: "",
-                      vigenciaDesde: "",
-                      vigenciaHasta: null,
-                      proximoReajuste: null
-                    }
-                  ]
-                })
-              }
-              className="text-sm font-medium text-brand-700"
-            >
-              + Agregar
-            </button>
-          </div>
-          <div className="space-y-2">
-            {payload.ggcc.map((item, index) => (
-              <div key={`ggcc-${index}`} className="grid gap-2 md:grid-cols-5">
-                <input
-                  placeholder="Tarifa base UF/m2"
-                  value={item.tarifaBaseUfM2}
-                  onChange={(event) => {
-                    const next = [...payload.ggcc];
-                    next[index] = { ...item, tarifaBaseUfM2: event.target.value };
-                    setPayload({ ...payload, ggcc: next });
-                  }}
-                  className="rounded-md border border-slate-300 px-2 py-2 text-sm"
-                />
-                <input
-                  placeholder="% administracion"
-                  value={item.pctAdministracion}
-                  onChange={(event) => {
-                    const next = [...payload.ggcc];
-                    next[index] = { ...item, pctAdministracion: event.target.value };
-                    setPayload({ ...payload, ggcc: next });
-                  }}
-                  className="rounded-md border border-slate-300 px-2 py-2 text-sm"
-                />
-                <input
-                  type="date"
-                  value={item.vigenciaDesde}
-                  onChange={(event) => {
-                    const next = [...payload.ggcc];
-                    next[index] = { ...item, vigenciaDesde: event.target.value };
-                    setPayload({ ...payload, ggcc: next });
-                  }}
-                  className="rounded-md border border-slate-300 px-2 py-2 text-sm"
-                />
-                <input
-                  type="date"
-                  value={item.vigenciaHasta ?? ""}
-                  onChange={(event) => {
-                    const next = [...payload.ggcc];
-                    next[index] = { ...item, vigenciaHasta: event.target.value || null };
-                    setPayload({ ...payload, ggcc: next });
-                  }}
-                  className="rounded-md border border-slate-300 px-2 py-2 text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => setPayload({ ...payload, ggcc: payload.ggcc.filter((_, i) => i !== index) })}
-                  className="rounded-md border border-rose-200 px-2 py-2 text-sm text-rose-700"
-                >
-                  Quitar
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
+        <GgccListEditor
+          ggcc={payload.ggcc}
+          onChange={(updated) => setPayload((previous) => ({ ...previous, ggcc: updated }))}
+          disabled={!canEdit}
+        />
 
         <div className="grid gap-3 md:grid-cols-2">
           <label className="text-sm">
@@ -567,13 +459,13 @@ export function ContractManager({
               type="date"
               value={payload.anexo?.fecha ?? ""}
               onChange={(event) =>
-                setPayload({
-                  ...payload,
+                setPayload((previous) => ({
+                  ...previous,
                   anexo: {
                     fecha: event.target.value,
-                    descripcion: payload.anexo?.descripcion ?? ""
+                    descripcion: previous.anexo?.descripcion ?? ""
                   }
-                })
+                }))
               }
               className="w-full rounded-md border border-slate-300 px-3 py-2"
             />
@@ -583,13 +475,13 @@ export function ContractManager({
             <input
               value={payload.anexo?.descripcion ?? ""}
               onChange={(event) =>
-                setPayload({
-                  ...payload,
+                setPayload((previous) => ({
+                  ...previous,
                   anexo: {
-                    fecha: payload.anexo?.fecha ?? "",
+                    fecha: previous.anexo?.fecha ?? "",
                     descripcion: event.target.value
                   }
-                })
+                }))
               }
               className="w-full rounded-md border border-slate-300 px-3 py-2"
             />

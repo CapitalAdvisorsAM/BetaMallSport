@@ -28,6 +28,12 @@ export const TOP_NAV_ITEMS: NavItem[] = [
 
 export const RENT_ROLL_SUB_NAV_ITEMS: NavItem[] = [
   {
+    label: "Proyectos",
+    href: "/rent-roll/proyectos",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
     label: "Contratos",
     href: "/rent-roll",
     enabled: true,

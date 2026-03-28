@@ -2,6 +2,10 @@ import { EstadoContrato, TipoTarifaContrato } from "@prisma/client";
 
 type DecimalLike = number | string | { toString(): string };
 
+export const CONTRACT_EXPIRY_WINDOWS = [30, 60, 90] as const;
+export type ExpiryWindow = (typeof CONTRACT_EXPIRY_WINDOWS)[number];
+export const CONTRACT_EXPIRY_ROW_LIMIT = 10;
+
 export type KpiLocalInput = {
   id: string;
   codigo: string;
@@ -52,7 +56,7 @@ export type ContractExpiryRow = {
   diasRestantes: number;
 };
 
-export type ContractExpiryBuckets = Record<30 | 60 | 90, ContractExpiryRow[]>;
+export type ContractExpiryBuckets = Record<ExpiryWindow, ContractExpiryRow[]>;
 
 const CONTRACT_STATES: EstadoContrato[] = [
   "VIGENTE",
@@ -79,13 +83,24 @@ function addDays(date: Date, days: number): Date {
   return output;
 }
 
-export function formatUf(value: number): string {
-  return `${value.toLocaleString("es-CL", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })} UF`;
+/**
+ * Formats a UF value with four decimal places.
+ * @param value - UF value to format
+ * @returns UF value as a fixed-decimal string or em dash when invalid
+ */
+export function formatUf(value: number | { toString(): string } | null | undefined): string {
+  if (value === null || value === undefined) {
+    return "\u2014";
+  }
+  const n = typeof value === "number" ? value : Number(value.toString());
+  return Number.isNaN(n) ? "\u2014" : n.toFixed(4);
 }
 
+/**
+ * Formats a square-meter value for UI display.
+ * @param value - Area value in square meters
+ * @returns Localized square-meter string
+ */
 export function formatSquareMeters(value: number): string {
   return `${value.toLocaleString("es-CL", {
     minimumFractionDigits: 2,
@@ -93,6 +108,11 @@ export function formatSquareMeters(value: number): string {
   })} m\u00b2`;
 }
 
+/**
+ * Formats a percentage with one decimal place.
+ * @param value - Percentage value
+ * @returns Localized percentage string
+ */
 export function formatPercent(value: number): string {
   return `${value.toLocaleString("es-CL", {
     minimumFractionDigits: 1,
@@ -100,6 +120,11 @@ export function formatPercent(value: number): string {
   })}%`;
 }
 
+/**
+ * Formats a numeric amount as Chilean pesos.
+ * @param value - Monetary amount in CLP
+ * @returns CLP-formatted currency string
+ */
 export function formatClp(value: number): string {
   return new Intl.NumberFormat("es-CL", {
     style: "currency",
@@ -108,6 +133,11 @@ export function formatClp(value: number): string {
   }).format(value);
 }
 
+/**
+ * Formats a date in short Chilean format.
+ * @param date - Date to format
+ * @returns Formatted date string
+ */
 export function formatShortDate(date: Date): string {
   return new Intl.DateTimeFormat("es-CL", {
     year: "numeric",
@@ -123,6 +153,13 @@ function getOccupiedLocalIds(activeLocales: KpiLocalInput[], contracts: KpiContr
   );
 }
 
+/**
+ * Calculates occupancy metrics for active locales.
+ * @param activeLocales - Active locales for the project
+ * @param contracts - Active contracts used to determine occupied locales
+ * @returns Occupancy totals and percentage
+ * @remarks Formula: ocupados / totalActivos x 100
+ */
 export function calculateOccupancy(activeLocales: KpiLocalInput[], contracts: KpiContractInput[]): {
   totalActivos: number;
   ocupados: number;
@@ -137,6 +174,13 @@ export function calculateOccupancy(activeLocales: KpiLocalInput[], contracts: Kp
   };
 }
 
+/**
+ * Calculates total and leased GLA for active locales.
+ * @param activeLocales - Active locales for the project
+ * @param contracts - Active contracts used to determine occupied locales
+ * @returns Total GLA and leased GLA in square meters
+ * @remarks Formula: suma(glam2) para locales GLA y suma(glam2) de locales GLA ocupados
+ */
 export function calculateGlaMetrics(activeLocales: KpiLocalInput[], contracts: KpiContractInput[]): {
   glaArrendada: number;
   glaTotal: number;
@@ -154,6 +198,13 @@ export function calculateGlaMetrics(activeLocales: KpiLocalInput[], contracts: K
   return { glaArrendada, glaTotal };
 }
 
+/**
+ * Calculates vacancy metrics for active locales.
+ * @param activeLocales - Active locales for the project
+ * @param contracts - Active contracts used to determine occupied locales
+ * @returns Total vacancies and first three vacant locale codes
+ * @remarks Formula: totalVacantes = totalActivos - ocupados
+ */
 export function calculateVacancy(activeLocales: KpiLocalInput[], contracts: KpiContractInput[]): {
   totalVacantes: number;
   codigosPrimerosTres: string[];
@@ -167,6 +218,12 @@ export function calculateVacancy(activeLocales: KpiLocalInput[], contracts: KpiC
   };
 }
 
+/**
+ * Calculates estimated fixed monthly rent in UF.
+ * @param contracts - Active contracts with current tariff data
+ * @returns Total fixed rent in UF
+ * @remarks Formula: FIJO_UF_M2 => valor x glam2; FIJO_UF => valor; PORCENTAJE no suma
+ */
 export function calculateFixedRentUf(contracts: KpiContractInput[]): number {
   return contracts.reduce((total, contract) => {
     if (!contract.tarifa) {
@@ -185,6 +242,13 @@ export function calculateFixedRentUf(contracts: KpiContractInput[]): number {
   }, 0);
 }
 
+/**
+ * Builds a CLP metric card for fixed rent using the UF value.
+ * @param rentaFijaUf - Total fixed rent in UF
+ * @param valorUf - UF value record used for conversion
+ * @returns Display-ready value and subtitle text
+ * @remarks Formula: rentaFijaUf x valorUf
+ */
 export function buildFixedRentClpMetric(
   rentaFijaUf: number,
   valorUf: ValorUfInput | null
@@ -203,6 +267,12 @@ export function buildFixedRentClpMetric(
   };
 }
 
+/**
+ * Estimates the monthly GGCC cost in UF across active contracts.
+ * @param contracts - Active contracts with GGCC configuration
+ * @returns Total estimated monthly GGCC cost in UF
+ * @remarks Formula: tarifaBaseUfM2 x glam2 x (1 + pctAdministracion / 100) por contrato
+ */
 export function calculateEstimatedGgccUf(contracts: KpiContractInput[]): number {
   return contracts.reduce((total, contract) => {
     if (!contract.ggcc) {
@@ -217,6 +287,12 @@ export function calculateEstimatedGgccUf(contracts: KpiContractInput[]): number 
   }, 0);
 }
 
+/**
+ * Builds counters for each contract state with percentages.
+ * @param rawCounts - Aggregated counts by contract state
+ * @returns Total contracts and normalized state counters
+ * @remarks Formula: porcentajeEstado = cantidadEstado / total x 100
+ */
 export function calculateContractStateCounters(
   rawCounts: Array<{ estado: EstadoContrato; cantidad: number }>
 ): { total: number; counters: ContractStateCounter[] } {
@@ -235,11 +311,20 @@ export function calculateContractStateCounters(
   return { total, counters };
 }
 
+/**
+ * Builds sorted contract-expiry rows for a specific window.
+ * @param contracts - Contracts to evaluate
+ * @param today - Reference date for window bounds
+ * @param dias - Expiry window in days
+ * @param limit - Maximum number of rows to return
+ * @returns Sorted contract rows that expire within the window
+ * @remarks Formula: diasRestantes = round((fechaTermino - hoy) / 86_400_000)
+ */
 export function buildContractExpiryRows(
   contracts: KpiContractInput[],
   today: Date,
-  dias: 30 | 60 | 90,
-  limit = 10
+  dias: ExpiryWindow,
+  limit = CONTRACT_EXPIRY_ROW_LIMIT
 ): ContractExpiryRow[] {
   const start = startOfDay(today);
   const end = addDays(start, dias);
@@ -266,6 +351,13 @@ export function buildContractExpiryRows(
     });
 }
 
+/**
+ * Builds expiry buckets for all configured expiry windows.
+ * @param contracts - Contracts to evaluate
+ * @param today - Reference date for window bounds
+ * @returns Expiry rows grouped by configured window
+ * @remarks Formula: aplica buildContractExpiryRows para 30, 60 y 90 dias
+ */
 export function buildContractExpiryBuckets(
   contracts: KpiContractInput[],
   today: Date

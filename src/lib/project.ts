@@ -7,6 +7,8 @@ export async function getProjectContext(projectId?: string) {
     select: { id: true, nombre: true, slug: true }
   });
 
-  const selectedProjectId = projectId ?? projects[0]?.id ?? "";
+  const selectedProjectId = projects.some((project) => project.id === projectId)
+    ? (projectId as string)
+    : (projects[0]?.id ?? "");
   return { projects, selectedProjectId };
 }

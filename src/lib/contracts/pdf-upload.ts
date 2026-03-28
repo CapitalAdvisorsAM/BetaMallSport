@@ -2,6 +2,11 @@ import path from "node:path";
 
 export const MAX_CONTRACT_PDF_SIZE_BYTES = 10 * 1024 * 1024;
 
+/**
+ * Validates whether an uploaded contract file is an acceptable PDF.
+ * @param file - File selected by the user
+ * @returns Validation error message or `null` when valid
+ */
 export function validateContractPdf(file: File | null): string | null {
   if (!file) {
     return "Debes adjuntar un archivo PDF.";
@@ -18,6 +23,11 @@ export function validateContractPdf(file: File | null): string | null {
   return null;
 }
 
+/**
+ * Resolves filesystem and public URL paths for a contract PDF.
+ * @param contractId - Contract identifier used as PDF filename
+ * @returns Absolute directory/path and public URL for storage
+ */
 export function getContractPdfStorage(contractId: string): {
   absoluteDir: string;
   absoluteFilePath: string;
