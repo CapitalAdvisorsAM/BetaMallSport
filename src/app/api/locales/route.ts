@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { handleApiError } from "@/lib/api-error";
 import { localeSchema } from "@/lib/locales/schema";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -16,17 +17,33 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "proyectoId es obligatorio." }, { status: 400 });
     }
 
-    const locales = await prisma.local.findMany({
+    const paginationRequested = searchParams.has("limit") || searchParams.has("cursor");
+    if (!paginationRequested) {
+      const locales = await prisma.local.findMany({
+        where: { proyectoId },
+        orderBy: [{ codigo: "asc" }]
+      });
+      return NextResponse.json(locales);
+    }
+
+    const parsedLimit = Number(searchParams.get("limit") ?? "50");
+    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 50;
+    const cursor = searchParams.get("cursor") ?? undefined;
+
+    const items = await prisma.local.findMany({
       where: { proyectoId },
-      orderBy: [{ codigo: "asc" }]
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      orderBy: { id: "asc" }
     });
 
-    return NextResponse.json(locales);
+    const hasMore = items.length > limit;
+    const data = hasMore ? items.slice(0, limit) : items;
+    const nextCursor = hasMore ? data[data.length - 1]?.id ?? null : null;
+
+    return NextResponse.json({ data, nextCursor, hasMore });
   } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
-      return NextResponse.json({ message: "No autorizado." }, { status: 403 });
-    }
-    return NextResponse.json({ message: "No fue posible listar locales." }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
@@ -58,15 +75,6 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")) {
-      return NextResponse.json({ message: "No autorizado." }, { status: 403 });
-    }
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json(
-        { message: "Ya existe un local con ese codigo para el proyecto seleccionado." },
-        { status: 409 }
-      );
-    }
-    return NextResponse.json({ message: "No fue posible crear el local." }, { status: 500 });
+    return handleApiError(error);
   }
 }

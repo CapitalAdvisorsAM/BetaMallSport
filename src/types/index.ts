@@ -1,4 +1,9 @@
 import type { EstadoContrato, UserRole } from "@prisma/client";
+export type {
+  RentRollMetricaRow,
+  RentRollResumen,
+  RentRollMetricasResponse
+} from "@/types/metricas";
 
 export type RentRollRow = {
   id: string;

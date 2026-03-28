@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { NextResponse } from "next/server";
+import { handleApiError } from "@/lib/api-error";
 import { requireWriteAccess } from "@/lib/permissions";
 import { getContractPdfStorage, validateContractPdf } from "@/lib/contracts/pdf-upload";
 import { prisma } from "@/lib/prisma";
@@ -46,9 +47,6 @@ export async function POST(
 
     return NextResponse.json({ pdfUrl: updated.pdfUrl });
   } catch (error) {
-    if (error instanceof Error && (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")) {
-      return NextResponse.json({ message: "No autorizado." }, { status: 403 });
-    }
-    return NextResponse.json({ message: "No fue posible subir el PDF." }, { status: 500 });
+    return handleApiError(error);
   }
 }

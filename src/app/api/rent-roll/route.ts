@@ -1,5 +1,6 @@
-import { EstadoContrato, TipoTarifaContrato } from "@prisma/client";
+import { EstadoContrato, Prisma, TipoTarifaContrato } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { handleApiError } from "@/lib/api-error";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
@@ -29,43 +30,62 @@ export async function GET(request: Request): Promise<NextResponse> {
         ? (rawState as EstadoContrato)
         : undefined;
     const today = new Date();
+    const where: Prisma.ContratoWhereInput = {
+      proyectoId,
+      ...(estado ? { estado } : {}),
+      ...(q
+        ? {
+            OR: [
+              { numeroContrato: { contains: q, mode: "insensitive" } },
+              { local: { codigo: { contains: q, mode: "insensitive" } } },
+              { local: { nombre: { contains: q, mode: "insensitive" } } },
+              { arrendatario: { nombreComercial: { contains: q, mode: "insensitive" } } }
+            ]
+          }
+        : {})
+    };
+    const include: Prisma.ContratoInclude = {
+      local: true,
+      arrendatario: true,
+      tarifas: {
+        where: {
+          tipo: TipoTarifaContrato.FIJO_UF_M2,
+          vigenciaDesde: { lte: today },
+          OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: today } }]
+        },
+        orderBy: [{ vigenciaDesde: "desc" }],
+        take: 1
+      }
+    };
 
-    const contracts = await prisma.contrato.findMany({
-      where: {
-        proyectoId,
-        ...(estado ? { estado } : {}),
-        ...(q
-          ? {
-              OR: [
-                { numeroContrato: { contains: q, mode: "insensitive" } },
-                { local: { codigo: { contains: q, mode: "insensitive" } } },
-                { local: { nombre: { contains: q, mode: "insensitive" } } },
-                { arrendatario: { nombreComercial: { contains: q, mode: "insensitive" } } }
-              ]
-            }
-          : {})
-      },
-      include: {
-        local: true,
-        arrendatario: true,
-        tarifas: {
-          where: {
-            tipo: TipoTarifaContrato.FIJO_UF_M2,
-            vigenciaDesde: { lte: today },
-            OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: today } }]
-          },
-          orderBy: [{ vigenciaDesde: "desc" }],
-          take: 1
-        }
-      },
-      orderBy: [{ estado: "asc" }, { fechaInicio: "desc" }]
+    const paginationRequested = searchParams.has("limit") || searchParams.has("cursor");
+    if (!paginationRequested) {
+      const contracts = await prisma.contrato.findMany({
+        where,
+        include,
+        orderBy: [{ estado: "asc" }, { fechaInicio: "desc" }]
+      });
+      return NextResponse.json(contracts);
+    }
+
+    const parsedLimit = Number(searchParams.get("limit") ?? "50");
+    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 50;
+    const cursor = searchParams.get("cursor") ?? undefined;
+
+    const items = await prisma.contrato.findMany({
+      where,
+      include,
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      orderBy: { id: "asc" }
     });
 
-    return NextResponse.json(contracts);
+    const hasMore = items.length > limit;
+    const data = hasMore ? items.slice(0, limit) : items;
+    const nextCursor = hasMore ? data[data.length - 1]?.id ?? null : null;
+
+    return NextResponse.json({ data, nextCursor, hasMore });
   } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
-      return NextResponse.json({ message: "No autorizado." }, { status: 403 });
-    }
-    return NextResponse.json({ message: "No fue posible obtener el rent roll." }, { status: 500 });
+    return handleApiError(error);
   }
 }

@@ -1,11 +1,37 @@
 import { Prisma, TipoTarifaContrato } from "@prisma/client";
 import { NextResponse } from "next/server";
 import type { z } from "zod";
+import { ApiError, handleApiError } from "@/lib/api-error";
 import { contractPayloadSchema } from "@/lib/contracts/schema";
-import { requireWriteAccess } from "@/lib/permissions";
+import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
+
+export async function GET(
+  _request: Request,
+  context: { params: { id: string } }
+): Promise<NextResponse> {
+  try {
+    await requireSession();
+    const item = await prisma.contrato.findUnique({
+      where: { id: context.params.id },
+      include: {
+        local: true,
+        arrendatario: true,
+        tarifas: { orderBy: { vigenciaDesde: "desc" } },
+        ggcc: { orderBy: { vigenciaDesde: "desc" } },
+        anexos: { orderBy: { createdAt: "desc" }, take: 5 }
+      }
+    });
+    if (!item) {
+      throw new ApiError(404, "No encontrado.");
+    }
+    return NextResponse.json(item);
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
 
 function toDate(value: string | null): Date | null {
   return value ? new Date(value) : null;
@@ -160,6 +186,22 @@ export async function PUT(
         { message: "El proyecto del payload no coincide con el contrato existente." },
         { status: 400 }
       );
+    }
+    const [local, arrendatario] = await Promise.all([
+      prisma.local.findFirst({
+        where: { id: payload.localId, proyectoId: payload.proyectoId },
+        select: { id: true }
+      }),
+      prisma.arrendatario.findFirst({
+        where: { id: payload.arrendatarioId, proyectoId: payload.proyectoId },
+        select: { id: true }
+      })
+    ]);
+    if (!local) {
+      throw new ApiError(400, "El local no pertenece al proyecto.");
+    }
+    if (!arrendatario) {
+      throw new ApiError(400, "El arrendatario no pertenece al proyecto.");
     }
 
     const camposModificados = computeCamposModificados(existing, payload);
@@ -322,10 +364,7 @@ export async function PUT(
 
     return NextResponse.json(updated);
   } catch (error) {
-    if (error instanceof Error && (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")) {
-      return NextResponse.json({ message: "No autorizado." }, { status: 403 });
-    }
-    return NextResponse.json({ message: "No fue posible actualizar el contrato." }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
@@ -340,12 +379,6 @@ export async function DELETE(
     });
     return NextResponse.json({ message: "Contrato eliminado correctamente." });
   } catch (error) {
-    if (error instanceof Error && (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")) {
-      return NextResponse.json({ message: "No autorizado." }, { status: 403 });
-    }
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      return NextResponse.json({ message: "Contrato no encontrado." }, { status: 404 });
-    }
-    return NextResponse.json({ message: "No fue posible eliminar el contrato." }, { status: 500 });
+    return handleApiError(error);
   }
 }

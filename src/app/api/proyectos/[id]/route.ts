@@ -1,7 +1,7 @@
-import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireWriteAccess } from "@/lib/permissions";
+import { ApiError, handleApiError } from "@/lib/api-error";
+import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -41,6 +41,25 @@ async function buildUniqueSlug(baseSlug: string, excludeId: string): Promise<str
     }
     candidate = `${baseSlug}-${index}`;
     index += 1;
+  }
+}
+
+export async function GET(
+  _request: Request,
+  context: { params: { id: string } }
+): Promise<NextResponse> {
+  try {
+    await requireSession();
+    const item = await prisma.proyecto.findUnique({
+      where: { id: context.params.id },
+      select: { id: true, nombre: true, slug: true, color: true, activo: true }
+    });
+    if (!item) {
+      throw new ApiError(404, "No encontrado.");
+    }
+    return NextResponse.json(item);
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
@@ -87,13 +106,7 @@ export async function PUT(
 
     return NextResponse.json(updated);
   } catch (error) {
-    if (error instanceof Error && (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")) {
-      return NextResponse.json({ message: "No autorizado." }, { status: 403 });
-    }
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json({ message: "Ya existe un proyecto con ese identificador." }, { status: 409 });
-    }
-    return NextResponse.json({ message: "No fue posible actualizar el proyecto." }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
@@ -148,12 +161,6 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Proyecto eliminado correctamente." });
   } catch (error) {
-    if (error instanceof Error && (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")) {
-      return NextResponse.json({ message: "No autorizado." }, { status: 403 });
-    }
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      return NextResponse.json({ message: "Proyecto no encontrado." }, { status: 404 });
-    }
-    return NextResponse.json({ message: "No fue posible eliminar el proyecto." }, { status: 500 });
+    return handleApiError(error);
   }
 }

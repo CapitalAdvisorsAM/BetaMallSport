@@ -1,5 +1,5 @@
-import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { handleApiError } from "@/lib/api-error";
 import { normalizeRut, tenantSchema } from "@/lib/arrendatarios/schema";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -16,16 +16,33 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "proyectoId es obligatorio." }, { status: 400 });
     }
 
-    const arrendatarios = await prisma.arrendatario.findMany({
-      where: { proyectoId },
-      orderBy: { nombreComercial: "asc" }
-    });
-    return NextResponse.json(arrendatarios);
-  } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
-      return NextResponse.json({ message: "No autorizado." }, { status: 403 });
+    const paginationRequested = searchParams.has("limit") || searchParams.has("cursor");
+    if (!paginationRequested) {
+      const arrendatarios = await prisma.arrendatario.findMany({
+        where: { proyectoId },
+        orderBy: { nombreComercial: "asc" }
+      });
+      return NextResponse.json(arrendatarios);
     }
-    return NextResponse.json({ message: "No fue posible listar arrendatarios." }, { status: 500 });
+
+    const parsedLimit = Number(searchParams.get("limit") ?? "50");
+    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 50;
+    const cursor = searchParams.get("cursor") ?? undefined;
+
+    const items = await prisma.arrendatario.findMany({
+      where: { proyectoId },
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      orderBy: { id: "asc" }
+    });
+
+    const hasMore = items.length > limit;
+    const data = hasMore ? items.slice(0, limit) : items;
+    const nextCursor = hasMore ? data[data.length - 1]?.id ?? null : null;
+
+    return NextResponse.json({ data, nextCursor, hasMore });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
@@ -55,15 +72,6 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")) {
-      return NextResponse.json({ message: "No autorizado." }, { status: 403 });
-    }
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json(
-        { message: "Ya existe un arrendatario con ese RUT para el proyecto seleccionado." },
-        { status: 409 }
-      );
-    }
-    return NextResponse.json({ message: "No fue posible crear el arrendatario." }, { status: 500 });
+    return handleApiError(error);
   }
 }

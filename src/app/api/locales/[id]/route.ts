@@ -1,10 +1,29 @@
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { ApiError, handleApiError } from "@/lib/api-error";
 import { localeSchema } from "@/lib/locales/schema";
-import { requireWriteAccess } from "@/lib/permissions";
+import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
+
+export async function GET(
+  _request: Request,
+  context: { params: { id: string } }
+): Promise<NextResponse> {
+  try {
+    await requireSession();
+    const item = await prisma.local.findUnique({
+      where: { id: context.params.id }
+    });
+    if (!item) {
+      throw new ApiError(404, "No encontrado.");
+    }
+    return NextResponse.json(item);
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
 
 export async function PUT(
   request: Request,
@@ -53,16 +72,7 @@ export async function PUT(
 
     return NextResponse.json(updated);
   } catch (error) {
-    if (error instanceof Error && (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")) {
-      return NextResponse.json({ message: "No autorizado." }, { status: 403 });
-    }
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json(
-        { message: "Ya existe un local con ese codigo para el proyecto seleccionado." },
-        { status: 409 }
-      );
-    }
-    return NextResponse.json({ message: "No fue posible actualizar el local." }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
@@ -76,18 +86,6 @@ export async function DELETE(
     await prisma.local.delete({ where: { id: localeId } });
     return NextResponse.json({ message: "Local eliminado correctamente." });
   } catch (error) {
-    if (error instanceof Error && (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")) {
-      return NextResponse.json({ message: "No autorizado." }, { status: 403 });
-    }
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-      return NextResponse.json(
-        { message: "No se puede eliminar el local porque tiene contratos relacionados." },
-        { status: 409 }
-      );
-    }
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      return NextResponse.json({ message: "Local no encontrado." }, { status: 404 });
-    }
-    return NextResponse.json({ message: "No fue posible eliminar el local." }, { status: 500 });
+    return handleApiError(error);
   }
 }

@@ -68,6 +68,7 @@ model Proyecto {
   activo      Boolean        @default(true)
   createdAt   DateTime       @default(now()) @db.Timestamptz(3)
   locales     Local[]
+  ventaLocales VentaLocal[]
   arrendatarios Arrendatario[]
   contratos   Contrato[]
   contratosDia ContratoDia[]
@@ -99,10 +100,28 @@ model Local {
   proyecto   Proyecto      @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   contratos  Contrato[]
   contratosDia ContratoDia[]
+  ventaLocales VentaLocal[]
 
   @@index([proyectoId])
   @@index([estado])
+  @@index([proyectoId, estado])
   @@unique([proyectoId, codigo])
+}
+
+model VentaLocal {
+  id         String   @id @default(cuid())
+  proyectoId String
+  localId    String
+  periodo    String
+  ventasUf   Decimal  @db.Decimal(14, 4)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id])
+  local      Local    @relation(fields: [localId], references: [id])
+
+  @@index([proyectoId, periodo])
+  @@unique([localId, periodo])
 }
 
 model Arrendatario {
@@ -121,6 +140,7 @@ model Arrendatario {
 
   @@index([proyectoId])
   @@index([vigente])
+  @@index([proyectoId, vigente])
   @@unique([proyectoId, rut])
 }
 
@@ -174,6 +194,7 @@ model ContratoTarifa {
 
   @@index([contratoId])
   @@index([vigenciaDesde, vigenciaHasta])
+  @@index([contratoId, tipo, vigenciaDesde])
 }
 
 model ContratoAnexo {
@@ -207,6 +228,7 @@ model ContratoGGCC {
   contrato           Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
 
   @@index([contratoId])
+  @@index([contratoId, vigenciaDesde])
 }
 
 model ContratoDia {

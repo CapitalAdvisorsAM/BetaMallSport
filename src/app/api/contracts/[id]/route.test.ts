@@ -4,6 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { requireWriteAccessMock, prismaMock } = vi.hoisted(() => ({
   requireWriteAccessMock: vi.fn(),
   prismaMock: {
+    local: {
+      findFirst: vi.fn()
+    },
+    arrendatario: {
+      findFirst: vi.fn()
+    },
     contrato: {
       findUnique: vi.fn()
     },
@@ -159,6 +165,10 @@ function setupTransaction(options: {
 
 beforeEach(() => {
   requireWriteAccessMock.mockResolvedValue({ user: { id: "u1" } });
+  prismaMock.local.findFirst.mockResolvedValue({ id: "l1" });
+  prismaMock.arrendatario.findFirst.mockResolvedValue({ id: "a1" });
+  prismaMock.local.findFirst.mockClear();
+  prismaMock.arrendatario.findFirst.mockClear();
   prismaMock.contrato.findUnique.mockReset();
   prismaMock.$transaction.mockReset();
 });

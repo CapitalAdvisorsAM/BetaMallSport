@@ -1,5 +1,6 @@
 import { Prisma, TipoTarifaContrato } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { handleApiError } from "@/lib/api-error";
 import { parseRentRollPreviewPayload } from "@/lib/carga-datos";
 import { requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -49,29 +50,25 @@ export async function POST(request: Request): Promise<NextResponse> {
       data: { estado: "PROCESANDO", usuarioId: session.user.id }
     });
 
-    const localMap = new Map(
-      (
-        await prisma.local.findMany({
-          where: { proyectoId: carga.proyectoId },
-          select: { id: true, codigo: true }
-        })
-      ).map((item) => [item.codigo.toUpperCase(), item.id])
-    );
-    const arrendatarioMap = new Map(
-      (
-        await prisma.arrendatario.findMany({
-          where: { proyectoId: carga.proyectoId },
-          select: { id: true, rut: true }
-        })
-      ).map((item) => [item.rut.toUpperCase(), item.id])
-    );
+    const [locales, arrendatarios] = await Promise.all([
+      prisma.local.findMany({
+        where: { proyectoId: carga.proyectoId },
+        select: { id: true, codigo: true }
+      }),
+      prisma.arrendatario.findMany({
+        where: { proyectoId: carga.proyectoId },
+        select: { id: true, rut: true }
+      })
+    ]);
+    const localesMap = new Map(locales.map((item) => [item.codigo.toUpperCase(), item.id]));
+    const arrendatariosMap = new Map(arrendatarios.map((item) => [item.rut.toUpperCase(), item.id]));
 
     const duplicatedTarifaKey = new Set<string>();
 
     await prisma.$transaction(async (tx) => {
       for (const row of payload.rows) {
-        const localId = localMap.get(row.localCodigo.toUpperCase());
-        const arrendatarioId = arrendatarioMap.get(row.arrendatarioRut.toUpperCase());
+        const localId = localesMap.get(row.localCodigo.toUpperCase());
+        const arrendatarioId = arrendatariosMap.get(row.arrendatarioRut.toUpperCase());
 
         if (!localId || !arrendatarioId) {
           reportIssues.push({
@@ -243,9 +240,6 @@ export async function POST(request: Request): Promise<NextResponse> {
       report
     });
   } catch (error) {
-    if (error instanceof Error && (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")) {
-      return NextResponse.json({ message: "No autorizado." }, { status: 403 });
-    }
-    return NextResponse.json({ message: "No fue posible aplicar la carga." }, { status: 500 });
+    return handleApiError(error);
   }
 }

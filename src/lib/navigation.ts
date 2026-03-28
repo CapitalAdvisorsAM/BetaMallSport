@@ -40,6 +40,12 @@ export const RENT_ROLL_SUB_NAV_ITEMS: NavItem[] = [
     match: "startsWith"
   },
   {
+    label: "Dashboard",
+    href: "/rent-roll/dashboard",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
     label: "Contratos",
     href: "/rent-roll",
     enabled: true,

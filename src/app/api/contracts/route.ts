@@ -1,5 +1,6 @@
 import { Prisma, TipoTarifaContrato } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { ApiError, handleApiError } from "@/lib/api-error";
 import { contractPayloadSchema } from "@/lib/contracts/schema";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -23,24 +24,43 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "proyectoId es obligatorio." }, { status: 400 });
     }
 
-    const contracts = await prisma.contrato.findMany({
+    const include = {
+      local: true,
+      arrendatario: true,
+      tarifas: { orderBy: { vigenciaDesde: "desc" } },
+      ggcc: { orderBy: { vigenciaDesde: "desc" } },
+      anexos: { orderBy: { createdAt: "desc" }, take: 5 }
+    } as const;
+
+    const paginationRequested = searchParams.has("limit") || searchParams.has("cursor");
+    if (!paginationRequested) {
+      const contracts = await prisma.contrato.findMany({
+        where: { proyectoId },
+        include,
+        orderBy: { updatedAt: "desc" }
+      });
+      return NextResponse.json(contracts);
+    }
+
+    const parsedLimit = Number(searchParams.get("limit") ?? "50");
+    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 50;
+    const cursor = searchParams.get("cursor") ?? undefined;
+
+    const items = await prisma.contrato.findMany({
       where: { proyectoId },
-      include: {
-        local: true,
-        arrendatario: true,
-        tarifas: { orderBy: { vigenciaDesde: "desc" } },
-        ggcc: { orderBy: { vigenciaDesde: "desc" } },
-        anexos: { orderBy: { createdAt: "desc" }, take: 5 }
-      },
-      orderBy: { updatedAt: "desc" }
+      include,
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      orderBy: { id: "asc" }
     });
 
-    return NextResponse.json(contracts);
+    const hasMore = items.length > limit;
+    const data = hasMore ? items.slice(0, limit) : items;
+    const nextCursor = hasMore ? data[data.length - 1]?.id ?? null : null;
+
+    return NextResponse.json({ data, nextCursor, hasMore });
   } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
-      return NextResponse.json({ message: "No autorizado." }, { status: 403 });
-    }
-    return NextResponse.json({ message: "No fue posible listar contratos." }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
@@ -55,6 +75,22 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
     const payload = parsed.data;
+    const [local, arrendatario] = await Promise.all([
+      prisma.local.findFirst({
+        where: { id: payload.localId, proyectoId: payload.proyectoId },
+        select: { id: true }
+      }),
+      prisma.arrendatario.findFirst({
+        where: { id: payload.arrendatarioId, proyectoId: payload.proyectoId },
+        select: { id: true }
+      })
+    ]);
+    if (!local) {
+      throw new ApiError(400, "El local no pertenece al proyecto.");
+    }
+    if (!arrendatario) {
+      throw new ApiError(400, "El arrendatario no pertenece al proyecto.");
+    }
 
     const contract = await prisma.$transaction(async (tx) => {
       const created = await tx.contrato.create({
@@ -121,9 +157,6 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     return NextResponse.json(contract, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")) {
-      return NextResponse.json({ message: "No autorizado." }, { status: 403 });
-    }
-    return NextResponse.json({ message: "No fue posible crear el contrato." }, { status: 500 });
+    return handleApiError(error);
   }
 }

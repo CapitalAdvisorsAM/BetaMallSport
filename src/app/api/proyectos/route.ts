@@ -1,6 +1,6 @@
-import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { handleApiError } from "@/lib/api-error";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
@@ -53,10 +53,7 @@ export async function GET(): Promise<NextResponse> {
     });
     return NextResponse.json(projects);
   } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
-      return NextResponse.json({ message: "No autorizado." }, { status: 403 });
-    }
-    return NextResponse.json({ message: "No fue posible listar proyectos." }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
@@ -86,12 +83,6 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")) {
-      return NextResponse.json({ message: "No autorizado." }, { status: 403 });
-    }
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json({ message: "Ya existe un proyecto con ese identificador." }, { status: 409 });
-    }
-    return NextResponse.json({ message: "No fue posible crear el proyecto." }, { status: 500 });
+    return handleApiError(error);
   }
 }
