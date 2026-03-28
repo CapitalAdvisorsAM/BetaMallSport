@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { parseRentRollPreviewPayload } from "@/lib/carga-datos";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { buildErrorCsv } from "@/lib/rent-roll-upload";
+import { buildErrorCsv } from "@/lib/upload/parse-contratos";
+import { parseStoredUploadPayload } from "@/lib/upload/payload";
 
 export const runtime = "nodejs";
 
@@ -20,11 +21,27 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "No se encontraron errores para la carga." }, { status: 404 });
     }
 
-    const payload = parseRentRollPreviewPayload(carga.errorDetalle);
-    if (!payload) {
+    const legacyPayload = parseRentRollPreviewPayload(carga.errorDetalle);
+    const errors = legacyPayload
+      ? [...legacyPayload.errors, ...(legacyPayload.report?.rejectedRows ?? [])]
+      : (() => {
+          const modernPayload = parseStoredUploadPayload(carga.errorDetalle);
+          if (!modernPayload) {
+            return null;
+          }
+          const previewErrors = modernPayload.rows
+            .filter((row) => row.status === "ERROR")
+            .map((row) => ({
+              rowNumber: row.rowNumber,
+              message: row.errorMessage ?? "Fila invalida."
+            }));
+          return [...previewErrors, ...(modernPayload.report?.rejectedRows ?? [])];
+        })();
+
+    if (!errors) {
       return NextResponse.json({ message: "No fue posible leer el detalle de errores." }, { status: 422 });
     }
-    const errors = [...payload.errors, ...(payload.report?.rejectedRows ?? [])];
+
     const csv = buildErrorCsv(errors);
 
     return new NextResponse(csv, {

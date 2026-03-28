@@ -1,4 +1,5 @@
 import type { EstadoContrato, UserRole } from "@prisma/client";
+export type { ApplyReport, PreviewRow, RowStatus, UploadPreview } from "./upload";
 export type {
   RentRollMetricaRow,
   RentRollResumen,

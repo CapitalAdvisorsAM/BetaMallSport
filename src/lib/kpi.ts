@@ -372,3 +372,120 @@ export function buildContractExpiryBuckets(
     90: buildContractExpiryRows(contracts, today, 90)
   };
 }
+
+export type AlertCounts = {
+  vencen30: number;
+  vencen90: number;
+  enGracia: number;
+  vacantes: number;
+  proyectoId: string;
+};
+
+type AlertContractInput = Pick<KpiContractInput, "fechaTermino"> & {
+  estado: EstadoContrato;
+};
+
+/**
+ * Builds top-level alert counters for the executive dashboard.
+ * @param contratos - Active contracts that may trigger alerts
+ * @param localesVacantes - Active locales without a current valid contract
+ * @param hoy - Reference date for expiry windows
+ * @returns Alert counters for 30-day, 31-90-day, grace and vacancy alerts
+ */
+export function buildAlertCounts(
+  contratos: AlertContractInput[],
+  localesVacantes: Array<Pick<KpiLocalInput, "id">>,
+  hoy: Date,
+  proyectoId: string
+): AlertCounts {
+  const start = startOfDay(hoy);
+  const day30 = addDays(start, 30);
+  const day31 = addDays(start, 31);
+  const day90 = addDays(start, 90);
+
+  return contratos.reduce<AlertCounts>(
+    (acc, contrato) => {
+      const endDate = startOfDay(contrato.fechaTermino);
+      if (contrato.estado === EstadoContrato.GRACIA) {
+        acc.enGracia += 1;
+      }
+
+      if (endDate >= start && endDate <= day30) {
+        acc.vencen30 += 1;
+      } else if (endDate >= day31 && endDate <= day90) {
+        acc.vencen90 += 1;
+      }
+
+      return acc;
+    },
+    {
+      vencen30: 0,
+      vencen90: 0,
+      enGracia: 0,
+      vacantes: localesVacantes.length,
+      proyectoId
+    }
+  );
+}
+
+/**
+ * Builds monthly fixed-rent exposure for contracts expiring within a time window.
+ * @param contratos - Contracts to evaluate for potential rent at risk
+ * @param hoy - Reference date for the window start
+ * @param diasVentana - Number of days in the risk window
+ * @returns UF amount at risk and number of contracts in scope
+ */
+export function buildRentaEnRiesgo(
+  contratos: KpiContractInput[],
+  hoy: Date,
+  diasVentana: number
+): { ufEnRiesgo: number; count: number } {
+  const start = startOfDay(hoy);
+  const safeDiasVentana =
+    Number.isFinite(diasVentana) && diasVentana >= 0 ? Math.floor(diasVentana) : 0;
+  const end = addDays(start, safeDiasVentana);
+
+  return contratos.reduce(
+    (acc, contrato) => {
+      const fechaTermino = startOfDay(contrato.fechaTermino);
+      if (fechaTermino < start || fechaTermino > end) {
+        return acc;
+      }
+
+      acc.count += 1;
+      if (!contrato.tarifa) {
+        return acc;
+      }
+
+      const valorTarifa = toNumber(contrato.tarifa.valor);
+      if (contrato.tarifa.tipo === TipoTarifaContrato.FIJO_UF_M2) {
+        acc.ufEnRiesgo += valorTarifa * toNumber(contrato.localGlam2);
+      } else if (contrato.tarifa.tipo === TipoTarifaContrato.FIJO_UF) {
+        acc.ufEnRiesgo += valorTarifa;
+      }
+
+      return acc;
+    },
+    { ufEnRiesgo: 0, count: 0 }
+  );
+}
+
+/**
+ * Estimates monthly potential rent loss for vacant locales.
+ * @param localesVacantes - Vacant locales to evaluate
+ * @param promedioTarifaProyecto - Weighted monthly fixed-rent average in UF/m2
+ * @returns Estimated monthly UF lost in vacancies
+ */
+export function buildRentaPotencialVacantes(
+  localesVacantes: Array<Pick<KpiLocalInput, "glam2">>,
+  promedioTarifaProyecto: number
+): number {
+  if (promedioTarifaProyecto <= 0) {
+    return 0;
+  }
+
+  return localesVacantes.reduce(
+    (total, local) => total + toNumber(local.glam2) * promedioTarifaProyecto,
+    0
+  );
+}

@@ -40,6 +40,8 @@ enum EstadoDiaContrato {
 }
 
 enum TipoCargaDatos {
+  LOCALES
+  ARRENDATARIOS
   RENT_ROLL
   VENTAS
   CONTABLE

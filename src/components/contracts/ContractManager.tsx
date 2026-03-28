@@ -8,6 +8,7 @@ import {
   TarifaListEditor,
   type TarifaListItem
 } from "@/components/contracts/TarifaListEditor";
+import { useContractApi } from "@/hooks/useContractApi";
 import type { ContractFormPayload } from "@/types";
 
 type ContractListItem = {
@@ -118,6 +119,11 @@ export function ContractManager({
   const [payload, setPayload] = useState<ContractDraftPayload>(
     createEmptyPayload(proyectoId, locals[0]?.id ?? "", arrendatarios[0]?.id ?? "")
   );
+  const {
+    saveContract: saveContractRequest,
+    deleteContract: deleteContractRequest,
+    uploadContractPdf: uploadContractPdfRequest
+  } = useContractApi();
 
   useEffect(() => {
     setContractList(contracts);
@@ -166,15 +172,7 @@ export function ContractManager({
     setMessage(null);
     try {
       const isEditing = Boolean(selectedId);
-      const response = await fetch(isEditing ? `/api/contracts/${selectedId}` : "/api/contracts", {
-        method: isEditing ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(toApiPayload(payload))
-      });
-      const data = (await response.json()) as { message?: string };
-      if (!response.ok) {
-        throw new Error(data.message ?? "No se pudo guardar el contrato.");
-      }
+      await saveContractRequest(toApiPayload(payload), selectedId ?? undefined);
       setMessage("Contrato guardado correctamente. Recarga la pagina para ver la lista actualizada.");
       if (!isEditing) {
         setPayload(createEmptyPayload(proyectoId, locals[0]?.id ?? "", arrendatarios[0]?.id ?? ""));
@@ -197,13 +195,7 @@ export function ContractManager({
     setDeleting(true);
     setMessage(null);
     try {
-      const response = await fetch(`/api/contracts/${selectedId}`, {
-        method: "DELETE"
-      });
-      const data = (await response.json()) as { message?: string };
-      if (!response.ok) {
-        throw new Error(data.message ?? "No se pudo eliminar el contrato.");
-      }
+      await deleteContractRequest(selectedId);
 
       setContractList((previous) => previous.filter((item) => item.id !== selectedId));
       setSelectedId(null);
@@ -224,23 +216,13 @@ export function ContractManager({
     setUploadingPdfId(contractId);
     setMessage(null);
     try {
-      const formData = new FormData();
-      formData.set("pdf", file);
-
-      const response = await fetch(`/api/contracts/${contractId}/pdf`, {
-        method: "POST",
-        body: formData
-      });
-      const data = (await response.json()) as { pdfUrl?: string; message?: string };
-      if (!response.ok || !data.pdfUrl) {
-        throw new Error(data.message ?? "No se pudo subir el PDF.");
-      }
+      const pdfUrl = await uploadContractPdfRequest(contractId, file);
 
       setContractList((previous) =>
-        previous.map((item) => (item.id === contractId ? { ...item, pdfUrl: data.pdfUrl ?? null } : item))
+        previous.map((item) => (item.id === contractId ? { ...item, pdfUrl } : item))
       );
       if (selectedId === contractId) {
-        setPayload((previous) => ({ ...previous, pdfUrl: data.pdfUrl ?? null }));
+        setPayload((previous) => ({ ...previous, pdfUrl }));
       }
       setMessage("PDF actualizado correctamente.");
     } catch (error) {

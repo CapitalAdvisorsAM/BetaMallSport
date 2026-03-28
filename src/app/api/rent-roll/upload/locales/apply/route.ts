@@ -1,0 +1,196 @@
+import { EstadoMaestro, LocalTipo, Prisma, TipoCargaDatos } from "@prisma/client";
+import { NextResponse } from "next/server";
+import { handleApiError } from "@/lib/api-error";
+import { requireWriteAccess } from "@/lib/permissions";
+import { prisma } from "@/lib/prisma";
+import { parseStoredUploadPayload } from "@/lib/upload/payload";
+import type { ApplyReport } from "@/types/upload";
+
+export const runtime = "nodejs";
+
+type NormalizedLocalRow = {
+  codigo: string;
+  nombre: string;
+  glam2: string;
+  piso: string;
+  tipo: LocalTipo;
+  zona: string | null;
+  esGLA: boolean;
+  estado: EstadoMaestro;
+};
+
+const allowedTipo = new Set(Object.values(LocalTipo));
+const allowedEstado = new Set(Object.values(EstadoMaestro));
+
+function asString(value: unknown): string {
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value).trim();
+  }
+  return "";
+}
+
+function normalizeLocalData(data: Record<string, unknown>): NormalizedLocalRow | null {
+  const codigo = asString(data.codigo).toUpperCase();
+  const nombre = asString(data.nombre);
+  const glam2 = asString(data.glam2).replace(",", ".");
+  const piso = asString(data.piso);
+  const tipo = asString(data.tipo).toUpperCase();
+  const estado = asString(data.estado).toUpperCase() || EstadoMaestro.ACTIVO;
+  const zona = asString(data.zona);
+  const esGLA = Boolean(data.esGLA);
+
+  if (!codigo || !nombre || !glam2 || !piso) {
+    return null;
+  }
+  if (!allowedTipo.has(tipo as LocalTipo) || !allowedEstado.has(estado as EstadoMaestro)) {
+    return null;
+  }
+  if (!Number.isFinite(Number(glam2)) || Number(glam2) <= 0) {
+    return null;
+  }
+
+  return {
+    codigo,
+    nombre,
+    glam2,
+    piso,
+    tipo: tipo as LocalTipo,
+    zona: zona || null,
+    esGLA,
+    estado: estado as EstadoMaestro
+  };
+}
+
+export async function POST(request: Request): Promise<NextResponse> {
+  try {
+    const session = await requireWriteAccess();
+    const body = (await request.json()) as { cargaId?: string };
+    const cargaId = body.cargaId ?? "";
+
+    if (!cargaId) {
+      return NextResponse.json({ message: "cargaId es obligatorio." }, { status: 400 });
+    }
+
+    const carga = await prisma.cargaDatos.findUnique({ where: { id: cargaId } });
+    if (!carga || carga.tipo !== TipoCargaDatos.LOCALES) {
+      return NextResponse.json({ message: "No existe preview para esta carga." }, { status: 404 });
+    }
+    if (carga.estado === "PROCESANDO") {
+      return NextResponse.json({ message: "La carga ya esta siendo procesada." }, { status: 409 });
+    }
+
+    const payload = parseStoredUploadPayload(carga.errorDetalle);
+    if (!payload) {
+      return NextResponse.json({ message: "No fue posible leer el preview para esta carga." }, { status: 422 });
+    }
+
+    await prisma.cargaDatos.update({
+      where: { id: carga.id },
+      data: { estado: "PROCESANDO", usuarioId: session.user.id }
+    });
+
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
+    const rejectedRows: ApplyReport["rejectedRows"] = [];
+
+    await prisma.$transaction(async (tx) => {
+      for (const row of payload.rows) {
+        if (row.status === "ERROR") {
+          rejectedRows.push({
+            rowNumber: row.rowNumber,
+            message: row.errorMessage ?? "Fila invalida en preview."
+          });
+          continue;
+        }
+
+        if (row.status === "UNCHANGED") {
+          skipped += 1;
+          continue;
+        }
+
+        const normalized = normalizeLocalData(row.data);
+        if (!normalized) {
+          rejectedRows.push({
+            rowNumber: row.rowNumber,
+            message: "No se pudo normalizar la fila para aplicar."
+          });
+          continue;
+        }
+
+        const exists = await tx.local.findUnique({
+          where: {
+            proyectoId_codigo: {
+              proyectoId: carga.proyectoId,
+              codigo: normalized.codigo
+            }
+          },
+          select: { id: true }
+        });
+
+        await tx.local.upsert({
+          where: {
+            proyectoId_codigo: {
+              proyectoId: carga.proyectoId,
+              codigo: normalized.codigo
+            }
+          },
+          create: {
+            proyectoId: carga.proyectoId,
+            codigo: normalized.codigo,
+            nombre: normalized.nombre,
+            glam2: new Prisma.Decimal(normalized.glam2),
+            piso: normalized.piso,
+            tipo: normalized.tipo,
+            zona: normalized.zona,
+            esGLA: normalized.esGLA,
+            estado: normalized.estado
+          },
+          update: {
+            nombre: normalized.nombre,
+            glam2: new Prisma.Decimal(normalized.glam2),
+            piso: normalized.piso,
+            tipo: normalized.tipo,
+            zona: normalized.zona,
+            esGLA: normalized.esGLA,
+            estado: normalized.estado
+          }
+        });
+
+        if (exists) {
+          updated += 1;
+        } else {
+          created += 1;
+        }
+      }
+    });
+
+    const report: ApplyReport = {
+      created,
+      updated,
+      skipped,
+      rejected: rejectedRows.length,
+      rejectedRows
+    };
+    const finalPayload = {
+      ...payload,
+      report
+    };
+
+    await prisma.cargaDatos.update({
+      where: { id: carga.id },
+      data: {
+        estado: created + updated > 0 ? "OK" : "ERROR",
+        registrosCargados: created + updated,
+        errorDetalle: JSON.stringify(finalPayload)
+      }
+    });
+
+    return NextResponse.json({ cargaId: carga.id, report });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
