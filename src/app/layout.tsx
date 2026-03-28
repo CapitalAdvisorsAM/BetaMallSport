@@ -6,9 +6,9 @@ export const metadata: Metadata = {
   title: "Mall Sport",
   description: "Sistema de gestion de activos inmobiliarios",
   icons: {
-    icon: "/MallSportLogo.png",
-    shortcut: "/MallSportLogo.png",
-    apple: "/MallSportLogo.png"
+    icon: "/MallSportLogo.jpg",
+    shortcut: "/MallSportLogo.jpg",
+    apple: "/MallSportLogo.jpg"
   }
 };
 

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
+import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import { RentRollUploadPanel } from "@/components/rent-roll/RentRollUploadPanel";
 import { auth } from "@/lib/auth";
 import { canWrite } from "@/lib/permissions";
@@ -25,12 +26,11 @@ export default async function RentRollUploadPage({
 
   if (!selectedProjectId) {
     return (
-      <main className="rounded-xl bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Carga de Rent Roll</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          No hay proyectos activos. Debes crear al menos un proyecto para cargar datos.
-        </p>
-      </main>
+      <ProjectCreationPanel
+        title="Carga de Rent Roll"
+        description="No hay proyectos activos. Crea uno para poder cargar datos."
+        canEdit={canWrite(session.user.role)}
+      />
     );
   }
 

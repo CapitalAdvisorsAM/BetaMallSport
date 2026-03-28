@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { ContractManager } from "@/components/contracts/ContractManager";
+import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
 import { auth } from "@/lib/auth";
 import { canWrite } from "@/lib/permissions";
@@ -23,12 +24,11 @@ export default async function ContratosPage({
 
   if (!selectedProjectId) {
     return (
-      <main className="rounded-xl bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Contratos</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          No hay proyectos activos. Debes crear al menos uno para gestionar contratos.
-        </p>
-      </main>
+      <ProjectCreationPanel
+        title="Contratos"
+        description="No hay proyectos activos. Crea uno para habilitar el CRUD de contratos."
+        canEdit={canWrite(session.user.role)}
+      />
     );
   }
 

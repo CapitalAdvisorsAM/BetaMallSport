@@ -1,0 +1,346 @@
+"use client";
+
+import { useMemo, useState } from "react";
+
+type LocalTipo = "TIENDA" | "MODULO" | "BODEGA" | "OTRO";
+type EstadoMaestro = "ACTIVO" | "INACTIVO";
+
+type LocalRecord = {
+  id: string;
+  proyectoId: string;
+  codigo: string;
+  nombre: string;
+  glam2: string;
+  piso: string;
+  tipo: LocalTipo;
+  zona: string | null;
+  esGLA: boolean;
+  estado: EstadoMaestro;
+};
+
+type LocalForm = Omit<LocalRecord, "id">;
+
+type LocalesCrudPanelProps = {
+  proyectoId: string;
+  canEdit: boolean;
+  initialLocales: LocalRecord[];
+};
+
+function createEmptyForm(proyectoId: string): LocalForm {
+  return {
+    proyectoId,
+    codigo: "",
+    nombre: "",
+    glam2: "",
+    piso: "",
+    tipo: "TIENDA",
+    zona: null,
+    esGLA: true,
+    estado: "ACTIVO"
+  };
+}
+
+function toLocalRecord(value: Partial<LocalRecord>): LocalRecord {
+  return {
+    id: value.id ?? "",
+    proyectoId: value.proyectoId ?? "",
+    codigo: value.codigo ?? "",
+    nombre: value.nombre ?? "",
+    glam2: typeof value.glam2 === "string" ? value.glam2 : String(value.glam2 ?? ""),
+    piso: value.piso ?? "",
+    tipo: value.tipo ?? "TIENDA",
+    zona: value.zona ?? null,
+    esGLA: Boolean(value.esGLA),
+    estado: value.estado ?? "ACTIVO"
+  };
+}
+
+function formatDecimal(value: string): string {
+  const parsed = Number(value);
+  if (Number.isNaN(parsed)) {
+    return value;
+  }
+  return parsed.toLocaleString("es-CL", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+export function LocalesCrudPanel({
+  proyectoId,
+  canEdit,
+  initialLocales
+}: LocalesCrudPanelProps): JSX.Element {
+  const [locales, setLocales] = useState<LocalRecord[]>(initialLocales);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [form, setForm] = useState<LocalForm>(createEmptyForm(proyectoId));
+
+  const filteredLocales = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) {
+      return locales;
+    }
+    return locales.filter((local) =>
+      [local.codigo, local.nombre, local.piso, local.zona ?? "", local.tipo].join(" ").toLowerCase().includes(q)
+    );
+  }, [locales, search]);
+
+  function beginCreate(): void {
+    setSelectedId(null);
+    setForm(createEmptyForm(proyectoId));
+  }
+
+  function beginEdit(local: LocalRecord): void {
+    setSelectedId(local.id);
+    setForm({
+      proyectoId: local.proyectoId,
+      codigo: local.codigo,
+      nombre: local.nombre,
+      glam2: local.glam2,
+      piso: local.piso,
+      tipo: local.tipo,
+      zona: local.zona,
+      esGLA: local.esGLA,
+      estado: local.estado
+    });
+  }
+
+  async function handleSubmit(): Promise<void> {
+    if (!canEdit || loading) {
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+    try {
+      const isEditing = Boolean(selectedId);
+      const response = await fetch(isEditing ? `/api/locales/${selectedId}` : "/api/locales", {
+        method: isEditing ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form)
+      });
+      const data = (await response.json()) as Partial<LocalRecord> & { message?: string };
+      if (!response.ok || !data.id) {
+        throw new Error(data.message ?? "No se pudo guardar el local.");
+      }
+
+      const saved = toLocalRecord(data);
+      if (isEditing) {
+        setLocales((previous) => previous.map((item) => (item.id === saved.id ? saved : item)));
+        setMessage("Local actualizado correctamente.");
+      } else {
+        setLocales((previous) =>
+          [...previous, saved].sort((a, b) => a.codigo.localeCompare(b.codigo, "es", { sensitivity: "base" }))
+        );
+        setMessage("Local creado correctamente.");
+      }
+      beginCreate();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Error inesperado al guardar local.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDelete(localId: string): Promise<void> {
+    if (!canEdit || loading) {
+      return;
+    }
+    if (!window.confirm("Se eliminara este local. Esta accion no se puede deshacer.")) {
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`/api/locales/${localId}`, { method: "DELETE" });
+      const data = (await response.json()) as { message?: string };
+      if (!response.ok) {
+        throw new Error(data.message ?? "No se pudo eliminar el local.");
+      }
+
+      setLocales((previous) => previous.filter((item) => item.id !== localId));
+      if (selectedId === localId) {
+        beginCreate();
+      }
+      setMessage("Local eliminado correctamente.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Error inesperado al eliminar local.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section className="space-y-4 rounded-xl bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-base font-semibold text-slate-900">CRUD de Locales</h3>
+        <div className="flex items-center gap-2">
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar local"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          />
+          <button
+            type="button"
+            onClick={beginCreate}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+          >
+            Nuevo
+          </button>
+        </div>
+      </div>
+
+      {!canEdit ? <p className="text-sm text-amber-700">Tu rol es de solo lectura para locales.</p> : null}
+
+      <div className="grid gap-3 md:grid-cols-4">
+        <label className="text-sm">
+          <span className="mb-1 block text-slate-700">Codigo</span>
+          <input
+            value={form.codigo}
+            onChange={(event) => setForm({ ...form, codigo: event.target.value })}
+            className="w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
+        <label className="text-sm md:col-span-2">
+          <span className="mb-1 block text-slate-700">Nombre</span>
+          <input
+            value={form.nombre}
+            onChange={(event) => setForm({ ...form, nombre: event.target.value })}
+            className="w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-slate-700">GLA m2</span>
+          <input
+            value={form.glam2}
+            onChange={(event) => setForm({ ...form, glam2: event.target.value })}
+            placeholder="0.00"
+            className="w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-slate-700">Piso</span>
+          <input
+            value={form.piso}
+            onChange={(event) => setForm({ ...form, piso: event.target.value })}
+            className="w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-slate-700">Tipo</span>
+          <select
+            value={form.tipo}
+            onChange={(event) => setForm({ ...form, tipo: event.target.value as LocalTipo })}
+            className="w-full rounded-md border border-slate-300 px-3 py-2"
+          >
+            <option value="TIENDA">TIENDA</option>
+            <option value="MODULO">MODULO</option>
+            <option value="BODEGA">BODEGA</option>
+            <option value="OTRO">OTRO</option>
+          </select>
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-slate-700">Zona</span>
+          <input
+            value={form.zona ?? ""}
+            onChange={(event) => setForm({ ...form, zona: event.target.value || null })}
+            className="w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-slate-700">Estado</span>
+          <select
+            value={form.estado}
+            onChange={(event) => setForm({ ...form, estado: event.target.value as EstadoMaestro })}
+            className="w-full rounded-md border border-slate-300 px-3 py-2"
+          >
+            <option value="ACTIVO">ACTIVO</option>
+            <option value="INACTIVO">INACTIVO</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2 pt-7 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={form.esGLA}
+            onChange={(event) => setForm({ ...form, esGLA: event.target.checked })}
+          />
+          Es GLA
+        </label>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => void handleSubmit()}
+          disabled={!canEdit || loading}
+          className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {selectedId ? "Actualizar local" : "Crear local"}
+        </button>
+      </div>
+
+      {message ? <p className="text-sm text-slate-700">{message}</p> : null}
+
+      <div className="overflow-x-auto rounded-lg border border-slate-200">
+        <table className="min-w-full divide-y divide-slate-200">
+          <thead className="bg-slate-50">
+            <tr className="text-left text-xs uppercase tracking-wide text-slate-600">
+              <th className="px-4 py-3 font-semibold">Codigo</th>
+              <th className="px-4 py-3 font-semibold">Nombre</th>
+              <th className="px-4 py-3 font-semibold">Piso</th>
+              <th className="px-4 py-3 font-semibold">Tipo</th>
+              <th className="px-4 py-3 font-semibold">GLA m2</th>
+              <th className="px-4 py-3 font-semibold">Estado</th>
+              <th className="px-4 py-3 font-semibold">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 text-sm text-slate-800">
+            {filteredLocales.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
+                  No se encontraron locales.
+                </td>
+              </tr>
+            ) : (
+              filteredLocales.map((local) => (
+                <tr key={local.id}>
+                  <td className="whitespace-nowrap px-4 py-3 font-medium">{local.codigo}</td>
+                  <td className="px-4 py-3">{local.nombre}</td>
+                  <td className="whitespace-nowrap px-4 py-3">{local.piso}</td>
+                  <td className="whitespace-nowrap px-4 py-3">{local.tipo}</td>
+                  <td className="whitespace-nowrap px-4 py-3">{formatDecimal(local.glam2)}</td>
+                  <td className="whitespace-nowrap px-4 py-3">{local.estado}</td>
+                  <td className="whitespace-nowrap px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => beginEdit(local)}
+                        disabled={!canEdit}
+                        className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDelete(local.id)}
+                        disabled={!canEdit}
+                        className="rounded-md border border-rose-200 px-2 py-1 text-xs font-medium text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}

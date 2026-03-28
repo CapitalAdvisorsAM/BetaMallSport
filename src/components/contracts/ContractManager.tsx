@@ -76,10 +76,12 @@ export function ContractManager({
   arrendatarios,
   contracts
 }: ContractManagerProps): JSX.Element {
+  const hasRequiredMasters = locals.length > 0 && arrendatarios.length > 0;
   const [contractList, setContractList] = useState<ContractListItem[]>(contracts);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [uploadingPdfId, setUploadingPdfId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [payload, setPayload] = useState<ContractFormPayload>(
@@ -153,6 +155,36 @@ export function ContractManager({
       setMessage(error instanceof Error ? error.message : "Error inesperado al guardar.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function deleteContract(): Promise<void> {
+    if (!selectedId || !canEdit || deleting) {
+      return;
+    }
+    if (!window.confirm("Se eliminara el contrato seleccionado. Esta accion no se puede deshacer.")) {
+      return;
+    }
+
+    setDeleting(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`/api/contracts/${selectedId}`, {
+        method: "DELETE"
+      });
+      const data = (await response.json()) as { message?: string };
+      if (!response.ok) {
+        throw new Error(data.message ?? "No se pudo eliminar el contrato.");
+      }
+
+      setContractList((previous) => previous.filter((item) => item.id !== selectedId));
+      setSelectedId(null);
+      setPayload(createEmptyPayload(proyectoId, locals[0]?.id ?? "", arrendatarios[0]?.id ?? ""));
+      setMessage("Contrato eliminado correctamente.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Error inesperado al eliminar.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -265,17 +297,35 @@ export function ContractManager({
           <h3 className="text-base font-semibold text-slate-900">
             {selectedContract ? "Editar contrato" : "Nuevo contrato"}
           </h3>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedId(null);
-              setPayload(createEmptyPayload(proyectoId, locals[0]?.id ?? "", arrendatarios[0]?.id ?? ""));
-            }}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-          >
-            Nuevo
-          </button>
+          <div className="flex items-center gap-2">
+            {selectedContract ? (
+              <button
+                type="button"
+                onClick={() => void deleteContract()}
+                disabled={!canEdit || deleting}
+                className="rounded-md border border-rose-200 px-3 py-1.5 text-sm text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {deleting ? "Eliminando..." : "Eliminar"}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedId(null);
+                setPayload(createEmptyPayload(proyectoId, locals[0]?.id ?? "", arrendatarios[0]?.id ?? ""));
+              }}
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            >
+              Nuevo
+            </button>
+          </div>
         </div>
+
+        {!hasRequiredMasters ? (
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Debes crear al menos un local y un arrendatario antes de registrar contratos.
+          </p>
+        ) : null}
 
         <div className="grid gap-3 md:grid-cols-2">
           <label className="text-sm">
@@ -550,7 +600,7 @@ export function ContractManager({
           <button
             type="button"
             onClick={saveContract}
-            disabled={!canEdit || loading}
+            disabled={!canEdit || loading || !hasRequiredMasters}
             className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {selectedId ? "Actualizar contrato" : "Crear contrato"}

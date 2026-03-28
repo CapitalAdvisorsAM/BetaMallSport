@@ -21,7 +21,7 @@ export default async function DashboardLayout({
         <div>
           <div className="flex items-center gap-3">
             <Image
-              src="/MallSportLogo.png"
+              src="/MallSportLogo.jpg"
               alt="Mall Sport"
               width={36}
               height={36}

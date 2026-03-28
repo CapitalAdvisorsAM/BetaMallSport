@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
+import { LocalesCrudPanel } from "@/components/rent-roll/LocalesCrudPanel";
+import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
 import { auth } from "@/lib/auth";
+import { canWrite } from "@/lib/permissions";
 import { buildLocalesWhere, parseLocalesEstado } from "@/lib/rent-roll/locales";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
@@ -31,12 +34,11 @@ export default async function LocalesPage({
   const { projects, selectedProjectId } = await getProjectContext(searchParams.proyecto);
   if (!selectedProjectId) {
     return (
-      <main className="rounded-xl bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Locales</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          No hay proyectos activos. Debes crear al menos uno para visualizar locales.
-        </p>
-      </main>
+      <ProjectCreationPanel
+        title="Locales"
+        description="No hay proyectos activos. Crea uno para habilitar el CRUD de locales."
+        canEdit={canWrite(session.user.role)}
+      />
     );
   }
 
@@ -47,10 +49,16 @@ export default async function LocalesPage({
   const q = searchParams.q?.trim() ?? "";
   const estado = parseLocalesEstado(searchParams.estado);
 
-  const locales = await prisma.local.findMany({
-    where: buildLocalesWhere(selectedProjectId, { q, estado }),
-    orderBy: [{ piso: "asc" }, { codigo: "asc" }]
-  });
+  const [locales, localesCrud] = await Promise.all([
+    prisma.local.findMany({
+      where: buildLocalesWhere(selectedProjectId, { q, estado }),
+      orderBy: [{ piso: "asc" }, { codigo: "asc" }]
+    }),
+    prisma.local.findMany({
+      where: { proyectoId: selectedProjectId },
+      orderBy: [{ codigo: "asc" }]
+    })
+  ]);
 
   return (
     <main className="space-y-4">
@@ -152,6 +160,23 @@ export default async function LocalesPage({
           </table>
         </div>
       </section>
+
+      <LocalesCrudPanel
+        proyectoId={selectedProjectId}
+        canEdit={canWrite(session.user.role)}
+        initialLocales={localesCrud.map((local) => ({
+          id: local.id,
+          proyectoId: local.proyectoId,
+          codigo: local.codigo,
+          nombre: local.nombre,
+          glam2: local.glam2.toString(),
+          piso: local.piso,
+          tipo: local.tipo,
+          zona: local.zona,
+          esGLA: local.esGLA,
+          estado: local.estado
+        }))}
+      />
     </main>
   );
 }

@@ -1,7 +1,10 @@
 import { EstadoContrato, TipoTarifaContrato } from "@prisma/client";
 import { redirect } from "next/navigation";
+import { ArrendatariosCrudPanel } from "@/components/rent-roll/ArrendatariosCrudPanel";
+import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
 import { auth } from "@/lib/auth";
+import { canWrite } from "@/lib/permissions";
 import {
   buildArrendatariosWhere,
   parseVigenteFilter,
@@ -29,12 +32,11 @@ export default async function ArrendatariosPage({
   const { projects, selectedProjectId } = await getProjectContext(searchParams.proyecto);
   if (!selectedProjectId) {
     return (
-      <main className="rounded-xl bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Arrendatarios</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          No hay proyectos activos. Debes crear al menos uno para visualizar arrendatarios.
-        </p>
-      </main>
+      <ProjectCreationPanel
+        title="Arrendatarios"
+        description="No hay proyectos activos. Crea uno para habilitar el CRUD de arrendatarios."
+        canEdit={canWrite(session.user.role)}
+      />
     );
   }
 
@@ -46,39 +48,45 @@ export default async function ArrendatariosPage({
   const vigente = parseVigenteFilter(searchParams.vigente);
   const today = new Date();
 
-  const arrendatarios = await prisma.arrendatario.findMany({
-    where: buildArrendatariosWhere(selectedProjectId, { q, vigente }),
-    include: {
-      contratos: {
-        where: { estado: EstadoContrato.VIGENTE },
-        include: {
-          local: {
-            select: { codigo: true, nombre: true }
-          },
-          tarifas: {
-            where: {
-              tipo: TipoTarifaContrato.FIJO_UF_M2,
-              vigenciaDesde: { lte: today },
-              OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: today } }]
+  const [arrendatarios, arrendatariosCrud] = await Promise.all([
+    prisma.arrendatario.findMany({
+      where: buildArrendatariosWhere(selectedProjectId, { q, vigente }),
+      include: {
+        contratos: {
+          where: { estado: EstadoContrato.VIGENTE },
+          include: {
+            local: {
+              select: { codigo: true, nombre: true }
             },
-            orderBy: { vigenciaDesde: "desc" },
-            take: 1,
-            select: { valor: true }
-          },
-          ggcc: {
-            where: {
-              vigenciaDesde: { lte: today }
+            tarifas: {
+              where: {
+                tipo: TipoTarifaContrato.FIJO_UF_M2,
+                vigenciaDesde: { lte: today },
+                OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: today } }]
+              },
+              orderBy: { vigenciaDesde: "desc" },
+              take: 1,
+              select: { valor: true }
             },
-            orderBy: { vigenciaDesde: "desc" },
-            take: 1,
-            select: { tarifaBaseUfM2: true, pctAdministracion: true }
-          }
-        },
-        orderBy: [{ fechaInicio: "desc" }]
-      }
-    },
-    orderBy: { nombreComercial: "asc" }
-  });
+            ggcc: {
+              where: {
+                vigenciaDesde: { lte: today }
+              },
+              orderBy: { vigenciaDesde: "desc" },
+              take: 1,
+              select: { tarifaBaseUfM2: true, pctAdministracion: true }
+            }
+          },
+          orderBy: [{ fechaInicio: "desc" }]
+        }
+      },
+      orderBy: { nombreComercial: "asc" }
+    }),
+    prisma.arrendatario.findMany({
+      where: { proyectoId: selectedProjectId },
+      orderBy: { nombreComercial: "asc" }
+    })
+  ]);
 
   return (
     <main className="space-y-4">
@@ -177,6 +185,21 @@ export default async function ArrendatariosPage({
           </table>
         </div>
       </section>
+
+      <ArrendatariosCrudPanel
+        proyectoId={selectedProjectId}
+        canEdit={canWrite(session.user.role)}
+        initialArrendatarios={arrendatariosCrud.map((arrendatario) => ({
+          id: arrendatario.id,
+          proyectoId: arrendatario.proyectoId,
+          rut: arrendatario.rut,
+          razonSocial: arrendatario.razonSocial,
+          nombreComercial: arrendatario.nombreComercial,
+          vigente: arrendatario.vigente,
+          email: arrendatario.email,
+          telefono: arrendatario.telefono
+        }))}
+      />
     </main>
   );
 }

@@ -2,8 +2,10 @@ import Link from "next/link";
 import { EstadoContrato, TipoCargaDatos, TipoTarifaContrato } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { ContractTable } from "@/components/rent-roll/ContractTable";
+import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
 import { auth } from "@/lib/auth";
+import { canWrite } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
 import type { RentRollRow } from "@/types";
@@ -41,12 +43,11 @@ export default async function RentRollPage({
   const { projects, selectedProjectId } = await getProjectContext(searchParams.proyecto);
   if (!selectedProjectId) {
     return (
-      <main className="rounded-xl bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Rent Roll</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          No hay proyectos activos. Debes crear al menos uno para visualizar rent roll.
-        </p>
-      </main>
+      <ProjectCreationPanel
+        title="Rent Roll"
+        description="No hay proyectos activos. Crea uno para comenzar a gestionar contratos y rent roll."
+        canEdit={canWrite(session.user.role)}
+      />
     );
   }
 

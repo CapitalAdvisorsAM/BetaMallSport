@@ -430,3 +430,24 @@ export async function PUT(
     return NextResponse.json({ message: "No fue posible actualizar el contrato." }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  _request: Request,
+  context: { params: { id: string } }
+): Promise<NextResponse> {
+  try {
+    await requireWriteAccess();
+    await prisma.contrato.delete({
+      where: { id: context.params.id }
+    });
+    return NextResponse.json({ message: "Contrato eliminado correctamente." });
+  } catch (error) {
+    if (error instanceof Error && (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")) {
+      return NextResponse.json({ message: "No autorizado." }, { status: 403 });
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return NextResponse.json({ message: "Contrato no encontrado." }, { status: 404 });
+    }
+    return NextResponse.json({ message: "No fue posible eliminar el contrato." }, { status: 500 });
+  }
+}
