@@ -117,7 +117,10 @@ export default async function RentRollPage({
       <header className="rounded-xl bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Rent Roll</h2>
+            <div className="mb-1 flex items-center gap-2">
+              <div className="h-5 w-1 rounded-full bg-gold-400" />
+              <h2 className="text-base font-bold uppercase tracking-wide text-brand-700">Rent Roll</h2>
+            </div>
             <p className="mt-1 text-sm text-slate-600">
               Contratos y tarifa vigente UF/m² por local y arrendatario.
             </p>

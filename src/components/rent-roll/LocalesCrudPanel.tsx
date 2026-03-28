@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 
 type LocalTipo = "TIENDA" | "MODULO" | "BODEGA" | "OTRO";
 type EstadoMaestro = "ACTIVO" | "INACTIVO";
@@ -288,18 +289,32 @@ export function LocalesCrudPanel({
 
       <div className="overflow-x-auto rounded-lg border border-slate-200">
         <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
-            <tr className="text-left text-xs uppercase tracking-wide text-slate-600">
-              <th className="px-4 py-3 font-semibold">Codigo</th>
-              <th className="px-4 py-3 font-semibold">Nombre</th>
-              <th className="px-4 py-3 font-semibold">Piso</th>
-              <th className="px-4 py-3 font-semibold">Tipo</th>
-              <th className="px-4 py-3 font-semibold">GLA m2</th>
-              <th className="px-4 py-3 font-semibold">Estado</th>
-              <th className="px-4 py-3 font-semibold">Acciones</th>
+          <thead className="bg-brand-700">
+            <tr>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Codigo
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Nombre
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Piso
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Tipo
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                GLA m2
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Estado
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Acciones
+              </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 text-sm text-slate-800">
+          <tbody className="text-sm text-slate-800">
             {filteredLocales.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
@@ -307,8 +322,14 @@ export function LocalesCrudPanel({
                 </td>
               </tr>
             ) : (
-              filteredLocales.map((local) => (
-                <tr key={local.id}>
+              filteredLocales.map((local, index) => (
+                <tr
+                  key={local.id}
+                  className={cn(
+                    "transition-colors hover:bg-brand-50",
+                    index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
+                  )}
+                >
                   <td className="whitespace-nowrap px-4 py-3 font-medium">{local.codigo}</td>
                   <td className="px-4 py-3">{local.nombre}</td>
                   <td className="whitespace-nowrap px-4 py-3">{local.piso}</td>

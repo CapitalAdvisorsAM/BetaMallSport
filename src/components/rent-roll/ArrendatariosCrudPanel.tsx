@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 
 type ArrendatarioRecord = {
   id: string;
@@ -247,18 +248,32 @@ export function ArrendatariosCrudPanel({
 
       <div className="overflow-x-auto rounded-lg border border-slate-200">
         <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
-            <tr className="text-left text-xs uppercase tracking-wide text-slate-600">
-              <th className="px-4 py-3 font-semibold">Nombre comercial</th>
-              <th className="px-4 py-3 font-semibold">Razon social</th>
-              <th className="px-4 py-3 font-semibold">RUT</th>
-              <th className="px-4 py-3 font-semibold">Email</th>
-              <th className="px-4 py-3 font-semibold">Telefono</th>
-              <th className="px-4 py-3 font-semibold">Vigente</th>
-              <th className="px-4 py-3 font-semibold">Acciones</th>
+          <thead className="bg-brand-700">
+            <tr>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Nombre comercial
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Razon social
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                RUT
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Email
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Telefono
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Vigente
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Acciones
+              </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 text-sm text-slate-800">
+          <tbody className="text-sm text-slate-800">
             {filteredArrendatarios.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
@@ -266,8 +281,14 @@ export function ArrendatariosCrudPanel({
                 </td>
               </tr>
             ) : (
-              filteredArrendatarios.map((item) => (
-                <tr key={item.id}>
+              filteredArrendatarios.map((item, index) => (
+                <tr
+                  key={item.id}
+                  className={cn(
+                    "transition-colors hover:bg-brand-50",
+                    index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
+                  )}
+                >
                   <td className="px-4 py-3 font-medium">{item.nombreComercial}</td>
                   <td className="px-4 py-3">{item.razonSocial}</td>
                   <td className="whitespace-nowrap px-4 py-3">{item.rut}</td>

@@ -1,5 +1,6 @@
 import { Prisma, TipoTarifaContrato } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { parseRentRollPreviewPayload } from "@/lib/carga-datos";
 import { requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import type { RentRollPreviewPayload, UploadIssue } from "@/types";
@@ -35,7 +36,10 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "No existe preview para esta carga." }, { status: 404 });
     }
 
-    const payload = JSON.parse(carga.errorDetalle) as RentRollPreviewPayload;
+    const payload = parseRentRollPreviewPayload(carga.errorDetalle);
+    if (!payload) {
+      return NextResponse.json({ message: "No fue posible leer el preview para esta carga." }, { status: 422 });
+    }
     const reportIssues: UploadIssue[] = [];
     let created = 0;
     let updated = 0;

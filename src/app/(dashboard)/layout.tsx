@@ -16,32 +16,45 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-7xl p-6">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl bg-white p-4 shadow-sm">
-        <div>
+    <div className="min-h-screen bg-[#f1f4f9]">
+      <header className="bg-brand-700 shadow-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
             <Image
               src="/MallSportLogo.jpg"
               alt="Mall Sport"
-              width={36}
-              height={36}
-              className="h-9 w-9 rounded-lg"
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-md object-cover ring-1 ring-white/20"
             />
-            <h1 className="text-xl font-semibold text-slate-900">Mall Sport Dashboard</h1>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-widest text-white/50">
+                Control de Gestión
+              </p>
+              <h1 className="text-sm font-bold text-white">Mall Sport</h1>
+            </div>
           </div>
-          <p className="text-sm text-slate-600">{session.user.email}</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <TopNavbar />
-          <a
-            href="/api/auth/signout?callbackUrl=/login"
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100"
-          >
-            Cerrar sesion
-          </a>
+
+          <div className="flex items-center gap-6">
+            <TopNavbar />
+            <div className="h-5 w-px bg-white/20" />
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-white/60">{session.user.email}</span>
+              <form method="POST" action="/api/auth/signout">
+                <input type="hidden" name="callbackUrl" value="/login" />
+                <button
+                  type="submit"
+                  className="rounded-md border border-white/20 px-3 py-1 text-xs font-medium text-white/80 transition-colors hover:border-white/40 hover:bg-white/10 hover:text-white"
+                >
+                  Salir
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
       </header>
-      {children}
+
+      <main className="mx-auto max-w-7xl px-6 py-6">{children}</main>
     </div>
   );
 }

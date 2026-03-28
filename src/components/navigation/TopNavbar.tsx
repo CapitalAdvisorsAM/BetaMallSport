@@ -24,8 +24,8 @@ export function TopNavbar(): JSX.Element {
             key={item.href}
             className={
               active
-                ? "rounded-md bg-brand-50 px-3 py-1.5 font-semibold text-brand-700"
-                : "rounded-md px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-100 hover:text-brand-700"
+                ? "rounded-md bg-white/10 px-3 py-1.5 text-sm font-semibold text-white"
+                : "rounded-md px-3 py-1.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white"
             }
             href={item.href}
           >

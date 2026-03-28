@@ -26,7 +26,7 @@ export function ContractExpiryTable({ rowsByWindow }: ContractExpiryTableProps):
   return (
     <section className="overflow-hidden rounded-xl bg-white shadow-sm">
       <div className="border-b border-slate-200 px-4 py-3">
-        <h3 className="text-base font-semibold text-slate-900">Contratos por vencer</h3>
+        <h3 className="text-base font-semibold text-brand-700">Contratos por vencer</h3>
         <div className="mt-3 flex flex-wrap gap-2">
           {windows.map((expiryWindow) => (
             <button
@@ -34,10 +34,10 @@ export function ContractExpiryTable({ rowsByWindow }: ContractExpiryTableProps):
               type="button"
               onClick={() => setActiveWindow(expiryWindow)}
               className={cn(
-                "rounded-md border px-3 py-1.5 text-sm font-medium",
+                "border-b-2 bg-transparent px-4 py-2 text-sm",
                 activeWindow === expiryWindow
-                  ? "border-brand-300 bg-brand-50 text-brand-700"
-                  : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                  ? "border-gold-400 font-semibold text-brand-700"
+                  : "border-transparent font-medium text-slate-500 hover:text-brand-700"
               )}
             >
               {expiryWindow} d\u00edas ({rowsByWindow[expiryWindow].length})
@@ -48,16 +48,26 @@ export function ContractExpiryTable({ rowsByWindow }: ContractExpiryTableProps):
 
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50">
-            <tr className="text-left font-medium text-slate-600">
-              <th className="px-4 py-3">Local</th>
-              <th className="px-4 py-3">Arrendatario</th>
-              <th className="px-4 py-3">N\u00b0 Contrato</th>
-              <th className="px-4 py-3">Fecha t\u00e9rmino</th>
-              <th className="px-4 py-3">D\u00edas restantes</th>
+          <thead className="bg-brand-700">
+            <tr>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Local
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Arrendatario
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                N\u00b0 Contrato
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Fecha t\u00e9rmino
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                D\u00edas restantes
+              </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 bg-white">
+          <tbody>
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
@@ -65,8 +75,14 @@ export function ContractExpiryTable({ rowsByWindow }: ContractExpiryTableProps):
                 </td>
               </tr>
             ) : (
-              rows.map((row) => (
-                <tr key={row.id} className="hover:bg-slate-50">
+              rows.map((row, index) => (
+                <tr
+                  key={row.id}
+                  className={cn(
+                    "transition-colors hover:bg-brand-50",
+                    index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
+                  )}
+                >
                   <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">{row.local}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-slate-700">{row.arrendatario}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-slate-700">{row.numeroContrato}</td>

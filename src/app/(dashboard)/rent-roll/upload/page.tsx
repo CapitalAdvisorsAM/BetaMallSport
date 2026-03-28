@@ -3,6 +3,7 @@ import { ProjectSelector } from "@/components/ui/ProjectSelector";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import { RentRollUploadPanel } from "@/components/rent-roll/RentRollUploadPanel";
 import { auth } from "@/lib/auth";
+import { parseRentRollPreviewPayload } from "@/lib/carga-datos";
 import { canWrite } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
@@ -42,7 +43,7 @@ export default async function RentRollUploadPage({
   if (searchParams.cargaId) {
     const carga = await prisma.cargaDatos.findUnique({ where: { id: searchParams.cargaId } });
     if (carga?.errorDetalle) {
-      payload = JSON.parse(carga.errorDetalle) as RentRollPreviewPayload;
+      payload = parseRentRollPreviewPayload(carga.errorDetalle);
     }
   }
 

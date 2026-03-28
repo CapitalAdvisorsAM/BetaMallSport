@@ -1,5 +1,5 @@
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import type { RentRollRow } from "@/types";
 
 type ContractTableProps = {
@@ -19,22 +19,40 @@ export function ContractTable({ rows }: ContractTableProps): JSX.Element {
     <div className="overflow-hidden rounded-xl bg-white shadow-sm">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-brand-700">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Local</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Arrendatario</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Estado</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Fecha inicio</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Fecha termino</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">
-                Tarifa vigente (UF/m²)
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Local
               </th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">m²</th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Arrendatario
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Estado
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Fecha inicio
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Fecha termino
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Tarifa vigente (UF/m2)
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                m2
+              </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 bg-white">
-            {rows.map((row) => (
-              <tr key={row.id} className="hover:bg-slate-50">
+          <tbody>
+            {rows.map((row, index) => (
+              <tr
+                key={row.id}
+                className={cn(
+                  "transition-colors hover:bg-brand-50",
+                  index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
+                )}
+              >
                 <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">{row.local}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-slate-700">{row.arrendatario}</td>
                 <td className="whitespace-nowrap px-4 py-3">

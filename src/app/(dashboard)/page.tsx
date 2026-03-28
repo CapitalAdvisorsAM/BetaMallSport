@@ -40,7 +40,10 @@ export default async function DashboardPage({
   if (!selectedProjectId) {
     return (
       <main className="rounded-xl bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">KPIs</h2>
+        <div className="mb-1 flex items-center gap-2">
+          <div className="h-5 w-1 rounded-full bg-gold-400" />
+          <h2 className="text-base font-bold uppercase tracking-wide text-brand-700">KPIs</h2>
+        </div>
         <p className="mt-2 text-sm text-slate-600">Selecciona un proyecto para ver los KPIs</p>
       </main>
     );
@@ -170,7 +173,12 @@ export default async function DashboardPage({
       <header className="rounded-xl bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Control de gestion</h2>
+            <div className="mb-1 flex items-center gap-2">
+              <div className="h-5 w-1 rounded-full bg-gold-400" />
+              <h2 className="text-base font-bold uppercase tracking-wide text-brand-700">
+                Control de gestion
+              </h2>
+            </div>
             <p className="text-sm text-slate-600">Indicadores clave del proyecto seleccionado.</p>
           </div>
           <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} preserve={{}} />
@@ -178,7 +186,10 @@ export default async function DashboardPage({
       </header>
 
       <section className="space-y-3">
-        <h3 className="text-base font-semibold text-slate-900">Ocupaci\u00f3n</h3>
+        <div className="mb-1 flex items-center gap-2">
+          <div className="h-5 w-1 rounded-full bg-gold-400" />
+          <h3 className="text-base font-bold uppercase tracking-wide text-brand-700">Ocupaci\u00f3n</h3>
+        </div>
         <div className="grid gap-4 md:grid-cols-3">
           <KpiCard
             title="Tasa de ocupaci\u00f3n (%)"
@@ -202,7 +213,12 @@ export default async function DashboardPage({
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-base font-semibold text-slate-900">Renta mensual estimada</h3>
+        <div className="mb-1 flex items-center gap-2">
+          <div className="h-5 w-1 rounded-full bg-gold-400" />
+          <h3 className="text-base font-bold uppercase tracking-wide text-brand-700">
+            Renta mensual estimada
+          </h3>
+        </div>
         <div className="grid gap-4 md:grid-cols-3">
           <KpiCard title="Renta fija mensual (UF)" value={formatUf(fixedRentUf)} accent="slate" />
           <KpiCard
@@ -216,7 +232,12 @@ export default async function DashboardPage({
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-base font-semibold text-slate-900">Cartera de contratos</h3>
+        <div className="mb-1 flex items-center gap-2">
+          <div className="h-5 w-1 rounded-full bg-gold-400" />
+          <h3 className="text-base font-bold uppercase tracking-wide text-brand-700">
+            Cartera de contratos
+          </h3>
+        </div>
         <div className="grid gap-4 lg:grid-cols-4">
           {contractStates.counters.map((counter) => (
             <KpiCard

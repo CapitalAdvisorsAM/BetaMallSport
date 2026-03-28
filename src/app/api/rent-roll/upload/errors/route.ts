@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
+import { parseRentRollPreviewPayload } from "@/lib/carga-datos";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { buildErrorCsv } from "@/lib/rent-roll-upload";
-import type { RentRollPreviewPayload } from "@/types";
 
 export const runtime = "nodejs";
 
@@ -20,7 +20,10 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "No se encontraron errores para la carga." }, { status: 404 });
     }
 
-    const payload = JSON.parse(carga.errorDetalle) as RentRollPreviewPayload;
+    const payload = parseRentRollPreviewPayload(carga.errorDetalle);
+    if (!payload) {
+      return NextResponse.json({ message: "No fue posible leer el detalle de errores." }, { status: 422 });
+    }
     const errors = [...payload.errors, ...(payload.report?.rejectedRows ?? [])];
     const csv = buildErrorCsv(errors);
 
