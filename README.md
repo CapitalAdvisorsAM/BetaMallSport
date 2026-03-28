@@ -1,82 +1,44 @@
-# Mall Sport
+﻿# BetaMallSport — Control de Gestión
 
-Sistema de gestion de activos inmobiliarios con Next.js 14, Prisma, PostgreSQL y despliegue en GCP.
+## Descripción
+Sistema de control de gestión para Mall Sport. Gestión de contratos, locales,
+arrendatarios y métricas de Rent Roll.
 
-## Requisitos
+## Stack
+Next.js 14 App Router · TypeScript · Prisma 5 · PostgreSQL · NextAuth v4 Google SSO
+Tailwind CSS · Capital Advisors AGF design system
 
-- Docker y Docker Compose
-- Node.js 20+ (opcional para ejecucion fuera de contenedores)
-- Proyecto GCP con OAuth Google Workspace
-
-## Setup local
-
-1. Copiar variables:
-
+## Variables de entorno requeridas
 ```bash
-cp .env.example .env
+DATABASE_URL=
+NEXTAUTH_SECRET=
+NEXTAUTH_URL=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+ALLOWED_EMAIL_DOMAIN=
+PDF_UPLOAD_DIR=
 ```
 
-2. Levantar servicios:
-
+## Comandos de desarrollo
 ```bash
-docker-compose up --build
+npm run dev                # servidor local
+npm run build              # compilación producción
+npx prisma migrate dev     # migraciones
+npx prisma studio          # explorador de BD
 ```
 
-3. Abrir la app en `http://localhost:3000`.
+## Arquitectura de rutas
+- `/` -> Dashboard KPIs globales
+- `/rent-roll` -> Tabla de contratos vigentes
+- `/rent-roll/dashboard` -> Métricas por tienda
+- `/rent-roll/locales` -> CRUD de locales
+- `/rent-roll/arrendatarios` -> CRUD de arrendatarios
+- `/rent-roll/contratos` -> CRUD de contratos
+- `/rent-roll/upload` -> Carga masiva CSV/XLSX
+- `/rent-roll/proyectos` -> CRUD de proyectos
 
-## Modulo operativo implementado
-
-- Selector de proyecto por query param (`proyecto`) reutilizado en rent roll, cargas y contratos.
-- Rent Roll:
-  - Vista principal con filtros por estado y busqueda.
-  - Estado de ultima carga y acceso a detalle.
-  - Carga masiva CSV/XLSX con preview y aplicacion por lote.
-  - Descarga de errores por fila en CSV.
-- Contratos:
-  - Listado por proyecto.
-  - Crear/editar contrato.
-  - Gestion de Tarifas, GGCC y Anexos.
-- Seguridad por rol:
-  - `ADMIN` y `OPERACIONES`: escritura.
-  - `CONTABILIDAD` y `GERENCIA`: solo lectura.
-
-## Endpoints nuevos
-
-- `POST /api/rent-roll/upload/preview`
-- `POST /api/rent-roll/upload/apply`
-- `GET /api/rent-roll/upload/errors?cargaId=...`
-- `GET /api/contracts?proyectoId=...`
-- `POST /api/contracts`
-- `PUT /api/contracts/:id`
-
-## Deploy GCP
-
-El workflow de CI/CD en `.github/workflows/deploy.yml`:
-
-1. Autentica con Workload Identity Federation.
-2. Construye y publica imagen en Artifact Registry.
-3. Despliega en Cloud Run usando secretos de Secret Manager.
-
-## Estructura principal
-
-```text
-.
-├── prisma/
-├── src/
-│   ├── app/
-│   │   ├── (dashboard)/
-│   │   │   ├── rent-roll/
-│   │   │   │   ├── page.tsx
-│   │   │   │   └── upload/page.tsx
-│   │   │   └── contratos/page.tsx
-│   │   └── api/
-│   │       ├── contracts/
-│   │       └── rent-roll/upload/
-│   ├── components/
-│   │   ├── contracts/
-│   │   └── rent-roll/
-│   └── lib/
-├── Dockerfile
-├── docker-compose.yml
-└── .github/workflows/deploy.yml
-```
+## Roles y permisos
+- `ADMIN` -> lectura + escritura + administración
+- `OPERACIONES` -> lectura + escritura
+- `CONTABILIDAD` -> lectura + escritura de ventas
+- `GERENCIA` -> solo lectura

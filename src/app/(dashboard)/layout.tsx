@@ -2,6 +2,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { TopNavbar } from "@/components/navigation/TopNavbar";
+import { HelpButton } from "@/components/ui/HelpButton";
 import { auth } from "@/lib/auth";
 
 export default async function DashboardLayout({
@@ -55,6 +56,7 @@ export default async function DashboardLayout({
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-6">{children}</main>
+      <HelpButton />
     </div>
   );
 }
