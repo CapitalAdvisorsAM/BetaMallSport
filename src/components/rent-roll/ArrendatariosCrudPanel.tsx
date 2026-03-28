@@ -142,9 +142,8 @@ export function ArrendatariosCrudPanel({
     setMessage(null);
     try {
       const response = await fetch(`/api/arrendatarios/${tenantId}`, { method: "DELETE" });
-      const data = (await response.json()) as { message?: string };
       if (!response.ok) {
-        throw new Error(data.message ?? "No se pudo eliminar el arrendatario.");
+        throw new Error("No se pudo eliminar el arrendatario.");
       }
 
       setArrendatarios((previous) => previous.filter((item) => item.id !== tenantId));

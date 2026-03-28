@@ -74,12 +74,12 @@ export async function PUT(
 export async function DELETE(
   _request: Request,
   context: { params: { id: string } }
-): Promise<NextResponse> {
+): Promise<Response> {
   try {
     await requireWriteAccess();
     const tenantId = context.params.id;
     await prisma.arrendatario.delete({ where: { id: tenantId } });
-    return NextResponse.json({ message: "Arrendatario eliminado correctamente." });
+    return new Response(null, { status: 204 });
   } catch (error) {
     return handleApiError(error);
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { handleApiError } from "@/lib/api-error";
+import { SLUG_MAX_ATTEMPTS } from "@/lib/constants";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
@@ -27,9 +28,8 @@ function slugify(value: string): string {
 }
 
 async function buildUniqueSlug(baseSlug: string): Promise<string> {
-  const MAX_SLUG_ATTEMPTS = 50;
   let candidate = baseSlug;
-  for (let attempt = 1; attempt <= MAX_SLUG_ATTEMPTS; attempt += 1) {
+  for (let attempt = 1; attempt <= SLUG_MAX_ATTEMPTS; attempt += 1) {
     const exists = await prisma.proyecto.findUnique({
       where: { slug: candidate },
       select: { id: true }
@@ -40,7 +40,7 @@ async function buildUniqueSlug(baseSlug: string): Promise<string> {
     candidate = `${baseSlug}-${attempt + 1}`;
   }
   throw new Error(
-    `No se pudo generar un slug único para "${baseSlug}" tras ${MAX_SLUG_ATTEMPTS} intentos.`
+    `No se pudo generar un slug único para "${baseSlug}" tras ${SLUG_MAX_ATTEMPTS} intentos.`
   );
 }
 
@@ -86,3 +86,4 @@ export async function POST(request: Request): Promise<NextResponse> {
     return handleApiError(error);
   }
 }
+

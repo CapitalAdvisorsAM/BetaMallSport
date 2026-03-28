@@ -1,6 +1,7 @@
 import path from "node:path";
+import { MAX_PDF_BYTES } from "@/lib/constants";
 
-export const MAX_CONTRACT_PDF_SIZE_BYTES = 10 * 1024 * 1024;
+export const MAX_CONTRACT_PDF_SIZE_BYTES = MAX_PDF_BYTES;
 
 /**
  * Validates whether an uploaded contract file is an acceptable PDF.
@@ -16,7 +17,7 @@ export function validateContractPdf(file: File | null): string | null {
     return "El archivo debe ser un PDF valido (application/pdf).";
   }
 
-  if (file.size > MAX_CONTRACT_PDF_SIZE_BYTES) {
+  if (file.size > MAX_PDF_BYTES) {
     return "El archivo supera el maximo permitido de 10MB.";
   }
 

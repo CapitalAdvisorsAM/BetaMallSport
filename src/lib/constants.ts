@@ -1,0 +1,9 @@
+export const PAGINATION_MAX = 200;
+export const PAGINATION_DEFAULT = 50;
+export const SLUG_MAX_ATTEMPTS = 50;
+export const PERIODO_REGEX = /^\d{4}-\d{2}$/;
+export const OCCUPANCY_HIGH_THRESHOLD = 85;
+export const OCCUPANCY_LOW_THRESHOLD = 70;
+export const CONTRACT_EXPIRY_WINDOWS = [30, 60, 90] as const;
+export const CONTRACT_EXPIRY_ROW_LIMIT = 10;
+export const MAX_PDF_BYTES = 10 * 1024 * 1024;

@@ -113,7 +113,7 @@ export async function PUT(
 export async function DELETE(
   _request: Request,
   context: { params: { id: string } }
-): Promise<NextResponse> {
+): Promise<Response> {
   try {
     await requireWriteAccess();
     const projectId = context.params.id;
@@ -159,7 +159,7 @@ export async function DELETE(
       where: { id: projectId }
     });
 
-    return NextResponse.json({ message: "Proyecto eliminado correctamente." });
+    return new Response(null, { status: 204 });
   } catch (error) {
     return handleApiError(error);
   }

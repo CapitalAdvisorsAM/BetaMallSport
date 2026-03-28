@@ -4,6 +4,7 @@ import { handleApiError } from "@/lib/api-error";
 import { requireSession } from "@/lib/permissions";
 import { buildMetricaRow, buildResumen, type ContratoConRelaciones } from "@/lib/rent-roll/metricas";
 import { prisma } from "@/lib/prisma";
+import { isPeriodoValido } from "@/lib/validators";
 import type { RentRollMetricasResponse, RentRollMetricaRow } from "@/types/metricas";
 
 export const runtime = "nodejs";
@@ -11,20 +12,11 @@ export const runtime = "nodejs";
 type EstadoMetricaFiltro = "VIGENTE" | "GRACIA" | "TODOS";
 
 const allowedEstadoFiltros = new Set<EstadoMetricaFiltro>(["VIGENTE", "GRACIA", "TODOS"]);
-const periodoRegex = /^\d{4}-\d{2}$/;
 
 function toPeriodo(value: Date): string {
   const year = value.getFullYear();
   const month = String(value.getMonth() + 1).padStart(2, "0");
   return `${year}-${month}`;
-}
-
-function isPeriodoValido(periodo: string): boolean {
-  if (!periodoRegex.test(periodo)) {
-    return false;
-  }
-  const month = Number(periodo.slice(5, 7));
-  return month >= 1 && month <= 12;
 }
 
 function parseEstado(raw: string | null): EstadoMetricaFiltro | null {

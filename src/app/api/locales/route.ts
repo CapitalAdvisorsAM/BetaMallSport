@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { localeSchema } from "@/lib/locales/schema";
+import { parsePaginationParams } from "@/lib/pagination";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
@@ -26,9 +27,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json(locales);
     }
 
-    const parsedLimit = Number(searchParams.get("limit") ?? "50");
-    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 50;
-    const cursor = searchParams.get("cursor") ?? undefined;
+    const { limit, cursor } = parsePaginationParams(searchParams);
 
     const items = await prisma.local.findMany({
       where: { proyectoId },

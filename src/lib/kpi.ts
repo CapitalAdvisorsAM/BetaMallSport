@@ -1,10 +1,14 @@
 import { EstadoContrato, TipoTarifaContrato } from "@prisma/client";
+import {
+  CONTRACT_EXPIRY_ROW_LIMIT as CONTRACT_EXPIRY_ROW_LIMIT_VALUE,
+  CONTRACT_EXPIRY_WINDOWS as CONTRACT_EXPIRY_WINDOWS_VALUE
+} from "@/lib/constants";
 
 type DecimalLike = number | string | { toString(): string };
 
-export const CONTRACT_EXPIRY_WINDOWS = [30, 60, 90] as const;
-export type ExpiryWindow = (typeof CONTRACT_EXPIRY_WINDOWS)[number];
-export const CONTRACT_EXPIRY_ROW_LIMIT = 10;
+export const CONTRACT_EXPIRY_WINDOWS = CONTRACT_EXPIRY_WINDOWS_VALUE;
+export type ExpiryWindow = (typeof CONTRACT_EXPIRY_WINDOWS_VALUE)[number];
+export const CONTRACT_EXPIRY_ROW_LIMIT = CONTRACT_EXPIRY_ROW_LIMIT_VALUE;
 
 export type KpiLocalInput = {
   id: string;

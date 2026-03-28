@@ -1,6 +1,5 @@
 import { Prisma, TipoTarifaContrato } from "@prisma/client";
 import { NextResponse } from "next/server";
-import type { z } from "zod";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { contractPayloadSchema } from "@/lib/contracts/schema";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
@@ -115,7 +114,7 @@ function normalizedGgcc(
 
 function computeCamposModificados(
   existing: Prisma.ContratoGetPayload<{ include: { tarifas: true; ggcc: true } }>,
-  payload: z.infer<typeof contractPayloadSchema>
+  payload: (typeof contractPayloadSchema)["_type"]
 ): string[] {
   const campos: string[] = [];
 

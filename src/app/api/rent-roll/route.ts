@@ -1,6 +1,7 @@
 import { EstadoContrato, Prisma, TipoTarifaContrato } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
+import { parsePaginationParams } from "@/lib/pagination";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
@@ -68,9 +69,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json(contracts);
     }
 
-    const parsedLimit = Number(searchParams.get("limit") ?? "50");
-    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 50;
-    const cursor = searchParams.get("cursor") ?? undefined;
+    const { limit, cursor } = parsePaginationParams(searchParams);
 
     const items = await prisma.contrato.findMany({
       where,

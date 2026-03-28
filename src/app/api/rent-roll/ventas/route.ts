@@ -4,19 +4,11 @@ import { z } from "zod";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { isPeriodoValido } from "@/lib/validators";
 
 export const runtime = "nodejs";
 
-const periodoRegex = /^\d{4}-\d{2}$/;
 const allowedWriteRoles = new Set(["ADMIN", "CONTABILIDAD"]);
-
-function isPeriodoValido(periodo: string): boolean {
-  if (!periodoRegex.test(periodo)) {
-    return false;
-  }
-  const month = Number(periodo.slice(5, 7));
-  return month >= 1 && month <= 12;
-}
 
 const ventasUpsertSchema = z.object({
   proyectoId: z.string().trim().min(1, "proyectoId es obligatorio."),
@@ -24,8 +16,7 @@ const ventasUpsertSchema = z.object({
   periodo: z
     .string()
     .trim()
-    .regex(periodoRegex, "periodo debe tener formato YYYY-MM.")
-    .refine(isPeriodoValido, "periodo invalido."),
+    .refine(isPeriodoValido, "periodo debe tener formato YYYY-MM."),
   ventasUf: z
     .coerce
     .string()

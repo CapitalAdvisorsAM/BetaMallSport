@@ -4,6 +4,7 @@ import { ContractExpiryTable } from "@/components/dashboard/ContractExpiryTable"
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
 import { auth } from "@/lib/auth";
+import { OCCUPANCY_HIGH_THRESHOLD, OCCUPANCY_LOW_THRESHOLD } from "@/lib/constants";
 import {
   buildContractExpiryBuckets,
   buildFixedRentClpMetric,
@@ -156,9 +157,9 @@ export default async function DashboardPage({
   const occupancyAccent =
     vacancy.totalVacantes > 0
       ? "red"
-      : occupancy.porcentaje > 85
+      : occupancy.porcentaje > OCCUPANCY_HIGH_THRESHOLD
         ? "green"
-        : occupancy.porcentaje >= 70
+        : occupancy.porcentaje >= OCCUPANCY_LOW_THRESHOLD
           ? "yellow"
           : "red";
   const vacancyAccent = vacancy.totalVacantes > 0 ? "red" : "green";

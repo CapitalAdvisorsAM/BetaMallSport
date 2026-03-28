@@ -125,9 +125,8 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
     setMessage(null);
     try {
       const response = await fetch(`/api/proyectos/${projectId}`, { method: "DELETE" });
-      const data = (await response.json()) as { message?: string };
       if (!response.ok) {
-        throw new Error(data.message ?? "No se pudo eliminar el proyecto.");
+        throw new Error("No se pudo eliminar el proyecto.");
       }
 
       setProjects((previous) => previous.filter((item) => item.id !== projectId));
