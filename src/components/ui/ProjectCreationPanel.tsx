@@ -56,9 +56,12 @@ export function ProjectCreationPanel({
   }
 
   return (
-    <main className="space-y-4 rounded-xl bg-white p-6 shadow-sm">
+    <main className="space-y-4 rounded-md bg-white p-6 shadow-sm">
       <header>
-        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+        <div className="mb-1 flex items-center gap-2">
+          <div className="h-5 w-1 rounded-full bg-gold-400" />
+          <h2 className="text-base font-bold uppercase tracking-wide text-brand-700">{title}</h2>
+        </div>
         <p className="mt-2 text-sm text-slate-600">{description}</p>
       </header>
 
@@ -90,7 +93,7 @@ export function ProjectCreationPanel({
           <button
             type="submit"
             disabled={loading}
-            className="self-end rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="self-end rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Creando..." : "Crear proyecto"}
           </button>

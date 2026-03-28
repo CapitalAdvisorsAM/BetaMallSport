@@ -10,13 +10,18 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          50: "#f0f4ff",
-          100: "#dce6ff",
-          200: "#b9cbff",
-          300: "#7a9aff",
-          500: "#1a3a6b",
-          700: "#0d1f4a",
-          900: "#060e26"
+          50: "#EFF6FF",
+          100: "#DBEAFE",
+          200: "#BFDBFE",
+          300: "#93C5FD",
+          500: "#164786",
+          700: "#011E42",
+          900: "#010F21"
+        },
+        secondary: {
+          300: "#7BAED6",
+          500: "#3F7CCA",
+          700: "#2860A8"
         },
         gold: {
           300: "#f0d080",

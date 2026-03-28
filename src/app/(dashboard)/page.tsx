@@ -39,7 +39,7 @@ export default async function DashboardPage({
 
   if (!selectedProjectId) {
     return (
-      <main className="rounded-xl bg-white p-6 shadow-sm">
+      <main className="rounded-md bg-white p-6 shadow-sm">
         <div className="mb-1 flex items-center gap-2">
           <div className="h-5 w-1 rounded-full bg-gold-400" />
           <h2 className="text-base font-bold uppercase tracking-wide text-brand-700">KPIs</h2>
@@ -170,7 +170,7 @@ export default async function DashboardPage({
 
   return (
     <main className="space-y-6">
-      <header className="rounded-xl bg-white p-5 shadow-sm">
+      <header className="rounded-md bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="mb-1 flex items-center gap-2">
@@ -188,11 +188,11 @@ export default async function DashboardPage({
       <section className="space-y-3">
         <div className="mb-1 flex items-center gap-2">
           <div className="h-5 w-1 rounded-full bg-gold-400" />
-          <h3 className="text-base font-bold uppercase tracking-wide text-brand-700">Ocupaci\u00f3n</h3>
+          <h3 className="text-base font-bold uppercase tracking-wide text-brand-700">Ocupación</h3>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           <KpiCard
-            title="Tasa de ocupaci\u00f3n (%)"
+            title="Tasa de ocupación (%)"
             value={formatPercent(occupancy.porcentaje)}
             subtitle={`${occupancy.ocupados} de ${occupancy.totalActivos} locales`}
             accent={occupancyAccent}

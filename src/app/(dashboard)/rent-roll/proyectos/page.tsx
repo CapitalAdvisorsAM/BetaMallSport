@@ -23,8 +23,11 @@ export default async function ProyectosPage(): Promise<JSX.Element> {
 
   return (
     <main className="space-y-4">
-      <section className="rounded-xl bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Proyectos</h2>
+      <section className="rounded-md bg-white p-5 shadow-sm">
+        <div className="mb-1 flex items-center gap-2">
+          <div className="h-5 w-1 rounded-full bg-gold-400" />
+          <h2 className="text-base font-bold uppercase tracking-wide text-brand-700">Proyectos</h2>
+        </div>
         <p className="text-sm text-slate-600">
           Gestiona proyectos activos e inactivos para habilitar el resto de modulos.
         </p>

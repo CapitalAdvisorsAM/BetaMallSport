@@ -24,18 +24,18 @@ export default function LoginPage(): JSX.Element {
         </div>
         <div>
           <h2 className="text-3xl font-bold leading-snug text-white">
-            Control de gestión
+            Control de gestion
             <br />
             de activos inmobiliarios
           </h2>
-          <p className="mt-3 text-sm text-white/60">Rent roll · Contratos · KPIs financieros</p>
+          <p className="mt-3 text-sm text-white/60">Rent roll - Contratos - KPIs financieros</p>
         </div>
-        <p className="text-xs text-white/30">© {new Date().getFullYear()} Mall Sport AGF</p>
+        <p className="text-xs text-white/30">(c) {new Date().getFullYear()} Mall Sport AGF</p>
       </div>
 
       <div className="flex flex-1 items-center justify-center bg-[#f1f4f9] p-8">
         <section className="w-full max-w-sm">
-          <h1 className="text-2xl font-bold text-brand-700">Iniciar sesión</h1>
+          <h1 className="text-2xl font-bold text-brand-700">Iniciar sesion</h1>
           <p className="mt-2 text-sm text-slate-500">
             Accede con tu cuenta corporativa Google Workspace.
           </p>

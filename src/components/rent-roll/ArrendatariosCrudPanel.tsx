@@ -160,7 +160,7 @@ export function ArrendatariosCrudPanel({
   }
 
   return (
-    <section className="space-y-4 rounded-xl bg-white p-5 shadow-sm">
+    <section className="space-y-4 rounded-md bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-base font-semibold text-slate-900">CRUD de Arrendatarios</h3>
         <div className="flex items-center gap-2">
@@ -238,7 +238,7 @@ export function ArrendatariosCrudPanel({
           type="button"
           onClick={() => void handleSubmit()}
           disabled={!canEdit || loading}
-          className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {selectedId ? "Actualizar arrendatario" : "Crear arrendatario"}
         </button>

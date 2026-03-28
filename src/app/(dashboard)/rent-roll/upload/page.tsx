@@ -49,10 +49,15 @@ export default async function RentRollUploadPage({
 
   return (
     <main className="space-y-4">
-      <section className="rounded-xl bg-white p-5 shadow-sm">
+      <section className="rounded-md bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Rent Roll: Carga Masiva</h2>
+            <div className="mb-1 flex items-center gap-2">
+              <div className="h-5 w-1 rounded-full bg-gold-400" />
+              <h2 className="text-base font-bold uppercase tracking-wide text-brand-700">
+                Rent Roll: Carga Masiva
+              </h2>
+            </div>
             <p className="text-sm text-slate-600">Sube CSV/XLSX, revisa preview y aplica cambios.</p>
           </div>
           <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} preserve={{}} />

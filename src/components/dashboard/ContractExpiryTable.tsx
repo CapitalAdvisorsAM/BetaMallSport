@@ -24,7 +24,7 @@ export function ContractExpiryTable({ rowsByWindow }: ContractExpiryTableProps):
   );
 
   return (
-    <section className="overflow-hidden rounded-xl bg-white shadow-sm">
+    <section className="overflow-hidden rounded-md bg-white shadow-sm">
       <div className="border-b border-slate-200 px-4 py-3">
         <h3 className="text-base font-semibold text-brand-700">Contratos por vencer</h3>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -40,7 +40,7 @@ export function ContractExpiryTable({ rowsByWindow }: ContractExpiryTableProps):
                   : "border-transparent font-medium text-slate-500 hover:text-brand-700"
               )}
             >
-              {expiryWindow} d\u00edas ({rowsByWindow[expiryWindow].length})
+              {expiryWindow} días ({rowsByWindow[expiryWindow].length})
             </button>
           ))}
         </div>
@@ -57,13 +57,13 @@ export function ContractExpiryTable({ rowsByWindow }: ContractExpiryTableProps):
                 Arrendatario
               </th>
               <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                N\u00b0 Contrato
+                Número Contrato
               </th>
               <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Fecha t\u00e9rmino
+                Fecha Término
               </th>
               <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                D\u00edas restantes
+                Días Restantes
               </th>
             </tr>
           </thead>

@@ -1,3 +1,7 @@
+"use client";
+
+import { usePathname, useRouter } from "next/navigation";
+
 type ProjectSelectorProps = {
   projects: Array<{ id: string; nombre: string }>;
   selectedProjectId: string;
@@ -9,18 +13,32 @@ export function ProjectSelector({
   selectedProjectId,
   preserve = {}
 }: ProjectSelectorProps): JSX.Element {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const handleProjectChange = (nextProjectId: string): void => {
+    const params = new URLSearchParams();
+    params.set("proyecto", nextProjectId);
+
+    Object.entries(preserve).forEach(([key, value]) => {
+      if (!value || key === "proyecto") {
+        return;
+      }
+      params.set(key, value);
+    });
+
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
   return (
-    <form className="flex items-center gap-2">
-      {Object.entries(preserve).map(([key, value]) =>
-        value ? <input key={key} type="hidden" name={key} value={value} /> : null
-      )}
+    <div className="flex items-center gap-2">
       <label htmlFor="proyecto" className="text-sm font-medium text-slate-700">
         Proyecto
       </label>
       <select
         id="proyecto"
-        name="proyecto"
-        defaultValue={selectedProjectId}
+        value={selectedProjectId}
+        onChange={(event) => handleProjectChange(event.target.value)}
         className="rounded-md border border-slate-300 px-3 py-2 text-sm"
       >
         {projects.map((project) => (
@@ -29,12 +47,6 @@ export function ProjectSelector({
           </option>
         ))}
       </select>
-      <button
-        type="submit"
-        className="rounded-md bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700"
-      >
-        Cambiar
-      </button>
-    </form>
+    </div>
   );
 }

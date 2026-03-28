@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 
 type ProjectRecord = {
   id: string;
@@ -142,7 +143,7 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
   }
 
   return (
-    <section className="space-y-4 rounded-xl bg-white p-5 shadow-sm">
+    <section className="space-y-4 rounded-md bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-base font-semibold text-slate-900">CRUD de Proyectos</h3>
         <div className="flex items-center gap-2">
@@ -197,7 +198,7 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
           type="button"
           onClick={() => void handleSubmit()}
           disabled={!canEdit || loading}
-          className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {selectedId ? "Actualizar proyecto" : "Crear proyecto"}
         </button>
@@ -207,16 +208,26 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
 
       <div className="overflow-x-auto rounded-lg border border-slate-200">
         <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
-            <tr className="text-left text-xs uppercase tracking-wide text-slate-600">
-              <th className="px-4 py-3 font-semibold">Nombre</th>
-              <th className="px-4 py-3 font-semibold">Slug</th>
-              <th className="px-4 py-3 font-semibold">Color</th>
-              <th className="px-4 py-3 font-semibold">Estado</th>
-              <th className="px-4 py-3 font-semibold">Acciones</th>
+          <thead className="bg-brand-700">
+            <tr>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Nombre
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Slug
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Color
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Estado
+              </th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                Acciones
+              </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 text-sm text-slate-800">
+          <tbody className="text-sm text-slate-800">
             {filteredProjects.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
@@ -224,8 +235,14 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
                 </td>
               </tr>
             ) : (
-              filteredProjects.map((project) => (
-                <tr key={project.id}>
+              filteredProjects.map((project, index) => (
+                <tr
+                  key={project.id}
+                  className={cn(
+                    "transition-colors hover:bg-brand-50",
+                    index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
+                  )}
+                >
                   <td className="px-4 py-3 font-medium">{project.nombre}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-slate-600">{project.slug}</td>
                   <td className="whitespace-nowrap px-4 py-3">

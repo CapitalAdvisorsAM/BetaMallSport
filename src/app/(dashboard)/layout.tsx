@@ -29,7 +29,7 @@ export default async function DashboardLayout({
             />
             <div>
               <p className="text-xs font-medium uppercase tracking-widest text-white/50">
-                Control de Gestión
+                Control de Gestion
               </p>
               <h1 className="text-sm font-bold text-white">Mall Sport</h1>
             </div>

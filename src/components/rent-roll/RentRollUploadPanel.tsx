@@ -101,7 +101,7 @@ export function RentRollUploadPanel({
   }
 
   return (
-    <section className="space-y-4 rounded-xl bg-white p-5 shadow-sm">
+    <section className="space-y-4 rounded-md bg-white p-5 shadow-sm">
       <h3 className="text-base font-semibold text-slate-900">Cargar Rent Roll (CSV/XLSX)</h3>
       <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
         <input
@@ -125,7 +125,7 @@ export function RentRollUploadPanel({
           type="button"
           onClick={handleApply}
           disabled={!canEdit || loading || !cargaId}
-          className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Aplicar
         </button>

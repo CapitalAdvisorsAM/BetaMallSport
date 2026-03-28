@@ -10,6 +10,7 @@ import {
   parseVigenteFilter,
   toContractMetrics
 } from "@/lib/rent-roll/arrendatarios";
+import { cn } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
 
@@ -90,10 +91,15 @@ export default async function ArrendatariosPage({
 
   return (
     <main className="space-y-4">
-      <section className="rounded-xl bg-white p-5 shadow-sm">
+      <section className="rounded-md bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Arrendatarios</h2>
+            <div className="mb-1 flex items-center gap-2">
+              <div className="h-5 w-1 rounded-full bg-gold-400" />
+              <h2 className="text-base font-bold uppercase tracking-wide text-brand-700">
+                Arrendatarios
+              </h2>
+            </div>
             <p className="text-sm text-slate-600">Vista consolidada con contrato, tarifa y GGCC vigentes.</p>
           </div>
           <ProjectSelector
@@ -104,7 +110,7 @@ export default async function ArrendatariosPage({
         </div>
       </section>
 
-      <section className="rounded-xl bg-white p-4 shadow-sm">
+      <section className="rounded-md bg-white p-4 shadow-sm">
         <form className="grid gap-3 md:grid-cols-[1fr_220px_auto]">
           <input type="hidden" name="proyecto" value={selectedProjectId} />
           <input
@@ -125,29 +131,45 @@ export default async function ArrendatariosPage({
           </select>
           <button
             type="submit"
-            className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            className="rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
             Filtrar
           </button>
         </form>
       </section>
 
-      <section className="overflow-hidden rounded-xl bg-white shadow-sm">
+      <section className="overflow-hidden rounded-md bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-600">
-                <th className="px-4 py-3 font-semibold">Nombre comercial</th>
-                <th className="px-4 py-3 font-semibold">{"Raz\u00f3n social"}</th>
-                <th className="px-4 py-3 font-semibold">RUT</th>
-                <th className="px-4 py-3 font-semibold">Vigente</th>
-                <th className="px-4 py-3 font-semibold">Local actual</th>
-                <th className="px-4 py-3 font-semibold">{"Tarifa vigente UF/m\u00b2"}</th>
-                <th className="px-4 py-3 font-semibold">{"GGCC tarifa base UF/m\u00b2"}</th>
-                <th className="px-4 py-3 font-semibold">{"GGCC % administraci\u00f3n"}</th>
+            <thead className="bg-brand-700">
+              <tr>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  Nombre comercial
+                </th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  {"Raz\u00f3n social"}
+                </th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  RUT
+                </th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  Vigente
+                </th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  Local actual
+                </th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  {"Tarifa vigente UF/m\u00b2"}
+                </th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  {"GGCC tarifa base UF/m\u00b2"}
+                </th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  {"GGCC % administraci\u00f3n"}
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
+            <tbody className="text-sm">
               {arrendatarios.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
@@ -155,10 +177,16 @@ export default async function ArrendatariosPage({
                   </td>
                 </tr>
               ) : (
-                arrendatarios.map((arrendatario) => {
+                arrendatarios.map((arrendatario, index) => {
                   const metrics = toContractMetrics(arrendatario.contratos[0] ?? null);
                   return (
-                    <tr key={arrendatario.id} className="text-slate-800">
+                    <tr
+                      key={arrendatario.id}
+                      className={cn(
+                        "text-slate-800 transition-colors hover:bg-brand-50",
+                        index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
+                      )}
+                    >
                       <td className="px-4 py-3 font-medium">{arrendatario.nombreComercial}</td>
                       <td className="px-4 py-3">{arrendatario.razonSocial}</td>
                       <td className="whitespace-nowrap px-4 py-3">{arrendatario.rut}</td>

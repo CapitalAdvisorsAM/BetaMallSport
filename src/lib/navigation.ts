@@ -7,6 +7,12 @@ export type NavItem = {
 
 export const TOP_NAV_ITEMS: NavItem[] = [
   {
+    label: "Dashboard",
+    href: "/",
+    enabled: true,
+    match: "exact"
+  },
+  {
     label: "Rent Roll",
     href: "/rent-roll",
     enabled: true,

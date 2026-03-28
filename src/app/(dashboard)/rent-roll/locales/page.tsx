@@ -7,6 +7,7 @@ import { canWrite } from "@/lib/permissions";
 import { buildLocalesWhere, parseLocalesEstado } from "@/lib/rent-roll/locales";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
+import { cn } from "@/lib/utils";
 
 type LocalesPageProps = {
   searchParams: {
@@ -62,10 +63,13 @@ export default async function LocalesPage({
 
   return (
     <main className="space-y-4">
-      <section className="rounded-xl bg-white p-5 shadow-sm">
+      <section className="rounded-md bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Locales</h2>
+            <div className="mb-1 flex items-center gap-2">
+              <div className="h-5 w-1 rounded-full bg-gold-400" />
+              <h2 className="text-base font-bold uppercase tracking-wide text-brand-700">Locales</h2>
+            </div>
             <p className="text-sm text-slate-600">Listado de locales del proyecto seleccionado.</p>
           </div>
           <ProjectSelector
@@ -76,7 +80,7 @@ export default async function LocalesPage({
         </div>
       </section>
 
-      <section className="rounded-xl bg-white p-4 shadow-sm">
+      <section className="rounded-md bg-white p-4 shadow-sm">
         <form className="grid gap-3 md:grid-cols-[1fr_220px_auto]">
           <input type="hidden" name="proyecto" value={selectedProjectId} />
           <input
@@ -97,29 +101,45 @@ export default async function LocalesPage({
           </select>
           <button
             type="submit"
-            className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            className="rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
             Filtrar
           </button>
         </form>
       </section>
 
-      <section className="overflow-hidden rounded-xl bg-white shadow-sm">
+      <section className="overflow-hidden rounded-md bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-600">
-                <th className="px-4 py-3 font-semibold">{"C\u00f3digo"}</th>
-                <th className="px-4 py-3 font-semibold">Nombre</th>
-                <th className="px-4 py-3 font-semibold">Tipo</th>
-                <th className="px-4 py-3 font-semibold">Piso</th>
-                <th className="px-4 py-3 font-semibold">Zona</th>
-                <th className="px-4 py-3 font-semibold">{"GLA m\u00b2"}</th>
-                <th className="px-4 py-3 font-semibold">Es GLA</th>
-                <th className="px-4 py-3 font-semibold">Estado</th>
+            <thead className="bg-brand-700">
+              <tr>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  {"C\u00f3digo"}
+                </th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  Nombre
+                </th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  Tipo
+                </th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  Piso
+                </th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  Zona
+                </th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  {"GLA m\u00b2"}
+                </th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  Es GLA
+                </th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  Estado
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
+            <tbody className="text-sm">
               {locales.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
@@ -127,8 +147,14 @@ export default async function LocalesPage({
                   </td>
                 </tr>
               ) : (
-                locales.map((local) => (
-                  <tr key={local.id} className="text-slate-800">
+                locales.map((local, index) => (
+                  <tr
+                    key={local.id}
+                    className={cn(
+                      "text-slate-800 transition-colors hover:bg-brand-50",
+                      index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
+                    )}
+                  >
                     <td className="whitespace-nowrap px-4 py-3 font-medium">{local.codigo}</td>
                     <td className="px-4 py-3">{local.nombre}</td>
                     <td className="whitespace-nowrap px-4 py-3">{local.tipo}</td>

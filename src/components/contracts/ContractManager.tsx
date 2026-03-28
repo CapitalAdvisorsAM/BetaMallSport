@@ -252,7 +252,7 @@ export function ContractManager({
 
   return (
     <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
-      <aside className="rounded-xl bg-white p-4 shadow-sm">
+      <aside className="rounded-md bg-white p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-slate-900">Contratos del proyecto</h3>
         <input
           value={search}
@@ -320,7 +320,7 @@ export function ContractManager({
         </div>
       </aside>
 
-      <section className="space-y-4 rounded-xl bg-white p-5 shadow-sm">
+      <section className="space-y-4 rounded-md bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-semibold text-slate-900">
             {selectedContract ? "Editar contrato" : "Nuevo contrato"}
@@ -493,7 +493,7 @@ export function ContractManager({
             type="button"
             onClick={saveContract}
             disabled={!canEdit || loading || !hasRequiredMasters}
-            className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {selectedId ? "Actualizar contrato" : "Crear contrato"}
           </button>

@@ -16,7 +16,7 @@ export function ContractTable({ rows }: ContractTableProps): JSX.Element {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+    <div className="overflow-hidden rounded-md bg-white shadow-sm">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-brand-700">

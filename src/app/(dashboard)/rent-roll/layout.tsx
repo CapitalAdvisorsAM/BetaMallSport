@@ -8,7 +8,7 @@ export default function RentRollLayout({
 }): JSX.Element {
   return (
     <div className="space-y-4">
-      <section className="rounded-xl bg-white px-4 pt-4 shadow-sm">
+      <section className="rounded-md bg-white px-4 pt-4 shadow-sm">
         <RentRollSubNav />
       </section>
       {children}

@@ -114,7 +114,7 @@ export default async function RentRollPage({
 
   return (
     <main className="space-y-4">
-      <header className="rounded-xl bg-white p-5 shadow-sm">
+      <header className="rounded-md bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="mb-1 flex items-center gap-2">
@@ -122,12 +122,12 @@ export default async function RentRollPage({
               <h2 className="text-base font-bold uppercase tracking-wide text-brand-700">Rent Roll</h2>
             </div>
             <p className="mt-1 text-sm text-slate-600">
-              Contratos y tarifa vigente UF/m² por local y arrendatario.
+              Contratos y tarifa vigente UF/m2 por local y arrendatario.
             </p>
           </div>
           <Link
             href={`/rent-roll/upload?proyecto=${selectedProjectId}`}
-            className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            className="rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
             Cargar archivo
           </Link>
@@ -142,7 +142,7 @@ export default async function RentRollPage({
       </header>
 
       {latestCarga ? (
-        <section className="rounded-xl bg-white p-4 shadow-sm">
+        <section className="rounded-md bg-white p-4 shadow-sm">
           <p className="text-sm text-slate-700">
             Ultima carga: <span className="font-semibold">{latestCarga.estado}</span> | Registros aplicados:{" "}
             {latestCarga.registrosCargados}
@@ -156,7 +156,7 @@ export default async function RentRollPage({
         </section>
       ) : null}
 
-      <section className="rounded-xl bg-white p-4 shadow-sm">
+      <section className="rounded-md bg-white p-4 shadow-sm">
         <form className="grid gap-3 md:grid-cols-[1fr_220px_auto]">
           <input type="hidden" name="proyecto" value={selectedProjectId} />
           <input
@@ -180,7 +180,7 @@ export default async function RentRollPage({
           </select>
           <button
             type="submit"
-            className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            className="rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
             Filtrar
           </button>
@@ -191,3 +191,4 @@ export default async function RentRollPage({
     </main>
   );
 }
+
