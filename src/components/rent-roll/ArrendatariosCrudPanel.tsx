@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 type ArrendatarioRecord = {
   id: string;
@@ -54,9 +55,12 @@ export function ArrendatariosCrudPanel({
 }: ArrendatariosCrudPanelProps): JSX.Element {
   const [arrendatarios, setArrendatarios] = useState<ArrendatarioRecord[]>(initialArrendatarios);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageType, setMessageType] = useState<"success" | "error" | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState<ArrendatarioForm>(createEmptyForm(proyectoId));
 
   const filteredArrendatarios = useMemo(() => {
@@ -74,11 +78,13 @@ export function ArrendatariosCrudPanel({
 
   function beginCreate(): void {
     setSelectedId(null);
+    setFieldErrors({});
     setForm(createEmptyForm(proyectoId));
   }
 
   function beginEdit(item: ArrendatarioRecord): void {
     setSelectedId(item.id);
+    setFieldErrors({});
     setForm({
       proyectoId: item.proyectoId,
       rut: item.rut,
@@ -90,13 +96,50 @@ export function ArrendatariosCrudPanel({
     });
   }
 
+  function clearFieldError(field: string): void {
+    setFieldErrors((previous) => {
+      if (!previous[field]) {
+        return previous;
+      }
+      const next = { ...previous };
+      delete next[field];
+      return next;
+    });
+  }
+
+  function validate(): Record<string, string> {
+    const errors: Record<string, string> = {};
+
+    if (!form.rut.trim()) {
+      errors.rut = "RUT es obligatorio.";
+    }
+    if (!form.razonSocial.trim()) {
+      errors.razonSocial = "Razon social es obligatoria.";
+    }
+    if (!form.nombreComercial.trim()) {
+      errors.nombreComercial = "Nombre comercial es obligatorio.";
+    }
+
+    return errors;
+  }
+
   async function handleSubmit(): Promise<void> {
     if (!canEdit || loading) {
       return;
     }
 
+    const errors = validate();
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setMessageType("error");
+      setMessage("Corrige los campos marcados.");
+      return;
+    }
+
+    setFieldErrors({});
     setLoading(true);
     setMessage(null);
+    setMessageType(null);
     try {
       const isEditing = Boolean(selectedId);
       const response = await fetch(isEditing ? `/api/arrendatarios/${selectedId}` : "/api/arrendatarios", {
@@ -113,6 +156,7 @@ export function ArrendatariosCrudPanel({
       const saved = toArrendatarioRecord(data);
       if (isEditing) {
         setArrendatarios((previous) => previous.map((item) => (item.id === saved.id ? saved : item)));
+        setMessageType("success");
         setMessage("Arrendatario actualizado correctamente.");
       } else {
         setArrendatarios((previous) =>
@@ -120,10 +164,12 @@ export function ArrendatariosCrudPanel({
             a.nombreComercial.localeCompare(b.nombreComercial, "es", { sensitivity: "base" })
           )
         );
+        setMessageType("success");
         setMessage("Arrendatario creado correctamente.");
       }
       beginCreate();
     } catch (error) {
+      setMessageType("error");
       setMessage(error instanceof Error ? error.message : "Error inesperado al guardar arrendatario.");
     } finally {
       setLoading(false);
@@ -134,12 +180,10 @@ export function ArrendatariosCrudPanel({
     if (!canEdit || loading) {
       return;
     }
-    if (!window.confirm("Se eliminara este arrendatario. Esta accion no se puede deshacer.")) {
-      return;
-    }
 
     setLoading(true);
     setMessage(null);
+    setMessageType(null);
     try {
       const response = await fetch(`/api/arrendatarios/${tenantId}`, { method: "DELETE" });
       if (!response.ok) {
@@ -150,8 +194,10 @@ export function ArrendatariosCrudPanel({
       if (selectedId === tenantId) {
         beginCreate();
       }
+      setMessageType("success");
       setMessage("Arrendatario eliminado correctamente.");
     } catch (error) {
+      setMessageType("error");
       setMessage(error instanceof Error ? error.message : "Error inesperado al eliminar arrendatario.");
     } finally {
       setLoading(false);
@@ -188,9 +234,16 @@ export function ArrendatariosCrudPanel({
           </span>
           <input
             value={form.rut}
-            onChange={(event) => setForm({ ...form, rut: event.target.value })}
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            onChange={(event) => {
+              setForm({ ...form, rut: event.target.value });
+              clearFieldError("rut");
+            }}
+            className={cn(
+              "w-full rounded-md border px-3 py-2",
+              fieldErrors.rut ? "border-rose-500" : "border-slate-300"
+            )}
           />
+          {fieldErrors.rut ? <p className="mt-0.5 text-xs text-rose-600">{fieldErrors.rut}</p> : null}
         </label>
         <label className="text-sm">
           <span className="mb-1 block text-slate-700">
@@ -198,9 +251,18 @@ export function ArrendatariosCrudPanel({
           </span>
           <input
             value={form.nombreComercial}
-            onChange={(event) => setForm({ ...form, nombreComercial: event.target.value })}
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            onChange={(event) => {
+              setForm({ ...form, nombreComercial: event.target.value });
+              clearFieldError("nombreComercial");
+            }}
+            className={cn(
+              "w-full rounded-md border px-3 py-2",
+              fieldErrors.nombreComercial ? "border-rose-500" : "border-slate-300"
+            )}
           />
+          {fieldErrors.nombreComercial ? (
+            <p className="mt-0.5 text-xs text-rose-600">{fieldErrors.nombreComercial}</p>
+          ) : null}
         </label>
         <label className="text-sm md:col-span-2">
           <span className="mb-1 block text-slate-700">
@@ -208,9 +270,18 @@ export function ArrendatariosCrudPanel({
           </span>
           <input
             value={form.razonSocial}
-            onChange={(event) => setForm({ ...form, razonSocial: event.target.value })}
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            onChange={(event) => {
+              setForm({ ...form, razonSocial: event.target.value });
+              clearFieldError("razonSocial");
+            }}
+            className={cn(
+              "w-full rounded-md border px-3 py-2",
+              fieldErrors.razonSocial ? "border-rose-500" : "border-slate-300"
+            )}
           />
+          {fieldErrors.razonSocial ? (
+            <p className="mt-0.5 text-xs text-rose-600">{fieldErrors.razonSocial}</p>
+          ) : null}
         </label>
         <label className="text-sm">
           <span className="mb-1 block text-slate-700">
@@ -249,11 +320,31 @@ export function ArrendatariosCrudPanel({
           disabled={!canEdit || loading}
           className="rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {selectedId ? "Actualizar arrendatario" : "Crear arrendatario"}
+          {loading ? (
+            <>
+              <svg className="mr-1.5 inline h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Guardando…
+            </>
+          ) : selectedId ? (
+            "Actualizar arrendatario"
+          ) : (
+            "Crear arrendatario"
+          )}
         </button>
       </div>
 
-      {message ? <p className="text-sm text-slate-700">{message}</p> : null}
+      {message ? (
+        <p
+          role="status"
+          aria-live="polite"
+          className={cn("text-sm", messageType === "error" ? "text-rose-600" : "text-emerald-700")}
+        >
+          {message}
+        </p>
+      ) : null}
 
       <div className="overflow-x-auto rounded-lg border border-slate-200">
         <table className="min-w-full divide-y divide-slate-200">
@@ -285,8 +376,24 @@ export function ArrendatariosCrudPanel({
           <tbody className="text-sm text-slate-800">
             {filteredArrendatarios.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
-                  No se encontraron arrendatarios.
+                <td colSpan={7} className="px-4 py-10 text-center">
+                  {search.trim() ? (
+                    <p className="text-sm text-slate-500">Sin resultados para «{search.trim()}»</p>
+                  ) : (
+                    <>
+                      <p className="text-sm font-medium text-slate-700">Aún no hay arrendatarios registrados</p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Completa el formulario de arriba para agregar el primero.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={beginCreate}
+                        className="mt-3 rounded-full border border-brand-300 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50"
+                      >
+                        Crear primer arrendatario
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             ) : (
@@ -316,8 +423,8 @@ export function ArrendatariosCrudPanel({
                       </button>
                       <button
                         type="button"
-                        onClick={() => void handleDelete(item.id)}
-                        disabled={!canEdit}
+                        onClick={() => setPendingDeleteId(item.id)}
+                        disabled={!canEdit || loading}
                         className="rounded-md border border-rose-200 px-2 py-1 text-xs font-medium text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         Eliminar
@@ -330,6 +437,19 @@ export function ArrendatariosCrudPanel({
           </tbody>
         </table>
       </div>
+      <ConfirmModal
+        open={Boolean(pendingDeleteId)}
+        title="Eliminar arrendatario"
+        description="Se eliminara este arrendatario. Esta accion no se puede deshacer."
+        confirmLabel="Eliminar"
+        onConfirm={() => {
+          if (pendingDeleteId) {
+            void handleDelete(pendingDeleteId);
+            setPendingDeleteId(null);
+          }
+        }}
+        onCancel={() => setPendingDeleteId(null)}
+      />
     </section>
   );
 }

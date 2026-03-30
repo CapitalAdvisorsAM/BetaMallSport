@@ -33,7 +33,7 @@ export function KpiCard({
       className={cn("rounded-lg border border-slate-200 p-5 shadow-sm", accentStyles[accent])}
     >
       <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{title}</p>
-      <p className="mt-3 text-3xl font-bold tracking-tight text-brand-700">{value}</p>
+      <p className="mt-3 tabular-nums text-3xl font-bold tracking-tight text-brand-700">{value}</p>
       {subtitle ? (
         <p className={cn("mt-1.5 text-xs font-medium text-slate-500", subtitleClassName)}>{subtitle}</p>
       ) : null}

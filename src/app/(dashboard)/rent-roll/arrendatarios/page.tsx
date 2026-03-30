@@ -6,10 +6,10 @@ import { ProjectSelector } from "@/components/ui/ProjectSelector";
 import { auth } from "@/lib/auth";
 import { canWrite } from "@/lib/permissions";
 import {
-  buildArrendatariosWhere,
-  parseVigenteFilter,
-  toContractMetrics
+  buildArrendatariosContractsWhere,
+  parseVigenteFilter
 } from "@/lib/rent-roll/arrendatarios";
+import { formatUf } from "@/lib/kpi";
 import { cn } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
@@ -30,6 +30,27 @@ function getMonthBounds(date: Date): { start: Date; nextMonthStart: Date } {
     start: new Date(Date.UTC(year, monthIndex, 1)),
     nextMonthStart: new Date(Date.UTC(year, monthIndex + 1, 1))
   };
+}
+
+function formatRentRollUf(value: { toString(): string } | null | undefined): string {
+  const normalized = formatUf(value);
+  if (normalized === "\u2014") {
+    return normalized;
+  }
+  return Number(normalized).toLocaleString("es-CL", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function formatContractDates(fechaInicio: Date, fechaTermino: Date): string {
+  const formatter = new Intl.DateTimeFormat("es-CL", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "UTC"
+  });
+  return `${formatter.format(fechaInicio)} - ${formatter.format(fechaTermino)}`;
 }
 
 export default async function ArrendatariosPage({
@@ -60,46 +81,45 @@ export default async function ArrendatariosPage({
   const today = new Date();
   const { start, nextMonthStart } = getMonthBounds(today);
 
-  const [arrendatarios, arrendatariosCrud] = await Promise.all([
-    prisma.arrendatario.findMany({
-      where: buildArrendatariosWhere(selectedProjectId, { q, vigente }),
+  const [activeContracts, arrendatariosCrud] = await Promise.all([
+    prisma.contrato.findMany({
+      where: buildArrendatariosContractsWhere(
+        selectedProjectId,
+        { start, nextMonthStart },
+        { q, vigente }
+      ),
       include: {
-        contratos: {
+        arrendatario: {
+          select: {
+            nombreComercial: true,
+            rut: true,
+            vigente: true
+          }
+        },
+        local: {
+          select: { codigo: true, nombre: true }
+        },
+        tarifas: {
           where: {
-            contratosDia: {
-              some: {
-                fecha: { gte: start, lt: nextMonthStart },
-                estadoDia: { in: ["OCUPADO", "GRACIA"] }
-              }
-            }
+            tipo: TipoTarifaContrato.FIJO_UF_M2,
+            vigenciaDesde: { lte: today },
+            OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: today } }]
           },
-          include: {
-            local: {
-              select: { codigo: true, nombre: true }
-            },
-            tarifas: {
-              where: {
-                tipo: TipoTarifaContrato.FIJO_UF_M2,
-                vigenciaDesde: { lte: today },
-                OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: today } }]
-              },
-              orderBy: { vigenciaDesde: "desc" },
-              take: 1,
-              select: { valor: true }
-            },
-            ggcc: {
-              where: {
-                vigenciaDesde: { lte: today }
-              },
-              orderBy: { vigenciaDesde: "desc" },
-              take: 1,
-              select: { tarifaBaseUfM2: true, pctAdministracion: true }
-            }
+          orderBy: { vigenciaDesde: "desc" },
+          take: 1,
+          select: { valor: true }
+        },
+        ggcc: {
+          where: {
+            vigenciaDesde: { lte: today },
+            OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: today } }]
           },
-          orderBy: [{ fechaInicio: "desc" }]
+          orderBy: { vigenciaDesde: "desc" },
+          take: 1,
+          select: { tarifaBaseUfM2: true, pctAdministracion: true }
         }
       },
-      orderBy: { nombreComercial: "asc" }
+      orderBy: [{ arrendatario: { nombreComercial: "asc" } }, { fechaInicio: "desc" }]
     }),
     prisma.arrendatario.findMany({
       where: { proyectoId: selectedProjectId },
@@ -119,8 +139,8 @@ export default async function ArrendatariosPage({
               </h2>
             </div>
             <p className="text-sm text-slate-600">
-              Vista consolidada con contrato, tarifa y GGCC para contratos en estado OCUPADO o
-              GRACIA del periodo actual.
+              Contratos en estado OCUPADO o GRACIA del periodo actual. Un arrendatario puede
+              aparecer m&aacute;s de una vez si tiene varios locales.
             </p>
           </div>
           <ProjectSelector
@@ -165,10 +185,7 @@ export default async function ArrendatariosPage({
             <thead className="bg-brand-700">
               <tr>
                 <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  Nombre comercial
-                </th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  {"Raz\u00f3n social"}
+                  Arrendatario
                 </th>
                 <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
                   RUT
@@ -177,55 +194,73 @@ export default async function ArrendatariosPage({
                   Vigente
                 </th>
                 <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  Local actual
+                  N&deg; contrato
                 </th>
                 <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  {"Tarifa vigente UF/m\u00b2"}
+                  Local
                 </th>
                 <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  {"GGCC tarifa base UF/m\u00b2"}
+                  Fechas contrato
                 </th>
                 <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  {"GGCC % administraci\u00f3n"}
+                  {"Tarifa UF/m\u00b2"}
+                </th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  {"GGCC base UF/m\u00b2"}
+                </th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  GGCC % Admin
                 </th>
               </tr>
             </thead>
             <tbody className="text-sm">
-              {arrendatarios.length === 0 ? (
+              {activeContracts.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
-                    No se encontraron arrendatarios para los filtros aplicados.
+                  <td colSpan={9} className="px-4 py-6 text-center text-slate-500">
+                    No se encontraron contratos activos para los filtros aplicados.
                   </td>
                 </tr>
               ) : (
-                arrendatarios.map((arrendatario, index) => {
-                  const metrics = toContractMetrics(arrendatario.contratos[0] ?? null);
+                activeContracts.map((contract, index) => {
+                  const ggccRecord = contract.ggcc[0];
+                  const localDisplay = contract.local
+                    ? `${contract.local.codigo} - ${contract.local.nombre}`
+                    : "\u2014";
                   return (
                     <tr
-                      key={arrendatario.id}
+                      key={contract.id}
                       className={cn(
                         "text-slate-800 transition-colors hover:bg-brand-50",
                         index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
                       )}
                     >
-                      <td className="px-4 py-3 font-medium">{arrendatario.nombreComercial}</td>
-                      <td className="px-4 py-3">{arrendatario.razonSocial}</td>
-                      <td className="whitespace-nowrap px-4 py-3">{arrendatario.rut}</td>
+                      <td className="px-4 py-3 font-medium">{contract.arrendatario.nombreComercial}</td>
+                      <td className="whitespace-nowrap px-4 py-3">{contract.arrendatario.rut}</td>
                       <td className="whitespace-nowrap px-4 py-3">
                         <span
                           className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                            arrendatario.vigente
+                            contract.arrendatario.vigente
                               ? "bg-emerald-100 text-emerald-700"
                               : "bg-slate-100 text-slate-700"
                           }`}
                         >
-                          {arrendatario.vigente ? "S\u00ed" : "No"}
+                          {contract.arrendatario.vigente ? "S\u00ed" : "No"}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3">{metrics.localActual}</td>
-                      <td className="whitespace-nowrap px-4 py-3">{metrics.tarifaVigenteUfM2}</td>
-                      <td className="whitespace-nowrap px-4 py-3">{metrics.ggccTarifaBaseUfM2}</td>
-                      <td className="whitespace-nowrap px-4 py-3">{metrics.ggccPctAdministracion}</td>
+                      <td className="whitespace-nowrap px-4 py-3">{contract.numeroContrato}</td>
+                      <td className="whitespace-nowrap px-4 py-3">{localDisplay}</td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        {formatContractDates(contract.fechaInicio, contract.fechaTermino)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        {formatRentRollUf(contract.tarifas[0]?.valor)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        {formatRentRollUf(ggccRecord?.tarifaBaseUfM2)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        {formatRentRollUf(ggccRecord?.pctAdministracion)}
+                      </td>
                     </tr>
                   );
                 })

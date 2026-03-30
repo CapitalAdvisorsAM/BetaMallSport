@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildArrendatariosWhere,
-  parseVigenteFilter,
-  toContractMetrics
+  buildArrendatariosContractsWhere,
+  parseVigenteFilter
 } from "@/lib/rent-roll/arrendatarios";
 
 describe("parseVigenteFilter", () => {
@@ -17,47 +16,49 @@ describe("parseVigenteFilter", () => {
   });
 });
 
-describe("buildArrendatariosWhere", () => {
-  it("builds where with project only when no filters", () => {
-    expect(buildArrendatariosWhere("p-1", { q: "" })).toEqual({
-      proyectoId: "p-1"
-    });
-  });
+describe("buildArrendatariosContractsWhere", () => {
+  it("builds where with project and active-day constraints", () => {
+    const start = new Date("2026-03-01T00:00:00.000Z");
+    const nextMonthStart = new Date("2026-04-01T00:00:00.000Z");
 
-  it("adds vigente and text search clauses", () => {
-    expect(buildArrendatariosWhere("p-1", { q: "acme", vigente: true })).toEqual({
-      proyectoId: "p-1",
-      vigente: true,
-      OR: [
-        { nombreComercial: { contains: "acme", mode: "insensitive" } },
-        { rut: { contains: "acme", mode: "insensitive" } }
-      ]
-    });
-  });
-});
-
-describe("toContractMetrics", () => {
-  it("returns placeholder values when there is no active contract", () => {
-    expect(toContractMetrics(null)).toEqual({
-      localActual: "\u2014",
-      tarifaVigenteUfM2: "\u2014",
-      ggccTarifaBaseUfM2: "\u2014",
-      ggccPctAdministracion: "\u2014"
-    });
-  });
-
-  it("maps active contract values", () => {
     expect(
-      toContractMetrics({
-        local: { codigo: "L-101", nombre: "Norte" },
-        tarifas: [{ valor: { toString: () => "1.234" } }],
-        ggcc: [{ tarifaBaseUfM2: { toString: () => "0.33" }, pctAdministracion: { toString: () => "9" } }]
-      })
+      buildArrendatariosContractsWhere("p-1", { start, nextMonthStart }, { q: "" })
     ).toEqual({
-      localActual: "L-101 - Norte",
-      tarifaVigenteUfM2: "1,23",
-      ggccTarifaBaseUfM2: "0,33",
-      ggccPctAdministracion: "9,00"
+      proyectoId: "p-1",
+      contratosDia: {
+        some: {
+          fecha: { gte: start, lt: nextMonthStart },
+          estadoDia: { in: ["OCUPADO", "GRACIA"] }
+        }
+      }
+    });
+  });
+
+  it("adds vigente and text search clauses at arrendatario level", () => {
+    const start = new Date("2026-03-01T00:00:00.000Z");
+    const nextMonthStart = new Date("2026-04-01T00:00:00.000Z");
+
+    expect(
+      buildArrendatariosContractsWhere(
+        "p-1",
+        { start, nextMonthStart },
+        { q: "acme", vigente: true }
+      )
+    ).toEqual({
+      proyectoId: "p-1",
+      contratosDia: {
+        some: {
+          fecha: { gte: start, lt: nextMonthStart },
+          estadoDia: { in: ["OCUPADO", "GRACIA"] }
+        }
+      },
+      arrendatario: {
+        vigente: true,
+        OR: [
+          { nombreComercial: { contains: "acme", mode: "insensitive" } },
+          { rut: { contains: "acme", mode: "insensitive" } }
+        ]
+      }
     });
   });
 });
