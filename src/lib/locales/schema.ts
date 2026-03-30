@@ -4,7 +4,7 @@ import { z } from "zod";
 export const localeSchema = z.object({
   proyectoId: z.string().min(1),
   codigo: z.string().trim().min(1, "Codigo es obligatorio."),
-  nombre: z.string().trim().min(1, "Nombre es obligatorio."),
+  nombre: z.string().trim().default(""),
   glam2: z
     .string()
     .trim()

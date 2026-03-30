@@ -206,7 +206,9 @@ export function LocalesCrudPanel({
 
       <div className="grid gap-3 md:grid-cols-4">
         <label className="text-sm">
-          <span className="mb-1 block text-slate-700">Codigo</span>
+          <span className="mb-1 block text-slate-700">
+            Codigo <span className="text-rose-500">*</span>
+          </span>
           <input
             value={form.codigo}
             onChange={(event) => setForm({ ...form, codigo: event.target.value })}
@@ -214,7 +216,9 @@ export function LocalesCrudPanel({
           />
         </label>
         <label className="text-sm md:col-span-2">
-          <span className="mb-1 block text-slate-700">Nombre</span>
+          <span className="mb-1 block text-slate-700">
+            Nombre <span className="text-xs text-slate-400">(opcional)</span>
+          </span>
           <input
             value={form.nombre}
             onChange={(event) => setForm({ ...form, nombre: event.target.value })}
@@ -222,7 +226,9 @@ export function LocalesCrudPanel({
           />
         </label>
         <label className="text-sm">
-          <span className="mb-1 block text-slate-700">GLA m2</span>
+          <span className="mb-1 block text-slate-700">
+            GLA m2 <span className="text-rose-500">*</span>
+          </span>
           <input
             value={form.glam2}
             onChange={(event) => setForm({ ...form, glam2: event.target.value })}
@@ -231,7 +237,9 @@ export function LocalesCrudPanel({
           />
         </label>
         <label className="text-sm">
-          <span className="mb-1 block text-slate-700">Piso</span>
+          <span className="mb-1 block text-slate-700">
+            Piso <span className="text-rose-500">*</span>
+          </span>
           <input
             value={form.piso}
             onChange={(event) => setForm({ ...form, piso: event.target.value })}
@@ -239,7 +247,9 @@ export function LocalesCrudPanel({
           />
         </label>
         <label className="text-sm">
-          <span className="mb-1 block text-slate-700">Tipo</span>
+          <span className="mb-1 block text-slate-700">
+            Tipo <span className="text-rose-500">*</span>
+          </span>
           <select
             value={form.tipo}
             onChange={(event) => setForm({ ...form, tipo: event.target.value as LocalTipo })}
@@ -254,7 +264,9 @@ export function LocalesCrudPanel({
           </select>
         </label>
         <label className="text-sm">
-          <span className="mb-1 block text-slate-700">Zona</span>
+          <span className="mb-1 block text-slate-700">
+            Zona <span className="text-xs text-slate-400">(opcional)</span>
+          </span>
           <input
             value={form.zona ?? ""}
             onChange={(event) => setForm({ ...form, zona: event.target.value || null })}
@@ -262,7 +274,9 @@ export function LocalesCrudPanel({
           />
         </label>
         <label className="text-sm">
-          <span className="mb-1 block text-slate-700">Estado</span>
+          <span className="mb-1 block text-slate-700">
+            Estado <span className="text-rose-500">*</span>
+          </span>
           <select
             value={form.estado}
             onChange={(event) => setForm({ ...form, estado: event.target.value as EstadoMaestro })}

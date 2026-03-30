@@ -339,7 +339,9 @@ export function ContractManager({
 
         <div className="grid gap-3 md:grid-cols-2">
           <label className="text-sm">
-            <span className="mb-1 block text-slate-700">Numero contrato</span>
+            <span className="mb-1 block text-slate-700">
+              Numero contrato <span className="text-rose-500">*</span>
+            </span>
             <input
               value={payload.numeroContrato}
               onChange={(event) =>
@@ -349,7 +351,9 @@ export function ContractManager({
             />
           </label>
           <label className="text-sm">
-            <span className="mb-1 block text-slate-700">Clasificacion juridica</span>
+            <span className="mb-1 block text-slate-700">
+              Clasificacion juridica <span className="text-xs text-slate-400">(opcional)</span>
+            </span>
             <select
               value={payload.estado}
               onChange={(event) =>
@@ -371,7 +375,9 @@ export function ContractManager({
             </span>
           </label>
           <label className="text-sm">
-            <span className="mb-1 block text-slate-700">Local</span>
+            <span className="mb-1 block text-slate-700">
+              Local <span className="text-rose-500">*</span>
+            </span>
             <select
               value={payload.localId}
               onChange={(event) =>
@@ -387,7 +393,9 @@ export function ContractManager({
             </select>
           </label>
           <label className="text-sm">
-            <span className="mb-1 block text-slate-700">Arrendatario</span>
+            <span className="mb-1 block text-slate-700">
+              Arrendatario <span className="text-rose-500">*</span>
+            </span>
             <select
               value={payload.arrendatarioId}
               onChange={(event) =>
@@ -403,7 +411,9 @@ export function ContractManager({
             </select>
           </label>
           <label className="text-sm">
-            <span className="mb-1 block text-slate-700">Fecha inicio</span>
+            <span className="mb-1 block text-slate-700">
+              Fecha inicio <span className="text-rose-500">*</span>
+            </span>
             <input
               type="date"
               value={payload.fechaInicio}
@@ -414,7 +424,9 @@ export function ContractManager({
             />
           </label>
           <label className="text-sm">
-            <span className="mb-1 block text-slate-700">Fecha termino</span>
+            <span className="mb-1 block text-slate-700">
+              Fecha termino <span className="text-rose-500">*</span>
+            </span>
             <input
               type="date"
               value={payload.fechaTermino}
@@ -440,7 +452,9 @@ export function ContractManager({
 
         <div className="grid gap-3 md:grid-cols-2">
           <label className="text-sm">
-            <span className="mb-1 block text-slate-700">Fecha anexo</span>
+            <span className="mb-1 block text-slate-700">
+              Fecha anexo <span className="text-xs text-slate-400">(opcional)</span>
+            </span>
             <input
               type="date"
               value={payload.anexo?.fecha ?? ""}
@@ -457,7 +471,9 @@ export function ContractManager({
             />
           </label>
           <label className="text-sm">
-            <span className="mb-1 block text-slate-700">Descripcion anexo</span>
+            <span className="mb-1 block text-slate-700">
+              Descripcion anexo <span className="text-xs text-slate-400">(opcional)</span>
+            </span>
             <input
               value={payload.anexo?.descripcion ?? ""}
               onChange={(event) =>

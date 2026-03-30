@@ -183,7 +183,9 @@ export function ArrendatariosCrudPanel({
 
       <div className="grid gap-3 md:grid-cols-2">
         <label className="text-sm">
-          <span className="mb-1 block text-slate-700">RUT</span>
+          <span className="mb-1 block text-slate-700">
+            RUT <span className="text-rose-500">*</span>
+          </span>
           <input
             value={form.rut}
             onChange={(event) => setForm({ ...form, rut: event.target.value })}
@@ -191,7 +193,9 @@ export function ArrendatariosCrudPanel({
           />
         </label>
         <label className="text-sm">
-          <span className="mb-1 block text-slate-700">Nombre comercial</span>
+          <span className="mb-1 block text-slate-700">
+            Nombre comercial <span className="text-rose-500">*</span>
+          </span>
           <input
             value={form.nombreComercial}
             onChange={(event) => setForm({ ...form, nombreComercial: event.target.value })}
@@ -199,7 +203,9 @@ export function ArrendatariosCrudPanel({
           />
         </label>
         <label className="text-sm md:col-span-2">
-          <span className="mb-1 block text-slate-700">Razon social</span>
+          <span className="mb-1 block text-slate-700">
+            Razon social <span className="text-rose-500">*</span>
+          </span>
           <input
             value={form.razonSocial}
             onChange={(event) => setForm({ ...form, razonSocial: event.target.value })}
@@ -207,7 +213,9 @@ export function ArrendatariosCrudPanel({
           />
         </label>
         <label className="text-sm">
-          <span className="mb-1 block text-slate-700">Email</span>
+          <span className="mb-1 block text-slate-700">
+            Email <span className="text-xs text-slate-400">(opcional)</span>
+          </span>
           <input
             value={form.email ?? ""}
             onChange={(event) => setForm({ ...form, email: event.target.value || null })}
@@ -215,7 +223,9 @@ export function ArrendatariosCrudPanel({
           />
         </label>
         <label className="text-sm">
-          <span className="mb-1 block text-slate-700">Telefono</span>
+          <span className="mb-1 block text-slate-700">
+            Telefono <span className="text-xs text-slate-400">(opcional)</span>
+          </span>
           <input
             value={form.telefono ?? ""}
             onChange={(event) => setForm({ ...form, telefono: event.target.value || null })}
