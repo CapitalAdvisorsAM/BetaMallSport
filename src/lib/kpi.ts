@@ -1,4 +1,4 @@
-import { EstadoContrato, TipoTarifaContrato } from "@prisma/client";
+import { EstadoContrato, TipoLocal, TipoTarifaContrato } from "@prisma/client";
 import {
   CONTRACT_EXPIRY_ROW_LIMIT as CONTRACT_EXPIRY_ROW_LIMIT_VALUE,
   CONTRACT_EXPIRY_WINDOWS as CONTRACT_EXPIRY_WINDOWS_VALUE
@@ -36,6 +36,7 @@ export type KpiContractInput = {
   arrendatarioNombre: string;
   numeroContrato: string;
   fechaTermino: Date;
+  pctRentaVariable?: DecimalLike | null;
   tarifa: KpiTarifaInput | null;
   ggcc: KpiGgccInput | null;
 };
@@ -488,4 +489,332 @@ export function buildRentaPotencialVacantes(
     (total, local) => total + toNumber(local.glam2) * promedioTarifaProyecto,
     0
   );
+}
+
+export type IngresoDesglosado = {
+  arriendoFijoUf: number;
+  arriendoVariableUf: number;
+  simuladoresModulosUf: number;
+  arriendoEspacioUf: number;
+  arriendoBodegaUf: number;
+  ventaEnergiaUf: number;
+  totalUf: number;
+  facturacionUfM2: number;
+  arriendoFijoUfM2: number;
+};
+
+type IngresoContratoInput = Pick<
+  KpiContractInput,
+  "localId" | "localGlam2" | "tarifa" | "fechaTermino" | "pctRentaVariable"
+>;
+
+type IngresoLocalInput = {
+  id: string;
+  tipo: TipoLocal;
+  esGLA: boolean;
+  glam2: DecimalLike;
+  zona?: string | null;
+};
+
+type VentaLocalPeriodoInput = {
+  localId: string;
+  periodo: string;
+  ventasUf: DecimalLike;
+};
+
+type IngresoEnergiaInput = {
+  periodo: string;
+  valorUf: DecimalLike;
+};
+
+const CATEGORIAS_OCUPACION = [
+  "Outdoor",
+  "Multideporte",
+  "Bicicletas",
+  "Entretencion",
+  "Accesorios",
+  "Gastronomia",
+  "Gimnasio",
+  "Servicios",
+  "Lifestyle",
+  "Powersports"
+] as const;
+
+const TAMANOS_OCUPACION = [
+  "Tienda Mayor",
+  "Tienda Mediana",
+  "Tienda Menor",
+  "Modulo",
+  "Bodega"
+] as const;
+
+export type OcupacionDetalle = {
+  glaTotal: number;
+  glaArrendada: number;
+  glaVacante: number;
+  pctVacancia: number;
+  porCategoria: Record<string, { gla: number; pct: number }>;
+  porTamano: Record<string, { gla: number; glaArrendada: number; pctVacancia: number }>;
+};
+
+export type VencimientosPorAnio = {
+  anio: number;
+  cantidadContratos: number;
+  m2: number;
+  pctTotal: number;
+}[];
+
+function fixedContractAmount(contract: IngresoContratoInput): number {
+  if (!contract.tarifa) {
+    return 0;
+  }
+  if (contract.tarifa.tipo === TipoTarifaContrato.FIJO_UF_M2) {
+    return toFiniteNumber(contract.tarifa.valor) * toFiniteNumber(contract.localGlam2);
+  }
+  if (contract.tarifa.tipo === TipoTarifaContrato.FIJO_UF) {
+    return toFiniteNumber(contract.tarifa.valor);
+  }
+  return 0;
+}
+
+function normalizeLabel(value: string | null | undefined): string {
+  if (!value) {
+    return "";
+  }
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .trim();
+}
+
+function toFiniteNumber(value: DecimalLike | null | undefined, fallback = 0): number {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+  const parsed = Number(value.toString());
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function mapCategoria(zona: string | null | undefined): string | null {
+  const normalized = normalizeLabel(zona);
+  const map: Record<string, (typeof CATEGORIAS_OCUPACION)[number]> = {
+    OUTDOOR: "Outdoor",
+    MULTIDEPORTE: "Multideporte",
+    MULTISPORT: "Multideporte",
+    BICICLETAS: "Bicicletas",
+    ENTRETENCION: "Entretencion",
+    ACCESORIOS: "Accesorios",
+    GASTRONOMIA: "Gastronomia",
+    GIMNASIO: "Gimnasio",
+    SERVICIOS: "Servicios",
+    LIFESTYLE: "Lifestyle",
+    POWERSPORTS: "Powersports",
+    POWERMOTORSPORTS: "Powersports"
+  };
+
+  return map[normalized] ?? null;
+}
+
+function mapTamano(local: IngresoLocalInput): (typeof TAMANOS_OCUPACION)[number] {
+  if (local.tipo === TipoLocal.BODEGA) {
+    return "Bodega";
+  }
+  if (local.tipo === TipoLocal.MODULO || local.tipo === TipoLocal.SIMULADOR) {
+    return "Modulo";
+  }
+
+  const gla = toNumber(local.glam2);
+  if (gla > 200) {
+    return "Tienda Mayor";
+  }
+  if (gla >= 50) {
+    return "Tienda Mediana";
+  }
+  return "Tienda Menor";
+}
+
+export function buildIngresoDesglosado(
+  contratos: IngresoContratoInput[],
+  locales: IngresoLocalInput[],
+  ventasLocales: VentaLocalPeriodoInput[],
+  ingresoEnergia: IngresoEnergiaInput[],
+  periodo: string
+): IngresoDesglosado {
+  const localById = new Map(locales.map((local) => [local.id, local]));
+  const ventasByLocal = new Map<string, number>();
+  for (const venta of ventasLocales) {
+    if (venta.periodo !== periodo) {
+      continue;
+    }
+    ventasByLocal.set(
+      venta.localId,
+      (ventasByLocal.get(venta.localId) ?? 0) + toFiniteNumber(venta.ventasUf)
+    );
+  }
+
+  let arriendoFijoUf = 0;
+  let arriendoVariableUf = 0;
+  let simuladoresModulosUf = 0;
+  let arriendoEspacioUf = 0;
+  let arriendoBodegaUf = 0;
+
+  for (const contrato of contratos) {
+    const local = localById.get(contrato.localId);
+    if (!local || !contrato.tarifa) {
+      continue;
+    }
+
+    const fixedAmount = fixedContractAmount(contrato);
+    if (local.tipo === TipoLocal.SIMULADOR || local.tipo === TipoLocal.MODULO) {
+      simuladoresModulosUf += fixedAmount;
+    } else if (local.tipo === TipoLocal.ESPACIO) {
+      arriendoEspacioUf += fixedAmount;
+    } else if (local.tipo === TipoLocal.BODEGA) {
+      arriendoBodegaUf += fixedAmount;
+    } else {
+      arriendoFijoUf += fixedAmount;
+    }
+
+    let porcentajeVariable = 0;
+    if (contrato.tarifa.tipo === TipoTarifaContrato.PORCENTAJE) {
+      porcentajeVariable = toFiniteNumber(contrato.tarifa.valor);
+    } else if (contrato.pctRentaVariable !== null && contrato.pctRentaVariable !== undefined) {
+      porcentajeVariable = toFiniteNumber(contrato.pctRentaVariable);
+    }
+
+    if (porcentajeVariable > 0) {
+      const ventasUf = ventasByLocal.get(contrato.localId) ?? 0;
+      arriendoVariableUf += ventasUf * (porcentajeVariable / 100);
+    }
+  }
+
+  const ventaEnergiaUf = ingresoEnergia
+    .filter((item) => item.periodo === periodo)
+    .reduce((acc, item) => acc + toFiniteNumber(item.valorUf), 0);
+
+  const localesArrendados = new Set(contratos.map((contrato) => contrato.localId));
+  const glaArrendada = locales.reduce((acc, local) => {
+    if (!local.esGLA || !localesArrendados.has(local.id)) {
+      return acc;
+    }
+    return acc + toFiniteNumber(local.glam2);
+  }, 0);
+
+  const totalUf =
+    arriendoFijoUf +
+    arriendoVariableUf +
+    simuladoresModulosUf +
+    arriendoEspacioUf +
+    arriendoBodegaUf +
+    ventaEnergiaUf;
+
+  return {
+    arriendoFijoUf,
+    arriendoVariableUf,
+    simuladoresModulosUf,
+    arriendoEspacioUf,
+    arriendoBodegaUf,
+    ventaEnergiaUf,
+    totalUf,
+    facturacionUfM2: glaArrendada > 0 ? totalUf / glaArrendada : 0,
+    arriendoFijoUfM2: glaArrendada > 0 ? arriendoFijoUf / glaArrendada : 0
+  };
+}
+
+export function buildOcupacionDetalle(
+  locales: IngresoLocalInput[],
+  contratos: IngresoContratoInput[]
+): OcupacionDetalle {
+  const localesArrendados = new Set(contratos.map((contrato) => contrato.localId));
+
+  const glaTotal = locales.reduce(
+    (acc, local) => (local.esGLA ? acc + toFiniteNumber(local.glam2) : acc),
+    0
+  );
+  const glaArrendada = locales.reduce((acc, local) => {
+    if (!local.esGLA || !localesArrendados.has(local.id)) {
+      return acc;
+    }
+    return acc + toFiniteNumber(local.glam2);
+  }, 0);
+  const glaVacante = Math.max(glaTotal - glaArrendada, 0);
+
+  const porCategoria = CATEGORIAS_OCUPACION.reduce<Record<string, { gla: number; pct: number }>>(
+    (acc, categoria) => {
+      acc[categoria] = { gla: 0, pct: 0 };
+      return acc;
+    },
+    {}
+  );
+
+  for (const local of locales) {
+    if (!local.esGLA) {
+      continue;
+    }
+    const categoria = mapCategoria(local.zona);
+    if (!categoria) {
+      continue;
+    }
+    porCategoria[categoria].gla += toFiniteNumber(local.glam2);
+  }
+
+  for (const categoria of CATEGORIAS_OCUPACION) {
+    const glaCategoria = porCategoria[categoria].gla;
+    porCategoria[categoria].pct = glaTotal > 0 ? (glaCategoria / glaTotal) * 100 : 0;
+  }
+
+  const porTamano = TAMANOS_OCUPACION.reduce<
+    Record<string, { gla: number; glaArrendada: number; pctVacancia: number }>
+  >((acc, tamano) => {
+    acc[tamano] = { gla: 0, glaArrendada: 0, pctVacancia: 0 };
+    return acc;
+  }, {});
+
+  for (const local of locales) {
+    const tamano = mapTamano(local);
+    const gla = toFiniteNumber(local.glam2);
+    porTamano[tamano].gla += gla;
+    if (localesArrendados.has(local.id)) {
+      porTamano[tamano].glaArrendada += gla;
+    }
+  }
+
+  for (const tamano of TAMANOS_OCUPACION) {
+    const row = porTamano[tamano];
+    const vacante = Math.max(row.gla - row.glaArrendada, 0);
+    row.pctVacancia = row.gla > 0 ? (vacante / row.gla) * 100 : 0;
+  }
+
+  return {
+    glaTotal,
+    glaArrendada,
+    glaVacante,
+    pctVacancia: glaTotal > 0 ? (glaVacante / glaTotal) * 100 : 0,
+    porCategoria,
+    porTamano
+  };
+}
+
+export function buildVencimientosPorAnio(contratos: IngresoContratoInput[]): VencimientosPorAnio {
+  const grouped = new Map<number, { cantidadContratos: number; m2: number }>();
+
+  for (const contrato of contratos) {
+    const anio = contrato.fechaTermino.getUTCFullYear();
+    const current = grouped.get(anio) ?? { cantidadContratos: 0, m2: 0 };
+    current.cantidadContratos += 1;
+    current.m2 += toFiniteNumber(contrato.localGlam2);
+    grouped.set(anio, current);
+  }
+
+  const totalM2 = Array.from(grouped.values()).reduce((acc, item) => acc + item.m2, 0);
+  return Array.from(grouped.entries())
+    .sort(([anioA], [anioB]) => anioA - anioB)
+    .map(([anio, value]) => ({
+      anio,
+      cantidadContratos: value.cantidadContratos,
+      m2: value.m2,
+      pctTotal: totalM2 > 0 ? (value.m2 / totalM2) * 100 : 0
+    }));
 }

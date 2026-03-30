@@ -1,4 +1,4 @@
-import { EstadoContrato, TipoTarifaContrato } from "@prisma/client";
+import { TipoTarifaContrato } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { ArrendatariosCrudPanel } from "@/components/rent-roll/ArrendatariosCrudPanel";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
@@ -21,6 +21,16 @@ type ArrendatariosPageProps = {
     vigente?: string;
   };
 };
+
+function getMonthBounds(date: Date): { start: Date; nextMonthStart: Date } {
+  const year = date.getUTCFullYear();
+  const monthIndex = date.getUTCMonth();
+
+  return {
+    start: new Date(Date.UTC(year, monthIndex, 1)),
+    nextMonthStart: new Date(Date.UTC(year, monthIndex + 1, 1))
+  };
+}
 
 export default async function ArrendatariosPage({
   searchParams
@@ -48,13 +58,21 @@ export default async function ArrendatariosPage({
   const q = searchParams.q?.trim() ?? "";
   const vigente = parseVigenteFilter(searchParams.vigente);
   const today = new Date();
+  const { start, nextMonthStart } = getMonthBounds(today);
 
   const [arrendatarios, arrendatariosCrud] = await Promise.all([
     prisma.arrendatario.findMany({
       where: buildArrendatariosWhere(selectedProjectId, { q, vigente }),
       include: {
         contratos: {
-          where: { estado: EstadoContrato.VIGENTE },
+          where: {
+            contratosDia: {
+              some: {
+                fecha: { gte: start, lt: nextMonthStart },
+                estadoDia: { in: ["OCUPADO", "GRACIA"] }
+              }
+            }
+          },
           include: {
             local: {
               select: { codigo: true, nombre: true }
@@ -100,7 +118,10 @@ export default async function ArrendatariosPage({
                 Arrendatarios
               </h2>
             </div>
-            <p className="text-sm text-slate-600">Vista consolidada con contrato, tarifa y GGCC vigentes.</p>
+            <p className="text-sm text-slate-600">
+              Vista consolidada con contrato, tarifa y GGCC para contratos en estado OCUPADO o
+              GRACIA del periodo actual.
+            </p>
           </div>
           <ProjectSelector
             projects={projects}

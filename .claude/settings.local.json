@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(py -3 -c \":*)",
+      "Read(//usr/**)",
+      "Read(//usr/local/**)",
+      "Bash(xargs wc:*)",
+      "Bash(ls -la /c/Users/fguzman/Desktop/BetaMallSport/src/app/\\\\\\(dashboard\\\\\\)/rent-roll/)"
+    ]
+  }
+}

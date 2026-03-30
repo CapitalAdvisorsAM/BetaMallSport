@@ -1,7 +1,10 @@
-import { EstadoContrato, TipoTarifaContrato } from "@prisma/client";
+import { EstadoContrato, TipoLocal, TipoTarifaContrato } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 import {
+  buildIngresoDesglosado,
+  buildOcupacionDetalle,
   buildContractExpiryBuckets,
+  buildVencimientosPorAnio,
   buildFixedRentClpMetric,
   calculateContractStateCounters,
   calculateEstimatedGgccUf,
@@ -159,5 +162,149 @@ describe("portfolio KPIs", () => {
     ]);
     expect(buckets[30][0]?.diasRestantes).toBe(5);
     expect(buckets[90].some((row) => row.id === "expired")).toBe(false);
+  });
+});
+
+describe("cdg mall sport KPIs", () => {
+  it("builds a full income breakdown with variable rent and energy", () => {
+    const contratos = [
+      makeContract({
+        id: "fijo-comercial",
+        localId: "loc-com",
+        localGlam2: "100",
+        tarifa: { tipo: TipoTarifaContrato.FIJO_UF_M2, valor: "0.5" }
+      }),
+      makeContract({
+        id: "variable",
+        localId: "loc-var",
+        localGlam2: "80",
+        tarifa: { tipo: TipoTarifaContrato.PORCENTAJE, valor: "8" }
+      }),
+      makeContract({
+        id: "simulador",
+        localId: "loc-sim",
+        localGlam2: "20",
+        tarifa: { tipo: TipoTarifaContrato.FIJO_UF, valor: "30" }
+      }),
+      makeContract({
+        id: "espacio",
+        localId: "loc-esp",
+        localGlam2: "10",
+        tarifa: { tipo: TipoTarifaContrato.FIJO_UF, valor: "12" }
+      }),
+      makeContract({
+        id: "bodega",
+        localId: "loc-bod",
+        localGlam2: "15",
+        tarifa: { tipo: TipoTarifaContrato.FIJO_UF, valor: "10" }
+      })
+    ];
+
+    const locales = [
+      { id: "loc-com", tipo: TipoLocal.LOCAL_COMERCIAL, esGLA: true, glam2: "100" },
+      { id: "loc-var", tipo: TipoLocal.LOCAL_COMERCIAL, esGLA: true, glam2: "80" },
+      { id: "loc-sim", tipo: TipoLocal.SIMULADOR, esGLA: false, glam2: "20" },
+      { id: "loc-esp", tipo: TipoLocal.ESPACIO, esGLA: false, glam2: "10" },
+      { id: "loc-bod", tipo: TipoLocal.BODEGA, esGLA: false, glam2: "15" }
+    ];
+
+    const ingresos = buildIngresoDesglosado(
+      contratos,
+      locales,
+      [{ localId: "loc-var", periodo: "2026-03", ventasUf: "1000" }],
+      [{ periodo: "2026-03", valorUf: "9" }],
+      "2026-03"
+    );
+
+    expect(ingresos.arriendoFijoUf).toBe(50);
+    expect(ingresos.arriendoVariableUf).toBe(80);
+    expect(ingresos.simuladoresModulosUf).toBe(30);
+    expect(ingresos.arriendoEspacioUf).toBe(12);
+    expect(ingresos.arriendoBodegaUf).toBe(10);
+    expect(ingresos.ventaEnergiaUf).toBe(9);
+    expect(ingresos.totalUf).toBe(191);
+    expect(ingresos.facturacionUfM2).toBeCloseTo(1.061, 3);
+    expect(ingresos.arriendoFijoUfM2).toBeCloseTo(0.278, 3);
+  });
+
+  it("returns zero variable and energy income when no data exists for the period", () => {
+    const ingresos = buildIngresoDesglosado(
+      [
+        makeContract({
+          localId: "loc-a",
+          localGlam2: "50",
+          tarifa: { tipo: TipoTarifaContrato.FIJO_UF, valor: "10" }
+        })
+      ],
+      [{ id: "loc-a", tipo: TipoLocal.LOCAL_COMERCIAL, esGLA: true, glam2: "50" }],
+      [],
+      [],
+      "2026-04"
+    );
+
+    expect(ingresos.arriendoVariableUf).toBe(0);
+    expect(ingresos.ventaEnergiaUf).toBe(0);
+  });
+
+  it("builds occupancy detail grouped by category and size", () => {
+    const locales = [
+      {
+        id: "l1",
+        tipo: TipoLocal.LOCAL_COMERCIAL,
+        esGLA: true,
+        glam2: "220",
+        zona: "Outdoor"
+      },
+      {
+        id: "l2",
+        tipo: TipoLocal.LOCAL_COMERCIAL,
+        esGLA: true,
+        glam2: "100",
+        zona: "Gastronom\u00eda"
+      },
+      {
+        id: "l3",
+        tipo: TipoLocal.MODULO,
+        esGLA: false,
+        glam2: "20",
+        zona: "Servicios"
+      },
+      {
+        id: "l4",
+        tipo: TipoLocal.BODEGA,
+        esGLA: false,
+        glam2: "40",
+        zona: "Servicios"
+      }
+    ];
+    const contratos = [
+      makeContract({ localId: "l1", localGlam2: "220", tarifa: null }),
+      makeContract({ localId: "l3", localGlam2: "20", tarifa: null })
+    ];
+
+    const detalle = buildOcupacionDetalle(locales, contratos);
+
+    expect(detalle.glaTotal).toBe(320);
+    expect(detalle.glaArrendada).toBe(220);
+    expect(detalle.glaVacante).toBe(100);
+    expect(detalle.porCategoria.Outdoor?.gla).toBe(220);
+    expect(detalle.porCategoria.Gastronomia?.gla).toBe(100);
+    expect(detalle.porTamano["Tienda Mayor"]?.glaArrendada).toBe(220);
+    expect(detalle.porTamano.Modulo?.glaArrendada).toBe(20);
+    expect(detalle.porTamano.Bodega?.gla).toBe(40);
+  });
+
+  it("builds contract expiries grouped by year with m2 percentages", () => {
+    const rows = buildVencimientosPorAnio([
+      makeContract({ localGlam2: "100", fechaTermino: new Date("2026-06-01T00:00:00.000Z") }),
+      makeContract({ localGlam2: "80", fechaTermino: new Date("2027-07-01T00:00:00.000Z") }),
+      makeContract({ localGlam2: "20", fechaTermino: new Date("2027-11-01T00:00:00.000Z") })
+    ]);
+
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ anio: 2026, cantidadContratos: 1, m2: 100 });
+    expect(rows[1]).toMatchObject({ anio: 2027, cantidadContratos: 2, m2: 100 });
+    expect(rows[0]?.pctTotal).toBe(50);
+    expect(rows[1]?.pctTotal).toBe(50);
   });
 });

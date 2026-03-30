@@ -10,7 +10,7 @@ export async function GET(): Promise<NextResponse> {
 
     const csvContent = [
       "codigo,nombre,glam2,piso,tipo,zona,esGLA,estado",
-      "L-101,Local Demo,120.5,1,TIENDA,FOOD,true,ACTIVO"
+      "L-101,Local Demo,120.5,1,LOCAL_COMERCIAL,FOOD,true,ACTIVO"
     ].join("\n");
     const csvWithBom = `\uFEFF${csvContent}`;
 

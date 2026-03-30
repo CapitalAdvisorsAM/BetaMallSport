@@ -349,7 +349,7 @@ export function ContractManager({
             />
           </label>
           <label className="text-sm">
-            <span className="mb-1 block text-slate-700">Estado</span>
+            <span className="mb-1 block text-slate-700">Clasificacion juridica</span>
             <select
               value={payload.estado}
               onChange={(event) =>
@@ -365,6 +365,10 @@ export function ContractManager({
               <option value="TERMINADO">TERMINADO</option>
               <option value="TERMINADO_ANTICIPADO">TERMINADO_ANTICIPADO</option>
             </select>
+            <span className="mt-1 block text-xs text-slate-500">
+              Este estado es clasificacion del documento. El estado en Rent Roll se calcula
+              automaticamente desde las fechas del contrato.
+            </span>
           </label>
           <label className="text-sm">
             <span className="mb-1 block text-slate-700">Local</span>

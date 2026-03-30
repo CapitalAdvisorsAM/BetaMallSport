@@ -14,25 +14,25 @@ export function AlertBar({
     {
       key: "vencen30",
       visible: vencen30 > 0,
-      label: `🔴 ${vencen30} contratos vencen en <=30 dias`,
+      label: `${vencen30} contratos vencen en <=30 dias`,
       className: "bg-rose-100 text-rose-800"
     },
     {
       key: "enGracia",
       visible: enGracia > 0,
-      label: `🟡 ${enGracia} en periodo de gracia`,
+      label: `${enGracia} en periodo de gracia`,
       className: "bg-amber-100 text-amber-800"
     },
     {
       key: "vacantes",
       visible: vacantes > 0,
-      label: `⬜ ${vacantes} locales sin arrendatario`,
+      label: `${vacantes} locales sin arrendatario`,
       className: "bg-slate-100 text-slate-700"
     },
     {
       key: "vencen90",
       visible: vencen90 > 0,
-      label: `🟠 ${vencen90} vencen en 31-90 dias`,
+      label: `${vencen90} vencen en 31-90 dias`,
       className: "bg-orange-100 text-orange-800"
     }
   ].filter((item) => item.visible);

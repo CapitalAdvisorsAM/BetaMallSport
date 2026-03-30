@@ -1,17 +1,22 @@
-import { EstadoContrato, TipoTarifaContrato } from "@prisma/client";
+import { EstadoDiaContrato, TipoTarifaContrato } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { requireSession } from "@/lib/permissions";
-import { buildMetricaRow, buildResumen, type ContratoConRelaciones } from "@/lib/rent-roll/metricas";
+import {
+  buildMetricaRow,
+  buildResumen,
+  getEstadoContratoDia,
+  type ContratoConRelaciones
+} from "@/lib/rent-roll/metricas";
 import { prisma } from "@/lib/prisma";
 import { isPeriodoValido } from "@/lib/validators";
 import type { RentRollMetricasResponse, RentRollMetricaRow } from "@/types/metricas";
 
 export const runtime = "nodejs";
 
-type EstadoMetricaFiltro = "VIGENTE" | "GRACIA" | "TODOS";
+type EstadoMetricaFiltro = "OCUPADO" | "GRACIA" | "TODOS";
 
-const allowedEstadoFiltros = new Set<EstadoMetricaFiltro>(["VIGENTE", "GRACIA", "TODOS"]);
+const allowedEstadoFiltros = new Set<EstadoMetricaFiltro>(["OCUPADO", "GRACIA", "TODOS"]);
 
 function toPeriodo(value: Date): string {
   const year = value.getFullYear();
@@ -19,9 +24,22 @@ function toPeriodo(value: Date): string {
   return `${year}-${month}`;
 }
 
+function getPeriodoBounds(periodo: string): { start: Date; nextMonthStart: Date } {
+  const [yearRaw, monthRaw] = periodo.split("-");
+  const year = Number(yearRaw);
+  const monthIndex = Number(monthRaw) - 1;
+
+  return {
+    start: new Date(Date.UTC(year, monthIndex, 1)),
+    nextMonthStart: new Date(Date.UTC(year, monthIndex + 1, 1))
+  };
+}
+
 function parseEstado(raw: string | null): EstadoMetricaFiltro | null {
-  const normalized = (raw ?? "VIGENTE").toUpperCase() as EstadoMetricaFiltro;
-  return allowedEstadoFiltros.has(normalized) ? normalized : null;
+  const normalized = (raw ?? "OCUPADO").toUpperCase();
+  return allowedEstadoFiltros.has(normalized as EstadoMetricaFiltro)
+    ? (normalized as EstadoMetricaFiltro)
+    : null;
 }
 
 export async function GET(request: Request): Promise<NextResponse> {
@@ -38,7 +56,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     }
     if (!estado) {
       return NextResponse.json(
-        { message: "estado debe ser uno de: VIGENTE, GRACIA o TODOS." },
+        { message: "estado debe ser uno de: OCUPADO, GRACIA o TODOS." },
         { status: 400 }
       );
     }
@@ -47,15 +65,32 @@ export async function GET(request: Request): Promise<NextResponse> {
     }
 
     const hoy = new Date();
-    const estadoFiltro: EstadoContrato | undefined = estado === "TODOS" ? undefined : estado;
+    const { start, nextMonthStart } = getPeriodoBounds(periodo);
+    const estadoFiltro: EstadoDiaContrato | undefined = estado === "TODOS" ? undefined : estado;
+    const estadoDiaWhere: EstadoDiaContrato | { in: EstadoDiaContrato[] } = estadoFiltro
+      ? estadoFiltro
+      : { in: ["OCUPADO", "GRACIA"] };
 
     const [contratos, localesActivos, ventasPeriodo] = await Promise.all([
       prisma.contrato.findMany({
         where: {
           proyectoId,
-          ...(estadoFiltro ? { estado: estadoFiltro } : {})
+          contratosDia: {
+            some: {
+              fecha: { gte: start, lt: nextMonthStart },
+              estadoDia: estadoDiaWhere
+            }
+          }
         },
         include: {
+          contratosDia: {
+            where: {
+              fecha: { gte: start, lt: nextMonthStart }
+            },
+            select: {
+              estadoDia: true
+            }
+          },
           local: {
             select: {
               id: true,
@@ -110,9 +145,21 @@ export async function GET(request: Request): Promise<NextResponse> {
     const ventasMap = new Map<string, number>(
       ventasPeriodo.map((venta) => [venta.localId, venta.ventasUf.toNumber()])
     );
-    const filas: RentRollMetricaRow[] = contratos.map((contrato) =>
-      buildMetricaRow(contrato as ContratoConRelaciones, ventasMap, periodo)
-    );
+    const contratosConRelaciones = contratos as unknown as ContratoConRelaciones[];
+    const filas: RentRollMetricaRow[] = contratosConRelaciones
+      .map((contrato) => {
+        const estadoContrato = getEstadoContratoDia(
+          contrato.contratosDia.map((estadoDia) => estadoDia.estadoDia)
+        );
+        if (!estadoContrato || estadoContrato === "VACANTE") {
+          return null;
+        }
+        if (estadoFiltro && estadoContrato !== estadoFiltro) {
+          return null;
+        }
+        return buildMetricaRow(contrato, estadoContrato, ventasMap, periodo);
+      })
+      .filter((fila): fila is RentRollMetricaRow => fila !== null);
     const resumen = buildResumen(filas, localesActivos, hoy);
 
     const payload: RentRollMetricasResponse = {

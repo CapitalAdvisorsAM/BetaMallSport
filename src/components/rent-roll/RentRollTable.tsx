@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { RentRollRow } from "@/types/rent-roll";
 
-type EstadoFiltro = "TODOS" | "VIGENTE" | "GRACIA" | "VACANTE";
+type EstadoFiltro = "TODOS" | "OCUPADO" | "GRACIA" | "VACANTE";
 type AlertaFiltro = "NINGUNA" | "VENCE_30" | "VENCE_31_60" | "GRACIA" | "VACANTE";
 type NumericSortKey =
   | "glam2"
@@ -40,7 +40,7 @@ function formatDate(value: string | null): string {
 }
 
 function getEstadoBadge(estado: RentRollRow["estado"]): string {
-  if (estado === "VIGENTE") {
+  if (estado === "OCUPADO") {
     return "bg-emerald-100 text-emerald-700";
   }
   if (estado === "GRACIA") {
@@ -203,15 +203,15 @@ export function RentRollTable({ rows, proyectoId, periodo }: RentRollTableProps)
   }, [filteredRows, sortKey, sortDir]);
 
   const totals = useMemo(() => {
-    const vigentes = filteredRows.filter((row) => row.estado === "VIGENTE");
+    const ocupados = filteredRows.filter((row) => row.estado === "OCUPADO");
     const glaTotal = filteredRows.reduce((acc, row) => acc + row.glam2, 0);
-    const tarifaNumerador = vigentes.reduce((acc, row) => {
+    const tarifaNumerador = ocupados.reduce((acc, row) => {
       if (row.tarifaUfM2 === null) {
         return acc;
       }
       return acc + row.tarifaUfM2 * row.glam2;
     }, 0);
-    const tarifaDenominador = vigentes.reduce((acc, row) => {
+    const tarifaDenominador = ocupados.reduce((acc, row) => {
       if (row.tarifaUfM2 === null) {
         return acc;
       }
@@ -219,14 +219,14 @@ export function RentRollTable({ rows, proyectoId, periodo }: RentRollTableProps)
     }, 0);
     const tarifaPonderadaUfM2 =
       tarifaDenominador > 0 ? tarifaNumerador / tarifaDenominador : null;
-    const rentaFijaVigentesUf = vigentes.reduce((acc, row) => acc + (row.rentaFijaUf ?? 0), 0);
+    const rentaFijaOcupadosUf = ocupados.reduce((acc, row) => acc + (row.rentaFijaUf ?? 0), 0);
     const ggccUf = filteredRows.reduce((acc, row) => acc + (row.ggccUf ?? 0), 0);
     const ventasUf = filteredRows.reduce((acc, row) => acc + (row.ventasUf ?? 0), 0);
 
     return {
       glaTotal,
       tarifaPonderadaUfM2,
-      rentaFijaVigentesUf,
+      rentaFijaOcupadosUf,
       ggccUf,
       ventasUf
     };
@@ -385,7 +385,7 @@ export function RentRollTable({ rows, proyectoId, periodo }: RentRollTableProps)
             className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none ring-brand-500 focus:ring-2"
           >
             <option value="TODOS">Todos</option>
-            <option value="VIGENTE">Vigente</option>
+            <option value="OCUPADO">Ocupado</option>
             <option value="GRACIA">Gracia</option>
             <option value="VACANTE">Vacante</option>
           </select>
@@ -567,7 +567,7 @@ export function RentRollTable({ rows, proyectoId, periodo }: RentRollTableProps)
                     {totals.tarifaPonderadaUfM2 === null ? "-" : formatNumber(totals.tarifaPonderadaUfM2)}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-right">
-                    {formatNumber(totals.rentaFijaVigentesUf)}
+                    {formatNumber(totals.rentaFijaOcupadosUf)}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-right">
                     {formatNumber(totals.ggccUf)}

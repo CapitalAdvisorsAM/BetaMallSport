@@ -78,7 +78,10 @@ function toFiniteNumber(value: unknown, fallback = 0): number {
 }
 
 function toEstadoLocal(value: string): EstadoLocal | null {
-  if (value === "VIGENTE" || value === "GRACIA" || value === "TERMINADO_ANTICIPADO") {
+  if (value === "OCUPADO" || value === "GRACIA") {
+    return value;
+  }
+  if (value === "VACANTE") {
     return value;
   }
   return null;
@@ -116,14 +119,11 @@ function toIsoDate(value: string | null): string | null {
 }
 
 function getEstadoRank(estado: EstadoLocal): number {
-  if (estado === "VIGENTE") {
+  if (estado === "OCUPADO") {
     return 3;
   }
   if (estado === "GRACIA") {
     return 2;
-  }
-  if (estado === "TERMINADO_ANTICIPADO") {
-    return 1;
   }
   return 0;
 }
@@ -184,11 +184,11 @@ function parseMetricasRows(payload: unknown): MetricaApiRow[] {
 function buildKpis(rows: RentRollRow[]): RentRollKpis {
   const glaTotal = rows.reduce((acc, row) => acc + row.glam2, 0);
   const glaCupado = rows
-    .filter((row) => row.estado === "VIGENTE" || row.estado === "GRACIA")
+    .filter((row) => row.estado === "OCUPADO" || row.estado === "GRACIA")
     .reduce((acc, row) => acc + row.glam2, 0);
   const pctOcupacion = glaTotal > 0 ? (glaCupado / glaTotal) * 100 : 0;
   const rentaFijaTotalUf = rows
-    .filter((row) => row.estado === "VIGENTE")
+    .filter((row) => row.estado === "OCUPADO")
     .reduce((acc, row) => acc + (row.rentaFijaUf ?? 0), 0);
   const ggccTotalUf = rows.reduce((acc, row) => acc + (row.ggccUf ?? 0), 0);
 

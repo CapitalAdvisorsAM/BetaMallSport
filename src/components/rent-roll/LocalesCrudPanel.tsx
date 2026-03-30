@@ -3,7 +3,13 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
-type LocalTipo = "TIENDA" | "MODULO" | "BODEGA" | "OTRO";
+type LocalTipo =
+  | "LOCAL_COMERCIAL"
+  | "SIMULADOR"
+  | "MODULO"
+  | "ESPACIO"
+  | "BODEGA"
+  | "OTRO";
 type EstadoMaestro = "ACTIVO" | "INACTIVO";
 
 type LocalRecord = {
@@ -34,7 +40,7 @@ function createEmptyForm(proyectoId: string): LocalForm {
     nombre: "",
     glam2: "",
     piso: "",
-    tipo: "TIENDA",
+    tipo: "LOCAL_COMERCIAL",
     zona: null,
     esGLA: true,
     estado: "ACTIVO"
@@ -49,7 +55,7 @@ function toLocalRecord(value: Partial<LocalRecord>): LocalRecord {
     nombre: value.nombre ?? "",
     glam2: typeof value.glam2 === "string" ? value.glam2 : String(value.glam2 ?? ""),
     piso: value.piso ?? "",
-    tipo: value.tipo ?? "TIENDA",
+    tipo: value.tipo ?? "LOCAL_COMERCIAL",
     zona: value.zona ?? null,
     esGLA: Boolean(value.esGLA),
     estado: value.estado ?? "ACTIVO"
@@ -239,8 +245,10 @@ export function LocalesCrudPanel({
             onChange={(event) => setForm({ ...form, tipo: event.target.value as LocalTipo })}
             className="w-full rounded-md border border-slate-300 px-3 py-2"
           >
-            <option value="TIENDA">TIENDA</option>
+            <option value="LOCAL_COMERCIAL">LOCAL COMERCIAL</option>
+            <option value="SIMULADOR">SIMULADOR</option>
             <option value="MODULO">MODULO</option>
+            <option value="ESPACIO">ESPACIO</option>
             <option value="BODEGA">BODEGA</option>
             <option value="OTRO">OTRO</option>
           </select>

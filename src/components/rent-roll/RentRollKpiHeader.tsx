@@ -40,8 +40,8 @@ function getOcupacionAccent(pctOcupacion: number): "green" | "yellow" | "red" {
 }
 
 export function RentRollKpiHeader({ kpis, rows }: RentRollKpiHeaderProps): JSX.Element {
-  const glaVigente = rows
-    .filter((row) => row.estado === "VIGENTE")
+  const glaOcupado = rows
+    .filter((row) => row.estado === "OCUPADO")
     .reduce((acc, row) => acc + row.glam2, 0);
   const glaGracia = rows
     .filter((row) => row.estado === "GRACIA")
@@ -51,7 +51,7 @@ export function RentRollKpiHeader({ kpis, rows }: RentRollKpiHeaderProps): JSX.E
     .reduce((acc, row) => acc + row.glam2, 0);
 
   const denominator = Math.max(kpis.glaTotal, 1);
-  const pctVigente = (glaVigente / denominator) * 100;
+  const pctOcupado = (glaOcupado / denominator) * 100;
   const pctGracia = (glaGracia / denominator) * 100;
   const pctVacante = (glaVacante / denominator) * 100;
 
@@ -68,7 +68,7 @@ export function RentRollKpiHeader({ kpis, rows }: RentRollKpiHeaderProps): JSX.E
         <KpiCard
           title="Renta fija mes (UF)"
           value={formatUf(kpis.rentaFijaTotalUf)}
-          subtitle="Solo contratos vigentes"
+          subtitle="Solo locales ocupados"
           accent="slate"
         />
         <KpiCard title="GGCC mes (UF)" value={formatUf(kpis.ggccTotalUf)} accent="slate" />
@@ -78,13 +78,13 @@ export function RentRollKpiHeader({ kpis, rows }: RentRollKpiHeaderProps): JSX.E
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-slate-600">
           <span>Distribucion operacional por GLA</span>
           <span>
-            Vigente {formatPct(pctVigente)} | Gracia {formatPct(pctGracia)} | Vacante{" "}
+            Ocupado {formatPct(pctOcupado)} | Gracia {formatPct(pctGracia)} | Vacante{" "}
             {formatPct(pctVacante)}
           </span>
         </div>
         <div className="h-3 overflow-hidden rounded-full bg-slate-100">
           <div className="flex h-full w-full">
-            <div className="h-full bg-emerald-500" style={{ width: `${pctVigente}%` }} />
+            <div className="h-full bg-emerald-500" style={{ width: `${pctOcupado}%` }} />
             <div className="h-full bg-amber-400" style={{ width: `${pctGracia}%` }} />
             <div className="h-full bg-slate-300" style={{ width: `${pctVacante}%` }} />
           </div>

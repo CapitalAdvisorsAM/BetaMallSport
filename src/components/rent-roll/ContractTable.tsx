@@ -1,4 +1,3 @@
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { cn, formatDate } from "@/lib/utils";
 import type { RentRollRow } from "@/types";
 
@@ -28,13 +27,7 @@ export function ContractTable({ rows }: ContractTableProps): JSX.Element {
                 Arrendatario
               </th>
               <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Estado
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Fecha inicio
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Fecha termino
+                Condiciones contractuales
               </th>
               <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
                 Tarifa vigente (UF/m2)
@@ -55,14 +48,8 @@ export function ContractTable({ rows }: ContractTableProps): JSX.Element {
               >
                 <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">{row.local}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-slate-700">{row.arrendatario}</td>
-                <td className="whitespace-nowrap px-4 py-3">
-                  <StatusBadge status={row.estado} />
-                </td>
                 <td className="whitespace-nowrap px-4 py-3 text-slate-700">
-                  {formatDate(row.fechaInicio)}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-slate-700">
-                  {formatDate(row.fechaTermino)}
+                  {formatDate(row.fechaInicio)} - {formatDate(row.fechaTermino)}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-slate-700">
                   {row.tarifaVigenteUfM2}

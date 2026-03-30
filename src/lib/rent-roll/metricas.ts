@@ -1,4 +1,4 @@
-import type { EstadoContrato, EstadoMaestro, Prisma } from "@prisma/client";
+import type { EstadoDiaContrato, EstadoMaestro, Prisma } from "@prisma/client";
 import type { RentRollMetricaRow, RentRollResumen } from "@/types/metricas";
 
 type Decimal = Prisma.Decimal;
@@ -7,10 +7,12 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export type ContratoConRelaciones = {
   id: string;
-  estado: EstadoContrato;
   fechaInicio: Date;
   fechaTermino: Date;
   pctRentaVariable: Decimal | null;
+  contratosDia: Array<{
+    estadoDia: EstadoDiaContrato;
+  }>;
   local: {
     id: string;
     codigo: string;
@@ -116,6 +118,7 @@ export function calcularDiasVigentes(
 
 export function buildMetricaRow(
   contrato: ContratoConRelaciones,
+  estado: EstadoDiaContrato,
   ventasMap: Map<string, number>,
   periodo: string
 ): RentRollMetricaRow {
@@ -138,7 +141,7 @@ export function buildMetricaRow(
     localCodigo: contrato.local.codigo,
     localNombre: contrato.local.nombre,
     arrendatario: contrato.arrendatario.nombreComercial,
-    estado: contrato.estado,
+    estado,
     glam2: round4(contrato.local.glam2.toNumber()),
     tarifaUfM2,
     rentaFijaUf,
@@ -151,15 +154,30 @@ export function buildMetricaRow(
   };
 }
 
+export function getEstadoContratoDia(estadosDia: EstadoDiaContrato[]): EstadoDiaContrato | null {
+  if (estadosDia.includes("OCUPADO")) {
+    return "OCUPADO";
+  }
+  if (estadosDia.includes("GRACIA")) {
+    return "GRACIA";
+  }
+  if (estadosDia.includes("VACANTE")) {
+    return "VACANTE";
+  }
+  return null;
+}
+
 export function buildResumen(
   filas: RentRollMetricaRow[],
   todosLocales: LocalActivo[],
   hoy: Date
 ): RentRollResumen {
-  const filasVigentes = filas.filter((fila) => fila.estado === "VIGENTE");
+  const filasOcupadas = filas.filter(
+    (fila) => fila.estado === "OCUPADO" || fila.estado === "GRACIA"
+  );
 
   const glaTotal = sum(todosLocales.map((local) => local.glam2.toNumber()));
-  const glaArrendada = sum(filasVigentes.map((fila) => fila.glam2));
+  const glaArrendada = sum(filasOcupadas.map((fila) => fila.glam2));
   const glaVacante = round4(glaTotal - glaArrendada);
   const tasaOcupacion = glaTotal > 0 ? round4((glaArrendada / glaTotal) * 100) : 0;
 
@@ -170,15 +188,15 @@ export function buildResumen(
     .map((fila) => fila.rentaVariableUf)
     .filter((value): value is number => value !== null);
 
-  const contratosPorVencer30 = filasVigentes.filter((fila) => {
+  const contratosPorVencer30 = filasOcupadas.filter((fila) => {
     const days = daysUntilDate(hoy, fila.fechaTermino);
     return days >= 0 && days <= 30;
   }).length;
-  const contratosPorVencer60 = filasVigentes.filter((fila) => {
+  const contratosPorVencer60 = filasOcupadas.filter((fila) => {
     const days = daysUntilDate(hoy, fila.fechaTermino);
     return days >= 0 && days <= 60;
   }).length;
-  const contratosPorVencer90 = filasVigentes.filter((fila) => {
+  const contratosPorVencer90 = filasOcupadas.filter((fila) => {
     const days = daysUntilDate(hoy, fila.fechaTermino);
     return days >= 0 && days <= 90;
   }).length;
@@ -194,7 +212,7 @@ export function buildResumen(
     rentaVariableTotalUf:
       rentaVariableDisponibles.length > 0 ? sum(rentaVariableDisponibles) : null,
     ingresoBrutoTotalUf: sum(filas.map((fila) => fila.ingresoBrutoUf)),
-    contratosVigentes: filasVigentes.length,
+    contratosVigentes: filasOcupadas.length,
     contratosPorVencer30,
     contratosPorVencer60,
     contratosPorVencer90

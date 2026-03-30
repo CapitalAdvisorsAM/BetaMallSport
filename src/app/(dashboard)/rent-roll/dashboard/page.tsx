@@ -1,4 +1,4 @@
-﻿import { EstadoContrato, TipoTarifaContrato } from "@prisma/client";
+import { TipoTarifaContrato } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import {
@@ -8,6 +8,7 @@ import {
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
 import { auth } from "@/lib/auth";
+import { buildOcupacionDetalle } from "@/lib/kpi";
 import { canWrite } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
@@ -38,6 +39,17 @@ function buildLastPeriods(totalMonths: number): string[] {
     const value = new Date(now.getFullYear(), now.getMonth() - index, 1);
     return formatPeriod(value);
   });
+}
+
+function getPeriodoBounds(periodo: string): { start: Date; nextMonthStart: Date } {
+  const [yearRaw, monthRaw] = periodo.split("-");
+  const year = Number(yearRaw);
+  const monthIndex = Number(monthRaw) - 1;
+
+  return {
+    start: new Date(Date.UTC(year, monthIndex, 1)),
+    nextMonthStart: new Date(Date.UTC(year, monthIndex + 1, 1))
+  };
 }
 
 function isValidPeriod(value?: string): value is string {
@@ -78,12 +90,18 @@ export default async function RentRollDashboardPage({
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const { start, nextMonthStart } = getPeriodoBounds(periodo);
 
-  const [contracts, ventaLocales] = await Promise.all([
+  const [contracts, ventaLocales, localesActivos] = await Promise.all([
     prisma.contrato.findMany({
       where: {
         proyectoId: selectedProjectId,
-        estado: EstadoContrato.VIGENTE
+        contratosDia: {
+          some: {
+            fecha: { gte: start, lt: nextMonthStart },
+            estadoDia: { in: ["OCUPADO", "GRACIA"] }
+          }
+        }
       },
       include: {
         local: {
@@ -92,7 +110,9 @@ export default async function RentRollDashboardPage({
             codigo: true,
             nombre: true,
             glam2: true,
-            esGLA: true
+            esGLA: true,
+            tipo: true,
+            zona: true
           }
         },
         arrendatario: {
@@ -138,6 +158,19 @@ export default async function RentRollDashboardPage({
         createdAt: true
       },
       orderBy: [{ createdAt: "desc" }]
+    }),
+    prisma.local.findMany({
+      where: {
+        proyectoId: selectedProjectId,
+        estado: "ACTIVO"
+      },
+      select: {
+        id: true,
+        tipo: true,
+        esGLA: true,
+        glam2: true,
+        zona: true
+      }
     })
   ]);
 
@@ -188,6 +221,34 @@ export default async function RentRollDashboardPage({
   );
 
   const periodOptions = buildLastPeriods(12);
+  const ocupacionDetalle = buildOcupacionDetalle(
+    localesActivos,
+    contracts.map((contract) => ({
+      localId: contract.localId,
+      localGlam2: contract.local.glam2,
+      fechaTermino: contract.fechaTermino,
+      tarifa: null
+    }))
+  );
+  const categoriaRows = [
+    { key: "Outdoor", label: "Outdoor" },
+    { key: "Multideporte", label: "Multideporte" },
+    { key: "Bicicletas", label: "Bicicletas" },
+    { key: "Entretencion", label: "Entretenci\u00f3n" },
+    { key: "Accesorios", label: "Accesorios" },
+    { key: "Gastronomia", label: "Gastronom\u00eda" },
+    { key: "Gimnasio", label: "Gimnasio" },
+    { key: "Servicios", label: "Servicios" },
+    { key: "Lifestyle", label: "Lifestyle" },
+    { key: "Powersports", label: "Powersports" }
+  ] as const;
+  const tamanoRows = [
+    { key: "Tienda Mayor", label: "Tienda Mayor" },
+    { key: "Tienda Mediana", label: "Tienda Mediana" },
+    { key: "Tienda Menor", label: "Tienda Menor" },
+    { key: "Modulo", label: "M\u00f3dulo" },
+    { key: "Bodega", label: "Bodega" }
+  ] as const;
 
   return (
     <main className="space-y-4">
@@ -201,7 +262,7 @@ export default async function RentRollDashboardPage({
               </h2>
             </div>
             <p className="mt-1 text-sm text-slate-600">
-              Metricas clave por local para contratos vigentes del proyecto seleccionado.
+              Metricas clave por local para contratos con ocupacion derivada por periodo.
             </p>
           </div>
           <ProjectSelector
@@ -236,21 +297,109 @@ export default async function RentRollDashboardPage({
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
-        <KpiCard
-          title="Renta fija total (UF)"
-          value={formatDecimal(totals.rentaFijaUf)}
-          accent="slate"
-        />
+        <KpiCard title="Renta fija total (UF)" value={formatDecimal(totals.rentaFijaUf)} accent="slate" />
         <KpiCard title="GGCC total (UF)" value={formatDecimal(totals.ggccUf)} accent="slate" />
-        <KpiCard
-          title="Ventas periodo (UF)"
-          value={formatDecimal(totals.ventasUf)}
-          accent="slate"
-        />
+        <KpiCard title="Ventas periodo (UF)" value={formatDecimal(totals.ventasUf)} accent="slate" />
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-2">
+        <article className="overflow-hidden rounded-md bg-white shadow-sm">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <h3 className="text-sm font-semibold text-brand-700">Ocupacion por categoria</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <thead className="bg-brand-700">
+                <tr>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                    Categoria
+                  </th>
+                  <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                    GLA (m2)
+                  </th>
+                  <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                    % del total
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="text-slate-800">
+                {categoriaRows.map((row, index) => {
+                  const data = ocupacionDetalle.porCategoria[row.key] ?? { gla: 0, pct: 0 };
+                  return (
+                    <tr key={row.key} className={index % 2 === 0 ? "bg-white" : "bg-slate-50/60"}>
+                      <td className="px-4 py-3">
+                        <div className="text-sm font-medium">{row.label}</div>
+                        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                          <div
+                            className="h-full rounded-full bg-brand-500"
+                            style={{ width: `${Math.min(100, Math.max(0, data.pct))}%` }}
+                          />
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right">{formatDecimal(data.gla)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right">{formatDecimal(data.pct)}%</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article className="overflow-hidden rounded-md bg-white shadow-sm">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <h3 className="text-sm font-semibold text-brand-700">Ocupacion por tamano</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <thead className="bg-brand-700">
+                <tr>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                    Tipo
+                  </th>
+                  <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                    GLA Total
+                  </th>
+                  <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                    GLA Arrendada
+                  </th>
+                  <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                    Vacante
+                  </th>
+                  <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                    % Vacancia
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="text-slate-800">
+                {tamanoRows.map((row, index) => {
+                  const data = ocupacionDetalle.porTamano[row.key] ?? {
+                    gla: 0,
+                    glaArrendada: 0,
+                    pctVacancia: 0
+                  };
+                  const vacante = Math.max(data.gla - data.glaArrendada, 0);
+                  return (
+                    <tr key={row.key} className={index % 2 === 0 ? "bg-white" : "bg-slate-50/60"}>
+                      <td className="whitespace-nowrap px-4 py-3 font-medium">{row.label}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right">{formatDecimal(data.gla)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right">
+                        {formatDecimal(data.glaArrendada)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right">{formatDecimal(vacante)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right">
+                        {formatDecimal(data.pctVacancia)}%
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </article>
       </section>
 
       <RentRollDashboardTable rows={rows} totals={totals} />
     </main>
   );
 }
-

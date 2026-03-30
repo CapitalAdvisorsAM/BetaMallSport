@@ -1,4 +1,4 @@
-import type { EstadoContrato, UserRole } from "@prisma/client";
+import type { EstadoContrato, EstadoDiaContrato, UserRole } from "@prisma/client";
 export type { ApplyReport, PreviewRow, RowStatus, UploadPreview } from "./upload";
 export type {
   RentRollMetricaRow,
@@ -10,7 +10,7 @@ export type RentRollRow = {
   id: string;
   local: string;
   arrendatario: string;
-  estado: EstadoContrato;
+  estado: EstadoDiaContrato;
   fechaInicio: Date;
   fechaTermino: Date;
   tarifaVigenteUfM2: string;

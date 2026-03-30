@@ -1,4 +1,6 @@
-export type EstadoLocal = "VIGENTE" | "GRACIA" | "VACANTE" | "TERMINADO_ANTICIPADO";
+import type { EstadoDiaContrato } from "@prisma/client";
+
+export type EstadoLocal = EstadoDiaContrato;
 
 export type RentRollRow = {
   localId: string;

@@ -1,4 +1,4 @@
-import { EstadoMaestro, LocalTipo, Prisma } from "@prisma/client";
+import { EstadoMaestro, Prisma, TipoLocal } from "@prisma/client";
 import { z } from "zod";
 
 export const localeSchema = z.object({
@@ -19,7 +19,7 @@ export const localeSchema = z.object({
       }
     }, "GLA m2 debe ser numerico."),
   piso: z.string().trim().min(1, "Piso es obligatorio."),
-  tipo: z.nativeEnum(LocalTipo),
+  tipo: z.nativeEnum(TipoLocal),
   zona: z.string().trim().nullable(),
   esGLA: z.boolean(),
   estado: z.nativeEnum(EstadoMaestro)

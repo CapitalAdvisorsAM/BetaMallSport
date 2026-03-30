@@ -1,4 +1,4 @@
-import { EstadoMaestro, LocalTipo, Prisma, TipoCargaDatos } from "@prisma/client";
+import { EstadoMaestro, Prisma, TipoCargaDatos, TipoLocal } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { requireWriteAccess } from "@/lib/permissions";
@@ -13,14 +13,23 @@ type NormalizedLocalRow = {
   nombre: string;
   glam2: string;
   piso: string;
-  tipo: LocalTipo;
+  tipo: TipoLocal;
   zona: string | null;
   esGLA: boolean;
   estado: EstadoMaestro;
 };
 
-const allowedTipo = new Set(Object.values(LocalTipo));
+const allowedTipo = new Set(Object.values(TipoLocal));
 const allowedEstado = new Set(Object.values(EstadoMaestro));
+const tipoAliases: Record<string, TipoLocal> = {
+  LOCAL_COMERCIAL: TipoLocal.LOCAL_COMERCIAL,
+  TIENDA: TipoLocal.LOCAL_COMERCIAL,
+  SIMULADOR: TipoLocal.SIMULADOR,
+  MODULO: TipoLocal.MODULO,
+  ESPACIO: TipoLocal.ESPACIO,
+  BODEGA: TipoLocal.BODEGA,
+  OTRO: TipoLocal.OTRO
+};
 
 function asString(value: unknown): string {
   if (typeof value === "string") {
@@ -37,7 +46,7 @@ function normalizeLocalData(data: Record<string, unknown>): NormalizedLocalRow |
   const nombre = asString(data.nombre);
   const glam2 = asString(data.glam2).replace(",", ".");
   const piso = asString(data.piso);
-  const tipo = asString(data.tipo).toUpperCase();
+  const tipoRaw = asString(data.tipo).toUpperCase();
   const estado = asString(data.estado).toUpperCase() || EstadoMaestro.ACTIVO;
   const zona = asString(data.zona);
   const esGLA = Boolean(data.esGLA);
@@ -45,7 +54,8 @@ function normalizeLocalData(data: Record<string, unknown>): NormalizedLocalRow |
   if (!codigo || !nombre || !glam2 || !piso) {
     return null;
   }
-  if (!allowedTipo.has(tipo as LocalTipo) || !allowedEstado.has(estado as EstadoMaestro)) {
+  const tipo = tipoAliases[tipoRaw];
+  if (!tipo || !allowedTipo.has(tipo) || !allowedEstado.has(estado as EstadoMaestro)) {
     return null;
   }
   if (!Number.isFinite(Number(glam2)) || Number(glam2) <= 0) {
@@ -57,7 +67,7 @@ function normalizeLocalData(data: Record<string, unknown>): NormalizedLocalRow |
     nombre,
     glam2,
     piso,
-    tipo: tipo as LocalTipo,
+    tipo,
     zona: zona || null,
     esGLA,
     estado: estado as EstadoMaestro

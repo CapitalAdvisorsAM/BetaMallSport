@@ -8,9 +8,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum LocalTipo {
-  TIENDA
+enum TipoLocal {
+  LOCAL_COMERCIAL
+  SIMULADOR
   MODULO
+  ESPACIO
   BODEGA
   OTRO
 }
@@ -71,6 +73,7 @@ model Proyecto {
   createdAt   DateTime       @default(now()) @db.Timestamptz(3)
   locales     Local[]
   ventaLocales VentaLocal[]
+  ingresoEnergia IngresoEnergia[]
   arrendatarios Arrendatario[]
   contratos   Contrato[]
   contratosDia ContratoDia[]
@@ -93,7 +96,7 @@ model Local {
   nombre     String
   glam2      Decimal       @db.Decimal(10, 2)
   piso       String
-  tipo       LocalTipo
+  tipo       TipoLocal
   zona       String?
   esGLA      Boolean       @default(true)
   estado     EstadoMaestro @default(ACTIVO)
@@ -103,11 +106,27 @@ model Local {
   contratos  Contrato[]
   contratosDia ContratoDia[]
   ventaLocales VentaLocal[]
+  ingresoEnergia IngresoEnergia[]
 
   @@index([proyectoId])
   @@index([estado])
   @@index([proyectoId, estado])
   @@unique([proyectoId, codigo])
+}
+
+model IngresoEnergia {
+  id         String   @id @default(cuid())
+  proyectoId String
+  localId    String
+  periodo    String
+  valorUf    Decimal  @db.Decimal(14, 4)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  local      Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
+
+  @@unique([localId, periodo])
+  @@index([proyectoId, periodo])
 }
 
 model VentaLocal {

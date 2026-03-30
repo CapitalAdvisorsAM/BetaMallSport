@@ -1,18 +1,41 @@
-import { EstadoContrato, Prisma, TipoTarifaContrato } from "@prisma/client";
+import { EstadoDiaContrato, Prisma, TipoTarifaContrato } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { parsePaginationParams } from "@/lib/pagination";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { isPeriodoValido } from "@/lib/validators";
 
 export const runtime = "nodejs";
 
-const allowedStates = new Set<EstadoContrato>([
-  "VIGENTE",
-  "TERMINADO",
-  "TERMINADO_ANTICIPADO",
-  "GRACIA"
-]);
+const allowedStates = new Set<EstadoDiaContrato>(["OCUPADO", "GRACIA", "VACANTE"]);
+
+function toPeriodo(value: Date): string {
+  const year = value.getUTCFullYear();
+  const month = String(value.getUTCMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+function getPeriodoBounds(periodo: string): { start: Date; nextMonthStart: Date } {
+  const [yearRaw, monthRaw] = periodo.split("-");
+  const year = Number(yearRaw);
+  const monthIndex = Number(monthRaw) - 1;
+
+  return {
+    start: new Date(Date.UTC(year, monthIndex, 1)),
+    nextMonthStart: new Date(Date.UTC(year, monthIndex + 1, 1))
+  };
+}
+
+function getEstadoPeriodo(estadosDia: EstadoDiaContrato[]): EstadoDiaContrato {
+  if (estadosDia.includes("OCUPADO")) {
+    return "OCUPADO";
+  }
+  if (estadosDia.includes("GRACIA")) {
+    return "GRACIA";
+  }
+  return "VACANTE";
+}
 
 export async function GET(request: Request): Promise<NextResponse> {
   try {
@@ -21,19 +44,29 @@ export async function GET(request: Request): Promise<NextResponse> {
     const q = searchParams.get("q")?.trim() ?? "";
     const rawState = searchParams.get("estado");
     const proyectoId = searchParams.get("proyecto");
+    const periodo = searchParams.get("periodo") ?? toPeriodo(new Date());
 
     if (!proyectoId) {
       return NextResponse.json({ message: "proyecto es obligatorio." }, { status: 400 });
     }
+    if (!isPeriodoValido(periodo)) {
+      return NextResponse.json({ message: "periodo debe tener formato YYYY-MM." }, { status: 400 });
+    }
 
     const estado =
-      rawState && allowedStates.has(rawState as EstadoContrato)
-        ? (rawState as EstadoContrato)
+      rawState && allowedStates.has(rawState as EstadoDiaContrato)
+        ? (rawState as EstadoDiaContrato)
         : undefined;
+    const { start, nextMonthStart } = getPeriodoBounds(periodo);
     const today = new Date();
     const where: Prisma.ContratoWhereInput = {
       proyectoId,
-      ...(estado ? { estado } : {}),
+      contratosDia: {
+        some: {
+          fecha: { gte: start, lt: nextMonthStart },
+          ...(estado ? { estadoDia: estado } : {})
+        }
+      },
       ...(q
         ? {
             OR: [
@@ -56,7 +89,27 @@ export async function GET(request: Request): Promise<NextResponse> {
         },
         orderBy: [{ vigenciaDesde: "desc" }],
         take: 1
+      },
+      contratosDia: {
+        where: {
+          fecha: { gte: start, lt: nextMonthStart }
+        },
+        select: {
+          estadoDia: true
+        }
       }
+    };
+
+    const toResponseItem = (contract: {
+      estado: string;
+      contratosDia: Array<{ estadoDia: EstadoDiaContrato }>;
+    }): Record<string, unknown> => {
+      const estadoPeriodo = getEstadoPeriodo(contract.contratosDia.map((item) => item.estadoDia));
+      return {
+        ...contract,
+        estado: estadoPeriodo,
+        estadoDocumento: contract.estado
+      };
     };
 
     const paginationRequested = searchParams.has("limit") || searchParams.has("cursor");
@@ -64,9 +117,9 @@ export async function GET(request: Request): Promise<NextResponse> {
       const contracts = await prisma.contrato.findMany({
         where,
         include,
-        orderBy: [{ estado: "asc" }, { fechaInicio: "desc" }]
+        orderBy: [{ local: { codigo: "asc" } }, { fechaInicio: "desc" }]
       });
-      return NextResponse.json(contracts);
+      return NextResponse.json(contracts.map(toResponseItem));
     }
 
     const { limit, cursor } = parsePaginationParams(searchParams);
@@ -80,8 +133,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     });
 
     const hasMore = items.length > limit;
-    const data = hasMore ? items.slice(0, limit) : items;
-    const nextCursor = hasMore ? data[data.length - 1]?.id ?? null : null;
+    const data = (hasMore ? items.slice(0, limit) : items).map(toResponseItem);
+    const nextCursor = hasMore ? ((data[data.length - 1]?.id as string | undefined) ?? null) : null;
 
     return NextResponse.json({ data, nextCursor, hasMore });
   } catch (error) {

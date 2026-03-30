@@ -37,7 +37,7 @@ export function RentRollDashboardTable({
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-        No hay contratos vigentes para el proyecto seleccionado.
+        No hay contratos ocupados o en gracia para el periodo seleccionado.
       </div>
     );
   }

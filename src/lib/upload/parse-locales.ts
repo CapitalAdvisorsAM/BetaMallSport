@@ -1,4 +1,4 @@
-import { EstadoMaestro, LocalTipo } from "@prisma/client";
+import { EstadoMaestro, TipoLocal } from "@prisma/client";
 import { read, utils } from "xlsx";
 import { MAX_ROWS, normalizeHeaders } from "@/lib/upload/parse-utils";
 import type { PreviewRow, UploadPreview } from "@/types/upload";
@@ -10,7 +10,7 @@ export type LocalUploadRow = {
   nombre: string;
   glam2: string;
   piso: string;
-  tipo: LocalTipo;
+  tipo: TipoLocal;
   zona: string | null;
   esGLA: boolean;
   estado: EstadoMaestro;
@@ -21,16 +21,25 @@ export type ExistingLocalForDiff = {
   nombre: string;
   glam2: string | number;
   piso: string;
-  tipo: LocalTipo;
+  tipo: TipoLocal;
   zona: string | null;
   esGLA: boolean;
   estado: EstadoMaestro;
 };
 
 const requiredColumns = ["codigo", "nombre", "glam2", "piso", "tipo"];
-const trueLiterals = new Set(["true", "1", "si", "sí", "yes", "y"]);
-const allowedTipo = new Set(Object.values(LocalTipo));
+const trueLiterals = new Set(["true", "1", "si", "s\u00ed", "yes", "y"]);
+const allowedTipo = new Set(Object.values(TipoLocal));
 const allowedEstado = new Set(Object.values(EstadoMaestro));
+const tipoAliases: Record<string, TipoLocal> = {
+  LOCAL_COMERCIAL: TipoLocal.LOCAL_COMERCIAL,
+  TIENDA: TipoLocal.LOCAL_COMERCIAL,
+  SIMULADOR: TipoLocal.SIMULADOR,
+  MODULO: TipoLocal.MODULO,
+  ESPACIO: TipoLocal.ESPACIO,
+  BODEGA: TipoLocal.BODEGA,
+  OTRO: TipoLocal.OTRO
+};
 
 function asString(value: unknown): string {
   if (typeof value === "string") {
@@ -68,13 +77,17 @@ function parseBoolean(value: unknown): boolean {
   return trueLiterals.has(normalized);
 }
 
+function parseTipo(rawTipo: string): TipoLocal | null {
+  return tipoAliases[rawTipo] ?? null;
+}
+
 function emptyRow(): LocalUploadRow {
   return {
     codigo: "",
     nombre: "",
     glam2: "",
     piso: "",
-    tipo: LocalTipo.TIENDA,
+    tipo: TipoLocal.LOCAL_COMERCIAL,
     zona: null,
     esGLA: false,
     estado: EstadoMaestro.ACTIVO
@@ -196,13 +209,14 @@ export function parseLocalesFile(
     const esGLA = parseBoolean(rawRow.esgla);
     const estadoRaw = asString(rawRow.estado).toUpperCase();
     const estado = (estadoRaw || EstadoMaestro.ACTIVO) as EstadoMaestro;
+    const tipo = parseTipo(tipoRaw || "LOCAL_COMERCIAL");
 
     const data: LocalUploadRow = {
       codigo,
       nombre,
       glam2: glam2Number ? toDecimalText(glam2Number) : "",
       piso,
-      tipo: (tipoRaw || LocalTipo.TIENDA) as LocalTipo,
+      tipo: tipo ?? TipoLocal.LOCAL_COMERCIAL,
       zona,
       esGLA,
       estado
@@ -216,12 +230,12 @@ export function parseLocalesFile(
         errorMessage: "codigo, nombre, glam2, piso y tipo son obligatorios. glam2 debe ser > 0."
       };
     }
-    if (!allowedTipo.has(data.tipo)) {
+    if (!tipo || !allowedTipo.has(data.tipo)) {
       return {
         rowNumber,
         status: "ERROR",
         data,
-        errorMessage: `tipo invalido: ${tipoRaw}. Valores permitidos: ${Object.values(LocalTipo).join(", ")}.`
+        errorMessage: `tipo invalido: ${tipoRaw}. Valores permitidos: ${Object.values(TipoLocal).join(", ")}.`
       };
     }
     if (!allowedEstado.has(data.estado)) {
