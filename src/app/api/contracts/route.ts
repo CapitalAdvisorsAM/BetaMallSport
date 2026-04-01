@@ -190,7 +190,8 @@ export async function POST(request: Request): Promise<NextResponse> {
             pctAdministracion: new Prisma.Decimal(g.pctAdministracion),
             vigenciaDesde: new Date(g.vigenciaDesde),
             vigenciaHasta: toDate(g.vigenciaHasta),
-            proximoReajuste: toDate(g.proximoReajuste)
+            proximoReajuste: toDate(g.proximoReajuste),
+            mesesReajuste: g.mesesReajuste ?? null
           }))
         });
       }

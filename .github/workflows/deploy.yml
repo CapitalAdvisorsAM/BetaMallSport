@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -29,6 +32,19 @@ jobs:
 
       - name: Configure Docker auth
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Setup Node.js for Prisma
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Prisma
+        run: npm install prisma
+
+      - name: Run Prisma Migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx prisma migrate deploy
 
       - name: Build and push image
         run: |

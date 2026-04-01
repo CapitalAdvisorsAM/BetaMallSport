@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  typecheck:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      NEXTAUTH_URL: "http://localhost:3000"
+      NEXTAUTH_SECRET: "ci-secret-placeholder"
+      GOOGLE_CLIENT_ID: "ci-placeholder"
+      GOOGLE_CLIENT_SECRET: "ci-placeholder"
+      ALLOWED_EMAIL_DOMAIN: "capitaladvisors.cl"
+      GCS_BUCKET_NAME: "ci-placeholder"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Build
+        run: npm run build

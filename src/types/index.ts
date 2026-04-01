@@ -109,6 +109,7 @@ export type ContractFormPayload = {
     vigenciaDesde: string;
     vigenciaHasta: string | null;
     proximoReajuste: string | null;
+    mesesReajuste: number | null;
   }>;
   anexo: {
     fecha: string;

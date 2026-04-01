@@ -81,7 +81,8 @@ export const contractPayloadSchema = z
         pctAdministracion: decimalStringSchema,
         vigenciaDesde: dateStringSchema,
         vigenciaHasta: nullableDateStringSchema,
-        proximoReajuste: nullableDateStringSchema
+        proximoReajuste: nullableDateStringSchema,
+        mesesReajuste: z.number().int().min(1).nullable()
       })
     ),
     anexo: z

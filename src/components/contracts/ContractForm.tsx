@@ -88,7 +88,8 @@ function toApiPayload(payload: ContractDraftPayload): ContractFormPayload {
       pctAdministracion: item.pctAdministracion,
       vigenciaDesde: item.vigenciaDesde,
       vigenciaHasta: item.vigenciaHasta,
-      proximoReajuste: item.proximoReajuste
+      proximoReajuste: item.proximoReajuste,
+      mesesReajuste: item.mesesReajuste
     }))
   };
 }
@@ -215,7 +216,8 @@ function toDraftGgccFromExtraction(item: ContractExtractionResponse["ggcc"][numb
     pctAdministracion: item.pctAdministracion,
     vigenciaDesde: item.vigenciaDesde,
     vigenciaHasta: item.vigenciaHasta,
-    proximoReajuste: item.proximoReajuste
+    proximoReajuste: item.proximoReajuste,
+    mesesReajuste: null
   };
 }
 
