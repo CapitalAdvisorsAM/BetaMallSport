@@ -1,439 +1,363 @@
-import Link from "next/link";
+import { TipoTarifaContrato } from "@prisma/client";
 import { redirect } from "next/navigation";
-import { RentRollKpiHeader } from "@/components/rent-roll/RentRollKpiHeader";
-import { RentRollAnalyticsDashboard } from "@/components/rent-roll/RentRollAnalyticsDashboard";
-import { RentRollTable } from "@/components/rent-roll/RentRollTable";
+import { KpiCard } from "@/components/dashboard/KpiCard";
+import {
+  RentRollDashboardTable,
+  type RentRollDashboardTableRow
+} from "@/components/rent-roll/RentRollDashboardTable";
+import { RentRollSnapshotDatePicker } from "@/components/rent-roll/RentRollSnapshotDatePicker";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
-import { MS_PER_DAY } from "@/lib/constants";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
+import { buildOcupacionDetalle, calculateWalt } from "@/lib/kpi";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
-import { getMetricasRentRoll, type MetricaRow } from "@/lib/rent-roll/metricas";
-import { startOfUtcDay } from "@/lib/utils";
-import type { EstadoLocal, RentRollKpis, RentRollRow } from "@/types/rent-roll";
+import {
+  formatWaltValue,
+  getPeriodoFromFecha,
+  parseDateParam,
+  resolveSnapshotDate
+} from "@/lib/rent-roll/snapshot-date";
+import { formatDecimal } from "@/lib/utils";
 
 type RentRollPageProps = {
   searchParams: {
-    proyecto?: string | string[];
-    periodo?: string | string[];
+    proyecto?: string;
+    periodo?: string;
+    fecha?: string;
   };
 };
-
-type MetricaApiRow = {
-  contratoId: string;
-  localId?: string;
-  localCodigo: string;
-  localNombre: string;
-  glam2: number;
-  arrendatario: string | null;
-  estado: string;
-  tarifaUfM2: number | null;
-  rentaFijaUf: number | null;
-  ggccUf: number | null;
-  ventasUf: number | null;
-  fechaTermino: string | null;
-};
-
-function getSingleValue(value: string | string[] | undefined): string | undefined {
-  if (typeof value === "string") {
-    return value;
-  }
-  if (Array.isArray(value)) {
-    return value[0];
-  }
-  return undefined;
-}
-
-function toPeriodo(value: Date): string {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
-}
-
-function isPeriodoValido(value?: string): value is string {
-  if (!value) {
-    return false;
-  }
-  return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
-}
-
-function getPeriodoBounds(periodo: string): { start: Date; nextMonthStart: Date } {
-  const [yearRaw, monthRaw] = periodo.split("-");
-  const year = Number(yearRaw);
-  const monthIndex = Number(monthRaw) - 1;
-
-  return {
-    start: new Date(Date.UTC(year, monthIndex, 1)),
-    nextMonthStart: new Date(Date.UTC(year, monthIndex + 1, 1))
-  };
-}
-
-function toNullableNumber(value: unknown): number | null {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function toFiniteNumber(value: unknown, fallback = 0): number {
-  return toNullableNumber(value) ?? fallback;
-}
-
-function toEstadoLocal(value: string): EstadoLocal | null {
-  if (value === "OCUPADO" || value === "GRACIA") {
-    return value;
-  }
-  if (value === "VACANTE") {
-    return value;
-  }
-  return null;
-}
-
-function calculateDiasParaVencimiento(fechaTermino: string | null, now: Date): number | null {
-  if (!fechaTermino) {
-    return null;
-  }
-
-  const target = new Date(fechaTermino);
-  if (Number.isNaN(target.getTime())) {
-    return null;
-  }
-
-  const diffMs = startOfUtcDay(target).getTime() - startOfUtcDay(now).getTime();
-  const diffDays = Math.floor(diffMs / MS_PER_DAY);
-
-  return diffDays >= 0 ? diffDays : null;
-}
-
-function toIsoDate(value: string | null): string | null {
-  if (!value) {
-    return null;
-  }
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-  return parsed.toISOString();
-}
-
-function getEstadoRank(estado: EstadoLocal): number {
-  if (estado === "OCUPADO") {
-    return 3;
-  }
-  if (estado === "GRACIA") {
-    return 2;
-  }
-  return 0;
-}
-
-function isObjectRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isMetricaApiRow(value: unknown): value is MetricaApiRow {
-  if (!isObjectRecord(value)) {
-    return false;
-  }
-
-  if (typeof value.localCodigo !== "string" || typeof value.localNombre !== "string") {
-    return false;
-  }
-
-  if (typeof value.estado !== "string") {
-    return false;
-  }
-  if (typeof value.contratoId !== "string") {
-    return false;
-  }
-
-  if (value.localId !== undefined && value.localId !== null && typeof value.localId !== "string") {
-    return false;
-  }
-
-  if (
-    value.arrendatario !== null &&
-    value.arrendatario !== undefined &&
-    typeof value.arrendatario !== "string"
-  ) {
-    return false;
-  }
-
-  if (
-    value.fechaTermino !== null &&
-    value.fechaTermino !== undefined &&
-    typeof value.fechaTermino !== "string"
-  ) {
-    return false;
-  }
-
-  return true;
-}
-
-function parseMetricasRows(payload: unknown): MetricaApiRow[] {
-  if (!isObjectRecord(payload) || !Array.isArray(payload.filas)) {
-    throw new Error("Respuesta de metricas invalida.");
-  }
-
-  const rows = payload.filas.filter(isMetricaApiRow);
-  if (rows.length !== payload.filas.length) {
-    throw new Error("Respuesta de metricas invalida.");
-  }
-
-  return rows;
-}
-
-function buildKpis(rows: RentRollRow[]): RentRollKpis {
-  const glaTotal = rows.reduce((acc, row) => acc + row.glam2, 0);
-  const glaCupado = rows
-    .filter((row) => row.estado === "OCUPADO" || row.estado === "GRACIA")
-    .reduce((acc, row) => acc + row.glam2, 0);
-  const pctOcupacion = glaTotal > 0 ? (glaCupado / glaTotal) * 100 : 0;
-  const rentaFijaTotalUf = rows
-    .filter((row) => row.estado === "OCUPADO")
-    .reduce((acc, row) => acc + (row.rentaFijaUf ?? 0), 0);
-  const ggccTotalUf = rows.reduce((acc, row) => acc + (row.ggccUf ?? 0), 0);
-
-  return {
-    glaTotal,
-    glaCupado,
-    pctOcupacion,
-    rentaFijaTotalUf,
-    ggccTotalUf
-  };
-}
 
 export default async function RentRollPage({
   searchParams
 }: RentRollPageProps): Promise<JSX.Element> {
   const session = await requireSession();
-  const proyectoParam = getSingleValue(searchParams.proyecto);
-  const periodoParam = getSingleValue(searchParams.periodo);
 
-  const { projects, selectedProjectId } = await getProjectContext(proyectoParam);
+  const { projects, selectedProjectId } = await getProjectContext(searchParams.proyecto);
   if (!selectedProjectId) {
     return (
       <ProjectCreationPanel
         title="Rent Roll"
-        description="No hay proyectos activos. Crea uno para visualizar el estado contractual y financiero."
+        description="No hay proyectos activos. Crea uno para visualizar metricas por local."
         canEdit={canWrite(session.user.role)}
       />
     );
   }
 
-  const periodoActual = toPeriodo(new Date());
-  const periodo = isPeriodoValido(periodoParam) ? periodoParam : periodoActual;
+  const fecha = resolveSnapshotDate(searchParams.fecha, searchParams.periodo);
+  const fechaReferencia = parseDateParam(fecha);
+  const periodoVentas = getPeriodoFromFecha(fecha);
 
-  if (proyectoParam !== selectedProjectId || periodoParam !== periodo) {
-    const redirectParams = new URLSearchParams();
-    redirectParams.set("proyecto", selectedProjectId);
-    redirectParams.set("periodo", periodo);
-    redirect(`/rent-roll?${redirectParams.toString()}`);
+  if (
+    searchParams.proyecto !== selectedProjectId ||
+    searchParams.fecha !== fecha ||
+    searchParams.periodo
+  ) {
+    const params = new URLSearchParams();
+    params.set("proyecto", selectedProjectId);
+    params.set("fecha", fecha);
+    redirect(`/rent-roll?${params.toString()}`);
   }
 
-  const { start, nextMonthStart } = getPeriodoBounds(periodo);
-
-  let metricasRaw: MetricaRow[];
-  let localesActivos: Array<{
-    id: string;
-    codigo: string;
-    nombre: string;
-    glam2: unknown;
-  }>;
-  let valorUfPeriodo: { valor: unknown } | null;
-
-  try {
-    [metricasRaw, localesActivos, valorUfPeriodo] = await Promise.all([
-      getMetricasRentRoll(selectedProjectId, periodo),
-      prisma.local.findMany({
-        where: { proyectoId: selectedProjectId, estado: "ACTIVO", esGLA: true },
-        select: {
-          id: true,
-          codigo: true,
-          nombre: true,
-          glam2: true
-        },
-        orderBy: [{ codigo: "asc" }]
-      }),
-      prisma.valorUF.findFirst({
-        where: {
-          fecha: {
-            gte: start,
-            lt: nextMonthStart
+  const [contracts, ventaLocales, localesActivos] = await Promise.all([
+    prisma.contrato.findMany({
+      where: {
+        proyectoId: selectedProjectId,
+        fechaInicio: { lte: fechaReferencia },
+        fechaTermino: { gte: fechaReferencia }
+      },
+      include: {
+        local: {
+          select: {
+            id: true,
+            codigo: true,
+            nombre: true,
+            glam2: true,
+            esGLA: true,
+            tipo: true,
+            zona: true
           }
         },
-        select: {
-          valor: true
+        arrendatario: {
+          select: {
+            nombreComercial: true
+          }
         },
-        orderBy: { fecha: "desc" }
-      })
-    ]);
-  } catch (error) {
-    throw error instanceof Error ? error : new Error("No se pudieron cargar datos de Rent Roll.");
+        tarifas: {
+          where: {
+            tipo: { in: [TipoTarifaContrato.FIJO_UF_M2, TipoTarifaContrato.PORCENTAJE] },
+            vigenciaDesde: { lte: fechaReferencia },
+            OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: fechaReferencia } }]
+          },
+          orderBy: [{ vigenciaDesde: "desc" }],
+          select: {
+            tipo: true,
+            valor: true
+          }
+        },
+        ggcc: {
+          where: {
+            vigenciaDesde: { lte: fechaReferencia },
+            OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: fechaReferencia } }]
+          },
+          orderBy: [{ vigenciaDesde: "desc" }],
+          take: 1,
+          select: {
+            tarifaBaseUfM2: true,
+            pctAdministracion: true
+          }
+        }
+      },
+      orderBy: [{ local: { codigo: "asc" } }]
+    }),
+    prisma.ventaLocal.findMany({
+      where: {
+        proyectoId: selectedProjectId,
+        periodo: periodoVentas
+      },
+      select: {
+        localId: true,
+        ventasUf: true,
+        createdAt: true
+      },
+      orderBy: [{ createdAt: "desc" }]
+    }),
+    prisma.local.findMany({
+      where: {
+        proyectoId: selectedProjectId,
+        estado: "ACTIVO"
+      },
+      select: {
+        id: true,
+        tipo: true,
+        esGLA: true,
+        glam2: true,
+        zona: true
+      }
+    })
+  ]);
+
+  const ventasByLocalId = new Map<string, number>();
+  for (const venta of ventaLocales) {
+    if (!ventasByLocalId.has(venta.localId)) {
+      ventasByLocalId.set(venta.localId, Number(venta.ventasUf));
+    }
   }
 
-  const metricas = parseMetricasRows({
-    filas: metricasRaw.map((fila) => ({
-      ...fila,
-      fechaTermino: fila.fechaTermino.toISOString()
-    }))
-  });
-
-  if (localesActivos.length === 0) {
-    return (
-      <main className="space-y-4">
-        <header className="rounded-md bg-white p-5 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="mb-1 flex items-center gap-2">
-                <div className="h-5 w-1 rounded-full bg-gold-400" />
-                <h2 className="text-base font-bold uppercase tracking-wide text-brand-700">Rent Roll</h2>
-              </div>
-              <p className="mt-1 text-sm text-slate-600">
-                Vista operacional de lo que deberia ocurrir contractualmente y financieramente.
-              </p>
-            </div>
-            <ProjectSelector
-              projects={projects}
-              selectedProjectId={selectedProjectId}
-              preserve={{ periodo }}
-            />
-          </div>
-        </header>
-
-        <section className="rounded-md bg-white p-8 text-center shadow-sm">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
-            <svg
-              className="h-7 w-7 text-slate-500"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <path
-                d="M4 20H20M6 20V6H18V20M9 9H11M13 9H15M9 12H11M13 12H15M9 15H11M13 15H15"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-          <h3 className="text-lg font-semibold text-slate-900">Sin locales configurados</h3>
-          <p className="mx-auto mt-2 max-w-xl text-sm text-slate-600">
-            Este proyecto no tiene locales activos. Agregalos en la seccion Locales antes de usar
-            el Rent Roll.
-          </p>
-          <Link
-            href="/rent-roll/locales"
-            className="mt-5 inline-flex rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-          >
-            Ir a Locales
-          </Link>
-        </section>
-      </main>
+  const rows: RentRollDashboardTableRow[] = contracts.map((contract) => {
+    const glam2 = Number(contract.local.glam2);
+    const tarifaFija = contract.tarifas.find(
+      (tarifa) => tarifa.tipo === TipoTarifaContrato.FIJO_UF_M2
     );
-  }
+    const tarifaVariable = contract.tarifas.find(
+      (tarifa) => tarifa.tipo === TipoTarifaContrato.PORCENTAJE
+    );
+    const tarifaUfM2 = tarifaFija?.valor ? Number(tarifaFija.valor) : 0;
+    const rentaFijaUf = glam2 * tarifaUfM2;
+    const pctRentaVariable = tarifaVariable?.valor ? Number(tarifaVariable.valor) : null;
 
-  const now = new Date();
-  const localesById = new Map(localesActivos.map((local) => [local.id, local]));
-  const localesByCodigo = new Map(localesActivos.map((local) => [local.codigo, local]));
-  const metricasByLocalId = new Map<string, RentRollRow>();
+    const ggccActual = contract.ggcc[0];
+    const ggccUf = ggccActual
+      ? Number(ggccActual.tarifaBaseUfM2) *
+        glam2 *
+        (1 + Number(ggccActual.pctAdministracion) / 100)
+      : 0;
 
-  for (const metrica of metricas) {
-    const matchedLocal = metrica.localId
-      ? (localesById.get(metrica.localId) ?? localesByCodigo.get(metrica.localCodigo))
-      : localesByCodigo.get(metrica.localCodigo);
-    if (!matchedLocal) {
-      continue;
-    }
-
-    const estado = toEstadoLocal(metrica.estado);
-    if (!estado) {
-      continue;
-    }
-
-    const row: RentRollRow = {
-      localId: matchedLocal.id,
-      contratoVigenteId: metrica.contratoId,
-      localCodigo: matchedLocal.codigo,
-      localNombre: matchedLocal.nombre,
-      glam2: toFiniteNumber(matchedLocal.glam2),
-      estado,
-      arrendatario: metrica.arrendatario ?? null,
-      tarifaUfM2: toNullableNumber(metrica.tarifaUfM2),
-      rentaFijaUf: toNullableNumber(metrica.rentaFijaUf),
-      ggccUf: toNullableNumber(metrica.ggccUf),
-      ventasUf: toNullableNumber(metrica.ventasUf),
-      fechaTermino: toIsoDate(metrica.fechaTermino),
-      diasParaVencimiento: calculateDiasParaVencimiento(metrica.fechaTermino, now)
-    };
-
-    const existing = metricasByLocalId.get(matchedLocal.id);
-    if (!existing || getEstadoRank(row.estado) > getEstadoRank(existing.estado)) {
-      metricasByLocalId.set(matchedLocal.id, row);
-    }
-  }
-
-  const rows: RentRollRow[] = localesActivos.map((local) => {
-    const metrica = metricasByLocalId.get(local.id);
-    if (metrica) {
-      return metrica;
-    }
+    const ventasUf = ventasByLocalId.has(contract.localId)
+      ? (ventasByLocalId.get(contract.localId) ?? null)
+      : null;
+    const rentaVariableUf =
+      ventasUf !== null && pctRentaVariable !== null ? ventasUf * (pctRentaVariable / 100) : null;
+    const pctFondoPromocion = contract.pctFondoPromocion
+      ? Number(contract.pctFondoPromocion)
+      : null;
 
     return {
-      localId: local.id,
-      contratoVigenteId: null,
-      localCodigo: local.codigo,
-      localNombre: local.nombre,
-      glam2: toFiniteNumber(local.glam2),
-      estado: "VACANTE",
-      arrendatario: null,
-      tarifaUfM2: null,
-      rentaFijaUf: null,
-      ggccUf: null,
-      ventasUf: null,
-      fechaTermino: null,
-      diasParaVencimiento: null
+      id: contract.id,
+      local: `${contract.local.codigo} - ${contract.local.nombre}`,
+      arrendatario: contract.arrendatario.nombreComercial,
+      glam2,
+      tarifaUfM2,
+      rentaFijaUf,
+      ggccUf,
+      ventasUf,
+      pctRentaVariable,
+      rentaVariableUf,
+      pctFondoPromocion
     };
   });
 
-  const kpis = buildKpis(rows);
-  const valorUf = toNullableNumber(valorUfPeriodo?.valor) ?? null;
+  const totals = rows.reduce(
+    (acc, row) => {
+      acc.glam2 += row.glam2;
+      acc.rentaFijaUf += row.rentaFijaUf;
+      acc.ggccUf += row.ggccUf;
+      if (row.ventasUf != null) {
+        acc.ventasUf += row.ventasUf;
+      }
+      if (row.rentaVariableUf != null) {
+        acc.rentaVariableUf += row.rentaVariableUf;
+      }
+      return acc;
+    },
+    { glam2: 0, rentaFijaUf: 0, ggccUf: 0, ventasUf: 0, rentaVariableUf: 0 }
+  );
+
+  const ocupacionDetalle = buildOcupacionDetalle(
+    localesActivos,
+    contracts.map((contract) => ({
+      localId: contract.localId,
+      localGlam2: contract.local.glam2,
+      fechaTermino: contract.fechaTermino,
+      tarifa: null
+    }))
+  );
+
+  const walt = calculateWalt(
+    contracts.map((contract) => ({
+      fechaTermino: contract.fechaTermino,
+      localGlam2: contract.local.glam2
+    })),
+    fechaReferencia
+  );
+
+  const tamanoRows = [
+    { key: "Tienda Mayor", label: "Tienda Mayor" },
+    { key: "Tienda Mediana", label: "Tienda Mediana" },
+    { key: "Tienda Menor", label: "Tienda Menor" },
+    { key: "Modulo", label: "Modulo" },
+    { key: "Bodega", label: "Bodega" }
+  ] as const;
 
   return (
     <main className="space-y-4">
       <header className="rounded-md bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="mb-1 flex items-center gap-2">
               <div className="h-5 w-1 rounded-full bg-gold-400" />
-              <h2 className="text-base font-bold uppercase tracking-wide text-brand-700">Rent Roll</h2>
+              <h2 className="text-base font-bold uppercase tracking-wide text-brand-700">
+                Rent Roll
+              </h2>
             </div>
             <p className="mt-1 text-sm text-slate-600">
-              Vista operacional de lo que deberia ocurrir contractualmente y financieramente.
+              Vista operacional snapshot: estado contractual actual y metricas en una fecha exacta.
             </p>
           </div>
           <ProjectSelector
             projects={projects}
             selectedProjectId={selectedProjectId}
-            preserve={{ periodo }}
+            preserve={{ fecha }}
           />
         </div>
       </header>
 
-      {valorUf !== null ? (
-        <div className="flex justify-end">
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-500">
-            UF {periodo}: ${valorUf.toFixed(2)}
-          </span>
+      <section className="rounded-md bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <RentRollSnapshotDatePicker projectId={selectedProjectId} selectedDate={fecha} />
+          <div className="rounded-md border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
+            <span className="font-semibold">Periodo de ventas asociado:</span> {periodoVentas}
+          </div>
         </div>
-      ) : null}
+      </section>
 
-      <RentRollKpiHeader kpis={kpis} rows={rows} />
-      <RentRollAnalyticsDashboard rows={rows} />
-      <RentRollTable rows={rows} proyectoId={selectedProjectId} periodo={periodo} />
+      <section className="grid gap-4 md:grid-cols-4">
+        <KpiCard
+          title="Renta fija total (UF)"
+          value={formatDecimal(totals.rentaFijaUf)}
+          accent="slate"
+        />
+        <KpiCard
+          title="GGCC total (UF)"
+          value={formatDecimal(totals.ggccUf)}
+          accent="slate"
+        />
+        <KpiCard
+          title="Ventas periodo (UF)"
+          value={formatDecimal(totals.ventasUf)}
+          accent="slate"
+        />
+        <KpiCard
+          title="WALT global"
+          value={formatWaltValue(walt)}
+          subtitle={walt > 0 ? `Promedio ponderado al ${fecha}` : "Sin contratos activos"}
+          accent="yellow"
+        />
+      </section>
+
+      <section>
+        <article className="overflow-hidden rounded-md bg-white shadow-sm">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <h3 className="text-sm font-semibold text-brand-700">Ocupacion por tamano</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <Table className="min-w-full divide-y divide-slate-200 text-sm">
+              <TableHeader className="bg-brand-700">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
+                    Tipo
+                  </TableHead>
+                  <TableHead className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                    GLA Total
+                  </TableHead>
+                  <TableHead className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                    GLA Arrendada
+                  </TableHead>
+                  <TableHead className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                    Vacante
+                  </TableHead>
+                  <TableHead className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                    % Vacancia
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="text-slate-800">
+                {tamanoRows.map((row, index) => {
+                  const data = ocupacionDetalle.porTamano[row.key] ?? {
+                    gla: 0,
+                    glaArrendada: 0,
+                    pctVacancia: 0
+                  };
+                  const vacante = Math.max(data.gla - data.glaArrendada, 0);
+
+                  return (
+                    <TableRow
+                      key={row.key}
+                      className={index % 2 === 0 ? "bg-white" : "bg-slate-50/60"}
+                    >
+                      <TableCell className="whitespace-nowrap px-4 py-3 font-medium">
+                        {row.label}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap px-4 py-3 text-right">
+                        {formatDecimal(data.gla)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap px-4 py-3 text-right">
+                        {formatDecimal(data.glaArrendada)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap px-4 py-3 text-right">
+                        {formatDecimal(vacante)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap px-4 py-3 text-right">
+                        {formatDecimal(data.pctVacancia)}%
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </article>
+      </section>
+
+      <RentRollDashboardTable rows={rows} totals={totals} snapshotDate={fecha} />
     </main>
   );
 }

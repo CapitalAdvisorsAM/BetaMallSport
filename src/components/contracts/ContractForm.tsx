@@ -431,7 +431,7 @@ export function ContractForm({
   }
 
   return (
-    <section className="space-y-4 rounded-md bg-white p-5 shadow-sm">
+    <section className="space-y-3 rounded-md bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-slate-900">
           {initialData ? "Editar contrato" : "Nuevo contrato"}
@@ -460,15 +460,18 @@ export function ContractForm({
         </p>
       ) : null}
 
-      <div className="grid gap-3 md:grid-cols-2">
-        {initialData ? (
-          <div className="text-sm">
-            <span className="mb-1 block text-slate-700">Numero contrato</span>
-            <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
-              {initialData.numeroContrato}
-            </div>
+      {/* Row 1: Numero contrato (edit only) */}
+      {initialData ? (
+        <div className="text-sm">
+          <span className="mb-1 block text-slate-700">Numero contrato</span>
+          <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
+            {initialData.numeroContrato}
           </div>
-        ) : null}
+        </div>
+      ) : null}
+
+      {/* Row 2: Clasificacion juridica | Locales asociados */}
+      <div className="grid gap-3 md:grid-cols-2">
         <label className="text-sm">
           <span className="mb-1 block text-slate-700">
             Clasificacion juridica <span className="text-xs text-slate-400">(opcional)</span>
@@ -497,11 +500,11 @@ export function ContractForm({
             automaticamente desde las fechas del contrato.
           </span>
         </label>
-        <div className="text-sm md:col-span-2">
+        <div className="text-sm">
           <span className="mb-1 block text-slate-700">
             Locales asociados <span className="text-rose-500">*</span>
           </span>
-          <div className="max-h-40 space-y-2 overflow-y-auto rounded-md border border-slate-300 p-2">
+          <div className="max-h-28 space-y-2 overflow-y-auto rounded-md border border-slate-300 p-2">
             {locals.map((local) => (
               <label key={local.id} className="flex items-center gap-2 text-sm text-slate-700">
                 <Checkbox
@@ -517,6 +520,10 @@ export function ContractForm({
             Seleccionados: {payload.localIds.length}
           </p>
         </div>
+      </div>
+
+      {/* Row 3: Arrendatario | Fecha inicio | Fecha termino */}
+      <div className="grid gap-3 md:grid-cols-3">
         <label className="text-sm">
           <span className="mb-1 block text-slate-700">
             Arrendatario <span className="text-rose-500">*</span>

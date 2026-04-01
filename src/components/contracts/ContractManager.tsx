@@ -97,30 +97,28 @@ export function ContractManager({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
-        <ContractList
-          contracts={contractList}
-          onEdit={setSelectedId}
-          onDelete={setPendingDeleteId}
-          canEdit={canEdit}
-          nextCursor={nextCursor}
-          onLoadMore={handleLoadMore}
-          selectedId={selectedId}
-          deletingId={deletingId}
-        />
+      <ContractForm
+        initialData={selectedContract}
+        proyectoId={proyectoId}
+        locals={locals}
+        arrendatarios={arrendatarios}
+        onSave={saveContract}
+        onCancel={() => {
+          setSelectedId(null);
+        }}
+        canEdit={canEdit}
+      />
 
-        <ContractForm
-          initialData={selectedContract}
-          proyectoId={proyectoId}
-          locals={locals}
-          arrendatarios={arrendatarios}
-          onSave={saveContract}
-          onCancel={() => {
-            setSelectedId(null);
-          }}
-          canEdit={canEdit}
-        />
-      </div>
+      <ContractList
+        contracts={contractList}
+        onEdit={setSelectedId}
+        onDelete={setPendingDeleteId}
+        canEdit={canEdit}
+        nextCursor={nextCursor}
+        onLoadMore={handleLoadMore}
+        selectedId={selectedId}
+        deletingId={deletingId}
+      />
       <ConfirmModal
         open={Boolean(pendingDeleteId)}
         title="Eliminar contrato"

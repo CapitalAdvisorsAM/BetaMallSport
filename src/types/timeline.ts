@@ -2,6 +2,7 @@ export type PeriodoMetrica = {
   periodo: string; // "2025-01"
   esFuturo: boolean;
   pctOcupacionGLA: number;
+  waltMeses: number;
   glaArrendadaM2: number;
   glaTotalM2: number;
   rentaFijaUf: number;

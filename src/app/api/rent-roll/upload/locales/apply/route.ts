@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { EstadoMaestro, Prisma, TipoCargaDatos, TipoLocal } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";

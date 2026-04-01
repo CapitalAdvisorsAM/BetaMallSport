@@ -14,7 +14,7 @@ export function isNavItemActive(
 }
 
 export type RentRollEntity = "locales" | "arrendatarios" | "contratos";
-export type RentRollMode = "ver" | "cargar" | "upload";
+export type RentRollMode = "ver" | "cargar" | "upload" | "config";
 
 export const RENT_ROLL_ENTITY_ITEMS: Array<{ key: RentRollEntity; label: string; href: string }> = [
   { key: "locales", label: "Locales", href: "/rent-roll/locales" },

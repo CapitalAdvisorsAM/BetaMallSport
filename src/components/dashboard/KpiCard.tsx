@@ -3,12 +3,13 @@ import { cn } from "@/lib/utils";
 
 type KpiCardProps = {
   title: string;
-  value: string;
+  value: ReactNode;
   subtitle?: string;
   subtitleClassName?: string;
   accent?: "green" | "yellow" | "red" | "slate";
   detail?: ReactNode;
   titleAttribute?: string;
+  valueAdornment?: ReactNode;
 };
 
 const accentStyles: Record<NonNullable<KpiCardProps["accent"]>, string> = {
@@ -25,6 +26,7 @@ export function KpiCard({
   subtitleClassName,
   detail,
   titleAttribute,
+  valueAdornment,
   accent = "slate"
 }: KpiCardProps): JSX.Element {
   return (
@@ -33,7 +35,10 @@ export function KpiCard({
       className={cn("rounded-lg border border-slate-200 p-5 shadow-sm", accentStyles[accent])}
     >
       <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{title}</p>
-      <p className="mt-3 tabular-nums text-3xl font-bold tracking-tight text-brand-700">{value}</p>
+      <div className="mt-3 inline-flex max-w-full flex-wrap items-center gap-2 align-middle">
+        <p className="tabular-nums text-3xl font-bold tracking-tight text-brand-700">{value}</p>
+        {valueAdornment ? <div className="shrink-0">{valueAdornment}</div> : null}
+      </div>
       {subtitle ? (
         <p className={cn("mt-1.5 text-xs font-medium text-slate-500", subtitleClassName)}>{subtitle}</p>
       ) : null}

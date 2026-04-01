@@ -382,7 +382,7 @@ export default async function DashboardPage({
             preserve={{ periodo }}
           />
           <Link
-            href={`/rent-roll/dashboard?proyecto=${selectedProjectId}&periodo=${periodo}`}
+            href={`/rent-roll/dashboard?proyecto=${selectedProjectId}`}
             className="ml-auto flex items-center gap-1 rounded-full border border-brand-300 px-4 py-1.5 text-sm font-medium text-brand-500 transition-colors hover:text-brand-700"
           >
             Ver Rent Roll -&gt;
@@ -584,7 +584,7 @@ export default async function DashboardPage({
         </div>
         <div className="border-t border-slate-200 px-4 py-3 text-right text-sm">
           <Link
-            href={`/rent-roll/dashboard?proyecto=${selectedProjectId}&periodo=${periodo}`}
+            href={`/rent-roll/dashboard?proyecto=${selectedProjectId}`}
             className="text-brand-500 underline hover:text-brand-700"
           >
             Ver detalle de vencimientos en Rent Roll -&gt;

@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { mkdir, writeFile } from "node:fs/promises";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
