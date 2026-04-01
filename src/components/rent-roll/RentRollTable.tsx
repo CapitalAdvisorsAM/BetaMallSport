@@ -143,30 +143,6 @@ export function RentRollTable({ rows, proyectoId, periodo }: RentRollTableProps)
         cell: ({ row }) => <span className="whitespace-nowrap text-slate-700">{formatDecimal(row.original.glam2)}</span>
       },
       {
-        id: "tarifaUfM2",
-        accessorFn: (row) => row.tarifaUfM2 ?? undefined,
-        header: "UF/m²",
-        enableColumnFilter: false,
-        sortUndefined: "last",
-        meta: { align: "right" },
-        cell: ({ row }) => {
-          const isVacante = row.original.estado === "VACANTE";
-          return <span className="whitespace-nowrap text-slate-700">{renderMetric(row.original.tarifaUfM2, isVacante)}</span>;
-        }
-      },
-      {
-        id: "rentaFijaUf",
-        accessorFn: (row) => row.rentaFijaUf ?? undefined,
-        header: "Renta Fija",
-        enableColumnFilter: false,
-        sortUndefined: "last",
-        meta: { align: "right" },
-        cell: ({ row }) => {
-          const isVacante = row.original.estado === "VACANTE";
-          return <span className="whitespace-nowrap text-slate-700">{renderMetric(row.original.rentaFijaUf, isVacante)}</span>;
-        }
-      },
-      {
         id: "ggccUf",
         accessorFn: (row) => row.ggccUf ?? undefined,
         header: "GGCC",
@@ -176,18 +152,6 @@ export function RentRollTable({ rows, proyectoId, periodo }: RentRollTableProps)
         cell: ({ row }) => {
           const isVacante = row.original.estado === "VACANTE";
           return <span className="whitespace-nowrap text-slate-700">{renderMetric(row.original.ggccUf, isVacante)}</span>;
-        }
-      },
-      {
-        id: "ventasUf",
-        accessorFn: (row) => row.ventasUf ?? undefined,
-        header: "Ventas",
-        enableColumnFilter: false,
-        sortUndefined: "last",
-        meta: { align: "right" },
-        cell: ({ row }) => {
-          const isVacante = row.original.estado === "VACANTE";
-          return <span className="whitespace-nowrap text-slate-700">{renderMetric(row.original.ventasUf, isVacante)}</span>;
         }
       },
       {
@@ -224,6 +188,19 @@ export function RentRollTable({ rows, proyectoId, periodo }: RentRollTableProps)
             </span>
           );
         }
+      },
+      {
+        id: "rentaFijaAnual",
+        accessorFn: (row) => (row.rentaFijaUf ?? undefined),
+        header: "Renta Fija por Año",
+        enableColumnFilter: false,
+        sortUndefined: "last",
+        meta: { align: "right" },
+        cell: ({ row }) => {
+          const isVacante = row.original.estado === "VACANTE";
+          const anual = row.original.rentaFijaUf !== null ? row.original.rentaFijaUf * 12 : null;
+          return <span className="whitespace-nowrap text-slate-700">{renderMetric(anual, isVacante)}</span>;
+        }
       }
     ],
     []
@@ -253,30 +230,13 @@ export function RentRollTable({ rows, proyectoId, periodo }: RentRollTableProps)
   const totals = useMemo(() => {
     const ocupados = filteredRows.filter((row) => row.estado === "OCUPADO");
     const glaTotal = filteredRows.reduce((acc, row) => acc + row.glam2, 0);
-    const tarifaNumerador = ocupados.reduce((acc, row) => {
-      if (row.tarifaUfM2 === null) {
-        return acc;
-      }
-      return acc + row.tarifaUfM2 * row.glam2;
-    }, 0);
-    const tarifaDenominador = ocupados.reduce((acc, row) => {
-      if (row.tarifaUfM2 === null) {
-        return acc;
-      }
-      return acc + row.glam2;
-    }, 0);
-    const tarifaPonderadaUfM2 =
-      tarifaDenominador > 0 ? tarifaNumerador / tarifaDenominador : null;
-    const rentaFijaOcupadosUf = ocupados.reduce((acc, row) => acc + (row.rentaFijaUf ?? 0), 0);
     const ggccUf = filteredRows.reduce((acc, row) => acc + (row.ggccUf ?? 0), 0);
-    const ventasUf = filteredRows.reduce((acc, row) => acc + (row.ventasUf ?? 0), 0);
+    const rentaFijaAnualOcupadosUf = ocupados.reduce((acc, row) => acc + ((row.rentaFijaUf ?? 0) * 12), 0);
 
     return {
       glaTotal,
-      tarifaPonderadaUfM2,
-      rentaFijaOcupadosUf,
       ggccUf,
-      ventasUf
+      rentaFijaAnualOcupadosUf
     };
   }, [filteredRows]);
 
@@ -342,12 +302,10 @@ export function RentRollTable({ rows, proyectoId, periodo }: RentRollTableProps)
       "Arrendatario",
       "Estado",
       "GLA m2",
-      "Tarifa UF/m2",
-      "Renta Fija UF",
       "GGCC UF",
-      "Ventas UF",
       "Fecha Término",
-      "Días para Vencer"
+      "Días para Vencer",
+      "Renta Fija por Año"
     ];
 
     const csvRows = sortedRows.map((row) => [
@@ -355,12 +313,10 @@ export function RentRollTable({ rows, proyectoId, periodo }: RentRollTableProps)
       row.arrendatario ?? "Vacante",
       row.estado,
       row.glam2,
-      row.tarifaUfM2 ?? "",
-      row.rentaFijaUf ?? "",
       row.ggccUf ?? "",
-      row.ventasUf ?? "",
       row.fechaTermino ?? "",
-      row.diasParaVencimiento ?? ""
+      row.diasParaVencimiento ?? "",
+      row.rentaFijaUf !== null ? row.rentaFijaUf * 12 : ""
     ]);
 
     const csv = [headers, ...csvRows].map((row) => row.map(toCsvCell).join(",")).join("\n");
@@ -473,19 +429,13 @@ export function RentRollTable({ rows, proyectoId, periodo }: RentRollTableProps)
                 {formatDecimal(totals.glaTotal)}
               </TableCell>
               <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                {totals.tarifaPonderadaUfM2 === null ? "-" : formatDecimal(totals.tarifaPonderadaUfM2)}
-              </TableCell>
-              <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                {formatDecimal(totals.rentaFijaOcupadosUf)}
-              </TableCell>
-              <TableCell className="whitespace-nowrap px-4 py-3 text-right">
                 {formatDecimal(totals.ggccUf)}
               </TableCell>
+              <TableCell className="px-4 py-3" />
+              <TableCell className="px-4 py-3" />
               <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                {formatDecimal(totals.ventasUf)}
+                {formatDecimal(totals.rentaFijaAnualOcupadosUf)}
               </TableCell>
-              <TableCell className="px-4 py-3" />
-              <TableCell className="px-4 py-3" />
             </TableRow>
           ) : null
         }
