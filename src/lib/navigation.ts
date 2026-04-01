@@ -5,6 +5,23 @@ export type NavItem = {
   match: "exact" | "startsWith";
 };
 
+export function isNavItemActive(
+  pathname: string,
+  href: string,
+  match: "exact" | "startsWith"
+): boolean {
+  return match === "exact" ? pathname === href : pathname.startsWith(href);
+}
+
+export type RentRollEntity = "locales" | "arrendatarios" | "contratos";
+export type RentRollMode = "ver" | "cargar" | "upload";
+
+export const RENT_ROLL_ENTITY_ITEMS: Array<{ key: RentRollEntity; label: string; href: string }> = [
+  { key: "locales", label: "Locales", href: "/rent-roll/locales" },
+  { key: "arrendatarios", label: "Arrendatarios", href: "/rent-roll/arrendatarios" },
+  { key: "contratos", label: "Contratos", href: "/rent-roll/contratos" }
+];
+
 export const TOP_NAV_ITEMS: NavItem[] = [
   {
     label: "Dashboard",
@@ -46,7 +63,7 @@ export const RENT_ROLL_SUB_NAV_ITEMS: NavItem[] = [
     match: "startsWith"
   },
   {
-    label: "Contratos",
+    label: "Rent Roll",
     href: "/rent-roll",
     enabled: true,
     match: "exact"
@@ -64,15 +81,9 @@ export const RENT_ROLL_SUB_NAV_ITEMS: NavItem[] = [
     match: "exact"
   },
   {
-    label: "Cargas",
-    href: "/rent-roll/upload",
-    enabled: true,
-    match: "startsWith"
-  },
-  {
-    label: "Contratos CRUD",
+    label: "Contratos",
     href: "/rent-roll/contratos",
     enabled: true,
-    match: "startsWith"
+    match: "exact"
   }
 ];

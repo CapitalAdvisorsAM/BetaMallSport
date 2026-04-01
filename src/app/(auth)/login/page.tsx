@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { signIn } from "next-auth/react";
+import { Button } from "@/components/ui/button";
 
 export default function LoginPage(): JSX.Element {
   return (
@@ -39,12 +40,13 @@ export default function LoginPage(): JSX.Element {
           <p className="mt-2 text-sm text-slate-500">
             Accede con tu cuenta corporativa Google Workspace.
           </p>
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={() => signIn("google", { callbackUrl: "/" })}
-            className="mt-8 flex w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-brand-700 hover:bg-brand-700 hover:text-white"
+            className="mt-8 h-auto w-full justify-center gap-3 border-slate-300 bg-white py-3 text-sm font-semibold text-slate-700 shadow-sm hover:border-brand-700 hover:bg-brand-700 hover:text-white"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <svg data-icon="inline-start" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
               <path
                 fill="currentColor"
                 d="M21.8 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.5c-.2 1.2-.9 2.3-1.9 3v2.5h3.1c1.8-1.6 3.1-4 3.1-7.3Z"
@@ -63,7 +65,7 @@ export default function LoginPage(): JSX.Element {
               />
             </svg>
             Ingresar con Google Workspace
-          </button>
+          </Button>
         </section>
       </div>
     </main>

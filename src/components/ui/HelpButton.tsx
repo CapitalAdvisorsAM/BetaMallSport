@@ -2,7 +2,9 @@
 
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
+import { HelpCircle } from "lucide-react";
 import { HelpDrawer, type HelpSection } from "@/components/ui/HelpDrawer";
+import { Button } from "@/components/ui/button";
 
 function resolveSection(pathname: string): HelpSection {
   if (pathname === "/") {
@@ -43,14 +45,17 @@ export function HelpButton(): JSX.Element {
 
   return (
     <>
-      <button
+      <Button
         type="button"
+        size="icon"
+        variant="default"
         aria-label="Abrir ayuda"
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-5 right-5 z-40 h-10 w-10 rounded-full bg-brand-700 text-lg font-semibold text-white shadow-lg transition-colors hover:bg-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
+        className="fixed bottom-5 right-5 z-40 rounded-full shadow-lg"
       >
-        ?
-      </button>
+        <HelpCircle className="h-5 w-5" />
+        <span className="sr-only">Abrir ayuda</span>
+      </Button>
       <HelpDrawer isOpen={isOpen} onClose={() => setIsOpen(false)} section={section} />
     </>
   );

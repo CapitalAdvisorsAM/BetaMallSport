@@ -1,4 +1,4 @@
-import { EstadoContrato, EstadoMaestro } from "@prisma/client";
+import { EstadoContrato, EstadoMaestro, TipoTarifaContrato } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import {
@@ -12,6 +12,7 @@ import {
 } from "@/lib/kpi";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { startOfDay } from "@/lib/utils";
 import { isPeriodoValido } from "@/lib/validators";
 import type { DashboardMetricasResponse } from "@/types/dashboard-metricas";
 
@@ -21,12 +22,6 @@ function toPeriodo(value: Date): string {
   const year = value.getFullYear();
   const month = String(value.getMonth() + 1).padStart(2, "0");
   return `${year}-${month}`;
-}
-
-function startOfDay(date: Date): Date {
-  const output = new Date(date);
-  output.setHours(0, 0, 0, 0);
-  return output;
 }
 
 function toIsoDateString(date: Date): string {
@@ -80,7 +75,6 @@ export async function GET(request: Request): Promise<NextResponse> {
             localId: true,
             numeroContrato: true,
             fechaTermino: true,
-            pctRentaVariable: true,
             local: {
               select: {
                 codigo: true,
@@ -95,11 +89,17 @@ export async function GET(request: Request): Promise<NextResponse> {
             },
             tarifas: {
               where: {
+                tipo: {
+                  in: [
+                    TipoTarifaContrato.FIJO_UF_M2,
+                    TipoTarifaContrato.FIJO_UF,
+                    TipoTarifaContrato.PORCENTAJE
+                  ]
+                },
                 vigenciaDesde: { lte: today },
                 OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: today } }]
               },
               orderBy: { vigenciaDesde: "desc" },
-              take: 1,
               select: {
                 tipo: true,
                 valor: true
@@ -151,22 +151,32 @@ export async function GET(request: Request): Promise<NextResponse> {
         })
       ]);
 
-    const contratosWithState = contratosRaw.map((contract) => ({
-      estado: contract.estado,
-      data: {
-        id: contract.id,
-        localId: contract.localId,
-        localCodigo: contract.local.codigo,
-        localEsGLA: contract.local.esGLA,
-        localGlam2: contract.local.glam2,
-        arrendatarioNombre: contract.arrendatario.nombreComercial,
-        numeroContrato: contract.numeroContrato,
-        fechaTermino: contract.fechaTermino,
-        pctRentaVariable: contract.pctRentaVariable,
-        tarifa: contract.tarifas[0] ?? null,
-        ggcc: contract.ggcc[0] ?? null
-      } satisfies KpiContractInput
-    }));
+    const contratosWithState = contratosRaw.map((contract) => {
+      const tarifaFija =
+        contract.tarifas.find(
+          (item) =>
+            item.tipo === TipoTarifaContrato.FIJO_UF_M2 || item.tipo === TipoTarifaContrato.FIJO_UF
+        ) ?? null;
+      const tarifaVariable =
+        contract.tarifas.find((item) => item.tipo === TipoTarifaContrato.PORCENTAJE) ?? null;
+
+      return {
+        estado: contract.estado,
+        data: {
+          id: contract.id,
+          localId: contract.localId,
+          localCodigo: contract.local.codigo,
+          localEsGLA: contract.local.esGLA,
+          localGlam2: contract.local.glam2,
+          arrendatarioNombre: contract.arrendatario.nombreComercial,
+          numeroContrato: contract.numeroContrato,
+          fechaTermino: contract.fechaTermino,
+          tarifaVariablePct: tarifaVariable?.valor ?? null,
+          tarifa: tarifaFija,
+          ggcc: contract.ggcc[0] ?? null
+        } satisfies KpiContractInput
+      };
+    });
 
     const vigenteContracts = contratosWithState
       .filter((contract) => contract.estado === EstadoContrato.VIGENTE)

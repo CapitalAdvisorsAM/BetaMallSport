@@ -1,6 +1,14 @@
 import Link from "next/link";
 import { formatShortDate, type ContractExpiryRow } from "@/lib/kpi";
 import { cn } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
 
 type ContractExpiryTableProps = {
   rows: ContractExpiryRow[];
@@ -56,51 +64,54 @@ export function ContractExpiryTable({ rows, proyectoId }: ContractExpiryTablePro
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-brand-700">
-            <tr>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+        <Table className="min-w-full text-sm">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="h-auto px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
                 Local
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+              </TableHead>
+              <TableHead className="h-auto px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
                 Arrendatario
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+              </TableHead>
+              <TableHead className="h-auto px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
                 Numero Contrato
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+              </TableHead>
+              <TableHead className="h-auto px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
                 Fecha Termino
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+              </TableHead>
+              <TableHead className="h-auto px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
                 Dias Restantes
-              </th>
-            </tr>
-          </thead>
-          <tbody>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {visibleRows.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
+              <TableRow>
+                <TableCell colSpan={5} className="px-4 py-6 text-center text-slate-500 hover:bg-transparent">
                   No hay contratos proximos a vencer en los proximos 90 dias.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : (
               visibleRows.map((row, index) => {
                 const badge = getUrgencyBadge(row.diasRestantes);
                 return (
-                  <tr
+                  <TableRow
                     key={row.id}
-                    className={cn(
-                      "transition-colors hover:bg-brand-50",
-                      index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
-                    )}
+                    className={cn(index % 2 === 0 ? "bg-white" : "bg-slate-50/60")}
                   >
-                    <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">{row.local}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-700">{row.arrendatario}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-700">{row.numeroContrato}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-700">
+                    <TableCell className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
+                      {row.local}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap px-4 py-3 text-slate-700">
+                      {row.arrendatario}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap px-4 py-3 text-slate-700">
+                      {row.numeroContrato}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap px-4 py-3 text-slate-700">
                       {formatShortDate(row.fechaTermino)}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-700">
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap px-4 py-3 text-slate-700">
                       <span
                         className={cn(
                           "inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold",
@@ -109,13 +120,13 @@ export function ContractExpiryTable({ rows, proyectoId }: ContractExpiryTablePro
                       >
                         {badge.label}
                       </span>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       <div className="border-t border-slate-200 px-4 py-3 text-right text-sm">

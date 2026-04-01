@@ -13,6 +13,10 @@ function ggccKey(vigenciaDesde: Date | string): string {
   return toDateOnly(vigenciaDesde) ?? "";
 }
 
+function rentaVariableKey(vigenciaDesde: Date | string): string {
+  return toDateOnly(vigenciaDesde) ?? "";
+}
+
 export const dateStringSchema = z
   .string()
   .min(1)
@@ -41,6 +45,7 @@ export const contractPayloadSchema = z
   .object({
     proyectoId: z.string().min(1),
     localId: z.string().min(1),
+    localIds: z.array(z.string().min(1)).default([]),
     arrendatarioId: z.string().min(1),
     numeroContrato: z.string().min(1),
     fechaInicio: dateStringSchema,
@@ -48,7 +53,15 @@ export const contractPayloadSchema = z
     fechaEntrega: nullableDateStringSchema,
     fechaApertura: nullableDateStringSchema,
     estado: z.enum(["VIGENTE", "TERMINADO", "TERMINADO_ANTICIPADO", "GRACIA"]),
-    pctRentaVariable: decimalStringSchema.nullable(),
+    rentaVariable: z
+      .array(
+        z.object({
+          pctRentaVariable: decimalStringSchema,
+          vigenciaDesde: dateStringSchema,
+          vigenciaHasta: nullableDateStringSchema
+        })
+      )
+      .default([]),
     pctFondoPromocion: decimalStringSchema.nullable(),
     codigoCC: z.string().nullable(),
     pdfUrl: z.string().nullable(),
@@ -113,5 +126,33 @@ export const contractPayloadSchema = z
         break;
       }
       ggccKeys.add(key);
+    }
+
+    const rentaVariableKeys = new Set<string>();
+    for (const item of payload.rentaVariable) {
+      const key = rentaVariableKey(item.vigenciaDesde);
+      if (rentaVariableKeys.has(key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Hay renta variable duplicada con mismo vigenciaDesde.",
+          path: ["rentaVariable"]
+        });
+        break;
+      }
+      rentaVariableKeys.add(key);
+    }
+
+    const localIds = payload.localIds.length > 0 ? payload.localIds : [payload.localId];
+    const seenLocalIds = new Set<string>();
+    for (const localId of localIds) {
+      if (seenLocalIds.has(localId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Hay locales duplicados en el contrato.",
+          path: ["localIds"]
+        });
+        break;
+      }
+      seenLocalIds.add(localId);
     }
   });

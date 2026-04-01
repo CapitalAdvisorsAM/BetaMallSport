@@ -16,6 +16,11 @@ function toDecimal(value: string | null): Prisma.Decimal | null {
   return value ? new Prisma.Decimal(value) : null;
 }
 
+function normalizedLocalIds(payload: { localId: string; localIds: string[] }): string[] {
+  const source = payload.localIds.length > 0 ? payload.localIds : [payload.localId];
+  return Array.from(new Set(source));
+}
+
 export async function GET(request: Request): Promise<NextResponse> {
   try {
     await requireSession();
@@ -27,6 +32,12 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     const include = {
       local: true,
+      locales: {
+        include: {
+          local: true
+        },
+        orderBy: { createdAt: "asc" }
+      },
       arrendatario: true,
       tarifas: { orderBy: { vigenciaDesde: "desc" } },
       ggcc: { orderBy: { vigenciaDesde: "desc" } },
@@ -74,9 +85,14 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
     const payload = parsed.data;
-    const [local, arrendatario] = await Promise.all([
-      prisma.local.findFirst({
-        where: { id: payload.localId, proyectoId: payload.proyectoId },
+    const localIds = normalizedLocalIds(payload);
+    if (localIds.length === 0) {
+      throw new ApiError(400, "Debes seleccionar al menos un local.");
+    }
+
+    const [locals, arrendatario] = await Promise.all([
+      prisma.local.findMany({
+        where: { id: { in: localIds }, proyectoId: payload.proyectoId },
         select: { id: true }
       }),
       prisma.arrendatario.findFirst({
@@ -84,8 +100,8 @@ export async function POST(request: Request): Promise<NextResponse> {
         select: { id: true }
       })
     ]);
-    if (!local) {
-      throw new ApiError(400, "El local no pertenece al proyecto.");
+    if (locals.length !== localIds.length) {
+      throw new ApiError(400, "Uno o mas locales no pertenecen al proyecto.");
     }
     if (!arrendatario) {
       throw new ApiError(400, "El arrendatario no pertenece al proyecto.");
@@ -95,7 +111,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       const created = await tx.contrato.create({
         data: {
           proyectoId: payload.proyectoId,
-          localId: payload.localId,
+          localId: localIds[0],
           arrendatarioId: payload.arrendatarioId,
           numeroContrato: payload.numeroContrato,
           fechaInicio: new Date(payload.fechaInicio),
@@ -103,7 +119,6 @@ export async function POST(request: Request): Promise<NextResponse> {
           fechaEntrega: toDate(payload.fechaEntrega),
           fechaApertura: toDate(payload.fechaApertura),
           estado: payload.estado,
-          pctRentaVariable: toDecimal(payload.pctRentaVariable),
           pctFondoPromocion: toDecimal(payload.pctFondoPromocion),
           codigoCC: payload.codigoCC,
           pdfUrl: payload.pdfUrl,
@@ -111,9 +126,32 @@ export async function POST(request: Request): Promise<NextResponse> {
         }
       });
 
-      if (payload.tarifas.length > 0) {
+      await tx.contratoLocal.createMany({
+        data: localIds.map((localId) => ({
+          contratoId: created.id,
+          localId
+        })),
+        skipDuplicates: true
+      });
+
+      const tarifasPayload = [
+        ...payload.tarifas,
+        ...payload.rentaVariable.map((item) => ({
+          tipo: "PORCENTAJE" as const,
+          valor: item.pctRentaVariable,
+          vigenciaDesde: item.vigenciaDesde,
+          vigenciaHasta: item.vigenciaHasta,
+          esDiciembre: false
+        }))
+      ];
+      const tarifasByKey = new Map<string, (typeof tarifasPayload)[number]>();
+      for (const tarifa of tarifasPayload) {
+        tarifasByKey.set(`${tarifa.tipo}|${tarifa.vigenciaDesde}`, tarifa);
+      }
+
+      if (tarifasByKey.size > 0) {
         await tx.contratoTarifa.createMany({
-          data: payload.tarifas.map((t) => ({
+          data: Array.from(tarifasByKey.values()).map((t) => ({
             contratoId: created.id,
             tipo: t.tipo as TipoTarifaContrato,
             valor: new Prisma.Decimal(t.valor),
@@ -151,7 +189,10 @@ export async function POST(request: Request): Promise<NextResponse> {
         });
       }
 
-      return created;
+      return {
+        ...created,
+        localIds
+      };
     });
 
     return NextResponse.json(contract, { status: 201 });

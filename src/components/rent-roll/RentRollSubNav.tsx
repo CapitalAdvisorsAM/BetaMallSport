@@ -2,14 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { RENT_ROLL_SUB_NAV_ITEMS } from "@/lib/navigation";
-
-function isActive(pathname: string, href: string, match: "exact" | "startsWith"): boolean {
-  if (match === "exact") {
-    return pathname === href;
-  }
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
+import { RENT_ROLL_SUB_NAV_ITEMS, isNavItemActive } from "@/lib/navigation";
 
 export function RentRollSubNav(): JSX.Element {
   const pathname = usePathname();
@@ -19,7 +12,7 @@ export function RentRollSubNav(): JSX.Element {
   return (
     <nav className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
       {RENT_ROLL_SUB_NAV_ITEMS.filter((item) => item.enabled).map((item) => {
-        const active = isActive(pathname, item.href, item.match);
+        const active = isNavItemActive(pathname, item.href, item.match);
         const href = proyecto ? `${item.href}?proyecto=${encodeURIComponent(proyecto)}` : item.href;
 
         return (

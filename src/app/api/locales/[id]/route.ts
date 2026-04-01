@@ -7,14 +7,24 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
+function getProyectoIdFromRequest(request: Request): string | null {
+  const proyectoId = new URL(request.url).searchParams.get("proyectoId")?.trim() ?? "";
+  return proyectoId.length > 0 ? proyectoId : null;
+}
+
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
     await requireSession();
-    const item = await prisma.local.findUnique({
-      where: { id: context.params.id }
+    const proyectoId = getProyectoIdFromRequest(request);
+    if (!proyectoId) {
+      return NextResponse.json({ message: "proyectoId es obligatorio." }, { status: 400 });
+    }
+
+    const item = await prisma.local.findFirst({
+      where: { id: context.params.id, proyectoId }
     });
     if (!item) {
       throw new ApiError(404, "No encontrado.");
@@ -41,18 +51,30 @@ export async function PUT(
 
     const payload = result.data;
     const localeId = context.params.id;
-    const existing = await prisma.local.findUnique({
-      where: { id: localeId },
+    const existing = await prisma.local.findFirst({
+      where: { id: localeId, proyectoId: payload.proyectoId },
       select: { id: true, proyectoId: true }
     });
 
     if (!existing) {
       return NextResponse.json({ message: "Local no encontrado." }, { status: 404 });
     }
-    if (existing.proyectoId !== payload.proyectoId) {
+
+    const duplicatedLocal = await prisma.local.findFirst({
+      where: {
+        proyectoId: payload.proyectoId,
+        id: { not: localeId },
+        codigo: {
+          equals: payload.codigo,
+          mode: "insensitive"
+        }
+      },
+      select: { id: true }
+    });
+    if (duplicatedLocal) {
       return NextResponse.json(
-        { message: "El proyecto del payload no coincide con el local existente." },
-        { status: 400 }
+        { message: "Ya existe un local con ese codigo en este proyecto." },
+        { status: 409 }
       );
     }
 
@@ -72,18 +94,35 @@ export async function PUT(
 
     return NextResponse.json(updated);
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json(
+        { message: "Ya existe un local con ese codigo en este proyecto." },
+        { status: 409 }
+      );
+    }
     return handleApiError(error);
   }
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   context: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
     await requireWriteAccess();
+    const proyectoId = getProyectoIdFromRequest(request);
+    if (!proyectoId) {
+      return NextResponse.json({ message: "proyectoId es obligatorio." }, { status: 400 });
+    }
+
     const localeId = context.params.id;
-    await prisma.local.delete({ where: { id: localeId } });
+    const deleted = await prisma.local.deleteMany({
+      where: { id: localeId, proyectoId }
+    });
+    if (deleted.count === 0) {
+      return NextResponse.json({ message: "Local no encontrado." }, { status: 404 });
+    }
+
     return NextResponse.json({ message: "Local eliminado correctamente." });
   } catch (error) {
     return handleApiError(error);

@@ -27,7 +27,6 @@ type ContratoApplyRow = {
   tarifaValor: string;
   tarifaVigenciaDesde: string;
   tarifaVigenciaHasta: string | null;
-  pctRentaVariable: string | null;
   pctFondoPromocion: string | null;
   codigoCC: string | null;
   notas: string | null;
@@ -127,7 +126,6 @@ function normalizeContratoRow(rowNumber: number, data: Record<string, unknown>):
   const tarifaValor = asString(data.tarifaValor).replace(",", ".");
   const tarifaVigenciaDesde = parseDate(data.tarifaVigenciaDesde);
   const tarifaVigenciaHasta = parseDate(data.tarifaVigenciaHasta);
-  const pctRentaVariable = normalizeNullable(data.pctRentaVariable);
   const pctFondoPromocion = normalizeNullable(data.pctFondoPromocion);
   const codigoCC = normalizeNullable(data.codigoCC);
   const notas = normalizeNullable(data.notas);
@@ -160,7 +158,7 @@ function normalizeContratoRow(rowNumber: number, data: Record<string, unknown>):
   if (!/^\d{7,8}-[\dk]$/.test(arrendatarioRut)) {
     return null;
   }
-  if (!isValidDecimalOrNull(pctRentaVariable) || !isValidDecimalOrNull(pctFondoPromocion)) {
+  if (!isValidDecimalOrNull(pctFondoPromocion)) {
     return null;
   }
   if (!isValidDecimalOrNull(ggccTarifaBaseUfM2) || !isValidDecimalOrNull(ggccPctAdministracion)) {
@@ -190,7 +188,6 @@ function normalizeContratoRow(rowNumber: number, data: Record<string, unknown>):
     tarifaValor,
     tarifaVigenciaDesde,
     tarifaVigenciaHasta,
-    pctRentaVariable,
     pctFondoPromocion,
     codigoCC,
     notas,
@@ -247,7 +244,6 @@ async function applyContrato(
       fechaInicio: new Date(row.fechaInicio),
       fechaTermino: new Date(row.fechaTermino),
       estado: row.estado,
-      pctRentaVariable: decimalOrNull(row.pctRentaVariable),
       pctFondoPromocion: decimalOrNull(row.pctFondoPromocion),
       codigoCC: row.codigoCC,
       notas: row.notas
@@ -258,7 +254,6 @@ async function applyContrato(
       fechaInicio: new Date(row.fechaInicio),
       fechaTermino: new Date(row.fechaTermino),
       estado: row.estado,
-      pctRentaVariable: decimalOrNull(row.pctRentaVariable),
       pctFondoPromocion: decimalOrNull(row.pctFondoPromocion),
       codigoCC: row.codigoCC,
       notas: row.notas

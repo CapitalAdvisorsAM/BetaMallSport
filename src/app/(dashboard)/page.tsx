@@ -5,8 +5,17 @@ import { AlertBar } from "@/components/dashboard/AlertBar";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
+import {
   OCCUPANCY_HIGH_THRESHOLD,
   OCCUPANCY_LOW_THRESHOLD,
+  MS_PER_DAY,
   UF_STALENESS_DAYS
 } from "@/lib/constants";
 import {
@@ -26,7 +35,7 @@ import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
 import { isPeriodoValido } from "@/lib/validators";
-import { cn } from "@/lib/utils";
+import { cn, formatUf, startOfDay } from "@/lib/utils";
 
 type DashboardPageProps = {
   searchParams: {
@@ -40,8 +49,6 @@ type CarteraCardConfig = {
   accent: "green" | "yellow" | "red" | "slate";
   subtitle?: string;
 };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 const CARTERA_CARD_CONFIG: Record<EstadoContrato, CarteraCardConfig> = {
   VIGENTE: {
@@ -64,23 +71,10 @@ const CARTERA_CARD_CONFIG: Record<EstadoContrato, CarteraCardConfig> = {
   }
 };
 
-function startOfDay(date: Date): Date {
-  const output = new Date(date);
-  output.setHours(0, 0, 0, 0);
-  return output;
-}
-
 function formatPeriodo(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   return `${year}-${month}`;
-}
-
-function formatUfValue(value: number, fractionDigits = 2): string {
-  return value.toLocaleString("es-CL", {
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits
-  });
 }
 
 function formatClp(value: number): string {
@@ -175,7 +169,6 @@ export default async function DashboardPage({
           localId: true,
           numeroContrato: true,
           fechaTermino: true,
-          pctRentaVariable: true,
           local: {
             select: {
               codigo: true,
@@ -190,11 +183,17 @@ export default async function DashboardPage({
           },
           tarifas: {
             where: {
+              tipo: {
+                in: [
+                  TipoTarifaContrato.FIJO_UF_M2,
+                  TipoTarifaContrato.FIJO_UF,
+                  TipoTarifaContrato.PORCENTAJE
+                ]
+              },
               vigenciaDesde: { lte: today },
               OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: today } }]
             },
             orderBy: { vigenciaDesde: "desc" },
-            take: 1,
             select: {
               tipo: true,
               valor: true
@@ -246,22 +245,32 @@ export default async function DashboardPage({
       })
     ]);
 
-  const contractsWithState = activeContractsRaw.map((contract) => ({
-    estado: contract.estado,
-    data: {
-      id: contract.id,
-      localId: contract.localId,
-      localCodigo: contract.local.codigo,
-      localEsGLA: contract.local.esGLA,
-      localGlam2: contract.local.glam2,
-      arrendatarioNombre: contract.arrendatario.nombreComercial,
-      numeroContrato: contract.numeroContrato,
-      fechaTermino: contract.fechaTermino,
-      pctRentaVariable: contract.pctRentaVariable,
-      tarifa: contract.tarifas[0] ?? null,
-      ggcc: contract.ggcc[0] ?? null
-    } satisfies KpiContractInput
-  }));
+  const contractsWithState = activeContractsRaw.map((contract) => {
+    const tarifaFija =
+      contract.tarifas.find(
+        (item) =>
+          item.tipo === TipoTarifaContrato.FIJO_UF_M2 || item.tipo === TipoTarifaContrato.FIJO_UF
+      ) ?? null;
+    const tarifaVariable =
+      contract.tarifas.find((item) => item.tipo === TipoTarifaContrato.PORCENTAJE) ?? null;
+
+    return {
+      estado: contract.estado,
+      data: {
+        id: contract.id,
+        localId: contract.localId,
+        localCodigo: contract.local.codigo,
+        localEsGLA: contract.local.esGLA,
+        localGlam2: contract.local.glam2,
+        arrendatarioNombre: contract.arrendatario.nombreComercial,
+        numeroContrato: contract.numeroContrato,
+        fechaTermino: contract.fechaTermino,
+        tarifaVariablePct: tarifaVariable?.valor ?? null,
+        tarifa: tarifaFija,
+        ggcc: contract.ggcc[0] ?? null
+      } satisfies KpiContractInput
+    };
+  });
 
   const vigenteContracts = contractsWithState
     .filter((contract) => contract.estado === EstadoContrato.VIGENTE)
@@ -327,8 +336,7 @@ export default async function DashboardPage({
 
   const salesByLocal = new Map(ventasPeriodo.map((venta) => [venta.localId, Number(venta.ventasUf)]));
   const contratosVariableConVentas = vigenteContracts.filter(
-    (contract) =>
-      contract.tarifa?.tipo === TipoTarifaContrato.PORCENTAJE && salesByLocal.has(contract.localId)
+    (contract) => Number(contract.tarifaVariablePct?.toString() ?? "0") > 0 && salesByLocal.has(contract.localId)
   ).length;
   const localById = new Map(activeLocales.map((local) => [local.id, local]));
   const simuladorModuloUnidades = new Set(
@@ -346,14 +354,14 @@ export default async function DashboardPage({
   const ufAgeDays =
     latestValorUf === null
       ? null
-      : Math.floor((today.getTime() - startOfDay(latestValorUf.fecha).getTime()) / DAY_MS);
+      : Math.floor((today.getTime() - startOfDay(latestValorUf.fecha).getTime()) / MS_PER_DAY);
   const isUfStale = ufAgeDays !== null && ufAgeDays > UF_STALENESS_DAYS;
   const ingresoMensualClp = latestValorUf ? ingresos.totalUf * Number(latestValorUf.valor) : 0;
 
   const bodegaEspacioUf = ingresos.arriendoBodegaUf + ingresos.arriendoEspacioUf;
   const bodegaEspacioSubtitle =
     ingresos.arriendoBodegaUf > 0 || ingresos.arriendoEspacioUf > 0
-      ? `Bodega: ${formatUfValue(ingresos.arriendoBodegaUf)} UF · Espacio: ${formatUfValue(
+      ? `Bodega: ${formatUf(ingresos.arriendoBodegaUf)} UF · Espacio: ${formatUf(
           ingresos.arriendoEspacioUf
         )} UF`
       : "Sin ingresos de bodega o espacio en el periodo";
@@ -408,7 +416,7 @@ export default async function DashboardPage({
             value={localesVacantes.length.toString()}
             subtitle={
               localesVacantes.length > 0
-                ? `~${formatUfValue(rentaPotencialVacantes)} UF/mes de ingreso potencial`
+                ? `~${formatUf(rentaPotencialVacantes)} UF/mes de ingreso potencial`
                 : "Sin vacantes"
             }
             subtitleClassName={localesVacantes.length > 0 ? "text-rose-600" : "text-emerald-600"}
@@ -416,7 +424,7 @@ export default async function DashboardPage({
           />
           <KpiCard
             title="Renta en riesgo (90d)"
-            value={`${formatUfValue(rentaEnRiesgo.ufEnRiesgo)} UF`}
+            value={`${formatUf(rentaEnRiesgo.ufEnRiesgo)} UF`}
             subtitle={`de ${rentaEnRiesgo.count} contratos proximos a vencer`}
             accent={rentaEnRiesgo.ufEnRiesgo > 0 ? "red" : "green"}
           />
@@ -432,7 +440,7 @@ export default async function DashboardPage({
             </h3>
             {ingresos.ventaEnergiaUf > 0 ? (
               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                ⚡ Energia: {formatUfValue(ingresos.ventaEnergiaUf)} UF
+                ⚡ Energia: {formatUf(ingresos.ventaEnergiaUf)} UF
               </span>
             ) : null}
           </div>
@@ -441,14 +449,14 @@ export default async function DashboardPage({
         <div className="grid gap-4 md:grid-cols-3">
           <KpiCard
             title="Facturacion total (UF)"
-            value={formatUfValue(ingresos.totalUf)}
-            subtitle={`${formatUfValue(ingresos.facturacionUfM2, 3)} UF/m2`}
+            value={formatUf(ingresos.totalUf)}
+            subtitle={`${formatUf(ingresos.facturacionUfM2, 3)} UF/m2`}
             accent="slate"
           />
           <KpiCard
             title="Arriendo fijo (UF)"
-            value={formatUfValue(ingresos.arriendoFijoUf)}
-            subtitle={`${formatUfValue(ingresos.arriendoFijoUfM2, 3)} UF/m2`}
+            value={formatUf(ingresos.arriendoFijoUf)}
+            subtitle={`${formatUf(ingresos.arriendoFijoUfM2, 3)} UF/m2`}
             accent="slate"
           />
           <KpiCard
@@ -456,7 +464,7 @@ export default async function DashboardPage({
             value={latestValorUf ? formatClp(ingresoMensualClp) : "Sin valor UF"}
             subtitle={
               latestValorUf
-                ? `UF ${formatUfValue(Number(latestValorUf.valor), 2)} al ${formatShortDate(latestValorUf.fecha)}`
+                ? `UF ${formatUf(Number(latestValorUf.valor), 2)} al ${formatShortDate(latestValorUf.fecha)}`
                 : "No hay valor UF registrado"
             }
             accent="slate"
@@ -472,7 +480,7 @@ export default async function DashboardPage({
           <article className="rounded-md border border-slate-200 bg-slate-50 p-4 shadow-sm">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Renta variable</p>
             <p className="mt-2 text-2xl font-bold tracking-tight text-brand-700">
-              {formatUfValue(ingresos.arriendoVariableUf)} UF
+              {formatUf(ingresos.arriendoVariableUf)} UF
             </p>
             <p className="mt-1 text-xs font-medium text-slate-600">
               % sobre ventas de {contratosVariableConVentas} contratos
@@ -483,7 +491,7 @@ export default async function DashboardPage({
               Simuladores/Mod.
             </p>
             <p className="mt-2 text-2xl font-bold tracking-tight text-brand-700">
-              {formatUfValue(ingresos.simuladoresModulosUf)} UF
+              {formatUf(ingresos.simuladoresModulosUf)} UF
             </p>
             <p className="mt-1 text-xs font-medium text-slate-600">{simuladorModuloUnidades} unidades</p>
           </article>
@@ -492,7 +500,7 @@ export default async function DashboardPage({
               Bodega + Espacio
             </p>
             <p className="mt-2 text-2xl font-bold tracking-tight text-brand-700">
-              {formatUfValue(bodegaEspacioUf)} UF
+              {formatUf(bodegaEspacioUf)} UF
             </p>
             <p className="mt-1 text-xs font-medium text-slate-600">{bodegaEspacioSubtitle}</p>
           </article>
@@ -507,7 +515,7 @@ export default async function DashboardPage({
         <div className="grid gap-4 md:grid-cols-3">
           <KpiCard
             title="Gasto comun mensual (UF)"
-            value={formatUfValue(ggccUf)}
+            value={formatUf(ggccUf)}
             subtitle={`${contratosConGgcc} contratos con datos · ${contratosSinGgcc} sin datos`}
             accent="slate"
             titleAttribute="Gastos comunes de administracion de areas compartidas"
@@ -521,50 +529,58 @@ export default async function DashboardPage({
           <p className="mt-1 text-sm text-slate-600">Maximo 5 anos hacia adelante desde hoy.</p>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-brand-700">
-              <tr>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+          <Table className="min-w-full text-sm">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="h-auto px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
                   Ano
-                </th>
-                <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                </TableHead>
+                <TableHead className="h-auto px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
                   Contratos
-                </th>
-                <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                </TableHead>
+                <TableHead className="h-auto px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
                   m2
-                </th>
-                <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                </TableHead>
+                <TableHead className="h-auto px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
                   % del total
-                </th>
-              </tr>
-            </thead>
-            <tbody className="text-slate-800">
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="text-slate-800">
               {vencimientosPorAnio.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
+                <TableRow>
+                  <TableCell colSpan={4} className="px-4 py-6 text-center text-slate-500">
                     No hay vencimientos en el horizonte de 5 anos.
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 vencimientosPorAnio.map((row, index) => (
-                  <tr
+                  <TableRow
                     key={row.anio}
-                    className={cn(
-                      "transition-colors hover:bg-brand-50",
-                      index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
-                    )}
+                    className={cn(index % 2 === 0 ? "bg-white" : "bg-slate-50/60")}
                   >
-                    <td className={cn("whitespace-nowrap px-4 py-3 font-semibold", urgencyClassForYear(row.anio, today.getFullYear()))}>
+                    <TableCell
+                      className={cn(
+                        "whitespace-nowrap px-4 py-3 font-semibold",
+                        urgencyClassForYear(row.anio, today.getFullYear())
+                      )}
+                    >
                       {row.anio}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right">{row.cantidadContratos}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right">{formatUfValue(row.m2)}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right">{formatPercent(row.pctTotal)}</td>
-                  </tr>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap px-4 py-3 text-right">
+                      {row.cantidadContratos}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap px-4 py-3 text-right">
+                      {formatUf(row.m2)}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap px-4 py-3 text-right">
+                      {formatPercent(row.pctTotal)}
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
         <div className="border-t border-slate-200 px-4 py-3 text-right text-sm">
           <Link

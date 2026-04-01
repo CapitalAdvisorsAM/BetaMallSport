@@ -1,19 +1,13 @@
 "use client";
 
 import { KpiCard } from "@/components/dashboard/KpiCard";
+import { formatUf } from "@/lib/utils";
 import type { RentRollKpis, RentRollRow } from "@/types/rent-roll";
 
 type RentRollKpiHeaderProps = {
   kpis: RentRollKpis;
   rows: RentRollRow[];
 };
-
-function formatUf(value: number): string {
-  return value.toLocaleString("es-CL", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
-}
 
 function formatM2(value: number): string {
   return value.toLocaleString("es-CL", {

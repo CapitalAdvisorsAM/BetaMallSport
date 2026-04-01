@@ -1,8 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import type { RentRollPreviewPayload } from "@/types";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/Spinner";
 
 type RentRollUploadPanelProps = {
   proyectoId: string;
@@ -29,8 +33,6 @@ export function RentRollUploadPanel({
   const [cargaId, setCargaId] = useState<string | null>(initialCargaId ?? null);
   const [payload, setPayload] = useState<RentRollPreviewPayload | null>(initialPayload ?? null);
   const [applyReport, setApplyReport] = useState<ApplyReport | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [messageType, setMessageType] = useState<"success" | "error" | null>(null);
 
   const hasErrors = useMemo(() => {
     if (!payload) {
@@ -41,14 +43,11 @@ export function RentRollUploadPanel({
 
   async function handlePreview(): Promise<void> {
     if (!file) {
-      setMessageType("error");
-      setMessage("Selecciona un archivo antes de previsualizar.");
+      toast.warning("Selecciona un archivo antes de previsualizar.");
       return;
     }
     setLoading(true);
     setLoadingAction("preview");
-    setMessage(null);
-    setMessageType(null);
     setApplyReport(null);
     try {
       const formData = new FormData();
@@ -69,11 +68,9 @@ export function RentRollUploadPanel({
       }
       setCargaId(data.cargaId);
       setPayload(data.preview);
-      setMessageType("success");
-      setMessage("Previsualizacion generada correctamente.");
+      toast.success("Previsualizacion generada correctamente.");
     } catch (error) {
-      setMessageType("error");
-      setMessage(error instanceof Error ? error.message : "Error inesperado en previsualizacion.");
+      toast.error(error instanceof Error ? error.message : "Error inesperado en previsualizacion.");
     } finally {
       setLoading(false);
       setLoadingAction(null);
@@ -82,14 +79,11 @@ export function RentRollUploadPanel({
 
   async function handleApply(): Promise<void> {
     if (!cargaId) {
-      setMessageType("error");
-      setMessage("Primero debes previsualizar una carga.");
+      toast.warning("Primero debes previsualizar una carga.");
       return;
     }
     setLoading(true);
     setLoadingAction("apply");
-    setMessage(null);
-    setMessageType(null);
     try {
       const response = await fetch("/api/rent-roll/upload/apply", {
         method: "POST",
@@ -104,11 +98,9 @@ export function RentRollUploadPanel({
         throw new Error(data.message ?? "No se pudo aplicar la carga.");
       }
       setApplyReport(data.report);
-      setMessageType("success");
-      setMessage("Carga aplicada.");
+      toast.success("Carga aplicada.");
     } catch (error) {
-      setMessageType("error");
-      setMessage(error instanceof Error ? error.message : "Error inesperado al aplicar.");
+      toast.error(error instanceof Error ? error.message : "Error inesperado al aplicar.");
     } finally {
       setLoading(false);
       setLoadingAction(null);
@@ -151,7 +143,7 @@ export function RentRollUploadPanel({
         ))}
       </ol>
       <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
-        <input
+        <Input
           type="file"
           accept=".csv,.xlsx"
           disabled={!canEdit || loading}
@@ -160,60 +152,45 @@ export function RentRollUploadPanel({
             setPayload(null);
             setApplyReport(null);
             setCargaId(null);
-            setMessage(null);
-            setMessageType(null);
           }}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          className="text-sm"
         />
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={handlePreview}
           disabled={!canEdit || loading}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg"
         >
           {loadingAction === "preview" ? (
             <>
-              <svg className="mr-1.5 inline h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
+              <Spinner className="mr-1.5" />
               Previsualizando…
             </>
           ) : (
             "Previsualizar"
           )}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="default"
           onClick={handleApply}
           disabled={!canEdit || loading || !cargaId}
-          className="rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-full"
         >
           {loadingAction === "apply" ? (
             <>
-              <svg className="mr-1.5 inline h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
+              <Spinner className="mr-1.5" />
               Aplicando…
             </>
           ) : (
             "Aplicar"
           )}
-        </button>
+        </Button>
       </div>
 
       {!canEdit ? (
         <p className="text-sm text-amber-700">Tu rol es de solo lectura para cargas.</p>
-      ) : null}
-      {message ? (
-        <p
-          role="status"
-          aria-live="polite"
-          className={cn("text-sm", messageType === "error" ? "text-rose-600" : "text-emerald-700")}
-        >
-          {message}
-        </p>
       ) : null}
 
       {payload ? (

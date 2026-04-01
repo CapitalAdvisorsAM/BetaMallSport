@@ -2,6 +2,19 @@
 
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/Spinner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
 import type { ApplyReport, PreviewRow, RowStatus, UploadPreview } from "@/types/upload";
 
 type UploadRecord = Record<string, unknown>;
@@ -38,22 +51,22 @@ const statusMeta: Record<RowStatus, { label: string; rowClass: string; badgeClas
   NEW: {
     label: "NUEVO",
     rowClass: "bg-emerald-50",
-    badgeClass: "bg-emerald-100 text-emerald-800"
+    badgeClass: "border-emerald-200 bg-emerald-100 text-emerald-800"
   },
   UPDATED: {
     label: "ACTUALIZADO",
     rowClass: "bg-amber-50",
-    badgeClass: "bg-amber-100 text-amber-800"
+    badgeClass: "border-amber-200 bg-amber-100 text-amber-800"
   },
   UNCHANGED: {
     label: "SIN CAMBIO",
     rowClass: "bg-white opacity-60",
-    badgeClass: "bg-slate-100 text-slate-700"
+    badgeClass: "border-slate-200 bg-slate-100 text-slate-700"
   },
   ERROR: {
     label: "ERROR",
     rowClass: "bg-rose-50",
-    badgeClass: "bg-rose-100 text-rose-800"
+    badgeClass: "border-rose-200 bg-rose-100 text-rose-800"
   }
 };
 
@@ -163,7 +176,6 @@ export function UploadSection({
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState<ApplyReport | null>(null);
   const [previewing, setPreviewing] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const canApply = useMemo(() => {
@@ -178,18 +190,16 @@ export function UploadSection({
     setPreview(null);
     setCargaId(null);
     setApplied(null);
-    setMessage(null);
   }
 
   async function handlePreview(): Promise<void> {
     if (!file) {
-      setMessage("Selecciona un archivo antes de previsualizar.");
+      toast.warning("Selecciona un archivo antes de previsualizar.");
       return;
     }
 
     setPreviewing(true);
     setApplied(null);
-    setMessage(null);
 
     try {
       const formData = new FormData();
@@ -206,9 +216,9 @@ export function UploadSection({
 
       setCargaId(payload.cargaId);
       setPreview(payload.preview);
-      setMessage("Preview listo. Revisa fila por fila antes de aplicar.");
+      toast.success("Preview listo. Revisa fila por fila antes de aplicar.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Error inesperado al previsualizar.");
+      toast.error(error instanceof Error ? error.message : "Error inesperado al previsualizar.");
     } finally {
       setPreviewing(false);
     }
@@ -216,12 +226,11 @@ export function UploadSection({
 
   async function handleApply(): Promise<void> {
     if (!cargaId) {
-      setMessage("Primero debes generar un preview.");
+      toast.warning("Primero debes generar un preview.");
       return;
     }
 
     setApplying(true);
-    setMessage(null);
 
     try {
       const response = await fetch(applyEndpoint, {
@@ -237,9 +246,9 @@ export function UploadSection({
       }
 
       setApplied(payload.report);
-      setMessage("Carga aplicada.");
+      toast.success("Carga aplicada.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Error inesperado al aplicar la carga.");
+      toast.error(error instanceof Error ? error.message : "Error inesperado al aplicar la carga.");
     } finally {
       setApplying(false);
     }
@@ -274,14 +283,18 @@ export function UploadSection({
             onFileSelected(event.dataTransfer.files?.[0] ?? null);
           }
         }}
-        className={`rounded-md border border-dashed p-4 transition ${
-          isDragging ? "border-brand-700 bg-brand-50/40" : "border-slate-300"
+        className={`rounded-md border-2 border-dashed p-5 transition-colors ${
+          isDragging
+            ? "border-brand-500 bg-brand-50"
+            : file
+              ? "border-emerald-400 bg-emerald-50/40"
+              : "border-slate-300 hover:border-slate-400"
         }`}
       >
         <div className="flex flex-wrap items-center gap-3">
-          <label className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700">
+          <label className="cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
             Seleccionar archivo
-            <input
+            <Input
               type="file"
               accept=".csv,.xlsx,.xls"
               disabled={disabled}
@@ -289,51 +302,70 @@ export function UploadSection({
               onChange={(event) => onFileSelected(event.target.files?.[0] ?? null)}
             />
           </label>
-          <span className="text-sm text-slate-600">
-            {file ? file.name : "Arrastra y suelta un archivo CSV/XLSX aqui."}
+          <span className={`text-sm ${file ? "font-medium text-emerald-700" : "text-slate-500"}`}>
+            {file ? `âœ“ ${file.name}` : "Arrastra y suelta un archivo CSV/XLSX aqui."}
           </span>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={handlePreview}
           disabled={disabled || !file}
-          className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-auto gap-2 px-4 py-2 text-sm"
         >
-          {previewing ? "Previsualizando..." : "Previsualizar"}
-        </button>
-        <button
+          {previewing ? (
+            <>
+              <Spinner className="text-slate-700" />
+              Previsualizando...
+            </>
+          ) : (
+            "Previsualizar"
+          )}
+        </Button>
+        <Button
           type="button"
+          variant="default"
           onClick={handleApply}
           disabled={disabled || !preview || !cargaId || !canApply}
-          className="rounded-md bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-auto gap-2 px-4 py-2 text-sm font-semibold"
         >
-          {applying ? "Aplicando..." : "Aplicar carga"}
-        </button>
+          {applying ? (
+            <>
+              <Spinner className="border-t-white text-white" />
+              Aplicando...
+            </>
+          ) : (
+            "Aplicar carga"
+          )}
+        </Button>
       </div>
 
       {!canEdit ? (
-        <p className="text-sm text-amber-700">Tu rol es de solo lectura para cargas.</p>
+        <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <span>âš </span>
+          <span>Tu rol es de solo lectura para cargas.</span>
+        </div>
       ) : null}
-      {message ? <p className="text-sm text-slate-700">{message}</p> : null}
-
       {preview ? (
         <div className="space-y-3 rounded-md border border-slate-200 p-4">
-          <div className="flex flex-wrap gap-2 text-sm">
-            <span className="rounded-md bg-emerald-100 px-2 py-1 text-emerald-800">
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline" className="rounded-md border-emerald-200 bg-emerald-100 text-emerald-800">
               NUEVOS: {preview.summary.nuevo}
-            </span>
-            <span className="rounded-md bg-amber-100 px-2 py-1 text-amber-800">
+            </Badge>
+            <Badge variant="outline" className="rounded-md border-amber-200 bg-amber-100 text-amber-800">
               ACTUALIZADOS: {preview.summary.actualizado}
-            </span>
-            <span className="rounded-md bg-slate-100 px-2 py-1 text-slate-700">
+            </Badge>
+            <Badge variant="outline" className="rounded-md border-slate-200 bg-slate-100 text-slate-600">
               SIN CAMBIO: {preview.summary.sinCambio}
-            </span>
-            <span className="rounded-md bg-rose-100 px-2 py-1 text-rose-800">
-              ERRORES: {preview.summary.errores}
-            </span>
+            </Badge>
+            {preview.summary.errores > 0 ? (
+              <Badge variant="outline" className="rounded-md border-rose-200 bg-rose-100 text-rose-800">
+                ERRORES: {preview.summary.errores}
+              </Badge>
+            ) : null}
           </div>
 
           {preview.warnings.length > 0 ? (
@@ -345,69 +377,103 @@ export function UploadSection({
           ) : null}
 
           <div className="overflow-x-auto rounded-md border border-slate-200">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="whitespace-nowrap px-3 py-2 text-left font-semibold text-slate-700">Fila</th>
-                  <th className="whitespace-nowrap px-3 py-2 text-left font-semibold text-slate-700">
+            <Table className="min-w-full divide-y-0 text-sm">
+              <TableHeader className="bg-slate-50 text-slate-700">
+                <TableRow>
+                  <TableHead className="h-auto whitespace-nowrap px-3 py-2 text-left font-semibold text-slate-700">
+                    Fila
+                  </TableHead>
+                  <TableHead className="h-auto whitespace-nowrap px-3 py-2 text-left font-semibold text-slate-700">
                     Estado
-                  </th>
+                  </TableHead>
                   {columns.map((column) => (
-                    <th
+                    <TableHead
                       key={column.key}
-                      className={`whitespace-nowrap px-3 py-2 text-left font-semibold text-slate-700 ${column.className ?? ""}`}
+                      className={`h-auto whitespace-nowrap px-3 py-2 text-left font-semibold text-slate-700 ${column.className ?? ""}`}
                     >
                       {column.label}
-                    </th>
+                    </TableHead>
                   ))}
-                  <th className="whitespace-nowrap px-3 py-2 text-left font-semibold text-slate-700">Error</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
+                  <TableHead className="h-auto whitespace-nowrap px-3 py-2 text-left font-semibold text-slate-700">
+                    Error
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="[&_tr]:border-slate-100">
                 {preview.rows.map((row) => {
                   const status = statusMeta[row.status];
                   const changed = new Set((row.changedFields ?? []).map((field) => String(field)));
 
                   return (
-                    <tr key={`${row.rowNumber}-${row.status}`} className={status.rowClass}>
-                      <td className="whitespace-nowrap px-3 py-2 text-slate-700">{row.rowNumber}</td>
-                      <td className="whitespace-nowrap px-3 py-2">
-                        <span className={`rounded-md px-2 py-1 text-xs font-semibold ${status.badgeClass}`}>
+                    <TableRow
+                      key={`${row.rowNumber}-${row.status}`}
+                      className={`${status.rowClass} hover:bg-inherit`}
+                    >
+                      <TableCell className="whitespace-nowrap px-3 py-2 text-slate-700">{row.rowNumber}</TableCell>
+                      <TableCell className="whitespace-nowrap px-3 py-2">
+                        <Badge variant="outline" className={`rounded-md px-2 py-1 ${status.badgeClass}`}>
                           {status.label}
-                        </span>
-                      </td>
+                        </Badge>
+                      </TableCell>
                       {columns.map((column) => {
                         const value = row.data[column.key];
                         const renderedValue = column.render ? column.render(value, row) : String(value ?? "");
                         const isChanged = row.status === "UPDATED" && changed.has(column.key);
 
                         return (
-                          <td
+                          <TableCell
                             key={column.key}
                             className={`whitespace-nowrap px-3 py-2 ${
                               isChanged ? "font-semibold text-slate-900" : "text-slate-700"
                             } ${column.className ?? ""}`}
                           >
                             {renderedValue}
-                          </td>
+                          </TableCell>
                         );
                       })}
-                      <td className="px-3 py-2 text-rose-700">{row.errorMessage ?? "-"}</td>
-                    </tr>
+                      <TableCell className="px-3 py-2">
+                        {row.errorMessage ? (
+                          <span className="flex items-start gap-1 text-rose-700">
+                            <span className="mt-px shrink-0 text-xs">âš </span>
+                            {row.errorMessage}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">â€”</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       ) : null}
 
       {applied ? (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-          Resultado: creados {applied.created}, actualizados {applied.updated}, sin cambio {applied.skipped},
-          rechazados {applied.rejected}.
+        <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4">
+          <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-emerald-800">
+            <span>âœ“</span> Carga aplicada exitosamente
+          </p>
+          <div className="flex flex-wrap gap-3 text-sm">
+            <span className="text-emerald-700">
+              <span className="font-semibold">{applied.created}</span> creados
+            </span>
+            <span className="text-amber-700">
+              <span className="font-semibold">{applied.updated}</span> actualizados
+            </span>
+            <span className="text-slate-600">
+              <span className="font-semibold">{applied.skipped}</span> sin cambio
+            </span>
+            {applied.rejected > 0 ? (
+              <span className="text-rose-700">
+                <span className="font-semibold">{applied.rejected}</span> rechazados
+              </span>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </section>
   );
 }
+

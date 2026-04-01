@@ -3,7 +3,11 @@ import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { parseArrendatariosFile, normalizeUploadRut } from "@/lib/upload/parse-arrendatarios";
+import {
+  buildUploadArrendatarioKey,
+  parseArrendatariosFile,
+  normalizeUploadRut
+} from "@/lib/upload/parse-arrendatarios";
 import { validateFileGuards } from "@/lib/upload/parse-utils";
 
 export const runtime = "nodejs";
@@ -58,15 +62,29 @@ export async function POST(request: Request): Promise<NextResponse> {
       })
     ]);
 
-    const existingMap = new Map(
-      existingArrendatarios.map((arrendatario) => [
-        normalizeUploadRut(arrendatario.rut),
-        {
-          ...arrendatario,
-          rut: normalizeUploadRut(arrendatario.rut)
-        }
-      ])
-    );
+    const existingMap = new Map<string, (typeof existingArrendatarios)[number]>();
+    for (const arrendatario of existingArrendatarios) {
+      const normalized = {
+        ...arrendatario,
+        rut: normalizeUploadRut(arrendatario.rut)
+      };
+
+      const rutKey = buildUploadArrendatarioKey(
+        normalized.rut,
+        normalized.razonSocial,
+        normalized.nombreComercial
+      );
+      existingMap.set(rutKey, normalized);
+
+      const nameKey = buildUploadArrendatarioKey(
+        "",
+        normalized.razonSocial,
+        normalized.nombreComercial
+      );
+      if (!existingMap.has(nameKey)) {
+        existingMap.set(nameKey, normalized);
+      }
+    }
     const activeContractRuts = new Set(
       arrendatariosConContratosVigentes.map((arrendatario) => normalizeUploadRut(arrendatario.rut))
     );

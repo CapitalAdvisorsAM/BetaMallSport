@@ -2,6 +2,9 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type ProjectCreationPanelProps = {
   title: string;
@@ -71,32 +74,39 @@ export function ProjectCreationPanel({
         </p>
       ) : (
         <form onSubmit={(event) => void handleSubmit(event)} className="grid gap-3 md:grid-cols-[1fr_180px_auto]">
-          <label className="text-sm">
-            <span className="mb-1 block text-slate-700">Nombre del proyecto</span>
-            <input
+          <div className="text-sm">
+            <Label htmlFor="project-name" className="mb-1 block text-slate-700">
+              Nombre del proyecto
+            </Label>
+            <Input
+              id="project-name"
               value={nombre}
               onChange={(event) => setNombre(event.target.value)}
               placeholder="Ej: Mall Sport Providencia"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-brand-500 focus:ring-2"
+              className="w-full"
               required
             />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block text-slate-700">Color</span>
-            <input
+          </div>
+          <div className="text-sm">
+            <Label htmlFor="project-color" className="mb-1 block text-slate-700">
+              Color
+            </Label>
+            <Input
+              id="project-color"
               type="color"
               value={color}
               onChange={(event) => setColor(event.target.value)}
-              className="h-[42px] w-full rounded-lg border border-slate-300 px-2"
+              className="h-10 w-full px-2"
             />
-          </label>
-          <button
+          </div>
+          <Button
             type="submit"
+            variant="default"
             disabled={loading}
-            className="self-end rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="self-end rounded-full"
           >
             {loading ? "Creando..." : "Crear proyecto"}
-          </button>
+          </Button>
         </form>
       )}
 

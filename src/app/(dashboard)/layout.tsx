@@ -2,6 +2,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { TopNavbar } from "@/components/navigation/TopNavbar";
+import { Button } from "@/components/ui/button";
 import { HelpButton } from "@/components/ui/HelpButton";
 import { auth } from "@/lib/auth";
 
@@ -19,7 +20,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-[#f1f4f9]">
       <header className="bg-brand-700 shadow-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between md:px-6">
           <div className="flex items-center gap-3">
             <Image
               src="/MallSportLogo.jpg"
@@ -36,19 +37,23 @@ export default async function DashboardLayout({
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex w-full flex-wrap items-center justify-between gap-3 md:w-auto md:flex-nowrap md:justify-end md:gap-6">
             <TopNavbar />
-            <div className="h-5 w-px bg-white/20" />
+            <div className="hidden h-5 w-px bg-white/20 md:block" />
             <div className="flex items-center gap-3">
-              <span className="text-xs text-white/60">{session.user.email}</span>
+              <span className="max-w-[190px] truncate text-xs text-white/60 md:max-w-[220px]">
+                {session.user.email}
+              </span>
               <form method="POST" action="/api/auth/signout">
                 <input type="hidden" name="callbackUrl" value="/login" />
-                <button
+                <Button
                   type="submit"
-                  className="rounded-md border border-white/20 px-3 py-1 text-xs font-medium text-white/80 transition-colors hover:border-white/40 hover:bg-white/10 hover:text-white"
+                  variant="outline"
+                  size="sm"
+                  className="border-white/20 bg-transparent text-xs text-white/80 hover:border-white/40 hover:bg-white/10 hover:text-white"
                 >
                   Salir
-                </button>
+                </Button>
               </form>
             </div>
           </div>

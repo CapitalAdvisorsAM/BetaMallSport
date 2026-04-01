@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
 type RentRollErrorProps = {
   error: Error;
   reset: () => void;
@@ -15,13 +17,14 @@ export default function RentRollError({ error, reset }: RentRollErrorProps): JSX
         <p className="mt-2 text-sm text-rose-700">
           Intenta nuevamente. Si el problema persiste, revisa la conexion de la base de datos.
         </p>
-        <button
+        <Button
           type="button"
           onClick={reset}
-          className="mt-4 rounded-full bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700"
+          variant="destructive"
+          className="mt-4 rounded-full"
         >
           Reintentar
-        </button>
+        </Button>
       </section>
       <p className="sr-only">{error.message}</p>
     </main>

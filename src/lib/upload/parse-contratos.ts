@@ -32,7 +32,6 @@ export type ContratoUploadRow = {
   tarifaValor: string;
   tarifaVigenciaDesde: string;
   tarifaVigenciaHasta: string | null;
-  pctRentaVariable: string | null;
   pctFondoPromocion: string | null;
   codigoCC: string | null;
   notas: string | null;
@@ -51,7 +50,6 @@ export type ExistingContratoForDiff = {
   estado: EstadoContrato;
   fechaInicio: string;
   fechaTermino: string;
-  pctRentaVariable: string | null;
   pctFondoPromocion: string | null;
   codigoCC: string | null;
   notas: string | null;
@@ -122,7 +120,6 @@ function emptyRow(): ContratoUploadRow {
     tarifaValor: "",
     tarifaVigenciaDesde: "",
     tarifaVigenciaHasta: null,
-    pctRentaVariable: null,
     pctFondoPromocion: null,
     codigoCC: null,
     notas: null,
@@ -174,9 +171,6 @@ function compareWithExisting(
   }
   if (existing.fechaTermino !== row.fechaTermino) {
     changed.push("fechaTermino");
-  }
-  if (!decimalEquals(existing.pctRentaVariable, row.pctRentaVariable)) {
-    changed.push("pctRentaVariable");
   }
   if (!decimalEquals(existing.pctFondoPromocion, row.pctFondoPromocion)) {
     changed.push("pctFondoPromocion");
@@ -241,7 +235,8 @@ export function parseContratosFile(
 
   const sourceRows = utils.sheet_to_json<RawRow>(workbook.Sheets[firstSheet], {
     defval: "",
-    raw: false
+    raw: false,
+    range: 2
   });
   const normalizedRows = sourceRows.map((row) => normalizeHeaders(row));
   const warnings: string[] = [];
@@ -290,7 +285,9 @@ export function parseContratosFile(
     const tarifaValor = asString(rawRow.tarifavalor).replace(",", ".");
     const tarifaVigenciaDesde = parseDate(rawRow.tarifavigenciadesde);
     const tarifaVigenciaHasta = parseDate(rawRow.tarifavigenciahasta);
-    const pctRentaVariable = normalizeNullable(rawRow.pctrentavariable);
+    const rentaVariablePct = normalizeNullable(rawRow.rentavariablepct);
+    const rentaVariableVigenciaDesde = parseDate(rawRow.rentavariablevigenciadesde);
+    const rentaVariableVigenciaHasta = parseDate(rawRow.rentavariablevigenciahasta);
     const pctFondoPromocion = normalizeNullable(rawRow.pctfondopromocion);
     const codigoCC = normalizeNullable(rawRow.codigocc);
     const notas = normalizeNullable(rawRow.notas);
@@ -301,6 +298,38 @@ export function parseContratosFile(
     const anexoFecha = parseDate(rawRow.anexofecha);
     const anexoDescripcion = normalizeNullable(rawRow.anexodescripcion);
 
+    const hasAnyRentaVariableValue = Boolean(
+      rentaVariablePct || rentaVariableVigenciaDesde || rentaVariableVigenciaHasta
+    );
+    if (hasAnyRentaVariableValue && (!rentaVariablePct || !rentaVariableVigenciaDesde)) {
+      return {
+        rowNumber,
+        status: "ERROR",
+        data: emptyRow(),
+        errorMessage:
+          "Renta variable incompleta: si informas rentaVariablePct debes incluir rentaVariableVigenciaDesde."
+      };
+    }
+    if (hasAnyRentaVariableValue && tarifaTipoRaw && tarifaTipoRaw !== "PORCENTAJE") {
+      return {
+        rowNumber,
+        status: "ERROR",
+        data: emptyRow(),
+        errorMessage:
+          "No mezcles tarifaTipo fijo con rentaVariablePct. Usa tarifaTipo=PORCENTAJE o deja el tipo vacio."
+      };
+    }
+
+    const tarifaTipoFinal =
+      (hasAnyRentaVariableValue ? "PORCENTAJE" : tarifaTipoRaw || TipoTarifaContrato.FIJO_UF_M2) as TipoTarifaContrato;
+    const tarifaValorFinal = (hasAnyRentaVariableValue ? rentaVariablePct : tarifaValor) ?? "";
+    const tarifaVigenciaDesdeFinal = hasAnyRentaVariableValue
+      ? rentaVariableVigenciaDesde
+      : tarifaVigenciaDesde;
+    const tarifaVigenciaHastaFinal = hasAnyRentaVariableValue
+      ? rentaVariableVigenciaHasta
+      : tarifaVigenciaHasta;
+
     const data: ContratoUploadRow = {
       numeroContrato,
       localCodigo,
@@ -308,11 +337,10 @@ export function parseContratosFile(
       estado: (estadoRaw || EstadoContrato.VIGENTE) as EstadoContrato,
       fechaInicio: fechaInicio ?? "",
       fechaTermino: fechaTermino ?? "",
-      tarifaTipo: (tarifaTipoRaw || TipoTarifaContrato.FIJO_UF_M2) as TipoTarifaContrato,
-      tarifaValor,
-      tarifaVigenciaDesde: tarifaVigenciaDesde ?? "",
-      tarifaVigenciaHasta,
-      pctRentaVariable,
+      tarifaTipo: tarifaTipoFinal,
+      tarifaValor: tarifaValorFinal.replace(",", "."),
+      tarifaVigenciaDesde: tarifaVigenciaDesdeFinal ?? "",
+      tarifaVigenciaHasta: tarifaVigenciaHastaFinal,
       pctFondoPromocion,
       codigoCC,
       notas,
@@ -372,12 +400,12 @@ export function parseContratosFile(
         errorMessage: "tarifaValor debe ser numerico."
       };
     }
-    if (!isValidDecimalOrNull(data.pctRentaVariable) || !isValidDecimalOrNull(data.pctFondoPromocion)) {
+    if (!isValidDecimalOrNull(data.pctFondoPromocion)) {
       return {
         rowNumber,
         status: "ERROR",
         data,
-        errorMessage: "pctRentaVariable y pctFondoPromocion deben ser numericos cuando se informan."
+        errorMessage: "pctFondoPromocion debe ser numerico cuando se informa."
       };
     }
     if (!isValidDecimalOrNull(data.ggccTarifaBaseUfM2) || !isValidDecimalOrNull(data.ggccPctAdministracion)) {

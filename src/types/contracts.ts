@@ -1,0 +1,110 @@
+import type { EstadoContrato, TipoTarifaContrato } from "@prisma/client";
+
+export type ContractApiBaseRow = {
+  id: string;
+  proyectoId: string;
+  localId: string;
+  localIds: string[];
+  arrendatarioId: string;
+  numeroContrato: string;
+  fechaInicio: string;
+  fechaTermino: string;
+  fechaEntrega: string | null;
+  fechaApertura: string | null;
+  pctFondoPromocion: string | null;
+  codigoCC: string | null;
+  estado: EstadoContrato;
+  pdfUrl: string | null;
+  notas: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ContractTarifaApiRow = {
+  id: string;
+  contratoId: string;
+  tipo: TipoTarifaContrato;
+  valor: string;
+  vigenciaDesde: string;
+  vigenciaHasta: string | null;
+  esDiciembre: boolean;
+  createdAt: string;
+};
+
+export type ContractGgccApiRow = {
+  id: string;
+  contratoId: string;
+  tarifaBaseUfM2: string;
+  pctAdministracion: string;
+  vigenciaDesde: string;
+  vigenciaHasta: string | null;
+  proximoReajuste: string | null;
+  createdAt: string;
+};
+
+export type ContractCreateApiResponse = ContractApiBaseRow;
+
+export type ContractUpdateApiResponse = ContractApiBaseRow & {
+  tarifas: ContractTarifaApiRow[];
+  ggcc: ContractGgccApiRow[];
+};
+
+export type ContractWriteApiResponse = ContractCreateApiResponse | ContractUpdateApiResponse;
+
+export type ContractManagerOption = {
+  id: string;
+  label: string;
+};
+
+export type ContractManagerListItem = {
+  id: string;
+  numeroContrato: string;
+  estado: EstadoContrato;
+  pdfUrl: string | null;
+  fechaInicio: string;
+  fechaTermino: string;
+  local: { id: string; codigo: string; nombre: string };
+  locales: Array<{ id: string; codigo: string; nombre: string }>;
+  arrendatario: { id: string; nombreComercial: string; razonSocial: string };
+  tarifas: Array<{
+    tipo: "FIJO_UF_M2" | "FIJO_UF" | "PORCENTAJE";
+    valor: string;
+    vigenciaDesde: string;
+    vigenciaHasta: string | null;
+    esDiciembre: boolean;
+  }>;
+  ggcc: Array<{
+    tarifaBaseUfM2: string;
+    pctAdministracion: string;
+    vigenciaDesde: string;
+    vigenciaHasta: string | null;
+    proximoReajuste: string | null;
+  }>;
+};
+
+export type ContractExtractionResponse = {
+  numeroContrato: string | null;
+  arrendatarioRut: string | null;
+  arrendatarioNombre: string | null;
+  localCodigo: string | null;
+  glam2: string | null;
+  fechaInicio: string | null;
+  fechaTermino: string | null;
+  pctFondoPromocion: string | null;
+  tarifas: Array<{
+    tipo: "FIJO_UF_M2" | "PORCENTAJE";
+    valor: string;
+    vigenciaDesde: string;
+    vigenciaHasta: string | null;
+    esDiciembre: boolean;
+  }>;
+  ggcc: Array<{
+    tarifaBaseUfM2: string;
+    pctAdministracion: string;
+    vigenciaDesde: string;
+    vigenciaHasta: null;
+    proximoReajuste: null;
+  }>;
+  arrendatarioId: string | null;
+  localId: string | null;
+};

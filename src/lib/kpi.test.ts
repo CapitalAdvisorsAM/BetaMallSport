@@ -178,7 +178,8 @@ describe("cdg mall sport KPIs", () => {
         id: "variable",
         localId: "loc-var",
         localGlam2: "80",
-        tarifa: { tipo: TipoTarifaContrato.PORCENTAJE, valor: "8" }
+        tarifa: null,
+        tarifaVariablePct: "8"
       }),
       makeContract({
         id: "simulador",

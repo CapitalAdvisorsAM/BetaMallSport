@@ -31,6 +31,16 @@ const tipoAliases: Record<string, TipoLocal> = {
   OTRO: TipoLocal.OTRO
 };
 
+function normalizeToken(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
 function asString(value: unknown): string {
   if (typeof value === "string") {
     return value.trim();
@@ -43,22 +53,23 @@ function asString(value: unknown): string {
 
 function normalizeLocalData(data: Record<string, unknown>): NormalizedLocalRow | null {
   const codigo = asString(data.codigo).toUpperCase();
-  const nombre = asString(data.nombre);
-  const glam2 = asString(data.glam2).replace(",", ".");
+  const nombre = asString(data.nombre) || codigo;
+  const glam2Raw = asString(data.glam2).replace(",", ".");
+  const glam2 = glam2Raw || "0";
   const piso = asString(data.piso);
-  const tipoRaw = asString(data.tipo).toUpperCase();
-  const estado = asString(data.estado).toUpperCase() || EstadoMaestro.ACTIVO;
+  const tipoRaw = normalizeToken(asString(data.tipo));
+  const estado = normalizeToken(asString(data.estado)) || EstadoMaestro.ACTIVO;
   const zona = asString(data.zona);
   const esGLA = Boolean(data.esGLA);
 
-  if (!codigo || !nombre || !glam2 || !piso) {
+  if (!codigo || !piso) {
     return null;
   }
   const tipo = tipoAliases[tipoRaw];
   if (!tipo || !allowedTipo.has(tipo) || !allowedEstado.has(estado as EstadoMaestro)) {
     return null;
   }
-  if (!Number.isFinite(Number(glam2)) || Number(glam2) <= 0) {
+  if (!Number.isFinite(Number(glam2)) || Number(glam2) < 0) {
     return null;
   }
 
@@ -75,6 +86,7 @@ function normalizeLocalData(data: Record<string, unknown>): NormalizedLocalRow |
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
+  let processingCargaId: string | null = null;
   try {
     const session = await requireWriteAccess();
     const body = (await request.json()) as { cargaId?: string };
@@ -101,6 +113,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       where: { id: carga.id },
       data: { estado: "PROCESANDO", usuarioId: session.user.id }
     });
+    processingCargaId = carga.id;
 
     let created = 0;
     let updated = 0;
@@ -131,52 +144,41 @@ export async function POST(request: Request): Promise<NextResponse> {
           continue;
         }
 
-        const exists = await tx.local.findUnique({
+        const localData = {
+          nombre: normalized.nombre,
+          glam2: new Prisma.Decimal(normalized.glam2),
+          piso: normalized.piso,
+          tipo: normalized.tipo,
+          zona: normalized.zona,
+          esGLA: normalized.esGLA,
+          estado: normalized.estado
+        };
+
+        const result = await tx.local.upsert({
           where: {
             proyectoId_codigo: {
               proyectoId: carga.proyectoId,
               codigo: normalized.codigo
             }
+          },
+          update: localData,
+          create: {
+            proyectoId: carga.proyectoId,
+            codigo: normalized.codigo,
+            ...localData
           },
           select: { id: true }
         });
 
-        await tx.local.upsert({
-          where: {
-            proyectoId_codigo: {
-              proyectoId: carga.proyectoId,
-              codigo: normalized.codigo
-            }
-          },
-          create: {
-            proyectoId: carga.proyectoId,
-            codigo: normalized.codigo,
-            nombre: normalized.nombre,
-            glam2: new Prisma.Decimal(normalized.glam2),
-            piso: normalized.piso,
-            tipo: normalized.tipo,
-            zona: normalized.zona,
-            esGLA: normalized.esGLA,
-            estado: normalized.estado
-          },
-          update: {
-            nombre: normalized.nombre,
-            glam2: new Prisma.Decimal(normalized.glam2),
-            piso: normalized.piso,
-            tipo: normalized.tipo,
-            zona: normalized.zona,
-            esGLA: normalized.esGLA,
-            estado: normalized.estado
-          }
-        });
-
-        if (exists) {
-          updated += 1;
-        } else {
+        if (row.status === "NEW") {
           created += 1;
+        } else {
+          updated += 1;
         }
+
+        void result;
       }
-    });
+    }, { timeout: 30000 });
 
     const report: ApplyReport = {
       created,
@@ -201,6 +203,20 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     return NextResponse.json({ cargaId: carga.id, report });
   } catch (error) {
+    if (processingCargaId) {
+      await prisma.cargaDatos
+        .update({
+          where: { id: processingCargaId },
+          data: { estado: "ERROR" }
+        })
+        .catch(() => undefined);
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json(
+        { message: "Ya existe un local con ese codigo en este proyecto." },
+        { status: 409 }
+      );
+    }
     return handleApiError(error);
   }
 }

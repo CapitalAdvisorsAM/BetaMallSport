@@ -5,13 +5,30 @@ import {
   RentRollDashboardTable,
   type RentRollDashboardTableRow
 } from "@/components/rent-roll/RentRollDashboardTable";
+import { Button } from "@/components/ui/button";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
-import { auth } from "@/lib/auth";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
 import { buildOcupacionDetalle } from "@/lib/kpi";
-import { canWrite } from "@/lib/permissions";
+import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
+import { formatDecimal } from "@/lib/utils";
 
 type RentRollDashboardPageProps = {
   searchParams: {
@@ -19,13 +36,6 @@ type RentRollDashboardPageProps = {
     periodo?: string;
   };
 };
-
-function formatDecimal(value: number): string {
-  return value.toLocaleString("es-CL", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
-}
 
 function formatPeriod(value: Date): string {
   const year = value.getFullYear();
@@ -62,10 +72,7 @@ function isValidPeriod(value?: string): value is string {
 export default async function RentRollDashboardPage({
   searchParams
 }: RentRollDashboardPageProps): Promise<JSX.Element> {
-  const session = await auth();
-  if (!session?.user) {
-    redirect("/login");
-  }
+  const session = await requireSession();
 
   const { projects, selectedProjectId } = await getProjectContext(searchParams.proyecto);
   if (!selectedProjectId) {
@@ -276,23 +283,29 @@ export default async function RentRollDashboardPage({
       <section className="rounded-md bg-white p-4 shadow-sm">
         <form className="grid gap-3 md:grid-cols-[220px_auto]">
           <input type="hidden" name="proyecto" value={selectedProjectId} />
-          <select
+          <Select
             name="periodo"
             defaultValue={periodo}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-brand-500 focus:ring-2"
           >
-            {periodOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-          <button
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Selecciona un periodo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {periodOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <Button
             type="submit"
-            className="rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            className="rounded-full"
           >
             Aplicar periodo
-          </button>
+          </Button>
         </form>
       </section>
 
@@ -308,26 +321,26 @@ export default async function RentRollDashboardPage({
             <h3 className="text-sm font-semibold text-brand-700">Ocupacion por categoria</h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-brand-700">
-                <tr>
-                  <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+            <Table className="min-w-full divide-y divide-slate-200 text-sm">
+              <TableHeader className="bg-brand-700">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
                     Categoria
-                  </th>
-                  <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  </TableHead>
+                  <TableHead className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
                     GLA (m2)
-                  </th>
-                  <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  </TableHead>
+                  <TableHead className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
                     % del total
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="text-slate-800">
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="text-slate-800">
                 {categoriaRows.map((row, index) => {
                   const data = ocupacionDetalle.porCategoria[row.key] ?? { gla: 0, pct: 0 };
                   return (
-                    <tr key={row.key} className={index % 2 === 0 ? "bg-white" : "bg-slate-50/60"}>
-                      <td className="px-4 py-3">
+                    <TableRow key={row.key} className={index % 2 === 0 ? "bg-white" : "bg-slate-50/60"}>
+                      <TableCell className="px-4 py-3">
                         <div className="text-sm font-medium">{row.label}</div>
                         <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
                           <div
@@ -335,14 +348,18 @@ export default async function RentRollDashboardPage({
                             style={{ width: `${Math.min(100, Math.max(0, data.pct))}%` }}
                           />
                         </div>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right">{formatDecimal(data.gla)}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right">{formatDecimal(data.pct)}%</td>
-                    </tr>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap px-4 py-3 text-right">
+                        {formatDecimal(data.gla)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap px-4 py-3 text-right">
+                        {formatDecimal(data.pct)}%
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </article>
 
@@ -351,27 +368,27 @@ export default async function RentRollDashboardPage({
             <h3 className="text-sm font-semibold text-brand-700">Ocupacion por tamano</h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-brand-700">
-                <tr>
-                  <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+            <Table className="min-w-full divide-y divide-slate-200 text-sm">
+              <TableHeader className="bg-brand-700">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
                     Tipo
-                  </th>
-                  <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  </TableHead>
+                  <TableHead className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
                     GLA Total
-                  </th>
-                  <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  </TableHead>
+                  <TableHead className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
                     GLA Arrendada
-                  </th>
-                  <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  </TableHead>
+                  <TableHead className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
                     Vacante
-                  </th>
-                  <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  </TableHead>
+                  <TableHead className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
                     % Vacancia
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="text-slate-800">
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="text-slate-800">
                 {tamanoRows.map((row, index) => {
                   const data = ocupacionDetalle.porTamano[row.key] ?? {
                     gla: 0,
@@ -380,21 +397,25 @@ export default async function RentRollDashboardPage({
                   };
                   const vacante = Math.max(data.gla - data.glaArrendada, 0);
                   return (
-                    <tr key={row.key} className={index % 2 === 0 ? "bg-white" : "bg-slate-50/60"}>
-                      <td className="whitespace-nowrap px-4 py-3 font-medium">{row.label}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right">{formatDecimal(data.gla)}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right">
+                    <TableRow key={row.key} className={index % 2 === 0 ? "bg-white" : "bg-slate-50/60"}>
+                      <TableCell className="whitespace-nowrap px-4 py-3 font-medium">{row.label}</TableCell>
+                      <TableCell className="whitespace-nowrap px-4 py-3 text-right">
+                        {formatDecimal(data.gla)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap px-4 py-3 text-right">
                         {formatDecimal(data.glaArrendada)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right">{formatDecimal(vacante)}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right">
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap px-4 py-3 text-right">
+                        {formatDecimal(vacante)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap px-4 py-3 text-right">
                         {formatDecimal(data.pctVacancia)}%
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </article>
       </section>

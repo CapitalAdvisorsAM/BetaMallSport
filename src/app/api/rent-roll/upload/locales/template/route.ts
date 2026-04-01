@@ -31,9 +31,9 @@ const columns: ColumnDef[] = [
   },
   {
     key: "glam2",
-    label: "GLA (m2)",
-    required: true,
-    description: "Metros cuadrados arrendables. Usar punto decimal. Ej: 120.5",
+    label: "GLA (m2) (opcional)",
+    required: false,
+    description: "Metros cuadrados arrendables. Si viene vacio se considera 0.",
     format: "number",
     width: 14
   },

@@ -32,6 +32,7 @@ enum EstadoContrato {
 enum TipoTarifaContrato {
   FIJO_UF_M2
   FIJO_UF
+  // PORCENTAJE se usa para renta variable (%) con vigencias en ContratoTarifa.
   PORCENTAJE
 }
 
@@ -104,6 +105,7 @@ model Local {
 
   proyecto   Proyecto      @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   contratos  Contrato[]
+  contratosAsociados ContratoLocal[]
   contratosDia ContratoDia[]
   ventaLocales VentaLocal[]
   ingresoEnergia IngresoEnergia[]
@@ -175,7 +177,6 @@ model Contrato {
   fechaTermino        DateTime       @db.Date
   fechaEntrega        DateTime?      @db.Date
   fechaApertura       DateTime?      @db.Date
-  pctRentaVariable    Decimal?       @db.Decimal(6, 3)
   pctFondoPromocion   Decimal?       @db.Decimal(6, 3)
   codigoCC            String?
   estado              EstadoContrato
@@ -187,6 +188,7 @@ model Contrato {
   proyecto            Proyecto       @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   local               Local          @relation(fields: [localId], references: [id], onDelete: Restrict)
   arrendatario        Arrendatario   @relation(fields: [arrendatarioId], references: [id], onDelete: Restrict)
+  locales             ContratoLocal[]
   tarifas             ContratoTarifa[]
   anexos              ContratoAnexo[]
   ggcc                ContratoGGCC[]
@@ -199,6 +201,20 @@ model Contrato {
   @@index([proyectoId, estado])
   @@index([proyectoId, updatedAt])
   @@unique([proyectoId, numeroContrato])
+}
+
+model ContratoLocal {
+  id          String   @id @default(cuid())
+  contratoId  String
+  localId     String
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  contrato    Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  local       Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
+
+  @@unique([contratoId, localId])
+  @@index([contratoId])
+  @@index([localId])
 }
 
 model ContratoTarifa {

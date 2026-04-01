@@ -70,7 +70,6 @@ export async function POST(request: Request): Promise<NextResponse> {
           estado: contrato.estado,
           fechaInicio: toIsoDate(contrato.fechaInicio),
           fechaTermino: toIsoDate(contrato.fechaTermino),
-          pctRentaVariable: contrato.pctRentaVariable?.toString() ?? null,
           pctFondoPromocion: contrato.pctFondoPromocion?.toString() ?? null,
           codigoCC: contrato.codigoCC,
           notas: contrato.notas,

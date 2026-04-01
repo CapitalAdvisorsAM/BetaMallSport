@@ -1,6 +1,17 @@
 import type { EstadoContrato, EstadoDiaContrato, UserRole } from "@prisma/client";
 export type { ApplyReport, PreviewRow, RowStatus, UploadPreview } from "./upload";
 export type {
+  ContractApiBaseRow,
+  ContractCreateApiResponse,
+  ContractExtractionResponse,
+  ContractGgccApiRow,
+  ContractManagerListItem,
+  ContractManagerOption,
+  ContractTarifaApiRow,
+  ContractUpdateApiResponse,
+  ContractWriteApiResponse
+} from "./contracts";
+export type {
   RentRollMetricaRow,
   RentRollResumen,
   RentRollMetricasResponse
@@ -31,7 +42,6 @@ export type RentRollUploadRow = {
   tarifaValor: string;
   tarifaVigenciaDesde: string;
   tarifaVigenciaHasta: string | null;
-  pctRentaVariable: string | null;
   pctFondoPromocion: string | null;
   codigoCC: string | null;
   notas: string | null;
@@ -68,6 +78,7 @@ export type RentRollPreviewPayload = {
 export type ContractFormPayload = {
   proyectoId: string;
   localId: string;
+  localIds: string[];
   arrendatarioId: string;
   numeroContrato: string;
   fechaInicio: string;
@@ -75,7 +86,11 @@ export type ContractFormPayload = {
   fechaEntrega: string | null;
   fechaApertura: string | null;
   estado: EstadoContrato;
-  pctRentaVariable: string | null;
+  rentaVariable: Array<{
+    pctRentaVariable: string;
+    vigenciaDesde: string;
+    vigenciaHasta: string | null;
+  }>;
   pctFondoPromocion: string | null;
   codigoCC: string | null;
   pdfUrl: string | null;

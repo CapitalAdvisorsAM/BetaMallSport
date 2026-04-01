@@ -1,19 +1,29 @@
 import { NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
-import { normalizeRut, tenantSchema } from "@/lib/arrendatarios/schema";
+import { resolveTenantRut, tenantSchema } from "@/lib/arrendatarios/schema";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
+function getProyectoIdFromRequest(request: Request): string | null {
+  const proyectoId = new URL(request.url).searchParams.get("proyectoId")?.trim() ?? "";
+  return proyectoId.length > 0 ? proyectoId : null;
+}
+
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
     await requireSession();
-    const item = await prisma.arrendatario.findUnique({
-      where: { id: context.params.id }
+    const proyectoId = getProyectoIdFromRequest(request);
+    if (!proyectoId) {
+      return NextResponse.json({ message: "proyectoId es obligatorio." }, { status: 400 });
+    }
+
+    const item = await prisma.arrendatario.findFirst({
+      where: { id: context.params.id, proyectoId }
     });
     if (!item) {
       throw new ApiError(404, "No encontrado.");
@@ -40,24 +50,18 @@ export async function PUT(
 
     const payload = result.data;
     const tenantId = context.params.id;
-    const existing = await prisma.arrendatario.findUnique({
-      where: { id: tenantId },
+    const existing = await prisma.arrendatario.findFirst({
+      where: { id: tenantId, proyectoId: payload.proyectoId },
       select: { id: true, proyectoId: true }
     });
     if (!existing) {
       return NextResponse.json({ message: "Arrendatario no encontrado." }, { status: 404 });
     }
-    if (existing.proyectoId !== payload.proyectoId) {
-      return NextResponse.json(
-        { message: "El proyecto del payload no coincide con el arrendatario existente." },
-        { status: 400 }
-      );
-    }
 
     const updated = await prisma.arrendatario.update({
       where: { id: tenantId },
       data: {
-        rut: normalizeRut(payload.rut),
+        rut: resolveTenantRut(payload.rut, payload.razonSocial, payload.nombreComercial),
         razonSocial: payload.razonSocial,
         nombreComercial: payload.nombreComercial,
         vigente: payload.vigente,
@@ -72,13 +76,24 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   context: { params: { id: string } }
 ): Promise<Response> {
   try {
     await requireWriteAccess();
+    const proyectoId = getProyectoIdFromRequest(request);
+    if (!proyectoId) {
+      return NextResponse.json({ message: "proyectoId es obligatorio." }, { status: 400 });
+    }
+
     const tenantId = context.params.id;
-    await prisma.arrendatario.delete({ where: { id: tenantId } });
+    const deleted = await prisma.arrendatario.deleteMany({
+      where: { id: tenantId, proyectoId }
+    });
+    if (deleted.count === 0) {
+      return NextResponse.json({ message: "Arrendatario no encontrado." }, { status: 404 });
+    }
+
     return new Response(null, { status: 204 });
   } catch (error) {
     return handleApiError(error);

@@ -10,16 +10,30 @@ export const runtime = "nodejs";
 
 type ContractPayload = (typeof contractPayloadSchema)["_type"];
 
+function getProyectoIdFromRequest(request: Request): string | null {
+  const proyectoId = new URL(request.url).searchParams.get("proyectoId")?.trim() ?? "";
+  return proyectoId.length > 0 ? proyectoId : null;
+}
+
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
     await requireSession();
-    const item = await prisma.contrato.findUnique({
-      where: { id: context.params.id },
+    const proyectoId = getProyectoIdFromRequest(request);
+    if (!proyectoId) {
+      return NextResponse.json({ message: "proyectoId es obligatorio." }, { status: 400 });
+    }
+
+    const item = await prisma.contrato.findFirst({
+      where: { id: context.params.id, proyectoId },
       include: {
         local: true,
+        locales: {
+          include: { local: true },
+          orderBy: { createdAt: "asc" }
+        },
         arrendatario: true,
         tarifas: { orderBy: { vigenciaDesde: "desc" } },
         ggcc: { orderBy: { vigenciaDesde: "desc" } },
@@ -41,6 +55,11 @@ function toDate(value: string | null): Date | null {
 
 function toDecimal(value: string | null): Prisma.Decimal | null {
   return value ? new Prisma.Decimal(value) : null;
+}
+
+function normalizedLocalIds(payload: { localId: string; localIds: string[] }): string[] {
+  const source = payload.localIds.length > 0 ? payload.localIds : [payload.localId];
+  return Array.from(new Set(source));
 }
 
 function toDateOnly(value: Date | string | null): string | null {
@@ -92,6 +111,27 @@ function normalizedTarifas(
   );
 }
 
+function normalizedRentaVariable(
+  rows: Array<{
+    tipo: string;
+    valor: Prisma.Decimal | string;
+    vigenciaDesde: Date | string;
+    vigenciaHasta: Date | string | null;
+  }>
+): string {
+  return JSON.stringify(
+    rows
+      .filter((item) => item.tipo === TipoTarifaContrato.PORCENTAJE)
+      .map((item) => ({
+        key: ggccKey(item.vigenciaDesde),
+        pctRentaVariable: toDecimalString(item.valor),
+        vigenciaDesde: toDateOnly(item.vigenciaDesde),
+        vigenciaHasta: toDateOnly(item.vigenciaHasta)
+      }))
+      .sort((a, b) => a.key.localeCompare(b.key))
+  );
+}
+
 function normalizedGgcc(
   rows: Array<{
     tarifaBaseUfM2: Prisma.Decimal | string;
@@ -116,13 +156,13 @@ function normalizedGgcc(
 }
 
 function computeCamposModificados(
-  existing: Prisma.ContratoGetPayload<{ include: { tarifas: true; ggcc: true } }>,
-  payload: ContractPayload
+  existing: Prisma.ContratoGetPayload<{ include: { tarifas: true; ggcc: true; locales: true } }>,
+  payload: ContractPayload,
+  localIds: string[]
 ): string[] {
   const campos: string[] = [];
 
   const scalarChecks: Array<[field: string, before: unknown, after: unknown]> = [
-    ["localId", existing.localId, payload.localId],
     ["arrendatarioId", existing.arrendatarioId, payload.arrendatarioId],
     ["numeroContrato", existing.numeroContrato, payload.numeroContrato],
     ["fechaInicio", toDateOnly(existing.fechaInicio), toDateOnly(payload.fechaInicio)],
@@ -130,7 +170,6 @@ function computeCamposModificados(
     ["fechaEntrega", toDateOnly(existing.fechaEntrega), toDateOnly(payload.fechaEntrega)],
     ["fechaApertura", toDateOnly(existing.fechaApertura), toDateOnly(payload.fechaApertura)],
     ["estado", existing.estado, payload.estado],
-    ["pctRentaVariable", toDecimalString(existing.pctRentaVariable), toDecimalString(payload.pctRentaVariable)],
     [
       "pctFondoPromocion",
       toDecimalString(existing.pctFondoPromocion),
@@ -147,8 +186,27 @@ function computeCamposModificados(
     }
   }
 
-  if (normalizedTarifas(existing.tarifas) !== normalizedTarifas(payload.tarifas)) {
+  const existingLocalIds =
+    existing.locales.length > 0
+      ? existing.locales.map((item) => item.localId).sort()
+      : [existing.localId];
+  const payloadLocalIds = [...localIds].sort();
+  if (JSON.stringify(existingLocalIds) !== JSON.stringify(payloadLocalIds)) {
+    campos.push("localIds");
+  }
+
+  const existingTarifasFijas = existing.tarifas.filter(
+    (item) => item.tipo === TipoTarifaContrato.FIJO_UF_M2 || item.tipo === TipoTarifaContrato.FIJO_UF
+  );
+  const payloadTarifasFijas = payload.tarifas.filter(
+    (item) => item.tipo === TipoTarifaContrato.FIJO_UF_M2 || item.tipo === TipoTarifaContrato.FIJO_UF
+  );
+
+  if (normalizedTarifas(existingTarifasFijas) !== normalizedTarifas(payloadTarifasFijas)) {
     campos.push("tarifas");
+  }
+  if (normalizedRentaVariable(existing.tarifas) !== normalizedRentaVariable(payloadTarifas(payload))) {
+    campos.push("rentaVariable");
   }
   if (normalizedGgcc(existing.ggcc) !== normalizedGgcc(payload.ggcc)) {
     campos.push("ggcc");
@@ -160,17 +218,17 @@ function computeCamposModificados(
   return campos;
 }
 
-function validateContractInput(body: unknown, proyectoId: string): ContractPayload {
+function validateContractInput(body: unknown): ContractPayload {
   const parsed = contractPayloadSchema.parse(body);
-  if (proyectoId && parsed.proyectoId !== proyectoId) {
-    throw new ApiError(400, "El proyecto del payload no coincide con el contrato existente.");
-  }
   return parsed;
 }
 
-function buildContratoPayload(parsed: ContractPayload): Prisma.ContratoUncheckedUpdateInput {
+function buildContratoPayload(
+  parsed: ContractPayload,
+  localIds: string[]
+): Prisma.ContratoUncheckedUpdateInput {
   return {
-    localId: parsed.localId,
+    localId: localIds[0],
     arrendatarioId: parsed.arrendatarioId,
     numeroContrato: parsed.numeroContrato,
     fechaInicio: new Date(parsed.fechaInicio),
@@ -178,7 +236,6 @@ function buildContratoPayload(parsed: ContractPayload): Prisma.ContratoUnchecked
     fechaEntrega: toDate(parsed.fechaEntrega),
     fechaApertura: toDate(parsed.fechaApertura),
     estado: parsed.estado,
-    pctRentaVariable: toDecimal(parsed.pctRentaVariable),
     pctFondoPromocion: toDecimal(parsed.pctFondoPromocion),
     codigoCC: parsed.codigoCC,
     pdfUrl: parsed.pdfUrl,
@@ -186,10 +243,43 @@ function buildContratoPayload(parsed: ContractPayload): Prisma.ContratoUnchecked
   };
 }
 
+function payloadTarifas(payload: ContractPayload): Array<{
+  tipo: TypeOfTarifa;
+  valor: string;
+  vigenciaDesde: string;
+  vigenciaHasta: string | null;
+  esDiciembre: boolean;
+}> {
+  const merged = [
+    ...payload.tarifas.map((item) => ({
+      tipo: item.tipo as TypeOfTarifa,
+      valor: item.valor,
+      vigenciaDesde: item.vigenciaDesde,
+      vigenciaHasta: item.vigenciaHasta,
+      esDiciembre: item.esDiciembre
+    })),
+    ...payload.rentaVariable.map((item) => ({
+      tipo: TipoTarifaContrato.PORCENTAJE as TypeOfTarifa,
+      valor: item.pctRentaVariable,
+      vigenciaDesde: item.vigenciaDesde,
+      vigenciaHasta: item.vigenciaHasta,
+      esDiciembre: false
+    }))
+  ];
+
+  const byKey = new Map<string, (typeof merged)[number]>();
+  for (const item of merged) {
+    byKey.set(tarifaKey(item.tipo, item.vigenciaDesde), item);
+  }
+  return Array.from(byKey.values());
+}
+
+type TypeOfTarifa = "FIJO_UF_M2" | "FIJO_UF" | "PORCENTAJE";
+
 async function persistTarifas(
   tx: Prisma.TransactionClient,
   contratoId: string,
-  tarifas: ContractPayload["tarifas"]
+  tarifas: ReturnType<typeof payloadTarifas>
 ): Promise<void> {
   const existingTarifas = await tx.contratoTarifa.findMany({
     where: { contratoId }
@@ -211,8 +301,8 @@ async function persistTarifas(
     });
   }
 
-  const tarifasToUpdate: Array<{ id: string; payloadItem: ContractPayload["tarifas"][number] }> = [];
-  const tarifasToCreate: Array<ContractPayload["tarifas"][number]> = [];
+  const tarifasToUpdate: Array<{ id: string; payloadItem: ReturnType<typeof payloadTarifas>[number] }> = [];
+  const tarifasToCreate: Array<ReturnType<typeof payloadTarifas>[number]> = [];
   for (const item of tarifas) {
     const found = existingTarifasByKey.get(tarifaKey(item.tipo, item.vigenciaDesde));
     if (found) {
@@ -245,6 +335,37 @@ async function persistTarifas(
         vigenciaHasta: toDate(item.vigenciaHasta),
         esDiciembre: item.esDiciembre
       }))
+    });
+  }
+}
+
+async function persistContratoLocales(
+  tx: Prisma.TransactionClient,
+  contratoId: string,
+  localIds: string[]
+): Promise<void> {
+  const existing = await tx.contratoLocal.findMany({
+    where: { contratoId }
+  });
+
+  const existingSet = new Set(existing.map((item) => item.localId));
+  const payloadSet = new Set(localIds);
+  const toDelete = existing.filter((item) => !payloadSet.has(item.localId)).map((item) => item.id);
+
+  if (toDelete.length > 0) {
+    await tx.contratoLocal.deleteMany({
+      where: { id: { in: toDelete } }
+    });
+  }
+
+  const toCreate = localIds.filter((localId) => !existingSet.has(localId));
+  if (toCreate.length > 0) {
+    await tx.contratoLocal.createMany({
+      data: toCreate.map((localId) => ({
+        contratoId,
+        localId
+      })),
+      skipDuplicates: true
     });
   }
 }
@@ -315,21 +436,25 @@ export async function PUT(
 ): Promise<NextResponse> {
   try {
     const session = await requireWriteAccess();
-    const body = (await request.json()) as { proyectoId?: string };
-    const payload = validateContractInput(body, body.proyectoId ?? "");
+    const payload = validateContractInput(await request.json());
     const contractId = context.params.id;
+    const localIds = normalizedLocalIds(payload);
 
-    const existing = await prisma.contrato.findUnique({
-      where: { id: contractId },
-      include: { tarifas: true, ggcc: true }
+    if (localIds.length === 0) {
+      return NextResponse.json({ message: "Debes seleccionar al menos un local." }, { status: 400 });
+    }
+
+    const existing = await prisma.contrato.findFirst({
+      where: { id: contractId, proyectoId: payload.proyectoId },
+      include: { tarifas: true, ggcc: true, locales: true }
     });
     if (!existing) {
       return NextResponse.json({ message: "Contrato no encontrado." }, { status: 404 });
     }
-    validateContractInput(payload, existing.proyectoId);
-    const [local, arrendatario] = await Promise.all([
-      prisma.local.findFirst({
-        where: { id: payload.localId, proyectoId: payload.proyectoId },
+
+    const [locals, arrendatario] = await Promise.all([
+      prisma.local.findMany({
+        where: { id: { in: localIds }, proyectoId: payload.proyectoId },
         select: { id: true }
       }),
       prisma.arrendatario.findFirst({
@@ -337,27 +462,28 @@ export async function PUT(
         select: { id: true }
       })
     ]);
-    if (!local) {
-      throw new ApiError(400, "El local no pertenece al proyecto.");
+    if (locals.length !== localIds.length) {
+      throw new ApiError(400, "Uno o mas locales no pertenecen al proyecto.");
     }
     if (!arrendatario) {
       throw new ApiError(400, "El arrendatario no pertenece al proyecto.");
     }
 
-    const camposModificados = computeCamposModificados(existing, payload);
+    const camposModificados = computeCamposModificados(existing, payload, localIds);
 
     const updated = await prisma.$transaction(async (tx) => {
       await tx.contrato.update({
         where: { id: contractId },
-        data: buildContratoPayload(payload)
+        data: buildContratoPayload(payload, localIds)
       });
 
-      await persistTarifas(tx, contractId, payload.tarifas);
+      await persistContratoLocales(tx, contractId, localIds);
+      await persistTarifas(tx, contractId, payloadTarifas(payload));
       await persistGGCC(tx, contractId, payload.ggcc);
 
       const snapshotDespues = await tx.contrato.findUnique({
         where: { id: contractId },
-        include: { tarifas: true, ggcc: true }
+        include: { tarifas: true, ggcc: true, locales: true }
       });
       if (!snapshotDespues) {
         throw new Error("Contrato no encontrado.");
@@ -390,14 +516,23 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   context: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
     await requireWriteAccess();
-    await prisma.contrato.delete({
-      where: { id: context.params.id }
+    const proyectoId = getProyectoIdFromRequest(request);
+    if (!proyectoId) {
+      return NextResponse.json({ message: "proyectoId es obligatorio." }, { status: 400 });
+    }
+
+    const deleted = await prisma.contrato.deleteMany({
+      where: { id: context.params.id, proyectoId }
     });
+    if (deleted.count === 0) {
+      return NextResponse.json({ message: "Contrato no encontrado." }, { status: 404 });
+    }
+
     return NextResponse.json({ message: "Contrato eliminado correctamente." });
   } catch (error) {
     return handleApiError(error);

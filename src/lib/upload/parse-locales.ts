@@ -27,7 +27,7 @@ export type ExistingLocalForDiff = {
   estado: EstadoMaestro;
 };
 
-const requiredColumns = ["codigo", "nombre", "glam2", "piso", "tipo"];
+const requiredColumns = ["codigo", "piso", "tipo"];
 const trueLiterals = new Set(["true", "1", "si", "s\u00ed", "yes", "y"]);
 const allowedTipo = new Set(Object.values(TipoLocal));
 const allowedEstado = new Set(Object.values(EstadoMaestro));
@@ -40,6 +40,16 @@ const tipoAliases: Record<string, TipoLocal> = {
   BODEGA: TipoLocal.BODEGA,
   OTRO: TipoLocal.OTRO
 };
+
+function normalizeToken(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
 
 function asString(value: unknown): string {
   if (typeof value === "string") {
@@ -56,13 +66,13 @@ function normalizeNullable(value: unknown): string | null {
   return normalized ? normalized : null;
 }
 
-function parsePositiveNumber(value: unknown): number | null {
-  const raw = asString(value).replace(",", ".");
-  if (!raw) {
+function parseNonNegativeNumber(value: string): number | null {
+  const normalized = value.replace(",", ".");
+  if (!normalized) {
     return null;
   }
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed) || parsed < 0) {
     return null;
   }
   return parsed;
@@ -167,6 +177,7 @@ export function parseLocalesFile(
   }
 
   const sourceRows = utils.sheet_to_json<RawRow>(workbook.Sheets[firstSheet], {
+    range: 2,
     defval: "",
     raw: false
   });
@@ -184,8 +195,11 @@ export function parseLocalesFile(
     return { rows, summary: summarize(rows), warnings: [] };
   }
 
-  const headers = normalizedRows.length > 0 ? Object.keys(normalizedRows[0]) : [];
-  const missing = requiredColumns.filter((column) => !headers.includes(column));
+  const headers =
+    normalizedRows.length > 0
+      ? Object.keys(normalizedRows[0]).map((header) => header.trim().toLowerCase())
+      : [];
+  const missing = requiredColumns.filter((column) => !headers.includes(column.trim().toLowerCase()));
   if (missing.length > 0) {
     const rows: PreviewRow<LocalUploadRow>[] = [
       {
@@ -198,23 +212,35 @@ export function parseLocalesFile(
     return { rows, summary: summarize(rows), warnings: [] };
   }
 
+  const warnings: string[] = [];
+  const seenCodes = new Map<string, number>();
+
   const previewRows: PreviewRow<LocalUploadRow>[] = normalizedRows.map((rawRow, index) => {
     const rowNumber = index + 2;
     const codigo = asString(rawRow.codigo).toUpperCase();
-    const nombre = asString(rawRow.nombre);
-    const glam2Number = parsePositiveNumber(rawRow.glam2);
+    const rawNombre = asString(rawRow.nombre);
+    const glam2Raw = asString(rawRow.glam2);
+    const glam2Number = parseNonNegativeNumber(glam2Raw);
+    const glam2WasProvided = glam2Raw.length > 0;
     const piso = asString(rawRow.piso);
-    const tipoRaw = asString(rawRow.tipo).toUpperCase();
+    const tipoRaw = normalizeToken(asString(rawRow.tipo));
     const zona = normalizeNullable(rawRow.zona);
     const esGLA = parseBoolean(rawRow.esgla);
-    const estadoRaw = asString(rawRow.estado).toUpperCase();
+    const estadoRaw = normalizeToken(asString(rawRow.estado));
     const estado = (estadoRaw || EstadoMaestro.ACTIVO) as EstadoMaestro;
     const tipo = parseTipo(tipoRaw || "LOCAL_COMERCIAL");
+    const existing = codigo ? existingMap.get(codigo) : undefined;
+    const existingGlam2 = Number(existing?.glam2 ?? 0);
+    const glam2Fallback = Number.isFinite(existingGlam2) && existingGlam2 >= 0 ? existingGlam2 : 0;
+    const nombre = rawNombre || existing?.nombre?.trim() || codigo;
+    const glam2Value = glam2WasProvided
+      ? (glam2Number === null ? glam2Raw.replace(",", ".") : toDecimalText(glam2Number))
+      : toDecimalText(glam2Fallback);
 
     const data: LocalUploadRow = {
       codigo,
       nombre,
-      glam2: glam2Number ? toDecimalText(glam2Number) : "",
+      glam2: glam2Value,
       piso,
       tipo: tipo ?? TipoLocal.LOCAL_COMERCIAL,
       zona,
@@ -222,12 +248,23 @@ export function parseLocalesFile(
       estado
     };
 
-    if (!codigo || !nombre || !piso || !tipoRaw || glam2Number === null) {
+    const missingFields: string[] = [];
+    if (!codigo) {
+      missingFields.push("codigo");
+    }
+    if (!piso) {
+      missingFields.push("piso");
+    }
+    if (!tipoRaw) {
+      missingFields.push("tipo");
+    }
+
+    if (missingFields.length > 0) {
       return {
         rowNumber,
         status: "ERROR",
         data,
-        errorMessage: "codigo, nombre, glam2, piso y tipo son obligatorios. glam2 debe ser > 0."
+        errorMessage: `Campos invalidos o faltantes: ${missingFields.join(", ")}.`
       };
     }
     if (!tipo || !allowedTipo.has(data.tipo)) {
@@ -246,8 +283,32 @@ export function parseLocalesFile(
         errorMessage: `estado invalido: ${estadoRaw}. Valores permitidos: ${Object.values(EstadoMaestro).join(", ")}.`
       };
     }
+    if (glam2WasProvided && glam2Number === null) {
+      return {
+        rowNumber,
+        status: "ERROR",
+        data,
+        errorMessage: "glam2 invalido. Debe ser numerico mayor o igual a 0."
+      };
+    }
+    if (!glam2WasProvided) {
+      warnings.push(
+        `Fila ${rowNumber}: GLA m2 vacio, se usara ${toDecimalText(glam2Fallback)}.`
+      );
+    }
+    if (codigo) {
+      const firstSeenRow = seenCodes.get(codigo);
+      if (firstSeenRow !== undefined) {
+        return {
+          rowNumber,
+          status: "ERROR",
+          data,
+          errorMessage: `codigo duplicado en el archivo: ${codigo}. Ya aparece en la fila ${firstSeenRow}.`
+        };
+      }
+      seenCodes.set(codigo, rowNumber);
+    }
 
-    const existing = existingMap.get(codigo);
     if (!existing) {
       return { rowNumber, status: "NEW", data };
     }
@@ -268,6 +329,6 @@ export function parseLocalesFile(
   return {
     rows: previewRows,
     summary: summarize(previewRows),
-    warnings: []
+    warnings
   };
 }

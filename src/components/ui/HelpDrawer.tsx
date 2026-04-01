@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 
 export type HelpSection =
   | "dashboard"
@@ -412,35 +413,28 @@ export function HelpDrawer({ isOpen, onClose, section }: HelpDrawerProps): JSX.E
   const content = HELP_CONTENT[activeSection];
 
   return (
-    <div className={`fixed inset-0 z-50 ${isOpen ? "pointer-events-auto" : "pointer-events-none"}`}>
-      <button
-        type="button"
-        aria-label="Cerrar ayuda"
-        onClick={onClose}
-        className={`absolute inset-0 bg-slate-900/35 transition-opacity duration-200 ${
-          isOpen ? "opacity-100" : "opacity-0"
-        }`}
-      />
-
-      <aside
-        role="dialog"
-        aria-modal="true"
-        aria-label="Ayuda"
-        className={`absolute right-0 top-0 flex h-full w-80 max-w-full transform flex-col rounded-l-md bg-white shadow-2xl transition-transform duration-200 ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
+      <SheetContent side="right" className="w-80 p-0 rounded-l-md" showCloseButton={false}>
         <header className="relative border-b border-brand-900/10 bg-brand-700 px-5 pb-4 pt-5 text-white">
           <div className="absolute inset-y-0 left-0 w-1 bg-gold-400" />
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Cerrar panel de ayuda"
-            className="absolute right-3 top-3 rounded-md p-1 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
-          >
-            X
-          </button>
-          <p className="pr-10 text-sm font-semibold">{content.title}</p>
+          <SheetClose asChild>
+            <button
+              type="button"
+              aria-label="Cerrar panel de ayuda"
+              className="absolute right-3 top-3 rounded-md p-1 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              X
+            </button>
+          </SheetClose>
+          <SheetTitle className="pr-10 text-sm font-semibold text-white">{content.title}</SheetTitle>
+          <SheetDescription className="sr-only">{content.definition}</SheetDescription>
         </header>
 
         <div className="flex-1 overflow-y-auto bg-white p-5 text-sm text-slate-700">
@@ -485,7 +479,7 @@ export function HelpDrawer({ isOpen, onClose, section }: HelpDrawerProps): JSX.E
             </ul>
           </section>
         </div>
-      </aside>
-    </div>
+      </SheetContent>
+    </Sheet>
   );
 }

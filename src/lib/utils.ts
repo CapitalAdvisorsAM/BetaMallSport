@@ -16,3 +16,42 @@ export function formatDate(value: Date | null): string {
     day: "2-digit"
   }).format(value);
 }
+
+export function formatDecimal(value: number | string): string {
+  return Number(value).toLocaleString("es-CL", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+export function formatUf(value: number, fractionDigits = 2): string {
+  return value.toLocaleString("es-CL", {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits
+  });
+}
+
+export function formatDateString(value: string | null): string {
+  if (!value) {
+    return "-";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+  return new Intl.DateTimeFormat("es-CL", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(date);
+}
+
+export function startOfUtcDay(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+export function startOfDay(date: Date): Date {
+  const output = new Date(date);
+  output.setHours(0, 0, 0, 0);
+  return output;
+}

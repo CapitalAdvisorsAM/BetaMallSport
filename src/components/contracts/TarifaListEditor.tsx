@@ -1,5 +1,14 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
 import type { ContractFormPayload } from "@/types";
 
 export type TarifaListItem = ContractFormPayload["tarifas"][number] & { _key: string };
@@ -29,37 +38,41 @@ export function TarifaListEditor({
   return (
     <div className="rounded-lg border border-slate-200 p-3">
       <div className="mb-2 flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-slate-900">Tarifas</h4>
-        <button
+        <h4 className="text-sm font-semibold text-slate-900">Tarifas fijas</h4>
+        <Button
           type="button"
+          variant="outline"
           disabled={disabled}
           onClick={() => onChange([...tarifas, createEmptyTarifaItem()])}
-          className="text-sm font-medium text-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-auto px-2 py-1 text-sm"
         >
           + Agregar
-        </button>
+        </Button>
       </div>
       <div className="space-y-2">
         {tarifas.map((tarifa, index) => (
           <div key={tarifa._key} className="grid gap-2 md:grid-cols-5">
-            <select
+            <Select
               value={tarifa.tipo}
               disabled={disabled}
-              onChange={(event) => {
+              onValueChange={(value) => {
                 const next = [...tarifas];
                 next[index] = {
                   ...tarifa,
-                  tipo: event.target.value as ContractFormPayload["tarifas"][0]["tipo"]
+                  tipo: value as ContractFormPayload["tarifas"][0]["tipo"]
                 };
                 onChange(next);
               }}
-              className="rounded-md border border-slate-300 px-2 py-2 text-sm"
             >
-              <option value="FIJO_UF_M2">FIJO_UF_M2</option>
-              <option value="FIJO_UF">FIJO_UF</option>
-              <option value="PORCENTAJE">PORCENTAJE</option>
-            </select>
-            <input
+              <SelectTrigger className="rounded-md px-2 py-2 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="FIJO_UF_M2">FIJO_UF_M2</SelectItem>
+                <SelectItem value="FIJO_UF">FIJO_UF</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
               placeholder="Valor"
               disabled={disabled}
               value={tarifa.valor}
@@ -70,7 +83,7 @@ export function TarifaListEditor({
               }}
               className="rounded-md border border-slate-300 px-2 py-2 text-sm"
             />
-            <input
+            <Input
               type="date"
               disabled={disabled}
               value={tarifa.vigenciaDesde}
@@ -81,7 +94,7 @@ export function TarifaListEditor({
               }}
               className="rounded-md border border-slate-300 px-2 py-2 text-sm"
             />
-            <input
+            <Input
               type="date"
               disabled={disabled}
               value={tarifa.vigenciaHasta ?? ""}
@@ -92,17 +105,18 @@ export function TarifaListEditor({
               }}
               className="rounded-md border border-slate-300 px-2 py-2 text-sm"
             />
-            <button
+            <Button
               type="button"
+              variant="destructive"
               disabled={disabled}
               onClick={() => {
                 const next = tarifas.filter((_, i) => i !== index);
                 onChange(next.length > 0 ? next : [createEmptyTarifaItem()]);
               }}
-              className="rounded-md border border-rose-200 px-2 py-2 text-sm text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-auto px-2 py-2 text-sm"
             >
               Quitar
-            </button>
+            </Button>
           </div>
         ))}
       </div>

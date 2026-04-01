@@ -4,6 +4,7 @@ export type EstadoLocal = EstadoDiaContrato;
 
 export type RentRollRow = {
   localId: string;
+  contratoVigenteId: string | null;
   localCodigo: string;
   localNombre: string;
   glam2: number;

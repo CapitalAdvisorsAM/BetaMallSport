@@ -1,23 +1,27 @@
 import { Prisma } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { requireWriteAccessMock, prismaMock } = vi.hoisted(() => ({
+const { requireSessionMock, requireWriteAccessMock, prismaMock } = vi.hoisted(() => ({
+  requireSessionMock: vi.fn(),
   requireWriteAccessMock: vi.fn(),
   prismaMock: {
     local: {
-      findFirst: vi.fn()
+      findFirst: vi.fn(),
+      findMany: vi.fn()
     },
     arrendatario: {
       findFirst: vi.fn()
     },
     contrato: {
-      findUnique: vi.fn()
+      findFirst: vi.fn(),
+      deleteMany: vi.fn()
     },
     $transaction: vi.fn()
   }
 }));
 
 vi.mock("@/lib/permissions", () => ({
+  requireSession: requireSessionMock,
   requireWriteAccess: requireWriteAccessMock
 }));
 
@@ -30,10 +34,21 @@ async function callPut(request: Request, params: { id: string }) {
   return PUT(request, { params });
 }
 
+async function callGet(request: Request, params: { id: string }) {
+  const { GET } = await import("./route");
+  return GET(request, { params });
+}
+
+async function callDelete(request: Request, params: { id: string }) {
+  const { DELETE } = await import("./route");
+  return DELETE(request, { params });
+}
+
 function makePayload() {
   return {
     proyectoId: "p1",
     localId: "l1",
+    localIds: ["l1"],
     arrendatarioId: "a1",
     numeroContrato: "C-100",
     fechaInicio: "2026-01-01",
@@ -41,7 +56,13 @@ function makePayload() {
     fechaEntrega: null,
     fechaApertura: null,
     estado: "VIGENTE" as "VIGENTE" | "TERMINADO" | "TERMINADO_ANTICIPADO" | "GRACIA",
-    pctRentaVariable: "5",
+    rentaVariable: [
+      {
+        pctRentaVariable: "5",
+        vigenciaDesde: "2026-01-01",
+        vigenciaHasta: null
+      }
+    ],
     pctFondoPromocion: "2",
     codigoCC: "CC-1",
     pdfUrl: "https://example.com/contract.pdf",
@@ -80,11 +101,11 @@ function makeExistingContract() {
     fechaEntrega: null,
     fechaApertura: null,
     estado: "VIGENTE" as const,
-    pctRentaVariable: new Prisma.Decimal("5"),
     pctFondoPromocion: new Prisma.Decimal("2"),
     codigoCC: "CC-1",
     pdfUrl: "https://example.com/contract.pdf",
     notas: "Notas",
+    locales: [{ id: "cl-1", contratoId: "contract-1", localId: "l1", createdAt: new Date("2026-01-01") }],
     tarifas: [
       {
         id: "tarifa-keep",
@@ -135,6 +156,7 @@ function makeExistingContract() {
 function setupTransaction(options: {
   existingTarifas?: unknown[];
   existingGgcc?: unknown[];
+  existingLocales?: unknown[];
   finalContract: unknown;
 }) {
   const tx = {
@@ -146,6 +168,11 @@ function setupTransaction(options: {
       findMany: vi.fn().mockResolvedValue(options.existingTarifas ?? []),
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
       update: vi.fn().mockResolvedValue({}),
+      createMany: vi.fn().mockResolvedValue({ count: 0 })
+    },
+    contratoLocal: {
+      findMany: vi.fn().mockResolvedValue(options.existingLocales ?? []),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
       createMany: vi.fn().mockResolvedValue({ count: 0 })
     },
     contratoGGCC: {
@@ -164,12 +191,16 @@ function setupTransaction(options: {
 }
 
 beforeEach(() => {
+  requireSessionMock.mockResolvedValue({ user: { id: "u1" } });
   requireWriteAccessMock.mockResolvedValue({ user: { id: "u1" } });
   prismaMock.local.findFirst.mockResolvedValue({ id: "l1" });
+  prismaMock.local.findMany.mockResolvedValue([{ id: "l1" }]);
   prismaMock.arrendatario.findFirst.mockResolvedValue({ id: "a1" });
   prismaMock.local.findFirst.mockClear();
+  prismaMock.local.findMany.mockClear();
   prismaMock.arrendatario.findFirst.mockClear();
-  prismaMock.contrato.findUnique.mockReset();
+  prismaMock.contrato.findFirst.mockReset();
+  prismaMock.contrato.deleteMany.mockReset();
   prismaMock.$transaction.mockReset();
 });
 
@@ -181,7 +212,7 @@ describe("PUT /api/contracts/[id]", () => {
   it("deletes tarifas removed from payload", async () => {
     const existing = makeExistingContract();
     const payload = makePayload();
-    prismaMock.contrato.findUnique.mockResolvedValue(existing);
+    prismaMock.contrato.findFirst.mockResolvedValue(existing);
 
     const tx = setupTransaction({
       existingTarifas: existing.tarifas,
@@ -213,7 +244,7 @@ describe("PUT /api/contracts/[id]", () => {
     const payload = makePayload();
     payload.ggcc = [payload.ggcc[0]];
 
-    prismaMock.contrato.findUnique.mockResolvedValue(existing);
+    prismaMock.contrato.findFirst.mockResolvedValue(existing);
     const tx = setupTransaction({
       existingTarifas: [existing.tarifas[0]],
       existingGgcc: existing.ggcc,
@@ -255,7 +286,7 @@ describe("PUT /api/contracts/[id]", () => {
     expect(response.status).toBe(400);
     expect(data.message).toBe("Payload invalido");
     expect(Array.isArray(data.issues)).toBe(true);
-    expect(prismaMock.contrato.findUnique).not.toHaveBeenCalled();
+    expect(prismaMock.contrato.findFirst).not.toHaveBeenCalled();
   });
 
   it("returns 400 when ggcc has duplicate vigenciaDesde", async () => {
@@ -281,14 +312,19 @@ describe("PUT /api/contracts/[id]", () => {
     );
 
     expect(response.status).toBe(400);
-    expect(prismaMock.contrato.findUnique).not.toHaveBeenCalled();
+    expect(prismaMock.contrato.findFirst).not.toHaveBeenCalled();
   });
 
-  it("returns 400 when proyectoId does not match the existing contract", async () => {
-    const existing = makeExistingContract();
+  it("returns 400 when rentaVariable has duplicate vigenciaDesde", async () => {
     const payload = makePayload();
-    payload.proyectoId = "other-project";
-    prismaMock.contrato.findUnique.mockResolvedValue(existing);
+    payload.rentaVariable = [
+      payload.rentaVariable[0],
+      {
+        pctRentaVariable: "6",
+        vigenciaDesde: payload.rentaVariable[0].vigenciaDesde,
+        vigenciaHasta: null
+      }
+    ];
 
     const response = await callPut(
       new Request("http://localhost/api/contracts/contract-1", {
@@ -299,9 +335,25 @@ describe("PUT /api/contracts/[id]", () => {
       { id: "contract-1" }
     );
 
-    const data = (await response.json()) as { message: string };
     expect(response.status).toBe(400);
-    expect(data.message).toContain("proyecto");
+    expect(prismaMock.contrato.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when proyectoId does not match the existing contract", async () => {
+    const payload = makePayload();
+    payload.proyectoId = "other-project";
+    prismaMock.contrato.findFirst.mockResolvedValue(null);
+
+    const response = await callPut(
+      new Request("http://localhost/api/contracts/contract-1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }),
+      { id: "contract-1" }
+    );
+
+    expect(response.status).toBe(404);
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
 
@@ -317,7 +369,7 @@ describe("PUT /api/contracts/[id]", () => {
     payload.fechaTermino = "2027-01-31";
     payload.anexo = { fecha: "2026-04-01", descripcion: "Cambio de estado y fechas" };
 
-    prismaMock.contrato.findUnique.mockResolvedValue(existingAligned);
+    prismaMock.contrato.findFirst.mockResolvedValue(existingAligned);
     const tx = setupTransaction({
       existingTarifas: [existingAligned.tarifas[0]],
       existingGgcc: [existingAligned.ggcc[0]],
@@ -352,7 +404,7 @@ describe("PUT /api/contracts/[id]", () => {
       ggcc: [existing.ggcc[0]]
     };
 
-    prismaMock.contrato.findUnique.mockResolvedValue(existing);
+    prismaMock.contrato.findFirst.mockResolvedValue(existing);
     const tx = setupTransaction({
       existingTarifas: [existing.tarifas[0]],
       existingGgcc: [existing.ggcc[0]],
@@ -371,5 +423,52 @@ describe("PUT /api/contracts/[id]", () => {
     const anexoPayload = tx.contratoAnexo.create.mock.calls[0][0].data as { snapshotDespues: typeof finalContract };
     expect(anexoPayload.snapshotDespues.tarifas).toBeDefined();
     expect(anexoPayload.snapshotDespues.ggcc).toBeDefined();
+  });
+});
+
+describe("Scoped GET/DELETE /api/contracts/[id]", () => {
+  it("GET returns 400 when proyectoId is missing", async () => {
+    const response = await callGet(new Request("http://localhost/api/contracts/contract-1"), {
+      id: "contract-1"
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("GET returns 404 when contract does not belong to proyectoId", async () => {
+    prismaMock.contrato.findFirst.mockResolvedValue(null);
+
+    const response = await callGet(
+      new Request("http://localhost/api/contracts/contract-1?proyectoId=other-project"),
+      { id: "contract-1" }
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it("DELETE returns 400 when proyectoId is missing", async () => {
+    const response = await callDelete(
+      new Request("http://localhost/api/contracts/contract-1", { method: "DELETE" }),
+      {
+        id: "contract-1"
+      }
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("DELETE returns 404 when nothing is deleted for the scoped project", async () => {
+    prismaMock.contrato.deleteMany.mockResolvedValue({ count: 0 });
+
+    const response = await callDelete(
+      new Request("http://localhost/api/contracts/contract-1?proyectoId=other-project", {
+        method: "DELETE"
+      }),
+      {
+        id: "contract-1"
+      }
+    );
+
+    expect(response.status).toBe(404);
   });
 });

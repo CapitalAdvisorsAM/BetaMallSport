@@ -2,6 +2,19 @@
 
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
 
 type ProjectRecord = {
   id: string;
@@ -146,105 +159,112 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-base font-semibold text-slate-900">CRUD de Proyectos</h3>
         <div className="flex items-center gap-2">
-          <input
+          <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Buscar proyecto"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className="h-10 text-sm"
           />
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={beginCreate}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="h-auto px-3 py-2 text-sm"
           >
             Nuevo
-          </button>
+          </Button>
         </div>
       </div>
 
       {!canEdit ? <p className="text-sm text-amber-700">Tu rol es de solo lectura para proyectos.</p> : null}
 
       <div className="grid gap-3 md:grid-cols-[1fr_200px_160px]">
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-700">Nombre</span>
-          <input
+        <div className="text-sm">
+          <Label htmlFor="project-name" className="mb-1 block text-slate-700">
+            Nombre
+          </Label>
+          <Input
+            id="project-name"
             value={form.nombre}
             onChange={(event) => setForm({ ...form, nombre: event.target.value })}
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            className="w-full"
           />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-700">Color</span>
-          <input
+        </div>
+        <div className="text-sm">
+          <Label htmlFor="project-color" className="mb-1 block text-slate-700">
+            Color
+          </Label>
+          <Input
+            id="project-color"
             type="color"
             value={form.color}
             onChange={(event) => setForm({ ...form, color: event.target.value })}
-            className="h-[42px] w-full rounded-md border border-slate-300 px-2"
+            className="h-10 w-full px-2"
           />
-        </label>
+        </div>
         <label className="flex items-center gap-2 pt-7 text-sm text-slate-700">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={form.activo}
-            onChange={(event) => setForm({ ...form, activo: event.target.checked })}
+            onCheckedChange={(value) => setForm({ ...form, activo: value === true })}
           />
           Activo
         </label>
       </div>
 
       <div className="flex items-center gap-3">
-        <button
+        <Button
           type="button"
+          variant="default"
           onClick={() => void handleSubmit()}
           disabled={!canEdit || loading}
-          className="rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-full"
         >
           {selectedId ? "Actualizar proyecto" : "Crear proyecto"}
-        </button>
+        </Button>
       </div>
 
       {message ? <p className="text-sm text-slate-700">{message}</p> : null}
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200">
-        <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-brand-700">
-            <tr>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+      <div className="overflow-hidden rounded-lg border border-slate-200">
+        <Table className="min-w-full divide-y divide-slate-200">
+          <TableHeader className="bg-brand-700">
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
                 Nombre
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+              </TableHead>
+              <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
                 Slug
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+              </TableHead>
+              <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
                 Color
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+              </TableHead>
+              <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
                 Estado
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+              </TableHead>
+              <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
                 Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody className="text-sm text-slate-800">
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody className="text-sm text-slate-800">
             {filteredProjects.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
+              <TableRow>
+                <TableCell colSpan={5} className="px-4 py-6 text-center text-slate-500">
                   No se encontraron proyectos.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : (
               filteredProjects.map((project, index) => (
-                <tr
+                <TableRow
                   key={project.id}
                   className={cn(
                     "transition-colors hover:bg-brand-50",
                     index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
                   )}
                 >
-                  <td className="px-4 py-3 font-medium">{project.nombre}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">{project.slug}</td>
-                  <td className="whitespace-nowrap px-4 py-3">
+                  <TableCell className="px-4 py-3 font-medium">{project.nombre}</TableCell>
+                  <TableCell className="whitespace-nowrap px-4 py-3 text-slate-600">{project.slug}</TableCell>
+                  <TableCell className="whitespace-nowrap px-4 py-3">
                     <span className="inline-flex items-center gap-2">
                       <span
                         className="h-3 w-3 rounded-full border border-slate-300"
@@ -252,33 +272,46 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
                       />
                       {project.color}
                     </span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3">{project.activo ? "Activo" : "Inactivo"}</td>
-                  <td className="whitespace-nowrap px-4 py-3">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap px-4 py-3">
+                    <Badge
+                      variant="outline"
+                      className={
+                        project.activo
+                          ? "border-emerald-200 bg-emerald-100 text-emerald-700"
+                          : "border-slate-300 bg-slate-200 text-slate-700"
+                      }
+                    >
+                      {project.activo ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
                         onClick={() => beginEdit(project)}
                         disabled={!canEdit}
-                        className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="h-auto px-2 py-1 text-xs"
                       >
                         Editar
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="destructive"
                         onClick={() => void handleDelete(project.id)}
                         disabled={!canEdit}
-                        className="rounded-md border border-rose-200 px-2 py-1 text-xs font-medium text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
+                        className="h-auto px-2 py-1 text-xs"
+                        >
                         Eliminar
-                      </button>
+                      </Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </section>
   );

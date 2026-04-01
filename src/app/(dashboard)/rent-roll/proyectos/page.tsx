@@ -1,14 +1,9 @@
-import { redirect } from "next/navigation";
 import { ProjectCrudPanel } from "@/components/rent-roll/ProjectCrudPanel";
-import { auth } from "@/lib/auth";
-import { canWrite } from "@/lib/permissions";
+import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 export default async function ProyectosPage(): Promise<JSX.Element> {
-  const session = await auth();
-  if (!session?.user) {
-    redirect("/login");
-  }
+  const session = await requireSession();
 
   const projects = await prisma.proyecto.findMany({
     orderBy: [{ activo: "desc" }, { nombre: "asc" }],

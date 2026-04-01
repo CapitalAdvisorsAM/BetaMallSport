@@ -58,6 +58,23 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     const payload = result.data;
+    const duplicatedLocal = await prisma.local.findFirst({
+      where: {
+        proyectoId: payload.proyectoId,
+        codigo: {
+          equals: payload.codigo,
+          mode: "insensitive"
+        }
+      },
+      select: { id: true }
+    });
+    if (duplicatedLocal) {
+      return NextResponse.json(
+        { message: "Ya existe un local con ese codigo en este proyecto." },
+        { status: 409 }
+      );
+    }
+
     const created = await prisma.local.create({
       data: {
         proyectoId: payload.proyectoId,
@@ -74,6 +91,12 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json(
+        { message: "Ya existe un local con ese codigo en este proyecto." },
+        { status: 409 }
+      );
+    }
     return handleApiError(error);
   }
 }

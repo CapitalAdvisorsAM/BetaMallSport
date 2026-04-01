@@ -1,13 +1,15 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { RentRollKpiHeader } from "@/components/rent-roll/RentRollKpiHeader";
 import { RentRollTable } from "@/components/rent-roll/RentRollTable";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
+import { MS_PER_DAY } from "@/lib/constants";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
+import { getMetricasRentRoll, type MetricaRow } from "@/lib/rent-roll/metricas";
+import { startOfUtcDay } from "@/lib/utils";
 import type { EstadoLocal, RentRollKpis, RentRollRow } from "@/types/rent-roll";
 
 type RentRollPageProps = {
@@ -18,6 +20,7 @@ type RentRollPageProps = {
 };
 
 type MetricaApiRow = {
+  contratoId: string;
   localId?: string;
   localCodigo: string;
   localNombre: string;
@@ -87,10 +90,6 @@ function toEstadoLocal(value: string): EstadoLocal | null {
   return null;
 }
 
-function startOfUtcDay(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-}
-
 function calculateDiasParaVencimiento(fechaTermino: string | null, now: Date): number | null {
   if (!fechaTermino) {
     return null;
@@ -102,7 +101,7 @@ function calculateDiasParaVencimiento(fechaTermino: string | null, now: Date): n
   }
 
   const diffMs = startOfUtcDay(target).getTime() - startOfUtcDay(now).getTime();
-  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  const diffDays = Math.floor(diffMs / MS_PER_DAY);
 
   return diffDays >= 0 ? diffDays : null;
 }
@@ -142,6 +141,9 @@ function isMetricaApiRow(value: unknown): value is MetricaApiRow {
   }
 
   if (typeof value.estado !== "string") {
+    return false;
+  }
+  if (typeof value.contratoId !== "string") {
     return false;
   }
 
@@ -201,40 +203,6 @@ function buildKpis(rows: RentRollRow[]): RentRollKpis {
   };
 }
 
-async function fetchMetricas(params: {
-  proyectoId: string;
-  periodo: string;
-}): Promise<MetricaApiRow[]> {
-  const requestHeaders = headers();
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
-  const protocol = requestHeaders.get("x-forwarded-proto") ?? "http";
-  const cookie = requestHeaders.get("cookie");
-
-  if (!host) {
-    throw new Error("No se pudo resolver host para obtener metricas.");
-  }
-
-  const query = new URLSearchParams({
-    proyecto: params.proyectoId,
-    proyectoId: params.proyectoId,
-    periodo: params.periodo,
-    estado: "TODOS"
-  });
-
-  const response = await fetch(`${protocol}://${host}/api/rent-roll/metricas?${query.toString()}`, {
-    method: "GET",
-    headers: cookie ? { cookie } : undefined,
-    cache: "no-store"
-  });
-
-  if (!response.ok) {
-    throw new Error("No se pudo cargar metricas de rent roll.");
-  }
-
-  const payload = await response.json();
-  return parseMetricasRows(payload);
-}
-
 export default async function RentRollPage({
   searchParams
 }: RentRollPageProps): Promise<JSX.Element> {
@@ -265,7 +233,7 @@ export default async function RentRollPage({
 
   const { start, nextMonthStart } = getPeriodoBounds(periodo);
 
-  let metricas: MetricaApiRow[];
+  let metricasRaw: MetricaRow[];
   let localesActivos: Array<{
     id: string;
     codigo: string;
@@ -275,8 +243,8 @@ export default async function RentRollPage({
   let valorUfPeriodo: { valor: unknown } | null;
 
   try {
-    [metricas, localesActivos, valorUfPeriodo] = await Promise.all([
-      fetchMetricas({ proyectoId: selectedProjectId, periodo }),
+    [metricasRaw, localesActivos, valorUfPeriodo] = await Promise.all([
+      getMetricasRentRoll(selectedProjectId, periodo),
       prisma.local.findMany({
         where: { proyectoId: selectedProjectId, estado: "ACTIVO", esGLA: true },
         select: {
@@ -303,6 +271,13 @@ export default async function RentRollPage({
   } catch (error) {
     throw error instanceof Error ? error : new Error("No se pudieron cargar datos de Rent Roll.");
   }
+
+  const metricas = parseMetricasRows({
+    filas: metricasRaw.map((fila) => ({
+      ...fila,
+      fechaTermino: fila.fechaTermino.toISOString()
+    }))
+  });
 
   if (localesActivos.length === 0) {
     return (
@@ -380,6 +355,7 @@ export default async function RentRollPage({
 
     const row: RentRollRow = {
       localId: matchedLocal.id,
+      contratoVigenteId: metrica.contratoId,
       localCodigo: matchedLocal.codigo,
       localNombre: matchedLocal.nombre,
       glam2: toFiniteNumber(matchedLocal.glam2),
@@ -407,6 +383,7 @@ export default async function RentRollPage({
 
     return {
       localId: local.id,
+      contratoVigenteId: null,
       localCodigo: local.codigo,
       localNombre: local.nombre,
       glam2: toFiniteNumber(local.glam2),

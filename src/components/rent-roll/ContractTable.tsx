@@ -1,11 +1,74 @@
-import { cn, formatDate } from "@/lib/utils";
+import { useMemo } from "react";
+import { type ColumnDef } from "@tanstack/react-table";
+import { formatDate } from "@/lib/utils";
+import { DataTable } from "@/components/ui/DataTable";
+import { useDataTable } from "@/hooks/useDataTable";
 import type { RentRollRow } from "@/types";
 
 type ContractTableProps = {
   rows: RentRollRow[];
 };
 
+function parseDecimal(value: string): number | undefined {
+  const normalized = value.replace(",", ".");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 export function ContractTable({ rows }: ContractTableProps): JSX.Element {
+  const columns = useMemo<ColumnDef<RentRollRow, unknown>[]>(
+    () => [
+      {
+        accessorKey: "local",
+        header: "Local",
+        filterFn: "includesString",
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap font-medium text-slate-900">{row.original.local}</span>
+        )
+      },
+      {
+        accessorKey: "arrendatario",
+        header: "Arrendatario",
+        filterFn: "includesString",
+        cell: ({ row }) => <span className="whitespace-nowrap text-slate-700">{row.original.arrendatario}</span>
+      },
+      {
+        accessorKey: "fechaInicio",
+        header: "Condiciones contractuales",
+        enableColumnFilter: false,
+        enableSorting: false,
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap text-slate-700">
+            {formatDate(row.original.fechaInicio)} - {formatDate(row.original.fechaTermino)}
+          </span>
+        )
+      },
+      {
+        id: "tarifaVigenteUfM2",
+        accessorFn: (row) => parseDecimal(row.tarifaVigenteUfM2),
+        header: "Tarifa vigente (UF/m2)",
+        enableColumnFilter: false,
+        sortUndefined: "last",
+        meta: { align: "right" },
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap text-slate-700">{row.original.tarifaVigenteUfM2}</span>
+        )
+      },
+      {
+        id: "m2",
+        accessorFn: (row) => parseDecimal(row.m2),
+        header: "m2",
+        enableColumnFilter: false,
+        sortUndefined: "last",
+        meta: { align: "right" },
+        cell: ({ row }) => <span className="whitespace-nowrap text-slate-700">{row.original.m2}</span>
+      }
+    ],
+    []
+  );
+
+  const { table } = useDataTable(rows, columns);
+
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
@@ -15,51 +78,6 @@ export function ContractTable({ rows }: ContractTableProps): JSX.Element {
   }
 
   return (
-    <div className="overflow-hidden rounded-md bg-white shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-brand-700">
-            <tr>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Local
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Arrendatario
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Condiciones contractuales
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Tarifa vigente (UF/m2)
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                m2
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, index) => (
-              <tr
-                key={row.id}
-                className={cn(
-                  "transition-colors hover:bg-brand-50",
-                  index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
-                )}
-              >
-                <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">{row.local}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-slate-700">{row.arrendatario}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-slate-700">
-                  {formatDate(row.fechaInicio)} - {formatDate(row.fechaTermino)}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-slate-700">
-                  {row.tarifaVigenteUfM2}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-slate-700">{row.m2}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <DataTable table={table} emptyMessage="No hay contratos para los filtros seleccionados." />
   );
 }

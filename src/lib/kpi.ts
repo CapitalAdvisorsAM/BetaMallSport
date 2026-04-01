@@ -1,8 +1,10 @@
 import { EstadoContrato, TipoLocal, TipoTarifaContrato } from "@prisma/client";
 import {
   CONTRACT_EXPIRY_ROW_LIMIT as CONTRACT_EXPIRY_ROW_LIMIT_VALUE,
-  CONTRACT_EXPIRY_WINDOWS as CONTRACT_EXPIRY_WINDOWS_VALUE
+  CONTRACT_EXPIRY_WINDOWS as CONTRACT_EXPIRY_WINDOWS_VALUE,
+  MS_PER_DAY
 } from "@/lib/constants";
+import { startOfDay } from "@/lib/utils";
 
 type DecimalLike = number | string | { toString(): string };
 
@@ -36,7 +38,7 @@ export type KpiContractInput = {
   arrendatarioNombre: string;
   numeroContrato: string;
   fechaTermino: Date;
-  pctRentaVariable?: DecimalLike | null;
+  tarifaVariablePct?: DecimalLike | null;
   tarifa: KpiTarifaInput | null;
   ggcc: KpiGgccInput | null;
 };
@@ -70,16 +72,8 @@ const CONTRACT_STATES: EstadoContrato[] = [
   "TERMINADO"
 ];
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 function toNumber(value: DecimalLike): number {
   return Number(value.toString());
-}
-
-function startOfDay(date: Date): Date {
-  const output = new Date(date);
-  output.setHours(0, 0, 0, 0);
-  return output;
 }
 
 function addDays(date: Date, days: number): Date {
@@ -343,7 +337,7 @@ export function buildContractExpiryRows(
     .slice(0, limit)
     .map((contract) => {
       const diasRestantes = Math.round(
-        (startOfDay(contract.fechaTermino).getTime() - start.getTime()) / DAY_MS
+        (startOfDay(contract.fechaTermino).getTime() - start.getTime()) / MS_PER_DAY
       );
       return {
         id: contract.id,
@@ -505,7 +499,7 @@ export type IngresoDesglosado = {
 
 type IngresoContratoInput = Pick<
   KpiContractInput,
-  "localId" | "localGlam2" | "tarifa" | "fechaTermino" | "pctRentaVariable"
+  "localId" | "localGlam2" | "tarifa" | "fechaTermino" | "tarifaVariablePct"
 >;
 
 type IngresoLocalInput = {
@@ -662,7 +656,7 @@ export function buildIngresoDesglosado(
 
   for (const contrato of contratos) {
     const local = localById.get(contrato.localId);
-    if (!local || !contrato.tarifa) {
+    if (!local) {
       continue;
     }
 
@@ -677,12 +671,7 @@ export function buildIngresoDesglosado(
       arriendoFijoUf += fixedAmount;
     }
 
-    let porcentajeVariable = 0;
-    if (contrato.tarifa.tipo === TipoTarifaContrato.PORCENTAJE) {
-      porcentajeVariable = toFiniteNumber(contrato.tarifa.valor);
-    } else if (contrato.pctRentaVariable !== null && contrato.pctRentaVariable !== undefined) {
-      porcentajeVariable = toFiniteNumber(contrato.pctRentaVariable);
-    }
+    const porcentajeVariable = toFiniteNumber(contrato.tarifaVariablePct);
 
     if (porcentajeVariable > 0) {
       const ventasUf = ventasByLocal.get(contrato.localId) ?? 0;

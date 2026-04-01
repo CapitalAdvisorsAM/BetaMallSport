@@ -4,7 +4,7 @@ import type { PreviewRow, UploadPreview } from "@/types/upload";
 
 type RawRow = Record<string, unknown>;
 
-const requiredColumns = ["rut", "razonsocial", "nombrecomercial"];
+const requiredColumns = ["razonsocial", "nombrecomercial"];
 const trueLiterals = new Set(["true", "1", "si", "sí", "yes", "y"]);
 const falseLiterals = new Set(["false", "0", "no", "n"]);
 
@@ -43,15 +43,40 @@ function normalizeNullable(value: unknown): string | null {
 
 export function normalizeUploadRut(value: string): string {
   const cleaned = value.replace(/\./g, "").replace(/\s+/g, "").trim();
-  if (!cleaned.includes("-")) {
-    return cleaned.toLowerCase();
+  const rutMatch = /^(\d{7,8})-([\dkK])$/.exec(cleaned);
+  if (rutMatch) {
+    return `${rutMatch[1]}-${rutMatch[2].toLowerCase()}`;
   }
-  const [numberPart, dvPart] = cleaned.split("-");
-  return `${numberPart}-${dvPart.toLowerCase()}`;
+  return cleaned.toUpperCase();
 }
 
 function isValidRutFormat(value: string): boolean {
   return /^\d{7,8}-[\dk]$/.test(value);
+}
+
+function normalizeNamePart(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function buildNameKey(razonSocial: string, nombreComercial: string): string {
+  return `${normalizeNamePart(razonSocial)}|${normalizeNamePart(nombreComercial)}`;
+}
+
+export function buildUploadArrendatarioKey(
+  rut: string,
+  razonSocial: string,
+  nombreComercial: string
+): string {
+  const normalizedRut = normalizeUploadRut(rut);
+  if (normalizedRut) {
+    return `rut:${normalizedRut}`;
+  }
+  return `name:${buildNameKey(razonSocial, nombreComercial)}`;
 }
 
 function parseBoolean(value: unknown, defaultValue: boolean): boolean {
@@ -148,7 +173,8 @@ export function parseArrendatariosFile(
 
   const sourceRows = utils.sheet_to_json<RawRow>(workbook.Sheets[firstSheet], {
     defval: "",
-    raw: false
+    raw: false,
+    range: 2
   });
   const normalizedRows = sourceRows.map((row) => normalizeHeaders(row));
 
@@ -198,15 +224,15 @@ export function parseArrendatariosFile(
       telefono
     };
 
-    if (!rutNormalized || !razonSocial || !nombreComercial) {
+    if (!razonSocial || !nombreComercial) {
       return {
         rowNumber,
         status: "ERROR",
         data,
-        errorMessage: "rut, razonSocial y nombreComercial son obligatorios."
+        errorMessage: "razonSocial y nombreComercial son obligatorios."
       };
     }
-    if (!isValidRutFormat(rutNormalized)) {
+    if (rutNormalized && !isValidRutFormat(rutNormalized)) {
       return {
         rowNumber,
         status: "ERROR",
@@ -215,14 +241,14 @@ export function parseArrendatariosFile(
       };
     }
 
-    const existing = existingMap.get(rutNormalized);
+    const existing = existingMap.get(buildUploadArrendatarioKey(rutNormalized, razonSocial, nombreComercial));
     if (!existing) {
       return { rowNumber, status: "NEW", data };
     }
 
-    if (existing.vigente && !vigente && activeContractRuts.has(rutNormalized)) {
+    if (existing.vigente && !vigente && activeContractRuts.has(existing.rut)) {
       warnings.push(
-        `Fila ${rowNumber}: no se desactiva RUT ${rutNormalized} porque tiene contratos VIGENTES asociados.`
+        `Fila ${rowNumber}: no se desactiva ${existing.rut || "arrendatario"} porque tiene contratos VIGENTES asociados.`
       );
       return { rowNumber, status: "UNCHANGED", data };
     }

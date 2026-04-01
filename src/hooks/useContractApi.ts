@@ -1,11 +1,9 @@
 import type { ContractFormPayload } from "@/types";
+import type { ContractWriteApiResponse } from "@/types/contracts";
 
 export type ContractDraft = ContractFormPayload;
 
-export type ContractRow = {
-  id: string;
-  [key: string]: unknown;
-};
+export type ContractRow = ContractWriteApiResponse;
 
 async function readErrorMessage(response: Response, fallback: string): Promise<string> {
   const contentType = response.headers.get("content-type") ?? "";
@@ -23,16 +21,20 @@ async function readErrorMessage(response: Response, fallback: string): Promise<s
 
 export function useContractApi(): {
   saveContract: (draft: ContractDraft, existingId?: string) => Promise<ContractRow>;
-  deleteContract: (id: string) => Promise<void>;
+  deleteContract: (id: string, proyectoId: string) => Promise<void>;
   uploadContractPdf: (id: string, file: File) => Promise<string>;
 } {
   async function saveContract(draft: ContractDraft, existingId?: string): Promise<ContractRow> {
     const isEditing = Boolean(existingId);
-    const response = await fetch(isEditing ? `/api/contracts/${existingId}` : "/api/contracts", {
+    const editQuery = `?proyectoId=${encodeURIComponent(draft.proyectoId)}`;
+    const response = await fetch(
+      isEditing ? `/api/contracts/${existingId}${editQuery}` : "/api/contracts",
+      {
       method: isEditing ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(draft)
-    });
+      }
+    );
 
     if (!response.ok) {
       throw new Error(await readErrorMessage(response, "No se pudo guardar el contrato."));
@@ -41,8 +43,8 @@ export function useContractApi(): {
     return (await response.json()) as ContractRow;
   }
 
-  async function deleteContract(id: string): Promise<void> {
-    const response = await fetch(`/api/contracts/${id}`, {
+  async function deleteContract(id: string, proyectoId: string): Promise<void> {
+    const response = await fetch(`/api/contracts/${id}?proyectoId=${encodeURIComponent(proyectoId)}`, {
       method: "DELETE"
     });
 

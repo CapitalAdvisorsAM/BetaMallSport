@@ -11,7 +11,8 @@ const instruccionesGenerales = [
   "No modifique los encabezados (fila 3) - el sistema los usa para identificar columnas",
   "Guarde el archivo como .xlsx o .csv antes de subir",
   "Formato de fechas aceptado: YYYY-MM-DD (recomendado) o DD/MM/YYYY",
-  "Para los campos con lista desplegable, use solo los valores de la lista"
+  "Para los campos con lista desplegable, use solo los valores de la lista",
+  "Para renta variable por periodos, use filas adicionales por contrato (columnas Renta Variable %)."
 ];
 
 const columns: ColumnDef[] = [
@@ -109,6 +110,33 @@ const columns: ColumnDef[] = [
     headerPalette: "gold"
   },
   {
+    key: "rentaVariablePct",
+    label: "Renta Variable %",
+    required: false,
+    description: "Opcional. Alternativa para cargar PORCENTAJE por vigencia",
+    format: "number",
+    width: 18,
+    headerPalette: "gold"
+  },
+  {
+    key: "rentaVariableVigenciaDesde",
+    label: "Renta Var. Desde",
+    required: false,
+    description: "Obligatorio si informa Renta Variable %",
+    format: "date",
+    width: 18,
+    headerPalette: "gold"
+  },
+  {
+    key: "rentaVariableVigenciaHasta",
+    label: "Renta Var. Hasta",
+    required: false,
+    description: "Vacio = indefinido",
+    format: "date",
+    width: 18,
+    headerPalette: "gold"
+  },
+  {
     key: "ggccTarifaBaseUfM2",
     label: "GGCC Tarifa Base (UF/m2)",
     required: false,
@@ -184,9 +212,33 @@ export async function GET(): Promise<NextResponse> {
           tarifaValor: "0.45",
           tarifaVigenciaDesde: "2025-01-01",
           tarifaVigenciaHasta: "",
+          rentaVariablePct: "",
+          rentaVariableVigenciaDesde: "",
+          rentaVariableVigenciaHasta: "",
           ggccTarifaBaseUfM2: "0.37",
           ggccPctAdministracion: "5",
           ggccVigenciaDesde: "2025-01-01",
+          ggccVigenciaHasta: "",
+          anexoFecha: "",
+          anexoDescripcion: ""
+        },
+        {
+          numeroContrato: "C-1001",
+          localCodigo: "L-101",
+          arrendatarioRut: "76543210-k",
+          estado: "VIGENTE",
+          fechaInicio: "2025-01-01",
+          fechaTermino: "2028-12-31",
+          tarifaTipo: "",
+          tarifaValor: "",
+          tarifaVigenciaDesde: "",
+          tarifaVigenciaHasta: "",
+          rentaVariablePct: "5.00",
+          rentaVariableVigenciaDesde: "2025-01-01",
+          rentaVariableVigenciaHasta: "",
+          ggccTarifaBaseUfM2: "",
+          ggccPctAdministracion: "",
+          ggccVigenciaDesde: "",
           ggccVigenciaHasta: "",
           anexoFecha: "",
           anexoDescripcion: ""
@@ -202,6 +254,9 @@ export async function GET(): Promise<NextResponse> {
           tarifaValor: "35",
           tarifaVigenciaDesde: "2026-01-01",
           tarifaVigenciaHasta: "",
+          rentaVariablePct: "",
+          rentaVariableVigenciaDesde: "",
+          rentaVariableVigenciaHasta: "",
           ggccTarifaBaseUfM2: "",
           ggccPctAdministracion: "",
           ggccVigenciaDesde: "",

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
-import { normalizeRut, tenantSchema } from "@/lib/arrendatarios/schema";
+import { resolveTenantRut, tenantSchema } from "@/lib/arrendatarios/schema";
 import { parsePaginationParams } from "@/lib/pagination";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -60,7 +60,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const created = await prisma.arrendatario.create({
       data: {
         proyectoId: payload.proyectoId,
-        rut: normalizeRut(payload.rut),
+        rut: resolveTenantRut(payload.rut, payload.razonSocial, payload.nombreComercial),
         razonSocial: payload.razonSocial,
         nombreComercial: payload.nombreComercial,
         vigente: payload.vigente,

@@ -1,26 +1,65 @@
-import { TipoTarifaContrato } from "@prisma/client";
+import Link from "next/link";
+import { TipoCargaDatos } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { ArrendatariosCrudPanel } from "@/components/rent-roll/ArrendatariosCrudPanel";
+import { RentRollEntityModeNav } from "@/components/rent-roll/RentRollEntityModeNav";
+import { CargaHistorial } from "@/components/upload/CargaHistorial";
+import { UploadSection } from "@/components/upload/UploadSection";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
-import { auth } from "@/lib/auth";
-import { canWrite } from "@/lib/permissions";
 import {
-  buildArrendatariosContractsWhere,
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
+import type { RentRollMode } from "@/lib/navigation";
+import { canWrite, requireSession } from "@/lib/permissions";
+import {
+  buildArrendatariosActiveContractWhere,
+  buildArrendatariosWhere,
   parseVigenteFilter
 } from "@/lib/rent-roll/arrendatarios";
-import { formatUf } from "@/lib/kpi";
-import { cn } from "@/lib/utils";
+import { getUploadHistory } from "@/lib/rent-roll/upload-history";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
+import { cn } from "@/lib/utils";
 
 type ArrendatariosPageProps = {
   searchParams: {
     proyecto?: string;
     q?: string;
     vigente?: string;
+    seccion?: string;
+    page?: string;
+    detalle?: string;
   };
 };
+
+const PAGE_SIZE = 50;
+
+function resolveMode(value: string | undefined): RentRollMode {
+  if (value === "cargar") {
+    return "cargar";
+  }
+  if (value === "upload") {
+    return "upload";
+  }
+  return "ver";
+}
 
 function getMonthBounds(date: Date): { start: Date; nextMonthStart: Date } {
   const year = date.getUTCFullYear();
@@ -32,34 +71,15 @@ function getMonthBounds(date: Date): { start: Date; nextMonthStart: Date } {
   };
 }
 
-function formatRentRollUf(value: { toString(): string } | null | undefined): string {
-  const normalized = formatUf(value);
-  if (normalized === "\u2014") {
-    return normalized;
-  }
-  return Number(normalized).toLocaleString("es-CL", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
-}
-
-function formatContractDates(fechaInicio: Date, fechaTermino: Date): string {
-  const formatter = new Intl.DateTimeFormat("es-CL", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    timeZone: "UTC"
-  });
-  return `${formatter.format(fechaInicio)} - ${formatter.format(fechaTermino)}`;
+function parsePage(value: string | undefined): number {
+  const parsed = Number.parseInt(value ?? "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
 export default async function ArrendatariosPage({
   searchParams
 }: ArrendatariosPageProps): Promise<JSX.Element> {
-  const session = await auth();
-  if (!session?.user) {
-    redirect("/login");
-  }
+  const session = await requireSession();
 
   const { projects, selectedProjectId } = await getProjectContext(searchParams.proyecto);
   if (!selectedProjectId) {
@@ -77,55 +97,132 @@ export default async function ArrendatariosPage({
   }
 
   const q = searchParams.q?.trim() ?? "";
+  const detalleId = searchParams.detalle?.trim() ?? "";
   const vigente = parseVigenteFilter(searchParams.vigente);
+  const vigenteValue =
+    searchParams.vigente === "vigente" || searchParams.vigente === "no-vigente"
+      ? searchParams.vigente
+      : "all";
+  const mode = resolveMode(searchParams.seccion);
+  const currentPage = parsePage(searchParams.page);
+  const canEdit = canWrite(session.user.role);
   const today = new Date();
   const { start, nextMonthStart } = getMonthBounds(today);
+  const activeContractWhere = buildArrendatariosActiveContractWhere({ start, nextMonthStart });
+  const arrendatariosWhere = buildArrendatariosWhere(
+    selectedProjectId,
+    { start, nextMonthStart },
+    { q, vigente }
+  );
 
-  const [activeContracts, arrendatariosCrud] = await Promise.all([
-    prisma.contrato.findMany({
-      where: buildArrendatariosContractsWhere(
-        selectedProjectId,
-        { start, nextMonthStart },
-        { q, vigente }
-      ),
-      include: {
-        arrendatario: {
-          select: {
-            nombreComercial: true,
-            rut: true,
-            vigente: true
+  let arrendatariosList: Array<{
+    id: string;
+    rut: string;
+    nombreComercial: string;
+    vigente: boolean;
+    _count: {
+      contratos: number;
+    };
+    contratos: Array<{
+      id: string;
+      numeroContrato: string;
+    }>;
+  }> = [];
+  let totalArrendatarios = 0;
+  let arrendatariosCrud: Array<{
+    id: string;
+    proyectoId: string;
+    rut: string;
+    razonSocial: string;
+    nombreComercial: string;
+    vigente: boolean;
+    email: string | null;
+    telefono: string | null;
+  }> = [];
+
+  if (mode === "ver") {
+    [arrendatariosList, totalArrendatarios] = await Promise.all([
+      prisma.arrendatario.findMany({
+        where: arrendatariosWhere,
+        include: {
+          _count: {
+            select: {
+              contratos: true
+            }
+          },
+          contratos: {
+            where: activeContractWhere,
+            orderBy: { fechaInicio: "desc" },
+            select: {
+              id: true,
+              numeroContrato: true
+            }
           }
         },
-        local: {
-          select: { codigo: true, nombre: true }
-        },
-        tarifas: {
-          where: {
-            tipo: TipoTarifaContrato.FIJO_UF_M2,
-            vigenciaDesde: { lte: today },
-            OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: today } }]
-          },
-          orderBy: { vigenciaDesde: "desc" },
-          take: 1,
-          select: { valor: true }
-        },
-        ggcc: {
-          where: {
-            vigenciaDesde: { lte: today },
-            OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: today } }]
-          },
-          orderBy: { vigenciaDesde: "desc" },
-          take: 1,
-          select: { tarifaBaseUfM2: true, pctAdministracion: true }
-        }
-      },
-      orderBy: [{ arrendatario: { nombreComercial: "asc" } }, { fechaInicio: "desc" }]
-    }),
-    prisma.arrendatario.findMany({
+        orderBy: { nombreComercial: "asc" },
+        skip: (currentPage - 1) * PAGE_SIZE,
+        take: PAGE_SIZE
+      }),
+      prisma.arrendatario.count({ where: arrendatariosWhere })
+    ]);
+  } else if (mode === "cargar") {
+    arrendatariosCrud = await prisma.arrendatario.findMany({
       where: { proyectoId: selectedProjectId },
       orderBy: { nombreComercial: "asc" }
-    })
-  ]);
+    });
+  }
+
+  const uploadHistory =
+    mode === "upload" ? await getUploadHistory(selectedProjectId, TipoCargaDatos.ARRENDATARIOS) : [];
+  const totalPages = Math.max(1, Math.ceil(totalArrendatarios / PAGE_SIZE));
+  const prevPage = Math.max(1, currentPage - 1);
+  const nextPage = Math.min(totalPages, currentPage + 1);
+
+  const buildPageHref = (page: number): string => {
+    const params = new URLSearchParams();
+    params.set("proyecto", selectedProjectId);
+    params.set("seccion", "ver");
+    if (q) {
+      params.set("q", q);
+    }
+    if (searchParams.vigente === "vigente" || searchParams.vigente === "no-vigente") {
+      params.set("vigente", searchParams.vigente);
+    }
+    params.set("page", String(page));
+    return `/rent-roll/arrendatarios?${params.toString()}`;
+  };
+
+  const buildDetailHref = (id: string | null): string => {
+    const params = new URLSearchParams();
+    params.set("proyecto", selectedProjectId);
+    params.set("seccion", "ver");
+    if (q) {
+      params.set("q", q);
+    }
+    if (searchParams.vigente === "vigente" || searchParams.vigente === "no-vigente") {
+      params.set("vigente", searchParams.vigente);
+    }
+    params.set("page", String(currentPage));
+    if (id) {
+      params.set("detalle", id);
+    }
+    return `/rent-roll/arrendatarios?${params.toString()}`;
+  };
+
+  const selectedArrendatario =
+    mode === "ver" && detalleId
+      ? await prisma.arrendatario.findFirst({
+          where: { id: detalleId, proyectoId: selectedProjectId },
+          include: {
+            _count: { select: { contratos: true } },
+            contratos: {
+              orderBy: { fechaInicio: "desc" },
+              take: 10,
+              select: { id: true, numeroContrato: true }
+            }
+          }
+        })
+      : null;
 
   return (
     <main className="space-y-4">
@@ -135,155 +232,255 @@ export default async function ArrendatariosPage({
             <div className="mb-1 flex items-center gap-2">
               <div className="h-5 w-1 rounded-full bg-gold-400" />
               <h2 className="text-base font-bold uppercase tracking-wide text-brand-700">
-                Arrendatarios
+                {mode === "ver"
+                  ? "Arrendatarios: Vista"
+                  : mode === "cargar"
+                    ? "Arrendatarios: Carga"
+                    : "Arrendatarios: Carga Masiva"}
               </h2>
             </div>
             <p className="text-sm text-slate-600">
-              Contratos en estado OCUPADO o GRACIA del periodo actual. Un arrendatario puede
-              aparecer m&aacute;s de una vez si tiene varios locales.
+              {mode === "ver"
+                ? "Arrendatarios con contratos en estado OCUPADO o GRACIA del periodo actual. La informacion de local, fechas y tarifas se administra en Contratos."
+                : mode === "cargar"
+                  ? "Alta y mantenimiento manual de arrendatarios."
+                  : "Sube archivo, valida el preview y aplica los cambios en lote."}
             </p>
           </div>
           <ProjectSelector
             projects={projects}
             selectedProjectId={selectedProjectId}
-            preserve={{ q, vigente: searchParams.vigente ?? "" }}
+            preserve={{ seccion: mode, q, vigente: searchParams.vigente ?? "", page: String(currentPage) }}
           />
         </div>
       </section>
 
-      <section className="rounded-md bg-white p-4 shadow-sm">
-        <form className="grid gap-3 md:grid-cols-[1fr_220px_auto]">
-          <input type="hidden" name="proyecto" value={selectedProjectId} />
-          <input
-            type="search"
-            name="q"
-            defaultValue={q}
-            placeholder="Buscar por nombre comercial o RUT"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-brand-500 focus:ring-2"
-          />
-          <select
-            name="vigente"
-            defaultValue={searchParams.vigente ?? ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-brand-500 focus:ring-2"
-          >
-            <option value="">Todos</option>
-            <option value="vigente">Vigente</option>
-            <option value="no-vigente">No vigente</option>
-          </select>
-          <button
-            type="submit"
-            className="rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-          >
-            Filtrar
-          </button>
-        </form>
-      </section>
+      <RentRollEntityModeNav entity="arrendatarios" mode={mode} proyectoId={selectedProjectId} />
 
-      <section className="overflow-hidden rounded-md bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-brand-700">
-              <tr>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  Arrendatario
-                </th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  RUT
-                </th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  Vigente
-                </th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  N&deg; contrato
-                </th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  Local
-                </th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  Fechas contrato
-                </th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  {"Tarifa UF/m\u00b2"}
-                </th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  {"GGCC base UF/m\u00b2"}
-                </th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  GGCC % Admin
-                </th>
-              </tr>
-            </thead>
-            <tbody className="text-sm">
-              {activeContracts.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-6 text-center text-slate-500">
-                    No se encontraron contratos activos para los filtros aplicados.
-                  </td>
-                </tr>
-              ) : (
-                activeContracts.map((contract, index) => {
-                  const ggccRecord = contract.ggcc[0];
-                  const localDisplay = contract.local
-                    ? `${contract.local.codigo} - ${contract.local.nombre}`
-                    : "\u2014";
-                  return (
-                    <tr
-                      key={contract.id}
-                      className={cn(
-                        "text-slate-800 transition-colors hover:bg-brand-50",
-                        index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
-                      )}
-                    >
-                      <td className="px-4 py-3 font-medium">{contract.arrendatario.nombreComercial}</td>
-                      <td className="whitespace-nowrap px-4 py-3">{contract.arrendatario.rut}</td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <span
-                          className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                            contract.arrendatario.vigente
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-slate-100 text-slate-700"
-                          }`}
+      {mode === "ver" ? (
+        <>
+          {selectedArrendatario ? (
+            <section className="space-y-3 rounded-md border border-brand-200 bg-brand-50 p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-brand-700">
+                  Detalle arrendatario {selectedArrendatario.nombreComercial}
+                </h3>
+                <Button asChild type="button" variant="outline" size="sm">
+                  <Link href={buildDetailHref(null)}>Cerrar detalle</Link>
+                </Button>
+              </div>
+              <div className="grid gap-2 text-sm md:grid-cols-2">
+                <p>
+                  <span className="font-semibold text-slate-700">RUT:</span> {selectedArrendatario.rut}
+                </p>
+                <p>
+                  <span className="font-semibold text-slate-700">Vigente:</span>{" "}
+                  {selectedArrendatario.vigente ? "Si" : "No"}
+                </p>
+                <p className="md:col-span-2">
+                  <span className="font-semibold text-slate-700">Razon social:</span>{" "}
+                  {selectedArrendatario.razonSocial}
+                </p>
+                <p>
+                  <span className="font-semibold text-slate-700">Email:</span>{" "}
+                  {selectedArrendatario.email ?? "-"}
+                </p>
+                <p>
+                  <span className="font-semibold text-slate-700">Telefono:</span>{" "}
+                  {selectedArrendatario.telefono ?? "-"}
+                </p>
+                <p className="md:col-span-2">
+                  <span className="font-semibold text-slate-700">Contratos:</span>{" "}
+                  {selectedArrendatario.contratos.length > 0
+                    ? selectedArrendatario.contratos.map((item) => item.numeroContrato).join(", ")
+                    : "-"}
+                </p>
+              </div>
+            </section>
+          ) : null}
+
+          <section className="rounded-md bg-white p-4 shadow-sm">
+            <form className="grid gap-3 md:grid-cols-[1fr_220px_auto]">
+              <input type="hidden" name="proyecto" value={selectedProjectId} />
+              <input type="hidden" name="seccion" value="ver" />
+              <input type="hidden" name="page" value="1" />
+              <Input
+                type="search"
+                name="q"
+                defaultValue={q}
+                placeholder="Buscar por nombre comercial o RUT"
+                className="w-full"
+              />
+              <Select
+                name="vigente"
+                defaultValue={vigenteValue}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="vigente">Vigente</SelectItem>
+                    <SelectItem value="no-vigente">No vigente</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <Button
+                type="submit"
+                className="rounded-full"
+              >
+                Filtrar
+              </Button>
+            </form>
+          </section>
+
+          <section className="overflow-hidden rounded-md bg-white shadow-sm">
+            <Table className="min-w-full divide-y divide-slate-200">
+              <TableHeader className="bg-brand-700">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
+                      Arrendatario
+                  </TableHead>
+                  <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
+                      RUT
+                  </TableHead>
+                  <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
+                      Vigente
+                  </TableHead>
+                  <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
+                      Contratos asociados
+                  </TableHead>
+                  <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
+                      Contratos vigentes (periodo)
+                  </TableHead>
+                  <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
+                      N&deg; contrato vigente
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="text-sm">
+                  {arrendatariosList.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="px-4 py-6 text-center text-slate-500">
+                        No se encontraron arrendatarios con contratos activos para los filtros aplicados.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    arrendatariosList.map((arrendatario, index) => {
+                      const activeContractNumbers = arrendatario.contratos.map(
+                        (contract) => contract.numeroContrato
+                      );
+                      return (
+                        <TableRow
+                          key={arrendatario.id}
+                          className={cn(
+                            "text-slate-800 transition-colors hover:bg-brand-50",
+                            index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
+                          )}
                         >
-                          {contract.arrendatario.vigente ? "S\u00ed" : "No"}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">{contract.numeroContrato}</td>
-                      <td className="whitespace-nowrap px-4 py-3">{localDisplay}</td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        {formatContractDates(contract.fechaInicio, contract.fechaTermino)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        {formatRentRollUf(contract.tarifas[0]?.valor)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        {formatRentRollUf(ggccRecord?.tarifaBaseUfM2)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        {formatRentRollUf(ggccRecord?.pctAdministracion)}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <ArrendatariosCrudPanel
-        proyectoId={selectedProjectId}
-        canEdit={canWrite(session.user.role)}
-        initialArrendatarios={arrendatariosCrud.map((arrendatario) => ({
-          id: arrendatario.id,
-          proyectoId: arrendatario.proyectoId,
-          rut: arrendatario.rut,
-          razonSocial: arrendatario.razonSocial,
-          nombreComercial: arrendatario.nombreComercial,
-          vigente: arrendatario.vigente,
-          email: arrendatario.email,
-          telefono: arrendatario.telefono
-        }))}
-      />
+                          <TableCell className="px-4 py-3 font-medium">
+                            <Link href={buildDetailHref(arrendatario.id)} className="text-brand-700 underline">
+                              {arrendatario.nombreComercial}
+                            </Link>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap px-4 py-3">{arrendatario.rut}</TableCell>
+                          <TableCell className="whitespace-nowrap px-4 py-3">
+                            <Badge
+                              variant="outline"
+                              className={`rounded-full ${
+                                arrendatario.vigente
+                                  ? "border-emerald-200 bg-emerald-100 text-emerald-700"
+                                  : "border-slate-200 bg-slate-100 text-slate-700"
+                              }`}
+                            >
+                              {arrendatario.vigente ? "Si" : "No"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap px-4 py-3">
+                            {arrendatario._count.contratos}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap px-4 py-3">
+                            {activeContractNumbers.length}
+                          </TableCell>
+                          <TableCell className="px-4 py-3">
+                            {activeContractNumbers.length > 0
+                              ? activeContractNumbers.join(", ")
+                              : "\u2014"}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+              </TableBody>
+            </Table>
+            <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
+              <span>
+                Pagina {currentPage} de {totalPages} ({totalArrendatarios} arrendatarios)
+              </span>
+              <div className="flex items-center gap-2">
+                {currentPage <= 1 ? (
+                  <Button type="button" variant="outline" size="sm" disabled>
+                    Anterior
+                  </Button>
+                ) : (
+                  <Button asChild type="button" variant="outline" size="sm">
+                    <Link href={buildPageHref(prevPage)}>Anterior</Link>
+                  </Button>
+                )}
+                {currentPage >= totalPages ? (
+                  <Button type="button" variant="outline" size="sm" disabled>
+                    Siguiente
+                  </Button>
+                ) : (
+                  <Button asChild type="button" variant="outline" size="sm">
+                    <Link href={buildPageHref(nextPage)}>Siguiente</Link>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </section>
+        </>
+      ) : mode === "cargar" ? (
+        <ArrendatariosCrudPanel
+          proyectoId={selectedProjectId}
+          canEdit={canEdit}
+          initialArrendatarios={arrendatariosCrud.map((arrendatario) => ({
+            id: arrendatario.id,
+            proyectoId: arrendatario.proyectoId,
+            rut: arrendatario.rut,
+            razonSocial: arrendatario.razonSocial,
+            nombreComercial: arrendatario.nombreComercial,
+            vigente: arrendatario.vigente,
+            email: arrendatario.email,
+            telefono: arrendatario.telefono
+          }))}
+        />
+      ) : (
+        <>
+          <section className="rounded-md border border-brand-200 bg-brand-50 p-4 text-sm text-brand-700 shadow-sm">
+            Para cargar contratos por primera vez: sube Locales -&gt; Arrendatarios -&gt; Contratos en ese
+            orden.
+          </section>
+          <UploadSection
+            tipo="ARRENDATARIOS"
+            proyectoId={selectedProjectId}
+            canEdit={canEdit}
+            previewEndpoint="/api/rent-roll/upload/arrendatarios/preview"
+            applyEndpoint="/api/rent-roll/upload/arrendatarios/apply"
+            templateEndpoint="/api/rent-roll/upload/arrendatarios/template"
+            columns={[
+              { key: "rut", label: "RUT" },
+              { key: "razonSocial", label: "Razon social" },
+              { key: "nombreComercial", label: "Nombre comercial" },
+              { key: "vigente", label: "Vigente" },
+              { key: "email", label: "Email" },
+              { key: "telefono", label: "Telefono" }
+            ]}
+          />
+          <CargaHistorial items={uploadHistory} />
+        </>
+      )}
     </main>
   );
 }

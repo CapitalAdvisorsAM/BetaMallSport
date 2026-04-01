@@ -41,7 +41,6 @@ export type ContractExtraction = {
   glam2: string | null;
   fechaInicio: string | null;
   fechaTermino: string | null;
-  pctRentaVariable: string | null;
   pctFondoPromocion: string | null;
   tarifas: Array<{
     tipo: "FIJO_UF_M2" | "PORCENTAJE";
@@ -423,18 +422,8 @@ function extractFixedTarifas(
   return fixedTarifas;
 }
 
-export async function extractContractFromPdf(buffer: Buffer): Promise<ContractExtraction> {
-  const parser = new PDFParse({ data: new Uint8Array(buffer) });
-
-  let text = "";
-  try {
-    const result = await parser.getText();
-    text = result.text ?? "";
-  } finally {
-    await parser.destroy().catch(() => undefined);
-  }
-
-  const compactText = normalizeWhitespace(text);
+export function extractContractFromText(rawText: string): ContractExtraction {
+  const compactText = normalizeWhitespace(rawText);
   const normalizedText = normalizeForSearch(compactText);
 
   const numeroContratoRaw = extractFirstRegexGroup(
@@ -449,7 +438,7 @@ export async function extractContractFromPdf(buffer: Buffer): Promise<ContractEx
   const rutCandidates = extractRuts(compactText);
   const arrendatarioRut =
     rutCandidates.find((rut) => normalizeRutForCompare(rut) !== MALL_SPORT_RUT) ?? null;
-  const arrendatarioNombre = extractNameFromFantasyContext(text) ?? extractQuotedName(compactText);
+  const arrendatarioNombre = extractNameFromFantasyContext(rawText) ?? extractQuotedName(compactText);
 
   const localCodigo = extractFirstRegexGroup(
     normalizedText,
@@ -547,7 +536,6 @@ export async function extractContractFromPdf(buffer: Buffer): Promise<ContractEx
     glam2,
     fechaInicio,
     fechaTermino,
-    pctRentaVariable,
     pctFondoPromocion,
     tarifas: uniqueByKey(
       tarifas.filter(
@@ -557,6 +545,20 @@ export async function extractContractFromPdf(buffer: Buffer): Promise<ContractEx
     ),
     ggcc
   };
+}
+
+export async function extractContractFromPdf(buffer: Buffer): Promise<ContractExtraction> {
+  const parser = new PDFParse({ data: new Uint8Array(buffer) });
+
+  let text = "";
+  try {
+    const result = await parser.getText();
+    text = result.text ?? "";
+  } finally {
+    await parser.destroy().catch(() => undefined);
+  }
+
+  return extractContractFromText(text);
 }
 
 

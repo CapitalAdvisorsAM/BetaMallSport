@@ -1,37 +1,11 @@
-import type { EstadoDiaContrato, EstadoMaestro, Prisma } from "@prisma/client";
+import { EstadoContrato, TipoTarifaContrato } from "@prisma/client";
+import type { EstadoDiaContrato, Prisma } from "@prisma/client";
+import { MS_PER_DAY } from "@/lib/constants";
+import { prisma } from "@/lib/prisma";
+import { startOfUtcDay } from "@/lib/utils";
 import type { RentRollMetricaRow, RentRollResumen } from "@/types/metricas";
 
 type Decimal = Prisma.Decimal;
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-export type ContratoConRelaciones = {
-  id: string;
-  fechaInicio: Date;
-  fechaTermino: Date;
-  pctRentaVariable: Decimal | null;
-  contratosDia: Array<{
-    estadoDia: EstadoDiaContrato;
-  }>;
-  local: {
-    id: string;
-    codigo: string;
-    nombre: string;
-    glam2: Decimal;
-    esGLA: boolean;
-    estado: EstadoMaestro;
-  };
-  arrendatario: {
-    nombreComercial: string;
-  };
-  tarifas: Array<{
-    valor: Decimal;
-  }>;
-  ggcc: Array<{
-    tarifaBaseUfM2: Decimal;
-    pctAdministracion: Decimal;
-  }>;
-};
 
 export type LocalActivo = {
   id: string;
@@ -39,12 +13,85 @@ export type LocalActivo = {
   esGLA: boolean;
 };
 
-function round4(value: number): number {
-  return Number(value.toFixed(4));
+export type MetricaRow = RentRollMetricaRow;
+
+async function listContratosConRelaciones(
+  proyectoId: string,
+  start: Date,
+  nextMonthStart: Date,
+  hoy: Date
+) {
+  return prisma.contrato.findMany({
+    where: {
+      proyectoId,
+      OR: [
+        {
+          contratosDia: {
+            some: {
+              fecha: { gte: start, lt: nextMonthStart },
+              estadoDia: { in: ["OCUPADO", "GRACIA"] }
+            }
+          }
+        },
+        {
+          estado: { in: [EstadoContrato.VIGENTE, EstadoContrato.GRACIA] },
+          fechaInicio: { lt: nextMonthStart },
+          fechaTermino: { gte: start }
+        }
+      ]
+    },
+    include: {
+      contratosDia: {
+        where: {
+          fecha: { gte: start, lt: nextMonthStart }
+        },
+        select: {
+          estadoDia: true
+        }
+      },
+      local: {
+        select: {
+          id: true,
+          codigo: true,
+          nombre: true,
+          glam2: true,
+          esGLA: true,
+          estado: true
+        }
+      },
+      arrendatario: {
+        select: {
+          nombreComercial: true
+        }
+      },
+      tarifas: {
+        where: {
+          tipo: { in: [TipoTarifaContrato.FIJO_UF_M2, TipoTarifaContrato.PORCENTAJE] },
+          vigenciaDesde: { lte: hoy },
+          OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: hoy } }]
+        },
+        orderBy: { vigenciaDesde: "desc" },
+        select: {
+          tipo: true,
+          valor: true
+        }
+      },
+      ggcc: {
+        where: {
+          vigenciaDesde: { lte: hoy }
+        },
+        orderBy: { vigenciaDesde: "desc" },
+        take: 1
+      }
+    },
+    orderBy: [{ local: { codigo: "asc" } }]
+  });
 }
 
-function startOfUtcDay(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+export type ContratoConRelaciones = Awaited<ReturnType<typeof listContratosConRelaciones>>[number];
+
+function round4(value: number): number {
+  return Number(value.toFixed(4));
 }
 
 function parsePeriodo(periodoStr: string): { year: number; month: number } {
@@ -60,6 +107,14 @@ function parsePeriodo(periodoStr: string): { year: number; month: number } {
   }
 
   return { year, month };
+}
+
+function getPeriodoBounds(periodoStr: string): { start: Date; nextMonthStart: Date } {
+  const { year, month } = parsePeriodo(periodoStr);
+  return {
+    start: new Date(Date.UTC(year, month - 1, 1)),
+    nextMonthStart: new Date(Date.UTC(year, month, 1))
+  };
 }
 
 function sum(values: number[]): number {
@@ -86,12 +141,12 @@ export function calcularGgcc(
 
 export function calcularRentaVariable(
   ventasUf: number | null,
-  pctRentaVariable: Decimal | null
+  tarifaVariablePct: Decimal | null
 ): number | null {
   if (ventasUf === null) {
     return null;
   }
-  return round4(ventasUf * ((pctRentaVariable?.toNumber() ?? 0) / 100));
+  return round4(ventasUf * ((tarifaVariablePct?.toNumber() ?? 0) / 100));
 }
 
 export function calcularDiasVigentes(
@@ -122,18 +177,21 @@ export function buildMetricaRow(
   ventasMap: Map<string, number>,
   periodo: string
 ): RentRollMetricaRow {
-  const tarifaVigente = contrato.tarifas[0]?.valor ?? null;
+  const tarifaFijaVigente =
+    contrato.tarifas.find((tarifa) => tarifa.tipo === TipoTarifaContrato.FIJO_UF_M2)?.valor ?? null;
+  const tarifaVariableVigente =
+    contrato.tarifas.find((tarifa) => tarifa.tipo === TipoTarifaContrato.PORCENTAJE)?.valor ?? null;
   const ggccVigente = contrato.ggcc[0];
   const ventasUf = ventasMap.get(contrato.local.id) ?? null;
 
-  const tarifaUfM2 = round4(tarifaVigente?.toNumber() ?? 0);
-  const rentaFijaUf = calcularRentaFija(contrato.local.glam2, tarifaVigente);
+  const tarifaUfM2 = round4(tarifaFijaVigente?.toNumber() ?? 0);
+  const rentaFijaUf = calcularRentaFija(contrato.local.glam2, tarifaFijaVigente);
   const ggccUf = calcularGgcc(
     contrato.local.glam2,
     ggccVigente?.tarifaBaseUfM2 ?? null,
     ggccVigente?.pctAdministracion ?? null
   );
-  const rentaVariableUf = calcularRentaVariable(ventasUf, contrato.pctRentaVariable);
+  const rentaVariableUf = calcularRentaVariable(ventasUf, tarifaVariableVigente);
   const ingresoBrutoUf = round4(rentaFijaUf + ggccUf + (rentaVariableUf ?? 0));
 
   return {
@@ -165,6 +223,52 @@ export function getEstadoContratoDia(estadosDia: EstadoDiaContrato[]): EstadoDia
     return "VACANTE";
   }
   return null;
+}
+
+function fallbackEstadoPorDocumento(estado: EstadoContrato): EstadoDiaContrato | null {
+  if (estado === EstadoContrato.GRACIA) {
+    return "GRACIA";
+  }
+  if (estado === EstadoContrato.VIGENTE) {
+    return "OCUPADO";
+  }
+  return null;
+}
+
+export async function getMetricasRentRoll(
+  proyectoId: string,
+  periodo: string
+): Promise<MetricaRow[]> {
+  const hoy = new Date();
+  const { start, nextMonthStart } = getPeriodoBounds(periodo);
+
+  const [contratosConRelaciones, ventasPeriodo] = await Promise.all([
+    listContratosConRelaciones(proyectoId, start, nextMonthStart, hoy),
+    prisma.ventaLocal.findMany({
+      where: { proyectoId, periodo },
+      select: {
+        localId: true,
+        ventasUf: true
+      }
+    })
+  ]);
+
+  const ventasMap = new Map<string, number>(
+    ventasPeriodo.map((venta) => [venta.localId, venta.ventasUf.toNumber()])
+  );
+
+  return contratosConRelaciones
+    .map((contrato) => {
+      const estadoPorDia = getEstadoContratoDia(
+        contrato.contratosDia.map((estadoDia) => estadoDia.estadoDia)
+      );
+      const estadoContrato = estadoPorDia ?? fallbackEstadoPorDocumento(contrato.estado);
+      if (!estadoContrato || estadoContrato === "VACANTE") {
+        return null;
+      }
+      return buildMetricaRow(contrato, estadoContrato, ventasMap, periodo);
+    })
+    .filter((fila): fila is MetricaRow => fila !== null);
 }
 
 export function buildResumen(

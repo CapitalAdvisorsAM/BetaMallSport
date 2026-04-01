@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildArrendatariosContractsWhere,
+  buildArrendatariosActiveContractWhere,
+  buildArrendatariosWhere,
   parseVigenteFilter
 } from "@/lib/rent-roll/arrendatarios";
 
@@ -16,19 +17,37 @@ describe("parseVigenteFilter", () => {
   });
 });
 
-describe("buildArrendatariosContractsWhere", () => {
-  it("builds where with project and active-day constraints", () => {
+describe("buildArrendatariosActiveContractWhere", () => {
+  it("builds where with active-day constraints", () => {
     const start = new Date("2026-03-01T00:00:00.000Z");
     const nextMonthStart = new Date("2026-04-01T00:00:00.000Z");
 
-    expect(
-      buildArrendatariosContractsWhere("p-1", { start, nextMonthStart }, { q: "" })
-    ).toEqual({
-      proyectoId: "p-1",
+    expect(buildArrendatariosActiveContractWhere({ start, nextMonthStart })).toEqual({
       contratosDia: {
         some: {
           fecha: { gte: start, lt: nextMonthStart },
           estadoDia: { in: ["OCUPADO", "GRACIA"] }
+        }
+      }
+    });
+  });
+});
+
+describe("buildArrendatariosWhere", () => {
+  it("builds where with project and active-contract constraints", () => {
+    const start = new Date("2026-03-01T00:00:00.000Z");
+    const nextMonthStart = new Date("2026-04-01T00:00:00.000Z");
+
+    expect(buildArrendatariosWhere("p-1", { start, nextMonthStart }, { q: "" })).toEqual({
+      proyectoId: "p-1",
+      contratos: {
+        some: {
+          contratosDia: {
+            some: {
+              fecha: { gte: start, lt: nextMonthStart },
+              estadoDia: { in: ["OCUPADO", "GRACIA"] }
+            }
+          }
         }
       }
     });
@@ -39,26 +58,28 @@ describe("buildArrendatariosContractsWhere", () => {
     const nextMonthStart = new Date("2026-04-01T00:00:00.000Z");
 
     expect(
-      buildArrendatariosContractsWhere(
+      buildArrendatariosWhere(
         "p-1",
         { start, nextMonthStart },
         { q: "acme", vigente: true }
       )
     ).toEqual({
       proyectoId: "p-1",
-      contratosDia: {
+      contratos: {
         some: {
-          fecha: { gte: start, lt: nextMonthStart },
-          estadoDia: { in: ["OCUPADO", "GRACIA"] }
+          contratosDia: {
+            some: {
+              fecha: { gte: start, lt: nextMonthStart },
+              estadoDia: { in: ["OCUPADO", "GRACIA"] }
+            }
+          }
         }
       },
-      arrendatario: {
-        vigente: true,
-        OR: [
-          { nombreComercial: { contains: "acme", mode: "insensitive" } },
-          { rut: { contains: "acme", mode: "insensitive" } }
-        ]
-      }
+      vigente: true,
+      OR: [
+        { nombreComercial: { contains: "acme", mode: "insensitive" } },
+        { rut: { contains: "acme", mode: "insensitive" } }
+      ]
     });
   });
 });

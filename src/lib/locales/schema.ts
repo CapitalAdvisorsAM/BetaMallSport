@@ -15,19 +15,28 @@ function isDecimalValue(value: string): boolean {
   }
 }
 
+function isNonNegativeDecimal(value: string): boolean {
+  try {
+    return new Prisma.Decimal(value).greaterThanOrEqualTo(0);
+  } catch {
+    return false;
+  }
+}
+
 export const localeSchema = z.object({
   proyectoId: z.string().min(1),
-  codigo: z.string().trim().min(1, "Codigo es obligatorio."),
+  codigo: z.string().trim().min(1, "Codigo es obligatorio.").transform((value) => value.toUpperCase()),
   nombre: z.string().trim().default(""),
   glam2: z
     .string()
-    .transform((value) => normalizeGlam2(value))
-    .pipe(
-      z
-        .string()
-        .min(1)
-        .refine((value) => value === "" || isDecimalValue(value), "GLA m2 debe ser numerico.")
-    ),
+    .optional()
+    .transform((value) => normalizeGlam2(value ?? ""))
+    .refine((value) => value === "" || isDecimalValue(value), "GLA m2 debe ser numerico.")
+    .refine(
+      (value) => value === "" || isNonNegativeDecimal(value),
+      "GLA m2 debe ser mayor o igual a 0."
+    )
+    .transform((value) => (value === "" ? "0" : value)),
   piso: z.string().trim().min(1, "Piso es obligatorio."),
   tipo: z.nativeEnum(TipoLocal),
   zona: z.string().trim().nullable(),

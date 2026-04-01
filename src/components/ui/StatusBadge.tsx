@@ -1,4 +1,5 @@
 import type { EstadoContrato } from "@prisma/client";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const statusColor: Record<EstadoContrato, string> = {
@@ -14,13 +15,14 @@ type StatusBadgeProps = {
 
 export function StatusBadge({ status }: StatusBadgeProps): JSX.Element {
   return (
-    <span
+    <Badge
+      variant="outline"
       className={cn(
-        "inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+        "rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
         statusColor[status]
       )}
     >
       {status}
-    </span>
+    </Badge>
   );
 }

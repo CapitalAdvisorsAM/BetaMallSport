@@ -1,8 +1,22 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { type ColumnDef } from "@tanstack/react-table";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { DataTable } from "@/components/ui/DataTable";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import { Spinner } from "@/components/ui/Spinner";
+import { useDataTable } from "@/hooks/useDataTable";
 
 type ArrendatarioRecord = {
   id: string;
@@ -58,8 +72,6 @@ export function ArrendatariosCrudPanel({
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [messageType, setMessageType] = useState<"success" | "error" | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState<ArrendatarioForm>(createEmptyForm(proyectoId));
 
@@ -75,6 +87,86 @@ export function ArrendatariosCrudPanel({
         .includes(q)
     );
   }, [arrendatarios, search]);
+
+  const columns = useMemo<ColumnDef<ArrendatarioRecord, unknown>[]>(
+    () => [
+      {
+        accessorKey: "rut",
+        header: "RUT",
+        filterFn: "includesString",
+        cell: ({ row }) => <span className="whitespace-nowrap">{row.original.rut}</span>
+      },
+      {
+        accessorKey: "razonSocial",
+        header: "Razon Social",
+        enableColumnFilter: false,
+        cell: ({ row }) => <span>{row.original.razonSocial}</span>
+      },
+      {
+        accessorKey: "nombreComercial",
+        header: "Nombre Comercial",
+        filterFn: "includesString",
+        cell: ({ row }) => <span className="font-medium">{row.original.nombreComercial}</span>
+      },
+      {
+        id: "vigente",
+        accessorFn: (row) => (row.vigente ? "Si" : "No"),
+        header: "Vigente",
+        filterFn: (row, columnId, filterValue) => {
+          if (!Array.isArray(filterValue) || filterValue.length === 0) {
+            return true;
+          }
+          return filterValue.includes(String(row.getValue(columnId)));
+        },
+        meta: { filterType: "enum", filterOptions: ["Si", "No"], align: "center" },
+        cell: ({ row }) => <span className="whitespace-nowrap">{row.original.vigente ? "Si" : "No"}</span>
+      },
+      {
+        accessorKey: "email",
+        header: "Email",
+        filterFn: "includesString",
+        cell: ({ row }) => <span className="whitespace-nowrap">{row.original.email ?? "-"}</span>
+      },
+      {
+        accessorKey: "telefono",
+        header: "Telefono",
+        enableColumnFilter: false,
+        cell: ({ row }) => <span className="whitespace-nowrap">{row.original.telefono ?? "-"}</span>
+      },
+      {
+        id: "acciones",
+        accessorFn: (row) => row.id,
+        header: "Acciones",
+        enableSorting: false,
+        enableColumnFilter: false,
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => beginEdit(row.original)}
+              disabled={!canEdit}
+              className="h-auto px-2 py-1 text-xs"
+            >
+              Editar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => setPendingDeleteId(row.original.id)}
+              disabled={!canEdit || loading}
+              className="h-auto px-2 py-1 text-xs"
+            >
+              Eliminar
+            </Button>
+          </div>
+        )
+      }
+    ],
+    [canEdit, loading]
+  );
+
+  const { table } = useDataTable(filteredArrendatarios, columns);
 
   function beginCreate(): void {
     setSelectedId(null);
@@ -110,9 +202,6 @@ export function ArrendatariosCrudPanel({
   function validate(): Record<string, string> {
     const errors: Record<string, string> = {};
 
-    if (!form.rut.trim()) {
-      errors.rut = "RUT es obligatorio.";
-    }
     if (!form.razonSocial.trim()) {
       errors.razonSocial = "Razon social es obligatoria.";
     }
@@ -131,22 +220,23 @@ export function ArrendatariosCrudPanel({
     const errors = validate();
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      setMessageType("error");
-      setMessage("Corrige los campos marcados.");
+      toast.warning("Corrige los campos marcados.");
       return;
     }
 
     setFieldErrors({});
     setLoading(true);
-    setMessage(null);
-    setMessageType(null);
     try {
       const isEditing = Boolean(selectedId);
-      const response = await fetch(isEditing ? `/api/arrendatarios/${selectedId}` : "/api/arrendatarios", {
-        method: isEditing ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form)
-      });
+      const editQuery = `?proyectoId=${encodeURIComponent(form.proyectoId)}`;
+      const response = await fetch(
+        isEditing ? `/api/arrendatarios/${selectedId}${editQuery}` : "/api/arrendatarios",
+        {
+          method: isEditing ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form)
+        }
+      );
 
       const data = (await response.json()) as Partial<ArrendatarioRecord> & { message?: string };
       if (!response.ok || !data.id) {
@@ -156,21 +246,18 @@ export function ArrendatariosCrudPanel({
       const saved = toArrendatarioRecord(data);
       if (isEditing) {
         setArrendatarios((previous) => previous.map((item) => (item.id === saved.id ? saved : item)));
-        setMessageType("success");
-        setMessage("Arrendatario actualizado correctamente.");
+        toast.success("Arrendatario actualizado correctamente.");
       } else {
         setArrendatarios((previous) =>
           [...previous, saved].sort((a, b) =>
             a.nombreComercial.localeCompare(b.nombreComercial, "es", { sensitivity: "base" })
           )
         );
-        setMessageType("success");
-        setMessage("Arrendatario creado correctamente.");
+        toast.success("Arrendatario creado correctamente.");
       }
       beginCreate();
     } catch (error) {
-      setMessageType("error");
-      setMessage(error instanceof Error ? error.message : "Error inesperado al guardar arrendatario.");
+      toast.error(error instanceof Error ? error.message : "Error inesperado al guardar arrendatario.");
     } finally {
       setLoading(false);
     }
@@ -182,10 +269,11 @@ export function ArrendatariosCrudPanel({
     }
 
     setLoading(true);
-    setMessage(null);
-    setMessageType(null);
     try {
-      const response = await fetch(`/api/arrendatarios/${tenantId}`, { method: "DELETE" });
+      const response = await fetch(
+        `/api/arrendatarios/${tenantId}?proyectoId=${encodeURIComponent(proyectoId)}`,
+        { method: "DELETE" }
+      );
       if (!response.ok) {
         throw new Error("No se pudo eliminar el arrendatario.");
       }
@@ -194,11 +282,9 @@ export function ArrendatariosCrudPanel({
       if (selectedId === tenantId) {
         beginCreate();
       }
-      setMessageType("success");
-      setMessage("Arrendatario eliminado correctamente.");
+      toast.success("Arrendatario eliminado correctamente.");
     } catch (error) {
-      setMessageType("error");
-      setMessage(error instanceof Error ? error.message : "Error inesperado al eliminar arrendatario.");
+      toast.error(error instanceof Error ? error.message : "Error inesperado al eliminar arrendatario.");
     } finally {
       setLoading(false);
     }
@@ -209,19 +295,20 @@ export function ArrendatariosCrudPanel({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-base font-semibold text-slate-900">CRUD de Arrendatarios</h3>
         <div className="flex items-center gap-2">
-          <input
+          <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Buscar arrendatario"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className="w-56"
           />
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={beginCreate}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="h-auto px-3 py-2 text-sm"
           >
             Nuevo
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -230,9 +317,9 @@ export function ArrendatariosCrudPanel({
       <div className="grid gap-3 md:grid-cols-2">
         <label className="text-sm">
           <span className="mb-1 block text-slate-700">
-            RUT <span className="text-rose-500">*</span>
+            RUT <span className="text-xs text-slate-400">(opcional)</span>
           </span>
-          <input
+          <Input
             value={form.rut}
             onChange={(event) => {
               setForm({ ...form, rut: event.target.value });
@@ -249,7 +336,7 @@ export function ArrendatariosCrudPanel({
           <span className="mb-1 block text-slate-700">
             Nombre comercial <span className="text-rose-500">*</span>
           </span>
-          <input
+          <Input
             value={form.nombreComercial}
             onChange={(event) => {
               setForm({ ...form, nombreComercial: event.target.value });
@@ -268,7 +355,7 @@ export function ArrendatariosCrudPanel({
           <span className="mb-1 block text-slate-700">
             Razon social <span className="text-rose-500">*</span>
           </span>
-          <input
+          <Input
             value={form.razonSocial}
             onChange={(event) => {
               setForm({ ...form, razonSocial: event.target.value });
@@ -287,7 +374,7 @@ export function ArrendatariosCrudPanel({
           <span className="mb-1 block text-slate-700">
             Email <span className="text-xs text-slate-400">(opcional)</span>
           </span>
-          <input
+          <Input
             value={form.email ?? ""}
             onChange={(event) => setForm({ ...form, email: event.target.value || null })}
             className="w-full rounded-md border border-slate-300 px-3 py-2"
@@ -297,35 +384,40 @@ export function ArrendatariosCrudPanel({
           <span className="mb-1 block text-slate-700">
             Telefono <span className="text-xs text-slate-400">(opcional)</span>
           </span>
-          <input
+          <Input
             value={form.telefono ?? ""}
             onChange={(event) => setForm({ ...form, telefono: event.target.value || null })}
             className="w-full rounded-md border border-slate-300 px-3 py-2"
           />
         </label>
-        <label className="flex items-center gap-2 pt-7 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={form.vigente}
-            onChange={(event) => setForm({ ...form, vigente: event.target.checked })}
-          />
-          Vigente
+        <label className="text-sm">
+          <span className="mb-1 block text-slate-700">Estado</span>
+          <Select
+            value={form.vigente ? "ACTIVO" : "INACTIVO"}
+            onValueChange={(value) => setForm({ ...form, vigente: value === "ACTIVO" })}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ACTIVO">ACTIVO</SelectItem>
+              <SelectItem value="INACTIVO">INACTIVO</SelectItem>
+            </SelectContent>
+          </Select>
         </label>
       </div>
 
       <div className="flex items-center gap-3">
-        <button
+        <Button
           type="button"
+          variant="default"
           onClick={() => void handleSubmit()}
           disabled={!canEdit || loading}
-          className="rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-full"
         >
           {loading ? (
             <>
-              <svg className="mr-1.5 inline h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
+              <Spinner className="mr-1.5" />
               Guardando…
             </>
           ) : selectedId ? (
@@ -333,110 +425,29 @@ export function ArrendatariosCrudPanel({
           ) : (
             "Crear arrendatario"
           )}
-        </button>
+        </Button>
       </div>
 
-      {message ? (
-        <p
-          role="status"
-          aria-live="polite"
-          className={cn("text-sm", messageType === "error" ? "text-rose-600" : "text-emerald-700")}
-        >
-          {message}
-        </p>
+      <DataTable
+        table={table}
+        emptyMessage={
+          search.trim()
+            ? `Sin resultados para "${search.trim()}"`
+            : "Aun no hay arrendatarios registrados. Completa el formulario de arriba para agregar el primero."
+        }
+      />
+      {filteredArrendatarios.length === 0 && !search.trim() ? (
+        <div className="flex justify-center">
+          <Button
+            type="button"
+            variant="default"
+            onClick={beginCreate}
+            className="h-auto rounded-full px-3 py-1.5 text-xs"
+          >
+            Crear primer arrendatario
+          </Button>
+        </div>
       ) : null}
-
-      <div className="overflow-x-auto rounded-lg border border-slate-200">
-        <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-brand-700">
-            <tr>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Nombre comercial
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Razon social
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                RUT
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Email
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Telefono
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Vigente
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody className="text-sm text-slate-800">
-            {filteredArrendatarios.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-10 text-center">
-                  {search.trim() ? (
-                    <p className="text-sm text-slate-500">Sin resultados para «{search.trim()}»</p>
-                  ) : (
-                    <>
-                      <p className="text-sm font-medium text-slate-700">Aún no hay arrendatarios registrados</p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        Completa el formulario de arriba para agregar el primero.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={beginCreate}
-                        className="mt-3 rounded-full border border-brand-300 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50"
-                      >
-                        Crear primer arrendatario
-                      </button>
-                    </>
-                  )}
-                </td>
-              </tr>
-            ) : (
-              filteredArrendatarios.map((item, index) => (
-                <tr
-                  key={item.id}
-                  className={cn(
-                    "transition-colors hover:bg-brand-50",
-                    index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
-                  )}
-                >
-                  <td className="px-4 py-3 font-medium">{item.nombreComercial}</td>
-                  <td className="px-4 py-3">{item.razonSocial}</td>
-                  <td className="whitespace-nowrap px-4 py-3">{item.rut}</td>
-                  <td className="whitespace-nowrap px-4 py-3">{item.email ?? "-"}</td>
-                  <td className="whitespace-nowrap px-4 py-3">{item.telefono ?? "-"}</td>
-                  <td className="whitespace-nowrap px-4 py-3">{item.vigente ? "Si" : "No"}</td>
-                  <td className="whitespace-nowrap px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => beginEdit(item)}
-                        disabled={!canEdit}
-                        className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPendingDeleteId(item.id)}
-                        disabled={!canEdit || loading}
-                        className="rounded-md border border-rose-200 px-2 py-1 text-xs font-medium text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
       <ConfirmModal
         open={Boolean(pendingDeleteId)}
         title="Eliminar arrendatario"

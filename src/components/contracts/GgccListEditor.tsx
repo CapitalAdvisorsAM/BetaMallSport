@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { ContractFormPayload } from "@/types";
 
 export type GgccListItem = ContractFormPayload["ggcc"][number] & { _key: string };
@@ -30,19 +32,22 @@ export function GgccListEditor({
     <div className="rounded-lg border border-slate-200 p-3">
       <div className="mb-2 flex items-center justify-between">
         <h4 className="text-sm font-semibold text-slate-900">GGCC</h4>
-        <button
+        <Button
           type="button"
+          variant="outline"
           disabled={disabled}
           onClick={() => onChange([...ggcc, createEmptyGgccItem()])}
-          className="text-sm font-medium text-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-auto px-2 py-1 text-sm"
         >
           + Agregar
-        </button>
+        </Button>
       </div>
       <div className="space-y-2">
         {ggcc.map((item, index) => (
           <div key={item._key} className="grid gap-2 md:grid-cols-5">
-            <input
+            <Input
+              type="number"
+              step="any"
               placeholder="Tarifa base UF/m2"
               disabled={disabled}
               value={item.tarifaBaseUfM2}
@@ -53,7 +58,9 @@ export function GgccListEditor({
               }}
               className="rounded-md border border-slate-300 px-2 py-2 text-sm"
             />
-            <input
+            <Input
+              type="number"
+              step="any"
               placeholder="% administracion"
               disabled={disabled}
               value={item.pctAdministracion}
@@ -64,7 +71,7 @@ export function GgccListEditor({
               }}
               className="rounded-md border border-slate-300 px-2 py-2 text-sm"
             />
-            <input
+            <Input
               type="date"
               disabled={disabled}
               value={item.vigenciaDesde}
@@ -75,7 +82,7 @@ export function GgccListEditor({
               }}
               className="rounded-md border border-slate-300 px-2 py-2 text-sm"
             />
-            <input
+            <Input
               type="date"
               disabled={disabled}
               value={item.vigenciaHasta ?? ""}
@@ -86,14 +93,15 @@ export function GgccListEditor({
               }}
               className="rounded-md border border-slate-300 px-2 py-2 text-sm"
             />
-            <button
+            <Button
               type="button"
+              variant="destructive"
               disabled={disabled}
               onClick={() => onChange(ggcc.filter((_, i) => i !== index))}
-              className="rounded-md border border-rose-200 px-2 py-2 text-sm text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-auto px-2 py-2 text-sm"
             >
               Quitar
-            </button>
+            </Button>
           </div>
         ))}
       </div>
