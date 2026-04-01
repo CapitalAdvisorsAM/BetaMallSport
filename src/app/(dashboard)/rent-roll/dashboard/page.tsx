@@ -5,17 +5,12 @@ import {
   RentRollDashboardTable,
   type RentRollDashboardTableRow
 } from "@/components/rent-roll/RentRollDashboardTable";
-import { Button } from "@/components/ui/button";
+import { RentRollChartsSection } from "@/components/rent-roll/RentRollChartsSection";
+import {
+  RentRollSnapshotDatePicker
+} from "@/components/rent-roll/RentRollSnapshotDatePicker";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -24,51 +19,132 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
-import { RentRollChartsSection } from "@/components/rent-roll/RentRollChartsSection";
-import { buildOcupacionDetalle } from "@/lib/kpi";
+import {
+  buildOcupacionDetalle,
+  calculateWalt,
+  mapCategoria
+} from "@/lib/kpi";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
 import { getTimelineData } from "@/lib/rent-roll/timeline";
-import { formatDecimal } from "@/lib/utils";
+import { formatDecimal, startOfDay } from "@/lib/utils";
+import type { RentRollCategoryConcentrationDatum } from "@/components/rent-roll/RentRollCategoryConcentration";
 
 type RentRollDashboardPageProps = {
   searchParams: {
     proyecto?: string;
     periodo?: string;
+    fecha?: string;
   };
 };
-
-function formatPeriod(value: Date): string {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
-}
-
-function buildLastPeriods(totalMonths: number): string[] {
-  const now = new Date();
-  return Array.from({ length: totalMonths }, (_, index) => {
-    const value = new Date(now.getFullYear(), now.getMonth() - index, 1);
-    return formatPeriod(value);
-  });
-}
-
-function getPeriodoBounds(periodo: string): { start: Date; nextMonthStart: Date } {
-  const [yearRaw, monthRaw] = periodo.split("-");
-  const year = Number(yearRaw);
-  const monthIndex = Number(monthRaw) - 1;
-
-  return {
-    start: new Date(Date.UTC(year, monthIndex, 1)),
-    nextMonthStart: new Date(Date.UTC(year, monthIndex + 1, 1))
-  };
-}
 
 function isValidPeriod(value?: string): value is string {
   if (!value) {
     return false;
   }
   return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+}
+
+function isValidDate(value?: string): value is string {
+  if (!value || !/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(value)) {
+    return false;
+  }
+
+  const parsed = parseDateParam(value);
+  return formatDateParam(parsed) === value;
+}
+
+function parseDateParam(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function formatDateParam(value: Date): string {
+  const year = value.getUTCFullYear();
+  const month = String(value.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(value.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function resolveSnapshotDate(fecha?: string, periodo?: string): string {
+  if (isValidDate(fecha)) {
+    return fecha;
+  }
+
+  if (isValidPeriod(periodo)) {
+    return `${periodo}-01`;
+  }
+
+  return formatDateParam(startOfDay(new Date()));
+}
+
+function getPeriodoFromFecha(fecha: string): string {
+  return fecha.slice(0, 7);
+}
+
+function formatWaltValue(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "\u2013";
+  }
+
+  if (value > 24) {
+    return `${formatOneDecimal(value / 12)} a\u00f1os`;
+  }
+
+  return `${formatOneDecimal(value)} meses`;
+}
+
+function formatOneDecimal(value: number): string {
+  const formatted = formatDecimal(Math.round(value * 10) / 10);
+  return formatted.replace(/([,.]\d)\d$/, "$1");
+}
+
+function buildCategoryConcentration(
+  contracts: Array<{
+    local: { glam2: number | { toString(): string }; zona: string | null };
+  }>
+): RentRollCategoryConcentrationDatum[] {
+  const grouped = new Map<string, { glam2: number; contratos: number }>();
+
+  for (const contract of contracts) {
+    const glam2 = Number(contract.local.glam2);
+    if (glam2 <= 0) {
+      continue;
+    }
+
+    const categoria = mapCategoria(contract.local.zona) ?? "Sin categoria";
+    const current = grouped.get(categoria) ?? { glam2: 0, contratos: 0 };
+    current.glam2 += glam2;
+    current.contratos += 1;
+    grouped.set(categoria, current);
+  }
+
+  const totalGla = Array.from(grouped.values()).reduce((acc, item) => acc + item.glam2, 0);
+  if (totalGla <= 0) {
+    return [];
+  }
+
+  const rows = Array.from(grouped.entries())
+    .map(([categoria, value]) => ({
+      categoria,
+      glam2: value.glam2,
+      contratos: value.contratos
+    }))
+    .sort((a, b) => b.glam2 - a.glam2);
+
+  let pctAcumulado = 0;
+  return rows.map((row, index) => {
+    const pctBase = (row.glam2 / totalGla) * 100;
+    const pct =
+      index === rows.length - 1 ? Number((100 - pctAcumulado).toFixed(2)) : Number(pctBase.toFixed(2));
+    pctAcumulado += pct;
+
+    return {
+      ...row,
+      pct: Math.max(0, pct)
+    };
+  });
 }
 
 export default async function RentRollDashboardPage({
@@ -87,30 +163,27 @@ export default async function RentRollDashboardPage({
     );
   }
 
-  const currentPeriod = formatPeriod(new Date());
-  const periodo = isValidPeriod(searchParams.periodo) ? searchParams.periodo : currentPeriod;
+  const fecha = resolveSnapshotDate(searchParams.fecha, searchParams.periodo);
+  const fechaReferencia = parseDateParam(fecha);
+  const periodoVentas = getPeriodoFromFecha(fecha);
 
-  if (searchParams.proyecto !== selectedProjectId || searchParams.periodo !== periodo) {
+  if (
+    searchParams.proyecto !== selectedProjectId ||
+    searchParams.fecha !== fecha ||
+    searchParams.periodo
+  ) {
     const params = new URLSearchParams();
     params.set("proyecto", selectedProjectId);
-    params.set("periodo", periodo);
+    params.set("fecha", fecha);
     redirect(`/rent-roll/dashboard?${params.toString()}`);
   }
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const { start, nextMonthStart } = getPeriodoBounds(periodo);
 
   const [contracts, ventaLocales, localesActivos, timelineData] = await Promise.all([
     prisma.contrato.findMany({
       where: {
         proyectoId: selectedProjectId,
-        contratosDia: {
-          some: {
-            fecha: { gte: start, lt: nextMonthStart },
-            estadoDia: { in: ["OCUPADO", "GRACIA"] }
-          }
-        }
+        fechaInicio: { lte: fechaReferencia },
+        fechaTermino: { gte: fechaReferencia }
       },
       include: {
         local: {
@@ -132,8 +205,8 @@ export default async function RentRollDashboardPage({
         tarifas: {
           where: {
             tipo: { in: [TipoTarifaContrato.FIJO_UF_M2, TipoTarifaContrato.PORCENTAJE] },
-            vigenciaDesde: { lte: today },
-            OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: today } }]
+            vigenciaDesde: { lte: fechaReferencia },
+            OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: fechaReferencia } }]
           },
           orderBy: [{ vigenciaDesde: "desc" }],
           select: {
@@ -143,8 +216,8 @@ export default async function RentRollDashboardPage({
         },
         ggcc: {
           where: {
-            vigenciaDesde: { lte: today },
-            OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: today } }]
+            vigenciaDesde: { lte: fechaReferencia },
+            OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: fechaReferencia } }]
           },
           orderBy: [{ vigenciaDesde: "desc" }],
           take: 1,
@@ -159,7 +232,7 @@ export default async function RentRollDashboardPage({
     prisma.ventaLocal.findMany({
       where: {
         proyectoId: selectedProjectId,
-        periodo
+        periodo: periodoVentas
       },
       select: {
         localId: true,
@@ -193,8 +266,10 @@ export default async function RentRollDashboardPage({
 
   const rows: RentRollDashboardTableRow[] = contracts.map((contract) => {
     const glam2 = Number(contract.local.glam2);
-    const tarifaFija = contract.tarifas.find((t) => t.tipo === TipoTarifaContrato.FIJO_UF_M2);
-    const tarifaVariable = contract.tarifas.find((t) => t.tipo === TipoTarifaContrato.PORCENTAJE);
+    const tarifaFija = contract.tarifas.find((tarifa) => tarifa.tipo === TipoTarifaContrato.FIJO_UF_M2);
+    const tarifaVariable = contract.tarifas.find(
+      (tarifa) => tarifa.tipo === TipoTarifaContrato.PORCENTAJE
+    );
     const tarifaUfM2 = tarifaFija?.valor ? Number(tarifaFija.valor) : 0;
     const rentaFijaUf = glam2 * tarifaUfM2;
     const pctRentaVariable = tarifaVariable?.valor ? Number(tarifaVariable.valor) : null;
@@ -207,15 +282,9 @@ export default async function RentRollDashboardPage({
     const ventasUf = ventasByLocalId.has(contract.localId)
       ? (ventasByLocalId.get(contract.localId) ?? null)
       : null;
-
     const rentaVariableUf =
-      ventasUf !== null && pctRentaVariable !== null
-        ? ventasUf * (pctRentaVariable / 100)
-        : null;
-
-    const pctFondoPromocion = contract.pctFondoPromocion
-      ? Number(contract.pctFondoPromocion)
-      : null;
+      ventasUf !== null && pctRentaVariable !== null ? ventasUf * (pctRentaVariable / 100) : null;
+    const pctFondoPromocion = contract.pctFondoPromocion ? Number(contract.pctFondoPromocion) : null;
 
     return {
       id: contract.id,
@@ -248,7 +317,6 @@ export default async function RentRollDashboardPage({
     { glam2: 0, rentaFijaUf: 0, ggccUf: 0, ventasUf: 0, rentaVariableUf: 0 }
   );
 
-  const periodOptions = buildLastPeriods(12);
   const ocupacionDetalle = buildOcupacionDetalle(
     localesActivos,
     contracts.map((contract) => ({
@@ -258,18 +326,17 @@ export default async function RentRollDashboardPage({
       tarifa: null
     }))
   );
-  const categoriaRows = [
-    { key: "Outdoor", label: "Outdoor" },
-    { key: "Multideporte", label: "Multideporte" },
-    { key: "Bicicletas", label: "Bicicletas" },
-    { key: "Entretencion", label: "Entretenci\u00f3n" },
-    { key: "Accesorios", label: "Accesorios" },
-    { key: "Gastronomia", label: "Gastronom\u00eda" },
-    { key: "Gimnasio", label: "Gimnasio" },
-    { key: "Servicios", label: "Servicios" },
-    { key: "Lifestyle", label: "Lifestyle" },
-    { key: "Powersports", label: "Powersports" }
-  ] as const;
+
+  const walt = calculateWalt(
+    contracts.map((contract) => ({
+      fechaTermino: contract.fechaTermino,
+      localGlam2: contract.local.glam2
+    })),
+    fechaReferencia
+  );
+
+  const categoryConcentration = buildCategoryConcentration(contracts);
+
   const tamanoRows = [
     { key: "Tienda Mayor", label: "Tienda Mayor" },
     { key: "Tienda Mediana", label: "Tienda Mediana" },
@@ -290,102 +357,44 @@ export default async function RentRollDashboardPage({
               </h2>
             </div>
             <p className="mt-1 text-sm text-slate-600">
-              Metricas clave por local para contratos con ocupacion derivada por periodo.
+              Snapshot por fecha exacta de contratos activos, KPIs comerciales y concentracion de GLA.
             </p>
           </div>
           <ProjectSelector
             projects={projects}
             selectedProjectId={selectedProjectId}
-            preserve={{ periodo }}
+            preserve={{ fecha }}
           />
         </div>
       </header>
 
       <section className="rounded-md bg-white p-4 shadow-sm">
-        <form className="grid gap-3 md:grid-cols-[220px_auto]">
-          <input type="hidden" name="proyecto" value={selectedProjectId} />
-          <Select
-            name="periodo"
-            defaultValue={periodo}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Selecciona un periodo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {periodOptions.map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {option}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          <Button
-            type="submit"
-            className="rounded-full"
-          >
-            Aplicar periodo
-          </Button>
-        </form>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <RentRollSnapshotDatePicker projectId={selectedProjectId} selectedDate={fecha} />
+          <div className="rounded-md border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
+            <span className="font-semibold">Periodo de ventas asociado:</span> {periodoVentas}
+          </div>
+        </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-4">
         <KpiCard title="Renta fija total (UF)" value={formatDecimal(totals.rentaFijaUf)} accent="slate" />
         <KpiCard title="GGCC total (UF)" value={formatDecimal(totals.ggccUf)} accent="slate" />
         <KpiCard title="Ventas periodo (UF)" value={formatDecimal(totals.ventasUf)} accent="slate" />
+        <KpiCard
+          title="WALT"
+          value={formatWaltValue(walt)}
+          subtitle={walt > 0 ? `Promedio ponderado al ${fecha}` : "Sin contratos activos"}
+          accent="yellow"
+        />
       </section>
 
-      <RentRollChartsSection periodos={timelineData.periodos} />
+      <RentRollChartsSection
+        periodos={timelineData.periodos}
+        categoryConcentration={categoryConcentration}
+      />
 
-      <section className="grid gap-4 xl:grid-cols-2">
-        <article className="overflow-hidden rounded-md bg-white shadow-sm">
-          <div className="border-b border-slate-200 px-4 py-3">
-            <h3 className="text-sm font-semibold text-brand-700">Ocupacion por categoria</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <Table className="min-w-full divide-y divide-slate-200 text-sm">
-              <TableHeader className="bg-brand-700">
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
-                    Categoria
-                  </TableHead>
-                  <TableHead className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
-                    GLA (m2)
-                  </TableHead>
-                  <TableHead className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
-                    % del total
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="text-slate-800">
-                {categoriaRows.map((row, index) => {
-                  const data = ocupacionDetalle.porCategoria[row.key] ?? { gla: 0, pct: 0 };
-                  return (
-                    <TableRow key={row.key} className={index % 2 === 0 ? "bg-white" : "bg-slate-50/60"}>
-                      <TableCell className="px-4 py-3">
-                        <div className="text-sm font-medium">{row.label}</div>
-                        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                          <div
-                            className="h-full rounded-full bg-brand-500"
-                            style={{ width: `${Math.min(100, Math.max(0, data.pct))}%` }}
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                        {formatDecimal(data.gla)}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                        {formatDecimal(data.pct)}%
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </article>
-
+      <section>
         <article className="overflow-hidden rounded-md bg-white shadow-sm">
           <div className="border-b border-slate-200 px-4 py-3">
             <h3 className="text-sm font-semibold text-brand-700">Ocupacion por tamano</h3>
@@ -419,6 +428,7 @@ export default async function RentRollDashboardPage({
                     pctVacancia: 0
                   };
                   const vacante = Math.max(data.gla - data.glaArrendada, 0);
+
                   return (
                     <TableRow key={row.key} className={index % 2 === 0 ? "bg-white" : "bg-slate-50/60"}>
                       <TableCell className="whitespace-nowrap px-4 py-3 font-medium">{row.label}</TableCell>

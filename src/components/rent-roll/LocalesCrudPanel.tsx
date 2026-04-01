@@ -3,6 +3,11 @@
 import { useMemo, useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
+import {
+  DEFAULT_COMMERCIAL_SIZE_RULES,
+  formatCalculatedLocalSize,
+  getCalculatedLocalSize
+} from "@/lib/locales/size";
 import { cn, formatDecimal } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -84,6 +89,14 @@ function parseDecimal(value: string): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function renderRuleRange(min: number, max: number | null): string {
+  if (max === null) {
+    return `${formatDecimal(min)} m2 o mas`;
+  }
+
+  return `${formatDecimal(min)} a ${formatDecimal(max)} m2`;
+}
+
 export function LocalesCrudPanel({
   proyectoId,
   canEdit,
@@ -157,6 +170,18 @@ export function LocalesCrudPanel({
         sortUndefined: "last",
         meta: { align: "right" },
         cell: ({ row }) => <span className="whitespace-nowrap">{formatDecimal(row.original.glam2)}</span>
+      },
+      {
+        id: "tamanoCalculado",
+        accessorFn: (row) => formatCalculatedLocalSize(getCalculatedLocalSize(row.tipo, row.glam2)),
+        header: "Tamano calculado",
+        filterFn: "includesString",
+        enableColumnFilter: false,
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap">
+            {formatCalculatedLocalSize(getCalculatedLocalSize(row.original.tipo, row.original.glam2))}
+          </span>
+        )
       },
       {
         id: "esGLA",
@@ -358,6 +383,46 @@ export function LocalesCrudPanel({
       </div>
 
       {!canEdit ? <p className="text-sm text-amber-700">Tu rol es de solo lectura para locales.</p> : null}
+
+      <div className="overflow-hidden rounded-md border border-slate-200">
+        <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+          <h4 className="text-sm font-semibold text-slate-900">Tabla de tamano por local</h4>
+          <p className="text-xs text-slate-600">
+            Bodega, Modulo y Espacio respetan el tipo del local. El resto se calcula por metros cuadrados.
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-white">
+              <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-[0.2em] text-slate-500">
+                <th className="px-4 py-3 font-semibold">Categoria</th>
+                <th className="px-4 py-3 font-semibold">Regla aplicada</th>
+              </tr>
+            </thead>
+            <tbody>
+              {DEFAULT_COMMERCIAL_SIZE_RULES.map((rule, index) => (
+                <tr key={rule.key} className={index % 2 === 0 ? "bg-white" : "bg-slate-50/70"}>
+                  <td className="px-4 py-3 font-medium text-slate-800">{rule.label}</td>
+                  <td className="px-4 py-3 text-slate-600">{renderRuleRange(rule.min, rule.max)}</td>
+                </tr>
+              ))}
+              {[
+                { label: "Bodega", description: "Se asigna cuando el tipo del local es BODEGA." },
+                { label: "Modulo", description: "Se asigna cuando el tipo del local es MODULO." },
+                { label: "Espacio", description: "Se asigna cuando el tipo del local es ESPACIO." }
+              ].map((item, index) => (
+                <tr
+                  key={item.label}
+                  className={(DEFAULT_COMMERCIAL_SIZE_RULES.length + index) % 2 === 0 ? "bg-white" : "bg-slate-50/70"}
+                >
+                  <td className="px-4 py-3 font-medium text-slate-800">{item.label}</td>
+                  <td className="px-4 py-3 text-slate-600">{item.description}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <div className="grid gap-3 md:grid-cols-4">
         <label className="text-sm">

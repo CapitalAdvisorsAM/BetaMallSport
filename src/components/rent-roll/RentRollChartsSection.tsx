@@ -18,9 +18,14 @@ import {
   Cell
 } from "recharts";
 import type { PeriodoMetrica } from "@/types/timeline";
+import {
+  RentRollCategoryConcentration,
+  type RentRollCategoryConcentrationDatum
+} from "@/components/rent-roll/RentRollCategoryConcentration";
 
 type RentRollChartsSectionProps = {
   periodos: PeriodoMetrica[];
+  categoryConcentration: RentRollCategoryConcentrationDatum[];
 };
 
 const MESES_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -66,7 +71,10 @@ function ChartCard({ title, children }: ChartCardProps): JSX.Element {
   );
 }
 
-export function RentRollChartsSection({ periodos }: RentRollChartsSectionProps): JSX.Element {
+export function RentRollChartsSection({
+  periodos,
+  categoryConcentration
+}: RentRollChartsSectionProps): JSX.Element {
   const currentPeriodo = getCurrentPeriodo();
   const total = periodos.length;
 
@@ -141,6 +149,8 @@ export function RentRollChartsSection({ periodos }: RentRollChartsSectionProps):
 
   return (
     <section className="space-y-4">
+      <RentRollCategoryConcentration data={categoryConcentration} />
+
       <header className="rounded-md bg-white p-4 shadow-sm">
         <div className="mb-1 flex items-center gap-2">
           <div className="h-5 w-1 rounded-full bg-gold-400" />

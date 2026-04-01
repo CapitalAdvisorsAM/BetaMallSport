@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { RentRollKpiHeader } from "@/components/rent-roll/RentRollKpiHeader";
+import { RentRollAnalyticsDashboard } from "@/components/rent-roll/RentRollAnalyticsDashboard";
 import { RentRollTable } from "@/components/rent-roll/RentRollTable";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
@@ -431,6 +432,7 @@ export default async function RentRollPage({
       ) : null}
 
       <RentRollKpiHeader kpis={kpis} rows={rows} />
+      <RentRollAnalyticsDashboard rows={rows} />
       <RentRollTable rows={rows} proyectoId={selectedProjectId} periodo={periodo} />
     </main>
   );

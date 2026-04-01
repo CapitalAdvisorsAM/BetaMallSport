@@ -4,7 +4,7 @@ import {
   CONTRACT_EXPIRY_WINDOWS as CONTRACT_EXPIRY_WINDOWS_VALUE,
   MS_PER_DAY
 } from "@/lib/constants";
-import { startOfDay } from "@/lib/utils";
+import { startOfDay, startOfUtcDay } from "@/lib/utils";
 
 type DecimalLike = number | string | { toString(): string };
 
@@ -80,6 +80,47 @@ function addDays(date: Date, days: number): Date {
   const output = new Date(date);
   output.setDate(output.getDate() + days);
   return output;
+}
+
+function addUtcMonths(date: Date, months: number): Date {
+  return new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth() + months,
+      date.getUTCDate(),
+      date.getUTCHours(),
+      date.getUTCMinutes(),
+      date.getUTCSeconds(),
+      date.getUTCMilliseconds()
+    )
+  );
+}
+
+function diffMonths(dateA: Date, dateB: Date): number {
+  const start = startOfUtcDay(dateA);
+  const end = startOfUtcDay(dateB);
+
+  if (end <= start) {
+    return 0;
+  }
+
+  let wholeMonths =
+    (end.getUTCFullYear() - start.getUTCFullYear()) * 12 +
+    (end.getUTCMonth() - start.getUTCMonth());
+  let anchor = addUtcMonths(start, wholeMonths);
+
+  while (anchor > end) {
+    wholeMonths -= 1;
+    anchor = addUtcMonths(start, wholeMonths);
+  }
+
+  const nextAnchor = addUtcMonths(anchor, 1);
+  const fraction =
+    nextAnchor.getTime() === anchor.getTime()
+      ? 0
+      : (end.getTime() - anchor.getTime()) / (nextAnchor.getTime() - anchor.getTime());
+
+  return wholeMonths + fraction;
 }
 
 /**
@@ -284,6 +325,35 @@ export function calculateEstimatedGgccUf(contracts: KpiContractInput[]): number 
     const base = baseUfM2 * glam2;
     return total + base + (pctAdministracion / 100) * base;
   }, 0);
+}
+
+/**
+ * Calculates the weighted average lease term in months for active contracts.
+ * @param contracts - Active contracts at the selected snapshot date
+ * @param fechaReferencia - Snapshot date used to measure remaining term
+ * @returns Weighted average remaining term in months
+ * @remarks Formula: sum(mesesRestantes x glam2) / sum(glam2)
+ */
+export function calculateWalt(
+  contracts: Array<Pick<KpiContractInput, "fechaTermino" | "localGlam2">>,
+  fechaReferencia: Date
+): number {
+  const acumulado = contracts.reduce(
+    (acc, contract) => {
+      const glam2 = toFiniteNumber(contract.localGlam2);
+      if (glam2 <= 0) {
+        return acc;
+      }
+
+      const mesesRestantes = Math.max(0, diffMonths(fechaReferencia, contract.fechaTermino));
+      acc.weightedMonths += mesesRestantes * glam2;
+      acc.totalGla += glam2;
+      return acc;
+    },
+    { weightedMonths: 0, totalGla: 0 }
+  );
+
+  return acumulado.totalGla > 0 ? acumulado.weightedMonths / acumulado.totalGla : 0;
 }
 
 /**
@@ -591,7 +661,7 @@ function toFiniteNumber(value: DecimalLike | null | undefined, fallback = 0): nu
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function mapCategoria(zona: string | null | undefined): string | null {
+export function mapCategoria(zona: string | null | undefined): string | null {
   const normalized = normalizeLabel(zona);
   const map: Record<string, (typeof CATEGORIAS_OCUPACION)[number]> = {
     OUTDOOR: "Outdoor",
