@@ -1,13 +1,13 @@
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import type { NextAuthOptions } from "next-auth";
 import { getServerSession } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import { prismaAuthAdapter } from "@/lib/prisma-auth-adapter";
 import { prisma } from "@/lib/prisma";
 
 const allowedEmailDomain = process.env.ALLOWED_EMAIL_DOMAIN?.toLowerCase().trim();
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: prismaAuthAdapter(prisma),
   session: {
     strategy: "database"
   },
