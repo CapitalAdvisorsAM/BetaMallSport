@@ -1,4 +1,5 @@
 import { EstadoContrato, TipoLocal, TipoTarifaContrato } from "@prisma/client";
+import { calculateWalt } from "@/lib/kpi";
 import { prisma } from "@/lib/prisma";
 import type { PeriodoMetrica, TimelineResponse } from "@/types/timeline";
 
@@ -58,6 +59,11 @@ async function buildHistoricalPeriodos(
         select: {
           tipo: true
         }
+      },
+      contrato: {
+        select: {
+          fechaTermino: true
+        }
       }
     },
     orderBy: { fecha: "asc" }
@@ -78,6 +84,7 @@ async function buildHistoricalPeriodos(
       glam2: number;
       tarifaDia: number;
       tipo: TipoLocal;
+      fechaTermino: Date | null;
     }>
   >();
 
@@ -91,22 +98,19 @@ async function buildHistoricalPeriodos(
       estadoDia: dia.estadoDia,
       glam2: dia.glam2.toNumber(),
       tarifaDia: dia.tarifaDia.toNumber(),
-      tipo: dia.local.tipo
+      tipo: dia.local.tipo,
+      fechaTermino: dia.contrato?.fechaTermino ?? null
     });
   }
 
-  // Fetch vencimientos (contracts ending each month) - all contracts for the project
-  const allContracts = await prisma.contrato.findMany({
-    where: { proyectoId },
-    select: {
-      id: true,
-      fechaTermino: true
-    }
-  });
-
   const vencimientosByMonth = new Map<string, number>();
-  for (const contrato of allContracts) {
-    const key = toPeriodoKey(contrato.fechaTermino);
+  const vencimientoIds = new Set<string>();
+  for (const dia of allDias) {
+    if (!dia.contratoId || !dia.contrato?.fechaTermino || vencimientoIds.has(dia.contratoId)) {
+      continue;
+    }
+    vencimientoIds.add(dia.contratoId);
+    const key = toPeriodoKey(dia.contrato.fechaTermino);
     vencimientosByMonth.set(key, (vencimientosByMonth.get(key) ?? 0) + 1);
   }
 
@@ -136,6 +140,30 @@ async function buildHistoricalPeriodos(
         .filter((id): id is string => id !== null)
     );
     const contratosActivos = activeContratoIds.size;
+
+    const activeContractsForWalt = Array.from(
+      lastDateDias.reduce(
+        (acc, dia) => {
+          if (
+            !dia.contratoId ||
+            !dia.fechaTermino ||
+            (dia.estadoDia !== "OCUPADO" && dia.estadoDia !== "GRACIA")
+          ) {
+            return acc;
+          }
+          if (!acc.has(dia.contratoId)) {
+            acc.set(dia.contratoId, {
+              fechaTermino: dia.fechaTermino,
+              localGlam2: dia.glam2
+            });
+          }
+          return acc;
+        },
+        new Map<string, { fechaTermino: Date; localGlam2: number }>()
+      ).values()
+    );
+    const snapshotDate = new Date(lastDateStr);
+    const waltMeses = round2(calculateWalt(activeContractsForWalt, snapshotDate));
 
     // rentaFijaUf: sum of tarifaDia * glam2 for all days in the month,
     // then divide by unique dates count to normalize to monthly
@@ -177,6 +205,7 @@ async function buildHistoricalPeriodos(
       periodo,
       esFuturo: false,
       pctOcupacionGLA,
+      waltMeses,
       glaArrendadaM2,
       glaTotalM2,
       rentaFijaUf,
@@ -320,11 +349,24 @@ async function buildFuturePeriodos(
     }
 
     const pctOcupacionGLA = round2(glaTotalM2 > 0 ? (glaArrendadaM2 / glaTotalM2) * 100 : 0);
+    const activeAtMonthEnd = activeContracts.filter(
+      (contract) => contract.fechaInicio <= monthEnd && contract.fechaTermino >= monthEnd
+    );
+    const waltMeses = round2(
+      calculateWalt(
+        activeAtMonthEnd.map((contract) => ({
+          fechaTermino: contract.fechaTermino,
+          localGlam2: contract.local.glam2
+        })),
+        monthEnd
+      )
+    );
 
     result.push({
       periodo,
       esFuturo: true,
       pctOcupacionGLA,
+      waltMeses,
       glaArrendadaM2: round2(glaArrendadaM2),
       glaTotalM2,
       rentaFijaUf: round2(rentaFijaUf),

@@ -32,6 +32,7 @@ import { buildLocalesWhere, parseLocalesEstado } from "@/lib/rent-roll/locales";
 import { getUploadHistory } from "@/lib/rent-roll/upload-history";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
+import { DEFAULT_COMMERCIAL_SIZE_RULES } from "@/lib/locales/size";
 import { cn, formatDecimal } from "@/lib/utils";
 
 type LocalesPageProps = {
@@ -66,6 +67,9 @@ function resolveMode(value: string | undefined): RentRollMode {
   }
   if (value === "upload") {
     return "upload";
+  }
+  if (value === "config") {
+    return "config";
   }
   return "ver";
 }
@@ -244,7 +248,7 @@ export default async function LocalesPage({
         </div>
       </section>
 
-      <RentRollEntityModeNav entity="locales" mode={mode} proyectoId={selectedProjectId} />
+      <RentRollEntityModeNav entity="locales" mode={mode} proyectoId={selectedProjectId} showConfigTab />
 
       {mode === "ver" ? (
         <>
@@ -445,7 +449,7 @@ export default async function LocalesPage({
             estado: local.estado
           }))}
         />
-      ) : (
+      ) : mode === "upload" ? (
         <>
           <section className="rounded-md border border-brand-200 bg-brand-50 p-4 text-sm text-brand-700 shadow-sm">
             Para cargar contratos por primera vez: sube Locales -&gt; Arrendatarios -&gt; Contratos en ese
@@ -469,7 +473,49 @@ export default async function LocalesPage({
           />
           <CargaHistorial items={uploadHistory} />
         </>
-      )}
+      ) : mode === "config" ? (
+        <section className="overflow-hidden rounded-md bg-white shadow-sm">
+          <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
+            <h3 className="text-sm font-semibold text-slate-900">Tabla de tamaño por local</h3>
+            <p className="mt-0.5 text-xs text-slate-600">
+              Bodega, Módulo y Espacio respetan el tipo del local. El resto se calcula por metros cuadrados.
+            </p>
+          </div>
+          <table className="min-w-full text-sm">
+            <thead className="bg-white">
+              <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-[0.2em] text-slate-500">
+                <th className="px-5 py-3 font-semibold">Categoría</th>
+                <th className="px-5 py-3 font-semibold">Regla aplicada</th>
+              </tr>
+            </thead>
+            <tbody>
+              {DEFAULT_COMMERCIAL_SIZE_RULES.map((rule, index) => (
+                <tr key={rule.key} className={index % 2 === 0 ? "bg-white" : "bg-slate-50/70"}>
+                  <td className="px-5 py-3 font-medium text-slate-800">{rule.label}</td>
+                  <td className="px-5 py-3 text-slate-600">
+                    {rule.max === null
+                      ? `${formatDecimal(rule.min)} m2 o más`
+                      : `${formatDecimal(rule.min)} a ${formatDecimal(rule.max)} m2`}
+                  </td>
+                </tr>
+              ))}
+              {[
+                { label: "Bodega", description: "Se asigna cuando el tipo del local es BODEGA." },
+                { label: "Módulo", description: "Se asigna cuando el tipo del local es MODULO." },
+                { label: "Espacio", description: "Se asigna cuando el tipo del local es ESPACIO." }
+              ].map((item, index) => (
+                <tr
+                  key={item.label}
+                  className={(DEFAULT_COMMERCIAL_SIZE_RULES.length + index) % 2 === 0 ? "bg-white" : "bg-slate-50/70"}
+                >
+                  <td className="px-5 py-3 font-medium text-slate-800">{item.label}</td>
+                  <td className="px-5 py-3 text-brand-700">{item.description}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
     </main>
   );
 }

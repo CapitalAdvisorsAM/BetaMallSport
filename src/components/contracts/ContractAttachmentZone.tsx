@@ -25,12 +25,12 @@ type ContractAttachmentZoneProps = {
 
 function getFileIcon(mimeType: string | null): React.ReactNode {
   if (!mimeType) {
-    return <UploadCloud className="h-8 w-8 text-slate-400" />;
+    return <UploadCloud className="h-5 w-5 text-slate-400" />;
   }
   if (mimeType === "application/pdf") {
-    return <FileText className="h-8 w-8 text-brand-500" />;
+    return <FileText className="h-5 w-5 text-brand-500" />;
   }
-  return <ImageIcon className="h-8 w-8 text-brand-500" />;
+  return <ImageIcon className="h-5 w-5 text-brand-500" />;
 }
 
 function validateFile(file: File): string | null {
@@ -105,7 +105,7 @@ export function ContractAttachmentZone({
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       className={cn(
-        "relative flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 text-center transition-colors",
+        "relative flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed p-3 text-center transition-colors",
         dragOver && !disabled
           ? "border-brand-500 bg-brand-50"
           : "border-slate-200 bg-slate-50 hover:border-slate-300",
@@ -122,7 +122,7 @@ export function ContractAttachmentZone({
 
       {/* Icono y estado */}
       {justSucceeded ? (
-        <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
       ) : (
         getFileIcon(lastMime)
       )}

@@ -2,11 +2,9 @@
 
 import { useMemo } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { cn, formatDateString, formatDecimal } from "@/lib/utils";
 import { DataTable } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useDataTable } from "@/hooks/useDataTable";
 import type { RentRollRow } from "@/types/rent-roll";
@@ -15,8 +13,8 @@ type AlertaFiltro = "NINGUNA" | "VENCE_30" | "VENCE_31_60" | "GRACIA" | "VACANTE
 
 type RentRollTableProps = {
   rows: RentRollRow[];
-  proyectoId: string;
-  periodo: string;
+  /** Snapshot date as YYYY-MM-DD used for CSV filename and display. */
+  fecha: string;
 };
 
 function getEstadoBadge(estado: RentRollRow["estado"]): string {
@@ -77,11 +75,7 @@ function isSingleEstadoFilter(value: unknown, expected: RentRollRow["estado"]): 
   return Array.isArray(value) && value.length === 1 && value[0] === expected;
 }
 
-export function RentRollTable({ rows, proyectoId, periodo }: RentRollTableProps): JSX.Element {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
+export function RentRollTable({ rows, fecha }: RentRollTableProps): JSX.Element {
   const sortedBaseRows = useMemo(
     () => [...rows].sort((a, b) => a.localCodigo.localeCompare(b.localCodigo, "es-CL")),
     [rows]
@@ -240,13 +234,6 @@ export function RentRollTable({ rows, proyectoId, periodo }: RentRollTableProps)
     };
   }, [filteredRows]);
 
-  const onPeriodoChange = (nextPeriodo: string): void => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("proyecto", proyectoId);
-    params.set("periodo", nextPeriodo);
-    router.push(`${pathname}?${params.toString()}`);
-  };
-
   const estadoFilterValue = table.getColumn("estado")?.getFilterValue();
   const diasFilterValue = table.getColumn("diasParaVencimiento")?.getFilterValue();
   const diasRange = getNumberRange(diasFilterValue);
@@ -325,7 +312,7 @@ export function RentRollTable({ rows, proyectoId, periodo }: RentRollTableProps)
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `rent-roll-${periodo}.csv`;
+    anchor.download = `rent-roll-${fecha}.csv`;
     anchor.click();
     URL.revokeObjectURL(url);
   };
@@ -395,22 +382,18 @@ export function RentRollTable({ rows, proyectoId, periodo }: RentRollTableProps)
         </Button>
       </div>
 
-      <div className="grid gap-3 rounded-md border border-slate-200 p-3 md:grid-cols-[220px_auto]">
-        <label className="flex flex-col gap-1 text-sm text-slate-700">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Periodo</span>
-          <Input
-            type="month"
-            value={periodo}
-            onChange={(event) => onPeriodoChange(event.target.value)}
-            className="text-sm"
-          />
-        </label>
-
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 p-3">
+        <div className="flex items-center gap-2 text-sm text-slate-600">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Snapshot</span>
+          <span className="rounded-md bg-brand-50 px-3 py-1 text-sm font-medium text-brand-700 border border-brand-100">
+            {fecha}
+          </span>
+        </div>
         <Button
           type="button"
           variant="outline"
           onClick={clearQuickFilter}
-          className="self-end h-auto px-3 py-2 text-sm"
+          className="h-auto px-3 py-2 text-sm"
         >
           Limpiar alerta activa
         </Button>

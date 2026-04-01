@@ -70,23 +70,9 @@ export function ArrendatariosCrudPanel({
   const [arrendatarios, setArrendatarios] = useState<ArrendatarioRecord[]>(initialArrendatarios);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState<ArrendatarioForm>(createEmptyForm(proyectoId));
-
-  const filteredArrendatarios = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) {
-      return arrendatarios;
-    }
-    return arrendatarios.filter((item) =>
-      [item.rut, item.nombreComercial, item.razonSocial, item.email ?? "", item.telefono ?? ""]
-        .join(" ")
-        .toLowerCase()
-        .includes(q)
-    );
-  }, [arrendatarios, search]);
 
   const columns = useMemo<ColumnDef<ArrendatarioRecord, unknown>[]>(
     () => [
@@ -166,7 +152,7 @@ export function ArrendatariosCrudPanel({
     [canEdit, loading]
   );
 
-  const { table } = useDataTable(filteredArrendatarios, columns);
+  const { table } = useDataTable(arrendatarios, columns);
 
   function beginCreate(): void {
     setSelectedId(null);
@@ -294,22 +280,14 @@ export function ArrendatariosCrudPanel({
     <section className="space-y-4 rounded-md bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-base font-semibold text-slate-900">CRUD de Arrendatarios</h3>
-        <div className="flex items-center gap-2">
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar arrendatario"
-            className="w-56"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={beginCreate}
-            className="h-auto px-3 py-2 text-sm"
-          >
-            Nuevo
-          </Button>
-        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={beginCreate}
+          className="h-auto px-3 py-2 text-sm"
+        >
+          Nuevo
+        </Button>
       </div>
 
       {!canEdit ? <p className="text-sm text-amber-700">Tu rol es de solo lectura para arrendatarios.</p> : null}
@@ -430,13 +408,9 @@ export function ArrendatariosCrudPanel({
 
       <DataTable
         table={table}
-        emptyMessage={
-          search.trim()
-            ? `Sin resultados para "${search.trim()}"`
-            : "Aun no hay arrendatarios registrados. Completa el formulario de arriba para agregar el primero."
-        }
+        emptyMessage="Aun no hay arrendatarios registrados. Completa el formulario de arriba para agregar el primero."
       />
-      {filteredArrendatarios.length === 0 && !search.trim() ? (
+      {arrendatarios.length === 0 ? (
         <div className="flex justify-center">
           <Button
             type="button"

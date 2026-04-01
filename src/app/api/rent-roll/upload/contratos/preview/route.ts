@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { TipoCargaDatos } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
