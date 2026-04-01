@@ -38,13 +38,40 @@ export const TOP_NAV_ITEMS: NavItem[] = [
   {
     label: "Finanzas",
     href: "/finanzas",
-    enabled: false,
+    enabled: true,
     match: "startsWith"
   },
   {
     label: "Reportes",
     href: "/reportes",
     enabled: false,
+    match: "startsWith"
+  }
+];
+
+export const FINANZAS_SUB_NAV_ITEMS: NavItem[] = [
+  {
+    label: "EE.RR",
+    href: "/finanzas/eerr",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
+    label: "Arrendatarios",
+    href: "/finanzas/arrendatarios",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
+    label: "Cargar Datos",
+    href: "/finanzas/upload",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
+    label: "Mapeos",
+    href: "/finanzas/mapeos",
+    enabled: true,
     match: "startsWith"
   }
 ];
