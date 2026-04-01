@@ -13,7 +13,8 @@ export function prismaAuthAdapter(prisma: PrismaClient): Adapter {
 
   return {
     ...base,
-    createUser: async (data) =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    createUser: async (data: any) =>
       prisma.user.create({
         data: {
           id: randomUUID(),
@@ -23,7 +24,8 @@ export function prismaAuthAdapter(prisma: PrismaClient): Adapter {
           image: data.image,
         },
       }),
-    createSession: async (session) =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    createSession: async (session: any) =>
       prisma.session.create({
         data: {
           id: randomUUID(),
@@ -32,7 +34,8 @@ export function prismaAuthAdapter(prisma: PrismaClient): Adapter {
           expires: session.expires,
         },
       }),
-    linkAccount: async (account) =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    linkAccount: async (account: any) =>
       prisma.account.create({
         data: {
           id: randomUUID(),

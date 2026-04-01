@@ -78,12 +78,12 @@ export function RentRollAnalyticsDashboard({ rows }: RentRollAnalyticsDashboardP
     };
   }, [rows]);
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; fill?: string; color?: string; }>; label?: string }) => {
     if (active && payload && payload.length) {
       return (
         <div className="rounded-md border border-slate-200 bg-white p-3 shadow-md">
           <p className="mb-2 font-semibold text-slate-800">{label || payload[0].name}</p>
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry: { name: string; value: number; fill?: string; color?: string; }, index: number) => (
             <div key={index} className="flex items-center gap-2 text-sm text-slate-600">
               <span className="h-3 w-3 rounded-full" style={{ backgroundColor: entry.color || entry.fill }} />
               <span className="capitalize">{entry.name}:</span>
