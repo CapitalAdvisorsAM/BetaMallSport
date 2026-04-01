@@ -7,24 +7,16 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  formatDateParamLocal,
+  parseDateParamLocal
+} from "@/lib/rent-roll/snapshot-date";
 import { cn, formatDate } from "@/lib/utils";
 
 type RentRollSnapshotDatePickerProps = {
   projectId: string;
   selectedDate: string;
 };
-
-function parseDateParam(value: string): Date {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day);
-}
-
-function toDateParam(value: Date): string {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
 
 export function RentRollSnapshotDatePicker({
   projectId,
@@ -36,7 +28,7 @@ export function RentRollSnapshotDatePicker({
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const selectedValue = useMemo(() => parseDateParam(selectedDate), [selectedDate]);
+  const selectedValue = useMemo(() => parseDateParamLocal(selectedDate), [selectedDate]);
 
   const handleSelect = (nextDate?: Date): void => {
     if (!nextDate) {
@@ -45,7 +37,7 @@ export function RentRollSnapshotDatePicker({
 
     const params = new URLSearchParams(searchParams.toString());
     params.set("proyecto", projectId);
-    params.set("fecha", toDateParam(nextDate));
+    params.set("fecha", formatDateParamLocal(nextDate));
     params.delete("periodo");
 
     setOpen(false);

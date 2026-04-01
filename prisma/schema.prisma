@@ -267,6 +267,7 @@ model ContratoGGCC {
   vigenciaDesde     DateTime  @db.Date
   vigenciaHasta     DateTime? @db.Date
   proximoReajuste   DateTime? @db.Date
+  mesesReajuste     Int?
   createdAt         DateTime  @default(now()) @db.Timestamptz(3)
 
   contrato Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)

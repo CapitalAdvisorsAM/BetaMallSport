@@ -30,6 +30,7 @@ type RentRollDashboardTableProps = {
     ventasUf: number;
     rentaVariableUf: number;
   };
+  snapshotDate: string;
 };
 
 function renderMetric(value: number | null, suffix = ""): string {
@@ -41,7 +42,8 @@ function renderMetric(value: number | null, suffix = ""): string {
 
 export function RentRollDashboardTable({
   rows,
-  totals
+  totals,
+  snapshotDate
 }: RentRollDashboardTableProps): JSX.Element {
   const sortedBaseRows = useMemo(
     () => [...rows].sort((a, b) => a.local.localeCompare(b.local, "es-CL")),
@@ -165,9 +167,20 @@ export function RentRollDashboardTable({
 
   return (
     <div className="overflow-hidden rounded-md bg-white shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+        <div>
+          <h3 className="text-sm font-semibold text-brand-700">Detalle contractual del snapshot</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            Contratos ocupados o en gracia vigentes al {snapshotDate}.
+          </p>
+        </div>
+        <div className="rounded-md border border-brand-100 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700">
+          Snapshot: {snapshotDate}
+        </div>
+      </div>
       <DataTable
         table={table}
-        emptyMessage="No hay contratos ocupados o en gracia para el periodo seleccionado."
+        emptyMessage={`No hay contratos ocupados o en gracia para el snapshot ${snapshotDate}.`}
         footerContent={
           sortedRows.length > 0 ? (
             <TableRow className="bg-brand-50 font-semibold text-slate-900 hover:bg-brand-50">

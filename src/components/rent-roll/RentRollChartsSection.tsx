@@ -2,33 +2,47 @@
 
 import type { ReactNode } from "react";
 import {
-  AreaChart,
   Area,
-  BarChart,
+  AreaChart,
   Bar,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
+  BarChart,
   CartesianGrid,
-  Tooltip,
+  Cell,
   Legend,
-  ResponsiveContainer,
+  Line,
+  LineChart,
   ReferenceLine,
-  Cell
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
 } from "recharts";
-import type { PeriodoMetrica } from "@/types/timeline";
 import {
   RentRollCategoryConcentration,
   type RentRollCategoryConcentrationDatum
 } from "@/components/rent-roll/RentRollCategoryConcentration";
+import { formatWaltValue } from "@/lib/rent-roll/snapshot-date";
+import type { PeriodoMetrica } from "@/types/timeline";
 
 type RentRollChartsSectionProps = {
   periodos: PeriodoMetrica[];
   categoryConcentration: RentRollCategoryConcentrationDatum[];
 };
 
-const MESES_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+const MESES_ES = [
+  "Ene",
+  "Feb",
+  "Mar",
+  "Abr",
+  "May",
+  "Jun",
+  "Jul",
+  "Ago",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dic"
+];
 
 function formatPeriodoLabel(periodo: string): string {
   const [yearStr, monthStr] = periodo.split("-");
@@ -45,7 +59,6 @@ function getCurrentPeriodo(): string {
 }
 
 function tickFormatter(value: string, index: number, total: number): string {
-  // Show every 3rd label if many data points
   if (total > 18) {
     return index % 6 === 0 ? formatPeriodoLabel(value) : "";
   }
@@ -53,6 +66,13 @@ function tickFormatter(value: string, index: number, total: number): string {
     return index % 3 === 0 ? formatPeriodoLabel(value) : "";
   }
   return formatPeriodoLabel(value);
+}
+
+function formatWaltAxisTick(value: number): string {
+  if (value <= 0) {
+    return "0";
+  }
+  return value >= 12 ? `${Math.round(value / 12)}a` : `${Math.round(value)}m`;
 }
 
 type ChartCardProps = {
@@ -94,42 +114,39 @@ export function RentRollChartsSection({
   const tooltipLabelFormatter = (label: ReactNode): ReactNode =>
     typeof label === "string" ? formatPeriodoLabel(label) : label;
 
-  // Chart 1: % Ocupacion GLA
   const chart1Data = periodos.map((p) => ({
     periodo: p.periodo,
     pctOcupacion: p.pctOcupacionGLA,
+    waltMeses: p.waltMeses,
     esFuturo: p.esFuturo
   }));
+  const maxWaltMeses = Math.max(...chart1Data.map((item) => item.waltMeses), 0);
+  const waltAxisMax = Math.max(12, Math.ceil(maxWaltMeses / 6) * 6);
 
-  // Chart 2: Renta Fija Total UF
   const chart2Data = periodos.map((p) => ({
     periodo: p.periodo,
     rentaFijaUf: p.rentaFijaUf,
     esFuturo: p.esFuturo
   }));
 
-  // Chart 3: Contratos Activos
   const chart3Data = periodos.map((p) => ({
     periodo: p.periodo,
     contratosActivos: p.contratosActivos,
     esFuturo: p.esFuturo
   }));
 
-  // Chart 4: GLA Arrendada vs GLA Total
   const chart4Data = periodos.map((p) => ({
     periodo: p.periodo,
     glaArrendada: p.glaArrendadaM2,
     glaVacante: Math.max(0, p.glaTotalM2 - p.glaArrendadaM2)
   }));
 
-  // Chart 5: Vencimientos por mes
   const chart5Data = periodos.map((p) => ({
     periodo: p.periodo,
     vencimientos: p.contratosQueVencenEsteMes,
     esFuturo: p.esFuturo
   }));
 
-  // Chart 6: Ingresos por tipo (stacked bar)
   const chart6Data = periodos.map((p) => ({
     periodo: p.periodo,
     regular: p.ingresosFijoUf,
@@ -137,15 +154,11 @@ export function RentRollChartsSection({
     bodegaEspacio: p.ingresosBodegaEspacioUf
   }));
 
-  // Get month index 3 from now for vencimientos color threshold
   const now = new Date();
   const threshold3Months = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 3, 1));
-  function toPeriodoKeyLocal(d: Date): string {
-    const y = d.getUTCFullYear();
-    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-    return `${y}-${m}`;
-  }
-  const threshold3Periodo = toPeriodoKeyLocal(threshold3Months);
+  const threshold3Periodo = `${threshold3Months.getUTCFullYear()}-${String(
+    threshold3Months.getUTCMonth() + 1
+  ).padStart(2, "0")}`;
 
   return (
     <section className="space-y-4">
@@ -159,8 +172,8 @@ export function RentRollChartsSection({
           </h2>
         </div>
         <p className="mt-1 text-sm text-slate-500">
-          Series de tiempo mensuales: datos historicos (ContratoDia) y proyeccion futura (contratos
-          vigentes). La linea vertical marca el mes actual.
+          Series de tiempo mensuales: datos historicos de `ContratoDia` y proyeccion futura con
+          contratos vigentes. La referencia vertical marca el mes actual.
         </p>
         <div className="mt-2 flex gap-4 text-xs text-slate-500">
           <span className="flex items-center gap-1">
@@ -178,10 +191,9 @@ export function RentRollChartsSection({
       </header>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        {/* Chart 1: % Ocupacion GLA */}
-        <ChartCard title="% Ocupacion GLA">
+        <ChartCard title="% Ocupacion GLA + WALT">
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={chart1Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
+            <LineChart data={chart1Data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis
                 dataKey="periodo"
@@ -190,25 +202,42 @@ export function RentRollChartsSection({
                 tickLine={false}
               />
               <YAxis
+                yAxisId="ocupacion"
                 domain={[0, 100]}
-                tickFormatter={(v: number) => `${v}%`}
+                tickFormatter={(value: number) => `${value}%`}
                 tick={{ fontSize: 11, fill: "#64748b" }}
                 tickLine={false}
                 axisLine={false}
                 width={40}
               />
+              <YAxis
+                yAxisId="walt"
+                orientation="right"
+                domain={[0, waltAxisMax]}
+                tickFormatter={formatWaltAxisTick}
+                tick={{ fontSize: 11, fill: "#7c3aed" }}
+                tickLine={false}
+                axisLine={false}
+                width={36}
+              />
               <Tooltip
                 labelFormatter={tooltipLabelFormatter}
-                formatter={(value) => [`${Number(value).toFixed(1)}%`, "Ocupacion GLA"]}
+                formatter={(value, name) => {
+                  if (name === "WALT") {
+                    return [formatWaltValue(Number(value)), "WALT"];
+                  }
+                  return [`${Number(value).toFixed(1)}%`, "Ocupacion GLA"];
+                }}
               />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
               <ReferenceLine
                 x={currentPeriodo}
                 stroke="#f59e0b"
                 strokeDasharray="4 2"
                 label={{ value: "Hoy", position: "top", fontSize: 10, fill: "#f59e0b" }}
               />
-              {/* Past line */}
               <Line
+                yAxisId="ocupacion"
                 type="monotone"
                 dataKey="pctOcupacion"
                 stroke="#1e40af"
@@ -217,14 +246,24 @@ export function RentRollChartsSection({
                 name="Ocupacion GLA"
                 connectNulls={false}
               />
+              <Line
+                yAxisId="walt"
+                type="monotone"
+                dataKey="waltMeses"
+                stroke="#7c3aed"
+                strokeWidth={2}
+                strokeDasharray="6 3"
+                dot={false}
+                name="WALT"
+                connectNulls={false}
+              />
             </LineChart>
           </ResponsiveContainer>
           <p className="mt-1 text-right text-xs text-slate-400">
-            Linea solida = historico · Proyeccion marcada con referencia vertical
+            Azul = ocupacion GLA. Morado = WALT ponderado por m2.
           </p>
         </ChartCard>
 
-        {/* Chart 2: Renta Fija Total UF */}
         <ChartCard title="Renta Fija Total (UF)">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chart2Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
@@ -236,7 +275,9 @@ export function RentRollChartsSection({
                 tickLine={false}
               />
               <YAxis
-                tickFormatter={(v: number) => v.toLocaleString("es-CL", { maximumFractionDigits: 0 })}
+                tickFormatter={(value: number) =>
+                  value.toLocaleString("es-CL", { maximumFractionDigits: 0 })
+                }
                 tick={{ fontSize: 11, fill: "#64748b" }}
                 tickLine={false}
                 axisLine={false}
@@ -245,7 +286,10 @@ export function RentRollChartsSection({
               <Tooltip
                 labelFormatter={tooltipLabelFormatter}
                 formatter={(value) => [
-                  Number(value).toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                  Number(value).toLocaleString("es-CL", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  }),
                   "Renta Fija UF"
                 ]}
               />
@@ -264,7 +308,6 @@ export function RentRollChartsSection({
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Chart 3: Contratos Activos */}
         <ChartCard title="Contratos Activos">
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={chart3Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
@@ -304,7 +347,6 @@ export function RentRollChartsSection({
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Chart 4: GLA Arrendada vs GLA Total */}
         <ChartCard title="GLA Arrendada vs Vacante (m2)">
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={chart4Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
@@ -326,7 +368,9 @@ export function RentRollChartsSection({
                 tickLine={false}
               />
               <YAxis
-                tickFormatter={(v: number) => v.toLocaleString("es-CL", { maximumFractionDigits: 0 })}
+                tickFormatter={(value: number) =>
+                  value.toLocaleString("es-CL", { maximumFractionDigits: 0 })
+                }
                 tick={{ fontSize: 11, fill: "#64748b" }}
                 tickLine={false}
                 axisLine={false}
@@ -335,7 +379,10 @@ export function RentRollChartsSection({
               <Tooltip
                 labelFormatter={tooltipLabelFormatter}
                 formatter={(value, name) => [
-                  `${Number(value).toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m2`,
+                  `${Number(value).toLocaleString("es-CL", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  })} m2`,
                   name === "glaArrendada" ? "GLA Arrendada" : "GLA Vacante"
                 ]}
               />
@@ -373,7 +420,6 @@ export function RentRollChartsSection({
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Chart 5: Vencimientos por mes */}
         <ChartCard title="Vencimientos de Contratos por Mes">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chart5Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
@@ -403,9 +449,14 @@ export function RentRollChartsSection({
               />
               <Bar dataKey="vencimientos" name="Contratos que vencen" radius={[2, 2, 0, 0]}>
                 {chart5Data.map((entry, index) => {
-                  const isNearTerm = entry.periodo <= threshold3Periodo && entry.periodo >= currentPeriodo;
-                  const fill = isNearTerm ? "#f43f5e" : "#fbbf24";
-                  return <Cell key={`cell-${index}`} fill={fill} />;
+                  const isNearTerm =
+                    entry.periodo <= threshold3Periodo && entry.periodo >= currentPeriodo;
+                  return (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={isNearTerm ? "#f43f5e" : "#fbbf24"}
+                    />
+                  );
                 })}
               </Bar>
             </BarChart>
@@ -422,7 +473,6 @@ export function RentRollChartsSection({
           </div>
         </ChartCard>
 
-        {/* Chart 6: Ingresos por tipo (stacked) */}
         <ChartCard title="Ingresos por Tipo de Local (UF)">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chart6Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
@@ -434,7 +484,9 @@ export function RentRollChartsSection({
                 tickLine={false}
               />
               <YAxis
-                tickFormatter={(v: number) => v.toLocaleString("es-CL", { maximumFractionDigits: 0 })}
+                tickFormatter={(value: number) =>
+                  value.toLocaleString("es-CL", { maximumFractionDigits: 0 })
+                }
                 tick={{ fontSize: 11, fill: "#64748b" }}
                 tickLine={false}
                 axisLine={false}
@@ -450,7 +502,10 @@ export function RentRollChartsSection({
                   };
                   const nameStr = String(name);
                   return [
-                    Number(value).toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                    Number(value).toLocaleString("es-CL", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    }),
                     labels[nameStr] ?? nameStr
                   ];
                 }}

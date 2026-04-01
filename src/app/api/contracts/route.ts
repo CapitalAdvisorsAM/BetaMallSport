@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { Prisma, TipoTarifaContrato } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
@@ -190,7 +192,8 @@ export async function POST(request: Request): Promise<NextResponse> {
             pctAdministracion: new Prisma.Decimal(g.pctAdministracion),
             vigenciaDesde: new Date(g.vigenciaDesde),
             vigenciaHasta: toDate(g.vigenciaHasta),
-            proximoReajuste: toDate(g.proximoReajuste)
+            proximoReajuste: toDate(g.proximoReajuste),
+            mesesReajuste: g.mesesReajuste ?? null
           }))
         });
       }

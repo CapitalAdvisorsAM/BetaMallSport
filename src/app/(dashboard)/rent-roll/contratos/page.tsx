@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TipoCargaDatos } from "@prisma/client";
+import { type Prisma, TipoCargaDatos } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { ContractManager } from "@/components/contracts/ContractManager";
 import { RentRollEntityModeNav } from "@/components/rent-roll/RentRollEntityModeNav";
@@ -52,6 +52,44 @@ function getSingleValue(value: string | string[] | undefined): string | undefine
   return undefined;
 }
 
+const contractQueryArgs = {
+  include: {
+    local: { select: { id: true, codigo: true, nombre: true } },
+    locales: {
+      include: {
+        local: { select: { id: true, codigo: true, nombre: true } }
+      },
+      orderBy: { createdAt: "asc" as const }
+    },
+    arrendatario: { select: { id: true, nombreComercial: true, razonSocial: true } },
+    tarifas: {
+      orderBy: { vigenciaDesde: "desc" as const },
+      take: 10,
+      select: {
+        tipo: true,
+        valor: true,
+        vigenciaDesde: true,
+        vigenciaHasta: true,
+        esDiciembre: true
+      }
+    },
+    ggcc: {
+      orderBy: { vigenciaDesde: "desc" as const },
+      take: 10,
+      select: {
+        tarifaBaseUfM2: true,
+        pctAdministracion: true,
+        vigenciaDesde: true,
+        vigenciaHasta: true,
+        proximoReajuste: true,
+        mesesReajuste: true
+      }
+    }
+  }
+} satisfies Prisma.ContratoDefaultArgs;
+
+type ContratoRow = Prisma.ContratoGetPayload<typeof contractQueryArgs>;
+
 export default async function ContratosPage({
   searchParams
 }: ContratosPageProps): Promise<JSX.Element> {
@@ -91,43 +129,12 @@ export default async function ContratosPage({
     }),
     prisma.contrato.findMany({
       where: { proyectoId: selectedProjectId },
-      include: {
-        local: { select: { id: true, codigo: true, nombre: true } },
-        locales: {
-          include: {
-            local: { select: { id: true, codigo: true, nombre: true } }
-          },
-          orderBy: { createdAt: "asc" }
-        },
-        arrendatario: { select: { id: true, nombreComercial: true, razonSocial: true } },
-        tarifas: {
-          orderBy: { vigenciaDesde: "desc" },
-          take: 10,
-          select: {
-            tipo: true,
-            valor: true,
-            vigenciaDesde: true,
-            vigenciaHasta: true,
-            esDiciembre: true
-          }
-        },
-        ggcc: {
-          orderBy: { vigenciaDesde: "desc" },
-          take: 10,
-          select: {
-            tarifaBaseUfM2: true,
-            pctAdministracion: true,
-            vigenciaDesde: true,
-            vigenciaHasta: true,
-            proximoReajuste: true
-          }
-        }
-      },
+      ...contractQueryArgs,
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       take: 50,
       cursor: cursor ? { id: cursor } : undefined,
       skip: cursor ? 1 : 0
-    })
+    }) as Promise<ContratoRow[]>
   ]);
   const nextCursor = contracts.length === 50 ? contracts[contracts.length - 1]?.id : undefined;
 
@@ -283,43 +290,136 @@ export default async function ContratosPage({
                       </TableRow>,
                       isExpanded ? (
                         <TableRow key={`${contract.id}-detalle`} className="bg-brand-50/70">
-                          <TableCell colSpan={7} className="px-4 py-4">
-                            <div className="grid gap-2 text-sm md:grid-cols-2">
-                              <p>
-                                <span className="font-semibold text-slate-700">Arrendatario:</span>{" "}
-                                {contract.arrendatario.nombreComercial}
-                              </p>
-                              <p>
-                                <span className="font-semibold text-slate-700">Estado:</span>{" "}
-                                {contract.estado}
-                              </p>
-                              <p className="md:col-span-2">
-                                <span className="font-semibold text-slate-700">Locales asociados:</span>{" "}
-                                {localesAsociados}
-                              </p>
-                              <p>
-                                <span className="font-semibold text-slate-700">Fecha inicio:</span>{" "}
-                                {formatDate(contract.fechaInicio)}
-                              </p>
-                              <p>
-                                <span className="font-semibold text-slate-700">Fecha termino:</span>{" "}
-                                {formatDate(contract.fechaTermino)}
-                              </p>
-                              <p className="md:col-span-2">
-                                <span className="font-semibold text-slate-700">PDF:</span>{" "}
-                                {contract.pdfUrl ? (
-                                  <a
-                                    href={contract.pdfUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="font-medium text-brand-700 underline"
-                                  >
-                                    Ver PDF
-                                  </a>
-                                ) : (
-                                  <span className="text-slate-500">Sin PDF</span>
+                          <TableCell colSpan={7} className="px-4 py-5">
+                            <div className="space-y-4 text-sm">
+
+                              {/* ── Datos generales ── */}
+                              <div className="grid gap-x-6 gap-y-2 md:grid-cols-2 lg:grid-cols-3">
+                                <p>
+                                  <span className="font-semibold text-slate-700">N° Contrato:</span>{" "}
+                                  {contract.numeroContrato}
+                                </p>
+                                <p>
+                                  <span className="font-semibold text-slate-700">Estado:</span>{" "}
+                                  <span className="inline-flex rounded-full border border-brand-200 bg-brand-100 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
+                                    {contract.estado}
+                                  </span>
+                                </p>
+                                <p>
+                                  <span className="font-semibold text-slate-700">Locales:</span>{" "}
+                                  {localesAsociados}
+                                </p>
+                                <p>
+                                  <span className="font-semibold text-slate-700">Arrendatario:</span>{" "}
+                                  {contract.arrendatario.nombreComercial}
+                                </p>
+                                {contract.arrendatario.razonSocial && (
+                                  <p>
+                                    <span className="font-semibold text-slate-700">Razón social:</span>{" "}
+                                    {contract.arrendatario.razonSocial}
+                                  </p>
                                 )}
-                              </p>
+                                <p>
+                                  <span className="font-semibold text-slate-700">Fecha inicio:</span>{" "}
+                                  {formatDate(contract.fechaInicio)}
+                                </p>
+                                <p>
+                                  <span className="font-semibold text-slate-700">Fecha término:</span>{" "}
+                                  {formatDate(contract.fechaTermino)}
+                                </p>
+                                {contract.fechaEntrega && (
+                                  <p>
+                                    <span className="font-semibold text-slate-700">Fecha entrega:</span>{" "}
+                                    {formatDate(contract.fechaEntrega)}
+                                  </p>
+                                )}
+                                {contract.fechaApertura && (
+                                  <p>
+                                    <span className="font-semibold text-slate-700">Fecha apertura:</span>{" "}
+                                    {formatDate(contract.fechaApertura)}
+                                  </p>
+                                )}
+                                <p>
+                                  <span className="font-semibold text-slate-700">PDF:</span>{" "}
+                                  {contract.pdfUrl ? (
+                                    <a
+                                      href={contract.pdfUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="font-medium text-brand-700 underline"
+                                    >
+                                      Ver PDF
+                                    </a>
+                                  ) : (
+                                    <span className="text-slate-500">Sin PDF</span>
+                                  )}
+                                </p>
+                              </div>
+
+                              {/* ── Tarifas ── */}
+                              {contract.tarifas.length > 0 && (
+                                <div>
+                                  <p className="mb-1.5 font-semibold text-slate-700">Tarifas</p>
+                                  <div className="overflow-hidden rounded-md border border-slate-200">
+                                    <table className="min-w-full text-xs">
+                                      <thead className="bg-slate-100 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                        <tr>
+                                          <th className="px-3 py-2">Tipo</th>
+                                          <th className="px-3 py-2 text-right">Valor UF/m²</th>
+                                          <th className="px-3 py-2">Vigencia desde</th>
+                                          <th className="px-3 py-2">Vigencia hasta</th>
+                                          <th className="px-3 py-2 text-center">Es Diciembre</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-100">
+                                        {contract.tarifas.map((tarifa, i) => (
+                                          <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50/60"}>
+                                            <td className="px-3 py-2 font-medium text-slate-800">{tarifa.tipo}</td>
+                                            <td className="px-3 py-2 text-right text-slate-700">{tarifa.valor.toString()}</td>
+                                            <td className="px-3 py-2 text-slate-700">{formatDate(tarifa.vigenciaDesde)}</td>
+                                            <td className="px-3 py-2 text-slate-700">{tarifa.vigenciaHasta ? formatDate(tarifa.vigenciaHasta) : "—"}</td>
+                                            <td className="px-3 py-2 text-center text-slate-700">{tarifa.esDiciembre ? "Sí" : "No"}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* ── GGCC ── */}
+                              {contract.ggcc.length > 0 && (
+                                <div>
+                                  <p className="mb-1.5 font-semibold text-slate-700">Gastos Comunes (GGCC)</p>
+                                  <div className="overflow-hidden rounded-md border border-slate-200">
+                                    <table className="min-w-full text-xs">
+                                      <thead className="bg-slate-100 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                        <tr>
+                                          <th className="px-3 py-2 text-right">Tarifa base UF/m²</th>
+                                          <th className="px-3 py-2 text-right">% Administración</th>
+                                          <th className="px-3 py-2">Vigencia desde</th>
+                                          <th className="px-3 py-2">Vigencia hasta</th>
+                                          <th className="px-3 py-2">Próximo reajuste</th>
+                                          <th className="px-3 py-2 text-center">Meses reajuste</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-100">
+                                        {contract.ggcc.map((item, i) => (
+                                          <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50/60"}>
+                                            <td className="px-3 py-2 text-right text-slate-700">{item.tarifaBaseUfM2.toString()}</td>
+                                            <td className="px-3 py-2 text-right text-slate-700">{item.pctAdministracion.toString()}%</td>
+                                            <td className="px-3 py-2 text-slate-700">{formatDate(item.vigenciaDesde)}</td>
+                                            <td className="px-3 py-2 text-slate-700">{item.vigenciaHasta ? formatDate(item.vigenciaHasta) : "—"}</td>
+                                            <td className="px-3 py-2 text-slate-700">{item.proximoReajuste ? formatDate(item.proximoReajuste) : "—"}</td>
+                                            <td className="px-3 py-2 text-center text-slate-700">{item.mesesReajuste ?? "—"}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              )}
+
                             </div>
                           </TableCell>
                         </TableRow>
@@ -365,7 +465,8 @@ export default async function ContratosPage({
               vigenciaHasta: item.vigenciaHasta ? item.vigenciaHasta.toISOString().slice(0, 10) : null,
               proximoReajuste: item.proximoReajuste
                 ? item.proximoReajuste.toISOString().slice(0, 10)
-                : null
+                : null,
+              mesesReajuste: item.mesesReajuste ?? null
             }))
           }))}
         />

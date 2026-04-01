@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { resolveTenantRut, tenantSchema } from "@/lib/arrendatarios/schema";

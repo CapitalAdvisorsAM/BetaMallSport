@@ -8,6 +8,7 @@ type RentRollEntityModeNavProps = {
   entity: RentRollEntity;
   mode: RentRollMode;
   proyectoId: string;
+  showConfigTab?: boolean;
 };
 
 function withParams(baseHref: string, proyectoId: string, extra: Record<string, string>): string {
@@ -19,11 +20,13 @@ function withParams(baseHref: string, proyectoId: string, extra: Record<string, 
 export function RentRollEntityModeNav({
   entity,
   mode,
-  proyectoId
+  proyectoId,
+  showConfigTab = false
 }: RentRollEntityModeNavProps): JSX.Element {
   const viewHref = withParams(`/rent-roll/${entity}`, proyectoId, { seccion: "ver" });
   const cargarHref = withParams(`/rent-roll/${entity}`, proyectoId, { seccion: "cargar" });
   const uploadHref = withParams(`/rent-roll/${entity}`, proyectoId, { seccion: "upload" });
+  const configHref = withParams(`/rent-roll/${entity}`, proyectoId, { seccion: "config" });
 
   return (
     <section className="space-y-3 rounded-md border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
@@ -63,6 +66,19 @@ export function RentRollEntityModeNav({
           >
             Carga masiva
           </Link>
+          {showConfigTab ? (
+            <Link
+              href={configHref}
+              className={cn(
+                "rounded-full px-3 py-1.5 text-sm font-semibold transition",
+                mode === "config"
+                  ? "bg-brand-500 text-white ring-2 ring-gold-400/70"
+                  : "bg-white text-slate-700 hover:bg-slate-100"
+              )}
+            >
+              Configuración
+            </Link>
+          ) : null}
         </nav>
       </div>
     </section>

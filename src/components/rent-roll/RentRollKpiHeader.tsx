@@ -1,6 +1,7 @@
 "use client";
 
 import { KpiCard } from "@/components/dashboard/KpiCard";
+import { MetricTooltip } from "@/components/ui/MetricTooltip";
 import { formatUf } from "@/lib/utils";
 import type { RentRollKpis, RentRollRow } from "@/types/rent-roll";
 
@@ -52,20 +53,40 @@ export function RentRollKpiHeader({ kpis, rows }: RentRollKpiHeaderProps): JSX.E
   return (
     <section className="space-y-3 rounded-md bg-white p-4 shadow-sm">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <KpiCard title="GLA total (m2)" value={formatM2(kpis.glaTotal)} accent="slate" />
+        <KpiCard
+          title="GLA total (m2)"
+          value={formatM2(kpis.glaTotal)}
+          valueAdornment={
+            <MetricTooltip explanation="Suma de los m² de todos los locales del proyecto, independiente de su estado." />
+          }
+          accent="slate"
+        />
         <KpiCard
           title="% ocupacion"
           value={formatPct(kpis.pctOcupacion)}
+          valueAdornment={
+            <MetricTooltip explanation="GLA ocupada ÷ GLA Total × 100. Solo considera locales en estado Ocupado." />
+          }
           subtitle={`GLA ocupada: ${formatM2(kpis.glaCupado)} m2`}
           accent={getOcupacionAccent(kpis.pctOcupacion)}
         />
         <KpiCard
           title="Renta fija mes (UF)"
           value={formatUf(kpis.rentaFijaTotalUf)}
+          valueAdornment={
+            <MetricTooltip explanation="Suma de la tarifa fija mensual (en UF) de todos los contratos activos con locales ocupados, calculada al día de hoy." />
+          }
           subtitle="Solo locales ocupados"
           accent="slate"
         />
-        <KpiCard title="GGCC mes (UF)" value={formatUf(kpis.ggccTotalUf)} accent="slate" />
+        <KpiCard
+          title="GGCC mes (UF)"
+          value={formatUf(kpis.ggccTotalUf)}
+          valueAdornment={
+            <MetricTooltip explanation="Suma de los gastos comunes mensuales (en UF) de los contratos activos con locales ocupados." />
+          }
+          accent="slate"
+        />
       </div>
 
       <div className="rounded-md border border-slate-200 p-3">
