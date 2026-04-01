@@ -39,6 +39,7 @@ export type ContractGgccApiRow = {
   vigenciaDesde: string;
   vigenciaHasta: string | null;
   proximoReajuste: string | null;
+  mesesReajuste: number | null;
   createdAt: string;
 };
 
@@ -79,6 +80,7 @@ export type ContractManagerListItem = {
     vigenciaDesde: string;
     vigenciaHasta: string | null;
     proximoReajuste: string | null;
+    mesesReajuste: number | null;
   }>;
 };
 

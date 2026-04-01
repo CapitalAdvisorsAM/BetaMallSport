@@ -119,7 +119,8 @@ export default async function ContratosPage({
             pctAdministracion: true,
             vigenciaDesde: true,
             vigenciaHasta: true,
-            proximoReajuste: true
+            proximoReajuste: true,
+            mesesReajuste: true
           }
         }
       },
@@ -365,7 +366,8 @@ export default async function ContratosPage({
               vigenciaHasta: item.vigenciaHasta ? item.vigenciaHasta.toISOString().slice(0, 10) : null,
               proximoReajuste: item.proximoReajuste
                 ? item.proximoReajuste.toISOString().slice(0, 10)
-                : null
+                : null,
+              mesesReajuste: item.mesesReajuste ?? null
             }))
           }))}
         />

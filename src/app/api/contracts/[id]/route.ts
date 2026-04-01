@@ -139,6 +139,7 @@ function normalizedGgcc(
     vigenciaDesde: Date | string;
     vigenciaHasta: Date | string | null;
     proximoReajuste: Date | string | null;
+    mesesReajuste?: number | null;
   }>
 ): string {
   return JSON.stringify(
@@ -149,7 +150,8 @@ function normalizedGgcc(
         pctAdministracion: toDecimalString(item.pctAdministracion),
         vigenciaDesde: toDateOnly(item.vigenciaDesde),
         vigenciaHasta: toDateOnly(item.vigenciaHasta),
-        proximoReajuste: toDateOnly(item.proximoReajuste)
+        proximoReajuste: toDateOnly(item.proximoReajuste),
+        mesesReajuste: "mesesReajuste" in item ? (item.mesesReajuste ?? null) : null
       }))
       .sort((a, b) => a.key.localeCompare(b.key))
   );
@@ -411,7 +413,8 @@ async function persistGGCC(
           tarifaBaseUfM2: new Prisma.Decimal(item.payloadItem.tarifaBaseUfM2),
           pctAdministracion: new Prisma.Decimal(item.payloadItem.pctAdministracion),
           vigenciaHasta: toDate(item.payloadItem.vigenciaHasta),
-          proximoReajuste: toDate(item.payloadItem.proximoReajuste)
+          proximoReajuste: toDate(item.payloadItem.proximoReajuste),
+          mesesReajuste: item.payloadItem.mesesReajuste ?? null
         }
       })
     )
@@ -425,7 +428,8 @@ async function persistGGCC(
         pctAdministracion: new Prisma.Decimal(item.pctAdministracion),
         vigenciaDesde: new Date(item.vigenciaDesde),
         vigenciaHasta: toDate(item.vigenciaHasta),
-        proximoReajuste: toDate(item.proximoReajuste)
+        proximoReajuste: toDate(item.proximoReajuste),
+        mesesReajuste: item.mesesReajuste ?? null
       }))
     });
   }

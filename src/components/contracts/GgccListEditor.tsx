@@ -1,7 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { ContractFormPayload } from "@/types";
 
 export type GgccListItem = ContractFormPayload["ggcc"][number] & { _key: string };
@@ -20,7 +22,8 @@ export function createEmptyGgccItem(): GgccListItem {
     pctAdministracion: "",
     vigenciaDesde: "",
     vigenciaHasta: null,
-    proximoReajuste: null
+    proximoReajuste: null,
+    mesesReajuste: null
   };
 }
 
@@ -46,7 +49,6 @@ export function GgccListEditor({
                 if (!fechasContrato) {
                   return;
                 }
-
                 const next = ggcc.map((item) => ({
                   ...item,
                   vigenciaDesde: item.vigenciaDesde || fechasContrato.inicio,
@@ -70,66 +72,110 @@ export function GgccListEditor({
           </Button>
         </div>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-3">
         {ggcc.map((item, index) => (
-          <div key={item._key} className="grid gap-2 md:grid-cols-5">
-            <Input
-              type="number"
-              step="any"
-              placeholder="Tarifa base UF/m2"
-              disabled={disabled}
-              value={item.tarifaBaseUfM2}
-              onChange={(event) => {
-                const next = [...ggcc];
-                next[index] = { ...item, tarifaBaseUfM2: event.target.value };
-                onChange(next);
-              }}
-              className="rounded-md border border-slate-300 px-2 py-2 text-sm"
-            />
-            <Input
-              type="number"
-              step="any"
-              placeholder="% administracion"
-              disabled={disabled}
-              value={item.pctAdministracion}
-              onChange={(event) => {
-                const next = [...ggcc];
-                next[index] = { ...item, pctAdministracion: event.target.value };
-                onChange(next);
-              }}
-              className="rounded-md border border-slate-300 px-2 py-2 text-sm"
-            />
-            <Input
-              type="date"
-              disabled={disabled}
-              value={item.vigenciaDesde}
-              onChange={(event) => {
-                const next = [...ggcc];
-                next[index] = { ...item, vigenciaDesde: event.target.value };
-                onChange(next);
-              }}
-              className="rounded-md border border-slate-300 px-2 py-2 text-sm"
-            />
-            <Input
-              type="date"
-              disabled={disabled}
-              value={item.vigenciaHasta ?? ""}
-              onChange={(event) => {
-                const next = [...ggcc];
-                next[index] = { ...item, vigenciaHasta: event.target.value || null };
-                onChange(next);
-              }}
-              className="rounded-md border border-slate-300 px-2 py-2 text-sm"
-            />
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={disabled}
-              onClick={() => onChange(ggcc.filter((_, i) => i !== index))}
-              className="h-auto px-2 py-2 text-sm"
-            >
-              Quitar
-            </Button>
+          <div key={item._key} className="space-y-1.5">
+            <div className="grid gap-2 md:grid-cols-5">
+              <Input
+                type="number"
+                step="any"
+                placeholder="Tarifa base UF/m²"
+                disabled={disabled}
+                value={item.tarifaBaseUfM2}
+                onChange={(event) => {
+                  const next = [...ggcc];
+                  next[index] = { ...item, tarifaBaseUfM2: event.target.value };
+                  onChange(next);
+                }}
+                className="rounded-md border border-slate-300 px-2 py-2 text-sm"
+              />
+              <Input
+                type="number"
+                step="any"
+                placeholder="% administración"
+                disabled={disabled}
+                value={item.pctAdministracion}
+                onChange={(event) => {
+                  const next = [...ggcc];
+                  next[index] = { ...item, pctAdministracion: event.target.value };
+                  onChange(next);
+                }}
+                className="rounded-md border border-slate-300 px-2 py-2 text-sm"
+              />
+              <Input
+                type="date"
+                disabled={disabled}
+                value={item.vigenciaDesde}
+                onChange={(event) => {
+                  const next = [...ggcc];
+                  next[index] = { ...item, vigenciaDesde: event.target.value };
+                  onChange(next);
+                }}
+                className="rounded-md border border-slate-300 px-2 py-2 text-sm"
+              />
+              <Input
+                type="date"
+                disabled={disabled}
+                value={item.vigenciaHasta ?? ""}
+                onChange={(event) => {
+                  const next = [...ggcc];
+                  next[index] = { ...item, vigenciaHasta: event.target.value || null };
+                  onChange(next);
+                }}
+                className="rounded-md border border-slate-300 px-2 py-2 text-sm"
+              />
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={disabled}
+                onClick={() => onChange(ggcc.filter((_, i) => i !== index))}
+                className="h-auto px-2 py-2 text-sm"
+              >
+                Quitar
+              </Button>
+            </div>
+            <div className="flex items-center gap-3 pl-1">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id={`reajuste-${item._key}`}
+                  checked={item.mesesReajuste !== null}
+                  disabled={disabled}
+                  onCheckedChange={(checked) => {
+                    const next = [...ggcc];
+                    next[index] = { ...item, mesesReajuste: checked ? 12 : null };
+                    onChange(next);
+                  }}
+                />
+                <Label
+                  htmlFor={`reajuste-${item._key}`}
+                  className="cursor-pointer text-xs text-slate-600"
+                >
+                  Tiene reajuste
+                </Label>
+              </div>
+              {item.mesesReajuste !== null && (
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1}
+                    disabled={disabled}
+                    value={item.mesesReajuste}
+                    onChange={(event) => {
+                      const val = parseInt(event.target.value, 10);
+                      const next = [...ggcc];
+                      next[index] = {
+                        ...item,
+                        mesesReajuste: Number.isNaN(val) || val < 1 ? 1 : val
+                      };
+                      onChange(next);
+                    }}
+                    className="h-7 w-20 rounded-md border border-slate-300 px-2 py-1 text-sm"
+                  />
+                  <span className="text-xs text-slate-500">meses</span>
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>
