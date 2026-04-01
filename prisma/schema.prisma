@@ -72,13 +72,16 @@ model Proyecto {
   color          String
   activo         Boolean          @default(true)
   createdAt      DateTime         @default(now()) @db.Timestamptz(3)
-  locales        Local[]
-  ventaLocales   VentaLocal[]
-  ingresoEnergia IngresoEnergia[]
-  arrendatarios  Arrendatario[]
-  contratos      Contrato[]
-  contratosDia   ContratoDia[]
-  cargasDatos    CargaDatos[]
+  locales              Local[]
+  ventaLocales         VentaLocal[]
+  ingresoEnergia       IngresoEnergia[]
+  arrendatarios        Arrendatario[]
+  contratos            Contrato[]
+  contratosDia         ContratoDia[]
+  cargasDatos          CargaDatos[]
+  mapeosLocalContable  MapeoLocalContable[]
+  mapeosVentasLocal    MapeoVentasLocal[]
+  registrosContables   RegistroContable[]
 
   @@index([activo])
   @@index([nombre])
@@ -103,12 +106,15 @@ model Local {
   estado     EstadoMaestro @default(ACTIVO)
   createdAt  DateTime      @default(now()) @db.Timestamptz(3)
 
-  proyecto           Proyecto         @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  contratos          Contrato[]
-  contratosAsociados ContratoLocal[]
-  contratosDia       ContratoDia[]
-  ventaLocales       VentaLocal[]
-  ingresoEnergia     IngresoEnergia[]
+  proyecto             Proyecto             @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  contratos            Contrato[]
+  contratosAsociados   ContratoLocal[]
+  contratosDia         ContratoDia[]
+  ventaLocales         VentaLocal[]
+  ingresoEnergia       IngresoEnergia[]
+  mapeosLocalContable  MapeoLocalContable[]
+  mapeosVentasLocal    MapeoVentasLocal[]
+  registrosContables   RegistroContable[]
 
   @@unique([proyectoId, codigo])
   @@index([proyectoId])
@@ -158,8 +164,9 @@ model Arrendatario {
   telefono        String?
   createdAt       DateTime @default(now()) @db.Timestamptz(3)
 
-  proyecto  Proyecto   @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  contratos Contrato[]
+  proyecto           Proyecto           @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  contratos          Contrato[]
+  registrosContables RegistroContable[]
 
   @@unique([proyectoId, rut])
   @@index([proyectoId])
@@ -354,4 +361,63 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model MapeoLocalContable {
+  id           String   @id @default(uuid()) @db.Uuid
+  proyectoId   String   @db.Uuid
+  localExterno String
+  localId      String   @db.Uuid
+  creadoPor    String   @db.Uuid
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  proyecto Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  local    Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
+
+  @@unique([proyectoId, localExterno])
+  @@index([proyectoId])
+  @@index([localId])
+}
+
+model RegistroContable {
+  id              String   @id @default(uuid()) @db.Uuid
+  proyectoId      String   @db.Uuid
+  localId         String   @db.Uuid
+  arrendatarioId  String?  @db.Uuid
+  periodo         DateTime @db.Date
+  grupo1          String
+  grupo3          String
+  denominacion    String
+  valorUf         Decimal  @db.Decimal(14, 4)
+  categoriaTamano String?
+  categoriaTipo   String?
+  piso            String?
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+
+  proyecto     Proyecto      @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  local        Local         @relation(fields: [localId], references: [id], onDelete: Cascade)
+  arrendatario Arrendatario? @relation(fields: [arrendatarioId], references: [id], onDelete: SetNull)
+
+  @@unique([localId, periodo, grupo1, grupo3, denominacion])
+  @@index([proyectoId, periodo])
+  @@index([localId, periodo])
+  @@index([arrendatarioId, periodo])
+  @@index([proyectoId, grupo1, periodo])
+}
+
+model MapeoVentasLocal {
+  id           String   @id @default(uuid()) @db.Uuid
+  proyectoId   String   @db.Uuid
+  idCa         Int
+  tiendaNombre String
+  localId      String   @db.Uuid
+  creadoPor    String   @db.Uuid
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  proyecto Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  local    Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
+
+  @@unique([proyectoId, idCa])
+  @@index([proyectoId])
+  @@index([localId])
 }
