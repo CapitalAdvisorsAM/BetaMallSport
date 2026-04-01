@@ -21,6 +21,25 @@ function normalizedLocalIds(payload: { localId: string; localIds: string[] }): s
   return Array.from(new Set(source));
 }
 
+async function generateNumeroContrato(proyectoId: string): Promise<string> {
+  while (true) {
+    const numeroContrato = crypto.randomUUID().slice(0, 8).toUpperCase();
+    const existing = await prisma.contrato.findUnique({
+      where: {
+        proyectoId_numeroContrato: {
+          proyectoId,
+          numeroContrato
+        }
+      },
+      select: { id: true }
+    });
+
+    if (!existing) {
+      return numeroContrato;
+    }
+  }
+}
+
 export async function GET(request: Request): Promise<NextResponse> {
   try {
     await requireSession();
@@ -86,6 +105,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
     const payload = parsed.data;
     const localIds = normalizedLocalIds(payload);
+    const numeroContrato = payload.numeroContrato?.trim() || (await generateNumeroContrato(payload.proyectoId));
     if (localIds.length === 0) {
       throw new ApiError(400, "Debes seleccionar al menos un local.");
     }
@@ -113,7 +133,7 @@ export async function POST(request: Request): Promise<NextResponse> {
           proyectoId: payload.proyectoId,
           localId: localIds[0],
           arrendatarioId: payload.arrendatarioId,
-          numeroContrato: payload.numeroContrato,
+          numeroContrato,
           fechaInicio: new Date(payload.fechaInicio),
           fechaTermino: new Date(payload.fechaTermino),
           fechaEntrega: toDate(payload.fechaEntrega),

@@ -104,7 +104,6 @@ function createEmptyPayload(
     localId: uniqueLocalIds[0] ?? "",
     localIds: uniqueLocalIds,
     arrendatarioId,
-    numeroContrato: "",
     fechaInicio: "",
     fechaTermino: "",
     fechaEntrega: null,
@@ -128,7 +127,6 @@ function fromContract(contract: ContractManagerListItem, proyectoId: string): Co
     localId: localIds[0] ?? contract.local.id,
     localIds,
     arrendatarioId: contract.arrendatario.id,
-    numeroContrato: contract.numeroContrato,
     fechaInicio: contract.fechaInicio.slice(0, 10),
     fechaTermino: contract.fechaTermino.slice(0, 10),
     fechaEntrega: null,
@@ -258,7 +256,7 @@ export function ContractForm({
   onCancel,
   canEdit
 }: ContractFormProps): JSX.Element {
-  const defaultLocalId = locals[0]?.id ?? "";
+  const defaultLocalId = "";
   const defaultArrendatarioId = arrendatarios[0]?.id ?? "";
   const hasRequiredMasters = locals.length > 0 && arrendatarios.length > 0;
   const [loading, setLoading] = useState(false);
@@ -267,6 +265,10 @@ export function ContractForm({
     createEmptyPayload(proyectoId, defaultLocalId ? [defaultLocalId] : [], defaultArrendatarioId)
   );
   const hasSelectedLocal = payload.localIds.length > 0;
+  const fechasContrato =
+    payload.fechaInicio && payload.fechaTermino
+      ? { inicio: payload.fechaInicio, termino: payload.fechaTermino }
+      : undefined;
 
   useEffect(() => {
     if (initialData) {
@@ -342,13 +344,6 @@ export function ContractForm({
         nextPayload.arrendatarioId = data.arrendatarioId;
       } else {
         missingFields.push("arrendatario");
-      }
-
-      if (data.numeroContrato && isBlank(nextPayload.numeroContrato)) {
-        nextPayload.numeroContrato = data.numeroContrato;
-        completedFields.push("numeroContrato");
-      } else if (!data.numeroContrato) {
-        missingFields.push("numeroContrato");
       }
 
       if (data.fechaInicio && isBlank(nextPayload.fechaInicio)) {
@@ -464,18 +459,14 @@ export function ContractForm({
       ) : null}
 
       <div className="grid gap-3 md:grid-cols-2">
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-700">
-            Numero contrato <span className="text-rose-500">*</span>
-          </span>
-          <Input
-            value={payload.numeroContrato}
-            onChange={(event) =>
-              setPayload((previous) => ({ ...previous, numeroContrato: event.target.value }))
-            }
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
-          />
-        </label>
+        {initialData ? (
+          <div className="text-sm">
+            <span className="mb-1 block text-slate-700">Numero contrato</span>
+            <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
+              {initialData.numeroContrato}
+            </div>
+          </div>
+        ) : null}
         <label className="text-sm">
           <span className="mb-1 block text-slate-700">
             Clasificacion juridica <span className="text-xs text-slate-400">(opcional)</span>
@@ -576,18 +567,21 @@ export function ContractForm({
 
       <TarifaListEditor
         tarifas={payload.tarifas}
+        fechasContrato={fechasContrato}
         onChange={(updated) => setPayload((previous) => ({ ...previous, tarifas: updated }))}
         disabled={!canEdit}
       />
 
       <RentaVariableListEditor
         items={payload.rentaVariable}
+        fechasContrato={fechasContrato}
         onChange={(updated) => setPayload((previous) => ({ ...previous, rentaVariable: updated }))}
         disabled={!canEdit}
       />
 
       <GgccListEditor
         ggcc={payload.ggcc}
+        fechasContrato={fechasContrato}
         onChange={(updated) => setPayload((previous) => ({ ...previous, ggcc: updated }))}
         disabled={!canEdit}
       />

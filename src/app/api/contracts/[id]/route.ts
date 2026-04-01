@@ -164,7 +164,7 @@ function computeCamposModificados(
 
   const scalarChecks: Array<[field: string, before: unknown, after: unknown]> = [
     ["arrendatarioId", existing.arrendatarioId, payload.arrendatarioId],
-    ["numeroContrato", existing.numeroContrato, payload.numeroContrato],
+    ["numeroContrato", existing.numeroContrato, payload.numeroContrato?.trim() || existing.numeroContrato],
     ["fechaInicio", toDateOnly(existing.fechaInicio), toDateOnly(payload.fechaInicio)],
     ["fechaTermino", toDateOnly(existing.fechaTermino), toDateOnly(payload.fechaTermino)],
     ["fechaEntrega", toDateOnly(existing.fechaEntrega), toDateOnly(payload.fechaEntrega)],
@@ -225,12 +225,13 @@ function validateContractInput(body: unknown): ContractPayload {
 
 function buildContratoPayload(
   parsed: ContractPayload,
+  existingNumeroContrato: string,
   localIds: string[]
 ): Prisma.ContratoUncheckedUpdateInput {
   return {
     localId: localIds[0],
     arrendatarioId: parsed.arrendatarioId,
-    numeroContrato: parsed.numeroContrato,
+    numeroContrato: parsed.numeroContrato?.trim() || existingNumeroContrato,
     fechaInicio: new Date(parsed.fechaInicio),
     fechaTermino: new Date(parsed.fechaTermino),
     fechaEntrega: toDate(parsed.fechaEntrega),
@@ -474,7 +475,7 @@ export async function PUT(
     const updated = await prisma.$transaction(async (tx) => {
       await tx.contrato.update({
         where: { id: contractId },
-        data: buildContratoPayload(payload, localIds)
+        data: buildContratoPayload(payload, existing.numeroContrato, localIds)
       });
 
       await persistContratoLocales(tx, contractId, localIds);

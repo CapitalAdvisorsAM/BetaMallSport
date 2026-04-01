@@ -24,10 +24,12 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
+import { RentRollChartsSection } from "@/components/rent-roll/RentRollChartsSection";
 import { buildOcupacionDetalle } from "@/lib/kpi";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
+import { getTimelineData } from "@/lib/rent-roll/timeline";
 import { formatDecimal } from "@/lib/utils";
 
 type RentRollDashboardPageProps = {
@@ -99,7 +101,7 @@ export default async function RentRollDashboardPage({
   today.setHours(0, 0, 0, 0);
   const { start, nextMonthStart } = getPeriodoBounds(periodo);
 
-  const [contracts, ventaLocales, localesActivos] = await Promise.all([
+  const [contracts, ventaLocales, localesActivos, timelineData] = await Promise.all([
     prisma.contrato.findMany({
       where: {
         proyectoId: selectedProjectId,
@@ -129,13 +131,13 @@ export default async function RentRollDashboardPage({
         },
         tarifas: {
           where: {
-            tipo: TipoTarifaContrato.FIJO_UF_M2,
+            tipo: { in: [TipoTarifaContrato.FIJO_UF_M2, TipoTarifaContrato.PORCENTAJE] },
             vigenciaDesde: { lte: today },
             OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: today } }]
           },
           orderBy: [{ vigenciaDesde: "desc" }],
-          take: 1,
           select: {
+            tipo: true,
             valor: true
           }
         },
@@ -178,7 +180,8 @@ export default async function RentRollDashboardPage({
         glam2: true,
         zona: true
       }
-    })
+    }),
+    getTimelineData(selectedProjectId)
   ]);
 
   const ventasByLocalId = new Map<string, number>();
@@ -190,8 +193,11 @@ export default async function RentRollDashboardPage({
 
   const rows: RentRollDashboardTableRow[] = contracts.map((contract) => {
     const glam2 = Number(contract.local.glam2);
-    const tarifaUfM2 = contract.tarifas[0]?.valor ? Number(contract.tarifas[0].valor) : 0;
+    const tarifaFija = contract.tarifas.find((t) => t.tipo === TipoTarifaContrato.FIJO_UF_M2);
+    const tarifaVariable = contract.tarifas.find((t) => t.tipo === TipoTarifaContrato.PORCENTAJE);
+    const tarifaUfM2 = tarifaFija?.valor ? Number(tarifaFija.valor) : 0;
     const rentaFijaUf = glam2 * tarifaUfM2;
+    const pctRentaVariable = tarifaVariable?.valor ? Number(tarifaVariable.valor) : null;
 
     const ggccActual = contract.ggcc[0];
     const ggccUf = ggccActual
@@ -202,6 +208,15 @@ export default async function RentRollDashboardPage({
       ? (ventasByLocalId.get(contract.localId) ?? null)
       : null;
 
+    const rentaVariableUf =
+      ventasUf !== null && pctRentaVariable !== null
+        ? ventasUf * (pctRentaVariable / 100)
+        : null;
+
+    const pctFondoPromocion = contract.pctFondoPromocion
+      ? Number(contract.pctFondoPromocion)
+      : null;
+
     return {
       id: contract.id,
       local: `${contract.local.codigo} - ${contract.local.nombre}`,
@@ -210,7 +225,10 @@ export default async function RentRollDashboardPage({
       tarifaUfM2,
       rentaFijaUf,
       ggccUf,
-      ventasUf
+      ventasUf,
+      pctRentaVariable,
+      rentaVariableUf,
+      pctFondoPromocion
     };
   });
 
@@ -222,9 +240,12 @@ export default async function RentRollDashboardPage({
       if (row.ventasUf != null) {
         acc.ventasUf += row.ventasUf;
       }
+      if (row.rentaVariableUf != null) {
+        acc.rentaVariableUf += row.rentaVariableUf;
+      }
       return acc;
     },
-    { glam2: 0, rentaFijaUf: 0, ggccUf: 0, ventasUf: 0 }
+    { glam2: 0, rentaFijaUf: 0, ggccUf: 0, ventasUf: 0, rentaVariableUf: 0 }
   );
 
   const periodOptions = buildLastPeriods(12);
@@ -314,6 +335,8 @@ export default async function RentRollDashboardPage({
         <KpiCard title="GGCC total (UF)" value={formatDecimal(totals.ggccUf)} accent="slate" />
         <KpiCard title="Ventas periodo (UF)" value={formatDecimal(totals.ventasUf)} accent="slate" />
       </section>
+
+      <RentRollChartsSection periodos={timelineData.periodos} />
 
       <section className="grid gap-4 xl:grid-cols-2">
         <article className="overflow-hidden rounded-md bg-white shadow-sm">

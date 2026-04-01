@@ -1,0 +1,369 @@
+import { EstadoContrato, TipoLocal, TipoTarifaContrato } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import type { PeriodoMetrica, TimelineResponse } from "@/types/timeline";
+
+function toPeriodoKey(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+function parsePeriodoKey(periodo: string): { year: number; month: number } {
+  const [yearStr, monthStr] = periodo.split("-");
+  return { year: Number(yearStr), month: Number(monthStr) };
+}
+
+function startOfMonth(year: number, month: number): Date {
+  return new Date(Date.UTC(year, month - 1, 1));
+}
+
+function endOfMonth(year: number, month: number): Date {
+  // Last moment of the last day: start of next month minus 1ms
+  return new Date(Date.UTC(year, month, 1) - 1);
+}
+
+function addMonths(year: number, month: number, n: number): { year: number; month: number } {
+  const date = new Date(Date.UTC(year, month - 1 + n, 1));
+  return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1 };
+}
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function isBodegaEspacio(tipo: TipoLocal): boolean {
+  return tipo === TipoLocal.BODEGA || tipo === TipoLocal.ESPACIO;
+}
+
+function isSimuladorModulo(tipo: TipoLocal): boolean {
+  return tipo === TipoLocal.SIMULADOR || tipo === TipoLocal.MODULO;
+}
+
+async function buildHistoricalPeriodos(
+  proyectoId: string,
+  glaTotalM2: number,
+  currentPeriodo: string
+): Promise<PeriodoMetrica[]> {
+  // Fetch all ContratoDia records for the project
+  const allDias = await prisma.contratoDia.findMany({
+    where: { proyectoId },
+    select: {
+      fecha: true,
+      localId: true,
+      contratoId: true,
+      estadoDia: true,
+      glam2: true,
+      tarifaDia: true,
+      local: {
+        select: {
+          tipo: true
+        }
+      }
+    },
+    orderBy: { fecha: "asc" }
+  });
+
+  if (allDias.length === 0) {
+    return [];
+  }
+
+  // Group by "YYYY-MM"
+  const byMonth = new Map<
+    string,
+    Array<{
+      fecha: Date;
+      localId: string;
+      contratoId: string | null;
+      estadoDia: string;
+      glam2: number;
+      tarifaDia: number;
+      tipo: TipoLocal;
+    }>
+  >();
+
+  for (const dia of allDias) {
+    const key = toPeriodoKey(dia.fecha);
+    if (!byMonth.has(key)) byMonth.set(key, []);
+    byMonth.get(key)!.push({
+      fecha: dia.fecha,
+      localId: dia.localId,
+      contratoId: dia.contratoId,
+      estadoDia: dia.estadoDia,
+      glam2: dia.glam2.toNumber(),
+      tarifaDia: dia.tarifaDia.toNumber(),
+      tipo: dia.local.tipo
+    });
+  }
+
+  // Fetch vencimientos (contracts ending each month) - all contracts for the project
+  const allContracts = await prisma.contrato.findMany({
+    where: { proyectoId },
+    select: {
+      id: true,
+      fechaTermino: true
+    }
+  });
+
+  const vencimientosByMonth = new Map<string, number>();
+  for (const contrato of allContracts) {
+    const key = toPeriodoKey(contrato.fechaTermino);
+    vencimientosByMonth.set(key, (vencimientosByMonth.get(key) ?? 0) + 1);
+  }
+
+  const result: PeriodoMetrica[] = [];
+
+  for (const [periodo, dias] of byMonth.entries()) {
+    // Skip current or future months
+    if (periodo >= currentPeriodo) continue;
+
+    // Get the last date in this month to use as snapshot
+    const dates = [...new Set(dias.map((d) => d.fecha.toISOString()))].sort();
+    const lastDateStr = dates[dates.length - 1];
+    const lastDateDias = dias.filter((d) => d.fecha.toISOString() === lastDateStr);
+
+    // glaArrendadaM2: sum of glam2 for OCUPADO records on last day
+    const glaArrendadaM2 = round2(
+      lastDateDias
+        .filter((d) => d.estadoDia === "OCUPADO")
+        .reduce((sum, d) => sum + d.glam2, 0)
+    );
+
+    // contratosActivos: distinct contratoIds where estadoDia IN [OCUPADO, GRACIA] on last day
+    const activeContratoIds = new Set(
+      lastDateDias
+        .filter((d) => d.estadoDia === "OCUPADO" || d.estadoDia === "GRACIA")
+        .map((d) => d.contratoId)
+        .filter((id): id is string => id !== null)
+    );
+    const contratosActivos = activeContratoIds.size;
+
+    // rentaFijaUf: sum of tarifaDia * glam2 for all days in the month,
+    // then divide by unique dates count to normalize to monthly
+    const uniqueDatesCount = dates.length;
+    const rentaSumAllDays = dias
+      .filter((d) => d.estadoDia === "OCUPADO" || d.estadoDia === "GRACIA")
+      .reduce((sum, d) => sum + d.tarifaDia * d.glam2, 0);
+    const rentaFijaUf = round2(uniqueDatesCount > 0 ? rentaSumAllDays / uniqueDatesCount : 0);
+
+    // pctOcupacionGLA
+    const pctOcupacionGLA = round2(glaTotalM2 > 0 ? (glaArrendadaM2 / glaTotalM2) * 100 : 0);
+
+    // Ingresos breakdown by type using last day snapshot
+    const activeDiasLastDay = lastDateDias.filter(
+      (d) => d.estadoDia === "OCUPADO" || d.estadoDia === "GRACIA"
+    );
+
+    const ingresosFijoUf = round2(
+      activeDiasLastDay
+        .filter((d) => !isBodegaEspacio(d.tipo) && !isSimuladorModulo(d.tipo))
+        .reduce((sum, d) => sum + d.tarifaDia * d.glam2, 0)
+    );
+
+    const ingresosSimuladorModuloUf = round2(
+      activeDiasLastDay
+        .filter((d) => isSimuladorModulo(d.tipo))
+        .reduce((sum, d) => sum + d.tarifaDia * d.glam2, 0)
+    );
+
+    const ingresosBodegaEspacioUf = round2(
+      activeDiasLastDay
+        .filter((d) => isBodegaEspacio(d.tipo))
+        .reduce((sum, d) => sum + d.tarifaDia * d.glam2, 0)
+    );
+
+    const contratosQueVencenEsteMes = vencimientosByMonth.get(periodo) ?? 0;
+
+    result.push({
+      periodo,
+      esFuturo: false,
+      pctOcupacionGLA,
+      glaArrendadaM2,
+      glaTotalM2,
+      rentaFijaUf,
+      contratosActivos,
+      ingresosFijoUf,
+      ingresosSimuladorModuloUf,
+      ingresosBodegaEspacioUf,
+      contratosQueVencenEsteMes
+    });
+  }
+
+  return result.sort((a, b) => a.periodo.localeCompare(b.periodo));
+}
+
+async function buildFuturePeriodos(
+  proyectoId: string,
+  glaTotalM2: number,
+  currentPeriodo: string
+): Promise<PeriodoMetrica[]> {
+  // Fetch all active/vigente contracts with locales and tarifas
+  const activeContracts = await prisma.contrato.findMany({
+    where: {
+      proyectoId,
+      estado: { in: [EstadoContrato.VIGENTE, EstadoContrato.GRACIA] }
+    },
+    select: {
+      id: true,
+      fechaInicio: true,
+      fechaTermino: true,
+      local: {
+        select: {
+          id: true,
+          tipo: true,
+          glam2: true,
+          esGLA: true
+        }
+      },
+      tarifas: {
+        where: {
+          tipo: { in: [TipoTarifaContrato.FIJO_UF_M2, TipoTarifaContrato.FIJO_UF] }
+        },
+        select: {
+          tipo: true,
+          valor: true,
+          vigenciaDesde: true,
+          vigenciaHasta: true
+        },
+        orderBy: { vigenciaDesde: "desc" }
+      }
+    }
+  });
+
+  if (activeContracts.length === 0) return [];
+
+  // Find max fechaTermino across all active contracts
+  let maxFechaTermino: Date | null = null;
+  for (const c of activeContracts) {
+    if (!maxFechaTermino || c.fechaTermino > maxFechaTermino) {
+      maxFechaTermino = c.fechaTermino;
+    }
+  }
+
+  if (!maxFechaTermino) return [];
+
+  const maxPeriodo = toPeriodoKey(maxFechaTermino);
+
+  // Build month sequence from currentPeriodo to maxPeriodo (inclusive)
+  const months: string[] = [];
+  let { year, month } = parsePeriodoKey(currentPeriodo);
+  while (true) {
+    const key = `${year}-${String(month).padStart(2, "0")}`;
+    months.push(key);
+    if (key >= maxPeriodo) break;
+    const next = addMonths(year, month, 1);
+    year = next.year;
+    month = next.month;
+  }
+
+  // Vencimientos: how many contracts end in each month
+  const vencimientosByMonth = new Map<string, number>();
+  for (const c of activeContracts) {
+    const key = toPeriodoKey(c.fechaTermino);
+    vencimientosByMonth.set(key, (vencimientosByMonth.get(key) ?? 0) + 1);
+  }
+
+  const result: PeriodoMetrica[] = [];
+
+  for (const periodo of months) {
+    const { year: y, month: m } = parsePeriodoKey(periodo);
+    const monthStart = startOfMonth(y, m);
+    const monthEnd = endOfMonth(y, m);
+
+    // Contracts active in this month
+    const activeInMonth = activeContracts.filter((c) => {
+      const inicio = c.fechaInicio;
+      const termino = c.fechaTermino;
+      return inicio <= monthEnd && termino >= monthStart;
+    });
+
+    let glaArrendadaM2 = 0;
+    let contratosActivos = 0;
+    let rentaFijaUf = 0;
+    let ingresosFijoUf = 0;
+    let ingresosSimuladorModuloUf = 0;
+    let ingresosBodegaEspacioUf = 0;
+
+    for (const c of activeInMonth) {
+      contratosActivos++;
+      const glam2 = c.local.glam2.toNumber();
+      glaArrendadaM2 += glam2;
+
+      // Find the most recent tarifa vigente for the midpoint of this month
+      const midMonth = new Date((monthStart.getTime() + monthEnd.getTime()) / 2);
+      const tarifaVigente = c.tarifas.find((t) => {
+        const desde = t.vigenciaDesde;
+        const hasta = t.vigenciaHasta;
+        return desde <= midMonth && (hasta === null || hasta >= midMonth);
+      });
+
+      let renta = 0;
+      if (tarifaVigente) {
+        const valor = tarifaVigente.valor.toNumber();
+        if (tarifaVigente.tipo === TipoTarifaContrato.FIJO_UF_M2) {
+          renta = valor * glam2;
+        } else {
+          // FIJO_UF
+          renta = valor;
+        }
+      }
+
+      rentaFijaUf += renta;
+
+      const tipo = c.local.tipo;
+      if (isSimuladorModulo(tipo)) {
+        ingresosSimuladorModuloUf += renta;
+      } else if (isBodegaEspacio(tipo)) {
+        ingresosBodegaEspacioUf += renta;
+      } else {
+        ingresosFijoUf += renta;
+      }
+    }
+
+    const pctOcupacionGLA = round2(glaTotalM2 > 0 ? (glaArrendadaM2 / glaTotalM2) * 100 : 0);
+
+    result.push({
+      periodo,
+      esFuturo: true,
+      pctOcupacionGLA,
+      glaArrendadaM2: round2(glaArrendadaM2),
+      glaTotalM2,
+      rentaFijaUf: round2(rentaFijaUf),
+      contratosActivos,
+      ingresosFijoUf: round2(ingresosFijoUf),
+      ingresosSimuladorModuloUf: round2(ingresosSimuladorModuloUf),
+      ingresosBodegaEspacioUf: round2(ingresosBodegaEspacioUf),
+      contratosQueVencenEsteMes: vencimientosByMonth.get(periodo) ?? 0
+    });
+  }
+
+  return result;
+}
+
+export async function getTimelineData(proyectoId: string): Promise<TimelineResponse> {
+  // Get all active locales to compute glaTotalM2
+  const localesActivos = await prisma.local.findMany({
+    where: { proyectoId, estado: "ACTIVO", esGLA: true },
+    select: { glam2: true }
+  });
+
+  const glaTotalM2 = round2(localesActivos.reduce((sum, l) => sum + l.glam2.toNumber(), 0));
+
+  const now = new Date();
+  const currentPeriodo = toPeriodoKey(now);
+
+  const [historical, future] = await Promise.all([
+    buildHistoricalPeriodos(proyectoId, glaTotalM2, currentPeriodo),
+    buildFuturePeriodos(proyectoId, glaTotalM2, currentPeriodo)
+  ]);
+
+  // Merge: historical has esFuturo=false, future has esFuturo=true
+  // Remove duplicates: future overrides historical if same periodo (current month)
+  const historicalPeriodos = new Set(historical.map((p) => p.periodo));
+  const futurePeriodosFiltered = future.filter((p) => !historicalPeriodos.has(p.periodo));
+
+  const periodos = [...historical, ...futurePeriodosFiltered].sort((a, b) =>
+    a.periodo.localeCompare(b.periodo)
+  );
+
+  return { periodos };
+}

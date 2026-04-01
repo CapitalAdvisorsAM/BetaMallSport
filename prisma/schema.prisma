@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
@@ -66,33 +66,33 @@ enum UserRole {
 }
 
 model Proyecto {
-  id          String         @id @default(cuid())
-  nombre      String
-  slug        String         @unique
-  color       String
-  activo      Boolean        @default(true)
-  createdAt   DateTime       @default(now()) @db.Timestamptz(3)
-  locales     Local[]
-  ventaLocales VentaLocal[]
+  id             String           @id @default(uuid()) @db.Uuid
+  nombre         String
+  slug           String           @unique
+  color          String
+  activo         Boolean          @default(true)
+  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
+  locales        Local[]
+  ventaLocales   VentaLocal[]
   ingresoEnergia IngresoEnergia[]
-  arrendatarios Arrendatario[]
-  contratos   Contrato[]
-  contratosDia ContratoDia[]
-  cargasDatos CargaDatos[]
+  arrendatarios  Arrendatario[]
+  contratos      Contrato[]
+  contratosDia   ContratoDia[]
+  cargasDatos    CargaDatos[]
 
   @@index([activo])
   @@index([nombre])
 }
 
 model ValorUF {
-  id      String   @id @default(cuid())
-  fecha   DateTime @unique @db.Date
-  valor   Decimal  @db.Decimal(10, 4)
+  id    String   @id @default(uuid()) @db.Uuid
+  fecha DateTime @unique @db.Date
+  valor Decimal  @db.Decimal(10, 4)
 }
 
 model Local {
-  id         String        @id @default(cuid())
-  proyectoId String
+  id         String        @id @default(uuid()) @db.Uuid
+  proyectoId String        @db.Uuid
   codigo     String
   nombre     String
   glam2      Decimal       @db.Decimal(10, 2)
@@ -103,114 +103,114 @@ model Local {
   estado     EstadoMaestro @default(ACTIVO)
   createdAt  DateTime      @default(now()) @db.Timestamptz(3)
 
-  proyecto   Proyecto      @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  contratos  Contrato[]
+  proyecto           Proyecto         @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  contratos          Contrato[]
   contratosAsociados ContratoLocal[]
-  contratosDia ContratoDia[]
-  ventaLocales VentaLocal[]
-  ingresoEnergia IngresoEnergia[]
+  contratosDia       ContratoDia[]
+  ventaLocales       VentaLocal[]
+  ingresoEnergia     IngresoEnergia[]
 
+  @@unique([proyectoId, codigo])
   @@index([proyectoId])
   @@index([estado])
   @@index([proyectoId, estado])
-  @@unique([proyectoId, codigo])
 }
 
 model IngresoEnergia {
-  id         String   @id @default(cuid())
-  proyectoId String
-  localId    String
+  id         String   @id @default(uuid()) @db.Uuid
+  proyectoId String   @db.Uuid
+  localId    String   @db.Uuid
   periodo    String
   valorUf    Decimal  @db.Decimal(14, 4)
   createdAt  DateTime @default(now()) @db.Timestamptz(3)
 
-  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  local      Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
+  proyecto Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  local    Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
 
   @@unique([localId, periodo])
   @@index([proyectoId, periodo])
 }
 
 model VentaLocal {
-  id         String   @id @default(cuid())
-  proyectoId String
-  localId    String
+  id         String   @id @default(uuid()) @db.Uuid
+  proyectoId String   @db.Uuid
+  localId    String   @db.Uuid
   periodo    String
   ventasUf   Decimal  @db.Decimal(14, 4)
   createdAt  DateTime @default(now()) @db.Timestamptz(3)
   updatedAt  DateTime @updatedAt @db.Timestamptz(3)
 
-  proyecto   Proyecto @relation(fields: [proyectoId], references: [id])
-  local      Local    @relation(fields: [localId], references: [id])
+  proyecto Proyecto @relation(fields: [proyectoId], references: [id])
+  local    Local    @relation(fields: [localId], references: [id])
 
-  @@index([proyectoId, periodo])
   @@unique([localId, periodo])
+  @@index([proyectoId, periodo])
 }
 
 model Arrendatario {
-  id             String   @id @default(cuid())
-  proyectoId     String
-  rut            String
-  razonSocial    String
+  id              String   @id @default(uuid()) @db.Uuid
+  proyectoId      String   @db.Uuid
+  rut             String
+  razonSocial     String
   nombreComercial String
-  vigente        Boolean  @default(true)
-  email          String?
-  telefono       String?
-  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  vigente         Boolean  @default(true)
+  email           String?
+  telefono        String?
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
 
-  proyecto       Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  contratos      Contrato[]
+  proyecto  Proyecto   @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  contratos Contrato[]
 
+  @@unique([proyectoId, rut])
   @@index([proyectoId])
   @@index([vigente])
   @@index([proyectoId, vigente])
-  @@unique([proyectoId, rut])
 }
 
 model Contrato {
-  id                  String         @id @default(cuid())
-  proyectoId          String
-  localId             String
-  arrendatarioId      String
-  numeroContrato      String
-  fechaInicio         DateTime       @db.Date
-  fechaTermino        DateTime       @db.Date
-  fechaEntrega        DateTime?      @db.Date
-  fechaApertura       DateTime?      @db.Date
-  pctFondoPromocion   Decimal?       @db.Decimal(6, 3)
-  codigoCC            String?
-  estado              EstadoContrato
-  pdfUrl              String?
-  notas               String?
-  createdAt           DateTime       @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime       @updatedAt @db.Timestamptz(3)
+  id                String         @id @default(uuid()) @db.Uuid
+  proyectoId        String         @db.Uuid
+  localId           String         @db.Uuid
+  arrendatarioId    String         @db.Uuid
+  numeroContrato    String
+  fechaInicio       DateTime       @db.Date
+  fechaTermino      DateTime       @db.Date
+  fechaEntrega      DateTime?      @db.Date
+  fechaApertura     DateTime?      @db.Date
+  pctFondoPromocion Decimal?       @db.Decimal(6, 3)
+  codigoCC          String?
+  estado            EstadoContrato
+  pdfUrl            String?
+  notas             String?
+  createdAt         DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime       @updatedAt @db.Timestamptz(3)
 
-  proyecto            Proyecto       @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  local               Local          @relation(fields: [localId], references: [id], onDelete: Restrict)
-  arrendatario        Arrendatario   @relation(fields: [arrendatarioId], references: [id], onDelete: Restrict)
-  locales             ContratoLocal[]
-  tarifas             ContratoTarifa[]
-  anexos              ContratoAnexo[]
-  ggcc                ContratoGGCC[]
-  contratosDia        ContratoDia[]
+  proyecto     Proyecto         @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  local        Local            @relation(fields: [localId], references: [id], onDelete: Restrict)
+  arrendatario Arrendatario     @relation(fields: [arrendatarioId], references: [id], onDelete: Restrict)
+  locales      ContratoLocal[]
+  tarifas      ContratoTarifa[]
+  anexos       ContratoAnexo[]
+  ggcc         ContratoGGCC[]
+  contratosDia ContratoDia[]
 
+  @@unique([proyectoId, numeroContrato])
   @@index([proyectoId])
   @@index([localId])
   @@index([arrendatarioId])
   @@index([estado])
   @@index([proyectoId, estado])
   @@index([proyectoId, updatedAt])
-  @@unique([proyectoId, numeroContrato])
 }
 
 model ContratoLocal {
-  id          String   @id @default(cuid())
-  contratoId  String
-  localId     String
-  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  id         String   @id @default(uuid()) @db.Uuid
+  contratoId String   @db.Uuid
+  localId    String   @db.Uuid
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
 
-  contrato    Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
-  local       Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
+  contrato Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  local    Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
 
   @@unique([contratoId, localId])
   @@index([contratoId])
@@ -218,8 +218,8 @@ model ContratoLocal {
 }
 
 model ContratoTarifa {
-  id            String             @id @default(cuid())
-  contratoId    String
+  id            String             @id @default(uuid()) @db.Uuid
+  contratoId    String             @db.Uuid
   tipo          TipoTarifaContrato
   valor         Decimal            @db.Decimal(10, 4)
   vigenciaDesde DateTime           @db.Date
@@ -227,7 +227,7 @@ model ContratoTarifa {
   esDiciembre   Boolean            @default(false)
   createdAt     DateTime           @default(now()) @db.Timestamptz(3)
 
-  contrato      Contrato           @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  contrato Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
 
   @@index([contratoId])
   @@index([vigenciaDesde, vigenciaHasta])
@@ -235,17 +235,17 @@ model ContratoTarifa {
 }
 
 model ContratoAnexo {
-  id               String   @id @default(cuid())
-  contratoId       String
-  fecha            DateTime @db.Date
-  descripcion      String
+  id                String   @id @default(uuid()) @db.Uuid
+  contratoId        String   @db.Uuid
+  fecha             DateTime @db.Date
+  descripcion       String
   camposModificados Json
-  snapshotAntes    Json
-  snapshotDespues  Json
-  usuarioId        String
-  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  snapshotAntes     Json
+  snapshotDespues   Json
+  usuarioId         String   @db.Uuid
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
 
-  contrato         Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  contrato Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
 
   @@index([contratoId])
   @@index([contratoId, fecha])
@@ -253,26 +253,26 @@ model ContratoAnexo {
 }
 
 model ContratoGGCC {
-  id                 String   @id @default(cuid())
-  contratoId         String
-  tarifaBaseUfM2     Decimal  @db.Decimal(10, 4)
-  pctAdministracion  Decimal  @db.Decimal(6, 3)
-  vigenciaDesde      DateTime @db.Date
-  vigenciaHasta      DateTime? @db.Date
-  proximoReajuste    DateTime? @db.Date
-  createdAt          DateTime @default(now()) @db.Timestamptz(3)
+  id                String    @id @default(uuid()) @db.Uuid
+  contratoId        String    @db.Uuid
+  tarifaBaseUfM2    Decimal   @db.Decimal(10, 4)
+  pctAdministracion Decimal   @db.Decimal(6, 3)
+  vigenciaDesde     DateTime  @db.Date
+  vigenciaHasta     DateTime? @db.Date
+  proximoReajuste   DateTime? @db.Date
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
 
-  contrato           Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  contrato Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
 
   @@index([contratoId])
   @@index([contratoId, vigenciaDesde])
 }
 
 model ContratoDia {
-  id         String            @id @default(cuid())
-  proyectoId String
-  localId    String
-  contratoId String?
+  id         String            @id @default(uuid()) @db.Uuid
+  proyectoId String            @db.Uuid
+  localId    String            @db.Uuid
+  contratoId String?           @db.Uuid
   fecha      DateTime          @db.Date
   tarifaDia  Decimal           @db.Decimal(10, 4)
   estadoDia  EstadoDiaContrato
@@ -280,29 +280,29 @@ model ContratoDia {
   ufDia      Decimal?          @db.Decimal(10, 4)
   createdAt  DateTime          @default(now()) @db.Timestamptz(3)
 
-  proyecto   Proyecto          @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  local      Local             @relation(fields: [localId], references: [id], onDelete: Restrict)
-  contrato   Contrato?         @relation(fields: [contratoId], references: [id], onDelete: SetNull)
+  proyecto Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  local    Local     @relation(fields: [localId], references: [id], onDelete: Restrict)
+  contrato Contrato? @relation(fields: [contratoId], references: [id], onDelete: Cascade)
 
+  @@unique([localId, fecha])
   @@index([proyectoId])
   @@index([proyectoId, fecha])
   @@index([contratoId])
-  @@unique([localId, fecha])
 }
 
 model CargaDatos {
-  id               String           @id @default(cuid())
-  proyectoId       String
-  tipo             TipoCargaDatos
-  usuarioId        String
-  archivoNombre    String
-  archivoUrl       String
-  registrosCargados Int             @default(0)
-  estado           EstadoCargaDatos
-  errorDetalle     Json?
-  createdAt        DateTime         @default(now()) @db.Timestamptz(3)
+  id                String           @id @default(uuid()) @db.Uuid
+  proyectoId        String           @db.Uuid
+  tipo              TipoCargaDatos
+  usuarioId         String           @db.Uuid
+  archivoNombre     String
+  archivoUrl        String
+  registrosCargados Int              @default(0)
+  estado            EstadoCargaDatos
+  errorDetalle      Json?
+  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
 
-  proyecto         Proyecto         @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  proyecto Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
 
   @@index([proyectoId])
   @@index([tipo])
@@ -311,10 +311,10 @@ model CargaDatos {
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String    @id @default(uuid()) @db.Uuid
   name          String?
   email         String?   @unique
-  emailVerified DateTime?  @db.Timestamptz(3)
+  emailVerified DateTime? @db.Timestamptz(3)
   image         String?
   role          UserRole  @default(OPERACIONES)
   accounts      Account[]
@@ -322,8 +322,8 @@ model User {
 }
 
 model Account {
-  id                String  @id @default(cuid())
-  userId            String
+  id                String  @id @default(uuid()) @db.Uuid
+  userId            String  @db.Uuid
   type              String
   provider          String
   providerAccountId String
@@ -340,9 +340,9 @@ model Account {
 }
 
 model Session {
-  id           String   @id @default(cuid())
+  id           String   @id @default(uuid()) @db.Uuid
   sessionToken String   @unique
-  userId       String
+  userId       String   @db.Uuid
   expires      DateTime @db.Timestamptz(3)
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

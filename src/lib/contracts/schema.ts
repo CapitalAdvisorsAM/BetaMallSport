@@ -47,7 +47,7 @@ export const contractPayloadSchema = z
     localId: z.string().min(1),
     localIds: z.array(z.string().min(1)).default([]),
     arrendatarioId: z.string().min(1),
-    numeroContrato: z.string().min(1),
+    numeroContrato: z.string().min(1).optional(),
     fechaInicio: dateStringSchema,
     fechaTermino: dateStringSchema,
     fechaEntrega: nullableDateStringSchema,

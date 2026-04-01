@@ -496,7 +496,7 @@ export async function POST(request: Request): Promise<NextResponse> {
           });
         }
       }
-    });
+    }, { timeout: 60000, maxWait: 10000 });
 
     const report: ApplyReport = {
       created,

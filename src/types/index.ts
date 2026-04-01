@@ -16,6 +16,7 @@ export type {
   RentRollResumen,
   RentRollMetricasResponse
 } from "@/types/metricas";
+export type { PeriodoMetrica, TimelineResponse } from "@/types/timeline";
 
 export type RentRollRow = {
   id: string;
@@ -80,7 +81,7 @@ export type ContractFormPayload = {
   localId: string;
   localIds: string[];
   arrendatarioId: string;
-  numeroContrato: string;
+  numeroContrato?: string;
   fechaInicio: string;
   fechaTermino: string;
   fechaEntrega: string | null;

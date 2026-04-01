@@ -224,7 +224,7 @@ export default async function ContratosPage({
                       ? contract.locales.map((item) => item.local)
                       : [contract.local]
                     )
-                      .map((local) => `${local.codigo} - ${local.nombre}`)
+                      .map((local) => local.codigo)
                       .join(", ");
 
                     return [
@@ -335,7 +335,7 @@ export default async function ContratosPage({
         <ContractManager
           proyectoId={selectedProjectId}
           canEdit={canEdit}
-          locals={locals.map((local) => ({ id: local.id, label: `${local.codigo} - ${local.nombre}` }))}
+          locals={locals.map((local) => ({ id: local.id, label: local.codigo }))}
           arrendatarios={arrendatarios.map((a) => ({ id: a.id, label: a.nombreComercial }))}
           nextCursor={nextCursor}
           contracts={contracts.map((contract) => ({

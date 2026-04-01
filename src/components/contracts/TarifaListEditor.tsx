@@ -17,6 +17,7 @@ type TarifaListEditorProps = {
   tarifas: TarifaListItem[];
   onChange: (updated: TarifaListItem[]) => void;
   disabled?: boolean;
+  fechasContrato?: { inicio: string; termino: string };
 };
 
 export function createEmptyTarifaItem(): TarifaListItem {
@@ -33,21 +34,48 @@ export function createEmptyTarifaItem(): TarifaListItem {
 export function TarifaListEditor({
   tarifas,
   onChange,
-  disabled = false
+  disabled = false,
+  fechasContrato
 }: TarifaListEditorProps): JSX.Element {
+  const canUseContractDates = Boolean(fechasContrato?.inicio && fechasContrato?.termino);
+
   return (
     <div className="rounded-lg border border-slate-200 p-3">
       <div className="mb-2 flex items-center justify-between">
         <h4 className="text-sm font-semibold text-slate-900">Tarifas fijas</h4>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={disabled}
-          onClick={() => onChange([...tarifas, createEmptyTarifaItem()])}
-          className="h-auto px-2 py-1 text-sm"
-        >
-          + Agregar
-        </Button>
+        <div className="flex items-center gap-2">
+          {canUseContractDates ? (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={disabled || tarifas.length === 0}
+              onClick={() => {
+                if (!fechasContrato) {
+                  return;
+                }
+
+                const next = tarifas.map((item) => ({
+                  ...item,
+                  vigenciaDesde: item.vigenciaDesde || fechasContrato.inicio,
+                  vigenciaHasta: item.vigenciaHasta || fechasContrato.termino
+                }));
+                onChange(next);
+              }}
+              className="h-auto px-2 py-1 text-sm"
+            >
+              Usar fechas del contrato
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            disabled={disabled}
+            onClick={() => onChange([...tarifas, createEmptyTarifaItem()])}
+            className="h-auto px-2 py-1 text-sm"
+          >
+            + Agregar
+          </Button>
+        </div>
       </div>
       <div className="space-y-2">
         {tarifas.map((tarifa, index) => (

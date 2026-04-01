@@ -1,0 +1,17 @@
+export type PeriodoMetrica = {
+  periodo: string; // "2025-01"
+  esFuturo: boolean;
+  pctOcupacionGLA: number;
+  glaArrendadaM2: number;
+  glaTotalM2: number;
+  rentaFijaUf: number;
+  contratosActivos: number;
+  ingresosFijoUf: number;
+  ingresosSimuladorModuloUf: number;
+  ingresosBodegaEspacioUf: number;
+  contratosQueVencenEsteMes: number;
+};
+
+export type TimelineResponse = {
+  periodos: PeriodoMetrica[];
+};
