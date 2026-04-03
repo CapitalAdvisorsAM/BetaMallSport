@@ -20,7 +20,7 @@ type TenantBase = {
 };
 
 type RegistroContableBase = {
-  localId: string;
+  localId: string | null;
   periodo: Date;
   valorUf: NumericLike;
 };
@@ -51,6 +51,7 @@ export function buildTenantFinanceRows(
   const salesByLocal = new Map<string, Map<string, number>>();
 
   registros.forEach((registro) => {
+    if (!registro.localId) return; // skip property-level cost rows
     appendPeriodValue(
       billingByLocal,
       registro.localId,

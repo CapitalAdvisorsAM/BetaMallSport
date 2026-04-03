@@ -69,10 +69,8 @@ export type EerrSection = {
 export type EerrData = {
   periodos: string[];
   secciones: EerrSection[];
-  ebitda: {
-    porPeriodo: Record<string, number>;
-    total: number;
-  };
+  ebitda: { porPeriodo: Record<string, number>; total: number };
+  ebit:   { porPeriodo: Record<string, number>; total: number };
 };
 
 export type ContableSuggestion = {

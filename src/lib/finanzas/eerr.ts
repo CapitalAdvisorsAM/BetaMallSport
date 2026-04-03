@@ -13,96 +13,107 @@ export type RegistroContableDetalle = {
   periodo: Date;
   valorUf: NumericLike;
   categoriaTipo: string | null;
-  localId: string;
-  local: { codigo: string; nombre: string };
+  localId: string | null;
+  local: { codigo: string; nombre: string } | null;
   arrendatario: { nombreComercial: string } | null;
 };
 
-export const COST_GROUPS = new Set([
+// Grupos que van SOBRE el EBITDA (costos operacionales)
+export const OPERATING_COST_GROUPS = new Set([
+  "VACANCIA G.C. + CONTRIBUCIONES",
+  "GASTOS MARKETING",
+  "GASTOS INMOBILIARIA",
+]);
+
+// Grupos BAJO el EBITDA (no operacionales)
+export const BELOW_EBITDA_GROUPS = new Set([
+  "DEPRECIACION",
+  "EDI",
+  "IMPUESTOS",
+  "RESULTADO NO OPERACIONAL",
+]);
+
+export const COST_GROUPS = new Set([...OPERATING_COST_GROUPS, ...BELOW_EBITDA_GROUPS]);
+
+// Orden preferido de secciones para el EE.RR
+const SECTION_ORDER = [
+  "INGRESOS DE EXPLOTACION",
   "VACANCIA G.C. + CONTRIBUCIONES",
   "GASTOS MARKETING",
   "GASTOS INMOBILIARIA",
   "DEPRECIACION",
   "EDI",
+  "RESULTADO NO OPERACIONAL",
   "IMPUESTOS",
-  "RESULTADO NO OPERACIONAL"
-]);
+];
 
-export function getEerrValueTone(tipo: "ingreso" | "costo", valor: number): string {
-  if (valor === 0) {
-    return "text-slate-400";
-  }
-  if (tipo === "ingreso") {
-    return valor > 0 ? "text-emerald-700" : "text-red-600";
-  }
-  return valor < 0 ? "text-red-600" : "text-slate-700";
+/** Formatea un valor UF para el EE.RR: negativos en paréntesis, puntos de miles */
+export function formatEerr(value: number, decimals = 0): string {
+  if (value === 0) return "—";
+  const abs = Math.abs(value);
+  const formatted = abs.toLocaleString("es-CL", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+  return value < 0 ? `(${formatted})` : formatted;
 }
 
 export function calculateEbitdaMargin(ingresos: number, ebitda: number): number | null {
   return ingresos !== 0 ? (ebitda / ingresos) * 100 : null;
 }
 
-export function buildEerrData(
-  registros: RegistroContableBase[]
-): EerrData {
-  const periodos = [...new Set(registros.map((registro) => registro.periodo.toISOString().slice(0, 7)))].sort();
+export function buildEerrData(registros: RegistroContableBase[]): EerrData {
+  const periodos = [
+    ...new Set(registros.map((r) => r.periodo.toISOString().slice(0, 7)))
+  ].sort();
+
   const sections = new Map<string, EerrSection>();
 
-  registros.forEach((registro) => {
+  for (const registro of registros) {
     const tipo: "ingreso" | "costo" = COST_GROUPS.has(registro.grupo1) ? "costo" : "ingreso";
     const periodoKey = registro.periodo.toISOString().slice(0, 7);
     const valor = Number(registro.valorUf);
 
-    const section =
-      sections.get(registro.grupo1) ??
-      ({
-        grupo1: registro.grupo1,
-        tipo,
-        lineas: [],
-        porPeriodo: {},
-        total: 0
-      } satisfies EerrSection);
-
-    if (!sections.has(registro.grupo1)) {
+    let section = sections.get(registro.grupo1);
+    if (!section) {
+      section = { grupo1: registro.grupo1, tipo, lineas: [], porPeriodo: {}, total: 0 };
       sections.set(registro.grupo1, section);
     }
 
     section.porPeriodo[periodoKey] = (section.porPeriodo[periodoKey] ?? 0) + valor;
     section.total += valor;
 
-    let line = section.lineas.find((candidate) => candidate.grupo3 === registro.grupo3);
+    let line = section.lineas.find((l) => l.grupo3 === registro.grupo3);
     if (!line) {
-      line = {
-        grupo3: registro.grupo3,
-        tipo,
-        porPeriodo: {},
-        total: 0
-      } satisfies EerrLine;
+      line = { grupo3: registro.grupo3, tipo, porPeriodo: {}, total: 0 };
       section.lineas.push(line);
     }
-
     line.porPeriodo[periodoKey] = (line.porPeriodo[periodoKey] ?? 0) + valor;
     line.total += valor;
-  });
+  }
 
-  const ebitda = {
-    porPeriodo: {} as Record<string, number>,
-    total: 0
-  };
+  // EBITDA = suma de todas las secciones SOBRE la línea (valores ya vienen con signo del CDG)
+  const ebitda = { porPeriodo: {} as Record<string, number>, total: 0 };
+  const ebit   = { porPeriodo: {} as Record<string, number>, total: 0 };
 
   sections.forEach((section) => {
-    const sign = section.tipo === "ingreso" ? 1 : -1;
-    Object.entries(section.porPeriodo).forEach(([periodo, value]) => {
-      ebitda.porPeriodo[periodo] = (ebitda.porPeriodo[periodo] ?? 0) + sign * value;
-    });
-    ebitda.total += sign * section.total;
+    const isAbove = !BELOW_EBITDA_GROUPS.has(section.grupo1);
+    for (const [p, v] of Object.entries(section.porPeriodo)) {
+      if (isAbove) ebitda.porPeriodo[p] = (ebitda.porPeriodo[p] ?? 0) + v;
+      ebit.porPeriodo[p] = (ebit.porPeriodo[p] ?? 0) + v;
+    }
+    if (isAbove) ebitda.total += section.total;
+    ebit.total += section.total;
   });
 
-  return {
-    periodos,
-    secciones: [...sections.values()],
-    ebitda
-  };
+  // Ordenar secciones según orden preferido del EE.RR
+  const secciones = [...sections.values()].sort((a, b) => {
+    const ia = SECTION_ORDER.indexOf(a.grupo1);
+    const ib = SECTION_ORDER.indexOf(b.grupo1);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  });
+
+  return { periodos, secciones, ebitda, ebit };
 }
 
 export function buildEerrDetalle(registros: RegistroContableDetalle[]): EerrDetalleResponse {
@@ -122,6 +133,8 @@ export function buildEerrDetalle(registros: RegistroContableDetalle[]): EerrDeta
     const { cat, localMap } = catMap.get(catKey)!;
     cat.porPeriodo[periodoKey] = (cat.porPeriodo[periodoKey] ?? 0) + valor;
     cat.total += valor;
+
+    if (!r.localId || !r.local) continue; // skip property-level rows for drill-down
 
     if (!localMap.has(r.localId)) {
       const loc: EerrLocalDetalle = {
