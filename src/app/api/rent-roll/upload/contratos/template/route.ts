@@ -15,6 +15,7 @@ const instruccionesGenerales = [
   "Formato de fechas aceptado: YYYY-MM-DD (recomendado) o DD/MM/YYYY",
   "Para los campos con lista desplegable, use solo los valores de la lista",
   "Si informa % Fondo Promocion, use un numero decimal simple. Ej: 2.5 = 2,5%",
+  "Si informa Multiplicador Diciembre, use el factor decimal a aplicar en diciembre. Ej: 1.25",
   "Para renta variable use una sola fila por contrato en la columna Renta Variable %; el sistema aplica las fechas del contrato automaticamente"
 ];
 
@@ -90,6 +91,15 @@ const columns: ColumnDef[] = [
     description: "Opcional. Porcentaje del fondo de promocion del contrato. Ej: 2.5",
     format: "number",
     width: 18,
+    headerPalette: "slate"
+  },
+  {
+    key: "multiplicadorDiciembre",
+    label: "Multiplicador Diciembre",
+    required: false,
+    description: "Opcional. Factor decimal para diciembre. Ej: 1.25",
+    format: "number",
+    width: 22,
     headerPalette: "slate"
   },
   {
@@ -260,6 +270,7 @@ export async function GET(): Promise<NextResponse> {
           fechaEntrega: "2024-12-15",
           fechaApertura: "2025-01-10",
           pctFondoPromocion: "2.5",
+          multiplicadorDiciembre: "1.25",
           codigoCC: "CC-101",
           ggccPctAdministracion: "5",
           notas: "Contrato principal local L-101 con fondo de promocion",
@@ -286,6 +297,7 @@ export async function GET(): Promise<NextResponse> {
           fechaEntrega: "2024-12-15",
           fechaApertura: "2025-01-10",
           pctFondoPromocion: "2.5",
+          multiplicadorDiciembre: "1.25",
           codigoCC: "CC-101",
           ggccPctAdministracion: "5",
           notas: "Renta variable sin fechas propias; usa fechas del contrato",
@@ -312,6 +324,7 @@ export async function GET(): Promise<NextResponse> {
           fechaEntrega: "",
           fechaApertura: "",
           pctFondoPromocion: "",
+          multiplicadorDiciembre: "",
           codigoCC: "CC-BOD-01",
           ggccPctAdministracion: "",
           notas: "Bodega con periodo de gracia inicial",

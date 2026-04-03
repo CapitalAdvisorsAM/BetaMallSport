@@ -36,6 +36,7 @@ export type ContratoUploadRow = {
   tarifaVigenciaDesde: string;
   tarifaVigenciaHasta: string | null;
   pctFondoPromocion: string | null;
+  multiplicadorDiciembre: string | null;
   codigoCC: string | null;
   ggccPctAdministracion: string | null;
   ggccPctReajuste: string | null;
@@ -59,6 +60,7 @@ export type ExistingContratoForDiff = {
   fechaEntrega: string | null;
   fechaApertura: string | null;
   pctFondoPromocion: string | null;
+  multiplicadorDiciembre: string | null;
   codigoCC: string | null;
   ggccPctAdministracion: string | null;
   notas: string | null;
@@ -211,6 +213,7 @@ function emptyRow(): ContratoUploadRow {
     tarifaVigenciaDesde: "",
     tarifaVigenciaHasta: null,
     pctFondoPromocion: null,
+    multiplicadorDiciembre: null,
     codigoCC: null,
     ggccPctAdministracion: null,
     ggccPctReajuste: null,
@@ -274,6 +277,9 @@ function compareWithExisting(
   }
   if (!decimalEquals(existing.pctFondoPromocion, row.pctFondoPromocion)) {
     changed.push("pctFondoPromocion");
+  }
+  if (!decimalEquals(existing.multiplicadorDiciembre, row.multiplicadorDiciembre)) {
+    changed.push("multiplicadorDiciembre");
   }
   if ((existing.codigoCC ?? null) !== row.codigoCC) {
     changed.push("codigoCC");
@@ -402,6 +408,7 @@ export function parseContratosFile(
     const tarifaVigenciaHasta = parseDate(rawRow.tarifavigenciahasta);
     const rentaVariablePct = normalizeNullable(rawRow.rentavariablepct);
     const pctFondoPromocion = normalizeNullable(rawRow.pctfondopromocion);
+    const multiplicadorDiciembre = normalizeNullable(rawRow.multiplicadordiciembre);
     const codigoCC = normalizeNullable(rawRow.codigocc);
     const ggccPctAdministracion = normalizeNullable(rawRow.ggccpctadministracion);
     const ggccPctReajuste = normalizeNullable(rawRow.ggccpctreajuste);
@@ -448,6 +455,7 @@ export function parseContratosFile(
       tarifaVigenciaDesde: tarifaVigenciaDesdeFinal ?? "",
       tarifaVigenciaHasta: tarifaVigenciaHastaFinal,
       pctFondoPromocion,
+      multiplicadorDiciembre,
       codigoCC,
       ggccPctAdministracion,
       ggccPctReajuste,
@@ -515,6 +523,14 @@ export function parseContratosFile(
         status: "ERROR",
         data,
         errorMessage: "pctFondoPromocion debe ser numerico cuando se informa."
+      };
+    }
+    if (!isValidDecimalOrNull(data.multiplicadorDiciembre)) {
+      return {
+        rowNumber,
+        status: "ERROR",
+        data,
+        errorMessage: "multiplicadorDiciembre debe ser numerico cuando se informa."
       };
     }
     if (

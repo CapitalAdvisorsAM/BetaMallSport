@@ -74,6 +74,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         fechaEntrega: contrato.fechaEntrega ? toIsoDate(contrato.fechaEntrega) : null,
         fechaApertura: contrato.fechaApertura ? toIsoDate(contrato.fechaApertura) : null,
         pctFondoPromocion: contrato.pctFondoPromocion?.toString() ?? null,
+        multiplicadorDiciembre: contrato.multiplicadorDiciembre?.toString() ?? null,
         codigoCC: contrato.codigoCC,
         ggccPctAdministracion:
           contrato.ggcc.length > 0 ? contrato.ggcc[0]?.pctAdministracion.toString() ?? null : null,

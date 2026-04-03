@@ -184,6 +184,11 @@ function computeCamposModificados(
       toDecimalString(existing.pctAdministracionGgcc),
       toDecimalString(payload.pctAdministracionGgcc)
     ],
+    [
+      "multiplicadorDiciembre",
+      toDecimalString(existing.multiplicadorDiciembre),
+      toDecimalString(payload.multiplicadorDiciembre)
+    ],
     ["codigoCC", existing.codigoCC, payload.codigoCC],
     ["pdfUrl", existing.pdfUrl, payload.pdfUrl],
     ["notas", existing.notas, payload.notas]
@@ -248,6 +253,7 @@ function buildContratoPayload(
     estado: parsed.estado,
     pctFondoPromocion: toDecimal(parsed.pctFondoPromocion),
     pctAdministracionGgcc: toDecimal(parsed.pctAdministracionGgcc),
+    multiplicadorDiciembre: toDecimal(parsed.multiplicadorDiciembre),
     codigoCC: parsed.codigoCC,
     pdfUrl: parsed.pdfUrl,
     notas: parsed.notas
