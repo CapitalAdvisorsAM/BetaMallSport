@@ -19,6 +19,7 @@ export function createEmptyGgccItem(): GgccListItem {
   return {
     _key: crypto.randomUUID(),
     tarifaBaseUfM2: "",
+    pctAdministracion: "",
     pctReajuste: null,
     vigenciaDesde: "",
     vigenciaHasta: null,

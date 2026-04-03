@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ContractFormPayload } from "@/types";
 
 const { requireSessionMock, requireWriteAccessMock, prismaMock } = vi.hoisted(() => ({
   requireSessionMock: vi.fn(),
@@ -44,7 +45,7 @@ async function callDelete(request: Request, params: { id: string }) {
   return DELETE(request, { params });
 }
 
-function makePayload() {
+function makePayload(): ContractFormPayload {
   return {
     proyectoId: "p1",
     localId: "l1",
@@ -55,7 +56,7 @@ function makePayload() {
     fechaTermino: "2026-12-31",
     fechaEntrega: null,
     fechaApertura: null,
-    estado: "VIGENTE" as "VIGENTE" | "TERMINADO" | "TERMINADO_ANTICIPADO" | "GRACIA",
+    estado: "VIGENTE",
     rentaVariable: [
       {
         pctRentaVariable: "5",
@@ -70,7 +71,7 @@ function makePayload() {
     notas: "Notas",
     tarifas: [
       {
-        tipo: "FIJO_UF_M2" as const,
+        tipo: "FIJO_UF_M2",
         valor: "12.5",
         vigenciaDesde: "2026-01-01",
         vigenciaHasta: null,
@@ -88,7 +89,7 @@ function makePayload() {
         mesesReajuste: null
       }
     ],
-    anexo: null as { fecha: string; descripcion: string } | null
+    anexo: null
   };
 }
 
@@ -439,11 +440,11 @@ describe("PUT /api/contracts/[id]", () => {
     const payload = makePayload();
     payload.ggcc = [
       {
-        ...payload.ggcc[0],
+        ...(payload.ggcc[0] as unknown as Record<string, unknown>),
         mesesReajuste: 12,
         pctReajuste: null
       }
-    ];
+    ] as unknown as ContractFormPayload["ggcc"];
 
     const response = await callPut(
       new Request("http://localhost/api/contracts/contract-1", {
@@ -463,11 +464,11 @@ describe("PUT /api/contracts/[id]", () => {
     const payload = makePayload();
     payload.ggcc = [
       {
-        ...payload.ggcc[0],
+        ...(payload.ggcc[0] as unknown as Record<string, unknown>),
         pctReajuste: "5",
         mesesReajuste: 12
       }
-    ];
+    ] as unknown as ContractFormPayload["ggcc"];
     const existingAligned = {
       ...existing,
       tarifas: [existing.tarifas[0]],
