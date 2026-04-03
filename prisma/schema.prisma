@@ -186,6 +186,7 @@ model Contrato {
   fechaApertura     DateTime?      @db.Date
   pctFondoPromocion Decimal?       @db.Decimal(6, 3)
   pctAdministracionGgcc Decimal?    @db.Decimal(6, 3)
+  multiplicadorDiciembre Decimal?    @db.Decimal(6, 3)
   codigoCC          String?
   estado            EstadoContrato
   pdfUrl            String?

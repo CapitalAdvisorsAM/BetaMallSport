@@ -143,6 +143,7 @@ export async function POST(request: Request): Promise<NextResponse> {
           estado: payload.estado,
           pctFondoPromocion: toDecimal(payload.pctFondoPromocion),
           pctAdministracionGgcc: toDecimal(payload.pctAdministracionGgcc),
+          multiplicadorDiciembre: toDecimal(payload.multiplicadorDiciembre),
           codigoCC: payload.codigoCC,
           pdfUrl: payload.pdfUrl,
           notas: payload.notas

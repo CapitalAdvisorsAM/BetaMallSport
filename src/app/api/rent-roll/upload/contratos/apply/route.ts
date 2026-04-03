@@ -33,6 +33,7 @@ type ContratoApplyRow = {
   tarifaVigenciaDesde: string;
   tarifaVigenciaHasta: string | null;
   pctFondoPromocion: string | null;
+  multiplicadorDiciembre: string | null;
   codigoCC: string | null;
   ggccPctAdministracion: string | null;
   ggccPctReajuste: string | null;
@@ -212,6 +213,7 @@ function normalizeContratoRow(rowNumber: number, data: Record<string, unknown>):
   const tarifaVigenciaDesde = parseDate(data.tarifaVigenciaDesde);
   const tarifaVigenciaHasta = parseDate(data.tarifaVigenciaHasta);
   const pctFondoPromocion = normalizeNullable(data.pctFondoPromocion);
+  const multiplicadorDiciembre = normalizeNullable(data.multiplicadorDiciembre);
   const codigoCC = normalizeNullable(data.codigoCC);
   const ggccPctAdministracion = normalizeNullable(data.ggccPctAdministracion);
   const ggccPctReajuste = normalizeNullable(data.ggccPctReajuste);
@@ -253,6 +255,9 @@ function normalizeContratoRow(rowNumber: number, data: Record<string, unknown>):
     return null;
   }
   if (!isValidDecimalOrNull(pctFondoPromocion)) {
+    return null;
+  }
+  if (!isValidDecimalOrNull(multiplicadorDiciembre)) {
     return null;
   }
   if (
@@ -306,6 +311,7 @@ function normalizeContratoRow(rowNumber: number, data: Record<string, unknown>):
     tarifaVigenciaDesde: tarifaVigenciaDesdeFinal,
     tarifaVigenciaHasta: tarifaVigenciaHastaFinal,
     pctFondoPromocion,
+    multiplicadorDiciembre,
     codigoCC,
     ggccPctAdministracion,
     ggccPctReajuste,
@@ -374,6 +380,7 @@ async function applyContrato(
           fechaApertura: dateOrNull(row.fechaApertura),
           estado: row.estado,
           pctFondoPromocion: decimalOrNull(row.pctFondoPromocion),
+          multiplicadorDiciembre: decimalOrNull(row.multiplicadorDiciembre),
           codigoCC: row.codigoCC,
           notas: row.notas
         }
@@ -390,6 +397,7 @@ async function applyContrato(
           fechaApertura: dateOrNull(row.fechaApertura),
           estado: row.estado,
           pctFondoPromocion: decimalOrNull(row.pctFondoPromocion),
+          multiplicadorDiciembre: decimalOrNull(row.multiplicadorDiciembre),
           codigoCC: row.codigoCC,
           notas: row.notas
         }

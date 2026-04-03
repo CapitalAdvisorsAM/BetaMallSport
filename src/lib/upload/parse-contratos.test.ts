@@ -29,6 +29,7 @@ function parseRows(
         "tarifavigenciadesde",
         "tarifavigenciahasta",
         "rentavariablepct",
+        "multiplicadordiciembre",
         "ggccpctadministracion",
         "ggccmesesreajuste",
         "ggccpctreajuste",
@@ -50,7 +51,7 @@ function parseRows(
 describe("parseContratosFile", () => {
   it("uses contract dates automatically for renta variable loaded via rentaVariablePct", () => {
     const preview = parseRows([
-      ["L-101", "76543210-k", "VIGENTE", "2026-01-01", "2026-12-31", "", "", "", "", "5.5"]
+      ["L-101", "76543210-k", "VIGENTE", "2026-01-01", "2026-12-31", "", "", "", "", "5.5", ""]
     ]);
 
     expect(preview.rows).toHaveLength(1);
@@ -63,7 +64,7 @@ describe("parseContratosFile", () => {
 
   it("uses contract dates automatically for PORCENTAJE even if tariff dates are empty", () => {
     const preview = parseRows([
-      ["L-101", "76543210-k", "VIGENTE", "2026-03-01", "2027-02-28", "PORCENTAJE", "7", "", "", ""]
+      ["L-101", "76543210-k", "VIGENTE", "2026-03-01", "2027-02-28", "PORCENTAJE", "7", "", "", "", ""]
     ]);
 
     expect(preview.rows).toHaveLength(1);
@@ -85,6 +86,7 @@ describe("parseContratosFile", () => {
         "FIJO_UF_M2",
         "3.5",
         "2026-01-01",
+        "",
         "",
         "",
         "8",
@@ -114,6 +116,7 @@ describe("parseContratosFile", () => {
         "2026-01-01",
         "",
         "",
+        "",
         "8",
         "12",
         "",
@@ -139,6 +142,7 @@ describe("parseContratosFile", () => {
       fechaEntrega: null,
       fechaApertura: null,
       pctFondoPromocion: null,
+      multiplicadorDiciembre: null,
       codigoCC: null,
       ggccPctAdministracion: "8",
       notas: null,
@@ -179,6 +183,7 @@ describe("parseContratosFile", () => {
           "2026-01-01",
           "",
           "",
+          "",
           "8",
           "12",
           "5",
@@ -197,7 +202,7 @@ describe("parseContratosFile", () => {
 
   it("does not require numeroContrato in the template headers", () => {
     const preview = parseRows([
-      ["L-102", "76543210-k", "VIGENTE", "2026-04-01", "2027-03-31", "FIJO_UF", "12", "2026-04-01", "", ""]
+      ["L-102", "76543210-k", "VIGENTE", "2026-04-01", "2027-03-31", "FIJO_UF", "12", "2026-04-01", "", "", ""]
     ]);
 
     expect(preview.rows).toHaveLength(1);

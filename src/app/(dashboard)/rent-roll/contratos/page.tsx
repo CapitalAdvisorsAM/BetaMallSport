@@ -91,6 +91,17 @@ const contractQueryArgs = {
 
 type ContratoRow = Prisma.ContratoGetPayload<typeof contractQueryArgs>;
 
+function getMultiplicadorDiciembre(contract: ContratoRow): string | null {
+  const value = (contract as Record<string, unknown>)["multiplicadorDiciembre"];
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === "object" && value !== null && "toString" in value) {
+    return (value as { toString: () => string }).toString();
+  }
+  return null;
+}
+
 export default async function ContratosPage({
   searchParams
 }: ContratosPageProps): Promise<JSX.Element> {
@@ -228,6 +239,7 @@ export default async function ContratosPage({
                   contracts.map((contract, index) => {
                     const isExpanded = detalleId === contract.id;
                     const rowHref = buildDetailHref(isExpanded ? null : contract.id);
+                    const multiplicadorDiciembre = getMultiplicadorDiciembre(contract);
                     const localesAsociados = (contract.locales.length > 0
                       ? contract.locales.map((item) => item.local)
                       : [contract.local]
@@ -328,6 +340,14 @@ export default async function ContratosPage({
                                   <span className="font-semibold text-slate-700">Fecha término:</span>{" "}
                                   {formatDate(contract.fechaTermino)}
                                 </p>
+                                {multiplicadorDiciembre && (
+                                  <p>
+                                    <span className="font-semibold text-slate-700">
+                                      Multiplicador diciembre:
+                                    </span>{" "}
+                                    {multiplicadorDiciembre}
+                                  </p>
+                                )}
                                 {contract.fechaEntrega && (
                                   <p>
                                     <span className="font-semibold text-slate-700">Fecha entrega:</span>{" "}
@@ -450,6 +470,7 @@ export default async function ContratosPage({
             fechaTermino: contract.fechaTermino.toISOString(),
             pctFondoPromocion: contract.pctFondoPromocion?.toString() ?? null,
             pctAdministracionGgcc: contract.pctAdministracionGgcc?.toString() ?? null,
+            multiplicadorDiciembre: getMultiplicadorDiciembre(contract),
             local: contract.local,
             locales:
               contract.locales.length > 0

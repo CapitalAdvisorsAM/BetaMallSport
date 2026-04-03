@@ -128,6 +128,7 @@ function createEmptyPayload(
     rentaVariable: [],
     pctFondoPromocion: null,
     pctAdministracionGgcc: null,
+    multiplicadorDiciembre: null,
     codigoCC: null,
     pdfUrl: null,
     notas: null,
@@ -160,6 +161,7 @@ function fromContract(contract: ContractManagerListItem, proyectoId: string): Co
     ),
     pctFondoPromocion: contract.pctFondoPromocion,
     pctAdministracionGgcc: contract.pctAdministracionGgcc,
+    multiplicadorDiciembre: contract.multiplicadorDiciembre,
     codigoCC: null,
     pdfUrl: contract.pdfUrl,
     notas: null,
@@ -554,8 +556,8 @@ export function ContractForm({
         </div>
       </div>
 
-      {/* Row 3: Arrendatario | Fecha inicio | Fecha termino | % fondo promocion */}
-      <div className="grid gap-3 md:grid-cols-4">
+      {/* Row 3: Arrendatario | Fecha inicio | Fecha termino | condiciones comerciales */}
+      <div className="grid gap-3 md:grid-cols-5">
         <label className="text-sm">
           <span className="mb-1 block text-slate-700">
             Arrendatario <span className="text-rose-500">*</span>
@@ -618,6 +620,24 @@ export function ContractForm({
                 pctFondoPromocion: event.target.value.trim() ? event.target.value : null
               }))
             }
+            className="w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-slate-700">
+            Multiplicador diciembre <span className="text-xs text-slate-400">(opcional)</span>
+          </span>
+          <Input
+            inputMode="decimal"
+            placeholder="Ej: 1.25"
+            value={payload.multiplicadorDiciembre ?? ""}
+            onChange={(event) =>
+              setPayload((previous) => ({
+                ...previous,
+                multiplicadorDiciembre: event.target.value.trim() ? event.target.value : null
+              }))
+            }
+            disabled={!canEdit}
             className="w-full rounded-md border border-slate-300 px-3 py-2"
           />
         </label>

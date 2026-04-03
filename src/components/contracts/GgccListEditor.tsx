@@ -18,8 +18,8 @@ type GgccListEditorProps = {
 export function createEmptyGgccItem(): GgccListItem {
   return {
     _key: crypto.randomUUID(),
-    tarifaBaseUfM2: "",
-    pctAdministracion: "",
+    tarifaBaseUfM2: "0",
+    pctAdministracion: "0",
     pctReajuste: null,
     vigenciaDesde: "",
     vigenciaHasta: null,

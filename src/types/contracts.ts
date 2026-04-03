@@ -13,6 +13,7 @@ export type ContractApiBaseRow = {
   fechaApertura: string | null;
   pctFondoPromocion: string | null;
   pctAdministracionGgcc: string | null;
+  multiplicadorDiciembre: string | null;
   codigoCC: string | null;
   estado: EstadoContrato;
   pdfUrl: string | null;
@@ -68,6 +69,7 @@ export type ContractManagerListItem = {
   fechaTermino: string;
   pctFondoPromocion: string | null;
   pctAdministracionGgcc: string | null;
+  multiplicadorDiciembre: string | null;
   local: { id: string; codigo: string; nombre: string };
   locales: Array<{ id: string; codigo: string; nombre: string }>;
   arrendatario: { id: string; nombreComercial: string; razonSocial: string };

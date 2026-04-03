@@ -37,6 +37,8 @@ function isUploadRowArray(value: unknown): value is RentRollPreviewPayload["rows
         typeof item.tarifaVigenciaDesde === "string" &&
         (item.tarifaVigenciaHasta === null || typeof item.tarifaVigenciaHasta === "string") &&
         (item.pctFondoPromocion === null || typeof item.pctFondoPromocion === "string") &&
+        ((item.multiplicadorDiciembre ?? null) === null ||
+          typeof item.multiplicadorDiciembre === "string") &&
         (item.codigoCC === null || typeof item.codigoCC === "string") &&
         (item.ggccPctAdministracion === null || typeof item.ggccPctAdministracion === "string") &&
         (item.ggccPctReajuste === undefined ||
