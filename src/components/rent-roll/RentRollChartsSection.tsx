@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import type { ReactNode } from "react";
 import {
   Area,
@@ -114,51 +115,60 @@ export function RentRollChartsSection({
   const tooltipLabelFormatter = (label: ReactNode): ReactNode =>
     typeof label === "string" ? formatPeriodoLabel(label) : label;
 
-  const chart1Data = periodos.map((p) => ({
-    periodo: p.periodo,
-    pctOcupacion: p.pctOcupacionGLA,
-    waltMeses: p.waltMeses,
-    esFuturo: p.esFuturo
-  }));
-  const maxWaltMeses = Math.max(...chart1Data.map((item) => item.waltMeses), 0);
-  const waltAxisMax = Math.max(12, Math.ceil(maxWaltMeses / 6) * 6);
+  const { chart1Data, maxWaltMeses, waltAxisMax } = useMemo(() => {
+    const data = periodos.map((p) => ({
+      periodo: p.periodo,
+      pctOcupacion: p.pctOcupacionGLA,
+      waltMeses: p.waltMeses,
+      esFuturo: p.esFuturo
+    }));
+    const maxWalt = Math.max(...data.map((item) => item.waltMeses), 0);
+    return {
+      chart1Data: data,
+      maxWaltMeses: maxWalt,
+      waltAxisMax: Math.max(12, Math.ceil(maxWalt / 6) * 6)
+    };
+  }, [periodos]);
 
-  const chart2Data = periodos.map((p) => ({
-    periodo: p.periodo,
-    rentaFijaUf: p.rentaFijaUf,
-    esFuturo: p.esFuturo
-  }));
+  const chart2Data = useMemo(
+    () => periodos.map((p) => ({ periodo: p.periodo, rentaFijaUf: p.rentaFijaUf, esFuturo: p.esFuturo })),
+    [periodos]
+  );
 
-  const chart3Data = periodos.map((p) => ({
-    periodo: p.periodo,
-    contratosActivos: p.contratosActivos,
-    esFuturo: p.esFuturo
-  }));
+  const chart3Data = useMemo(
+    () => periodos.map((p) => ({ periodo: p.periodo, contratosActivos: p.contratosActivos, esFuturo: p.esFuturo })),
+    [periodos]
+  );
 
-  const chart4Data = periodos.map((p) => ({
-    periodo: p.periodo,
-    glaArrendada: p.glaArrendadaM2,
-    glaVacante: Math.max(0, p.glaTotalM2 - p.glaArrendadaM2)
-  }));
+  const chart4Data = useMemo(
+    () => periodos.map((p) => ({
+      periodo: p.periodo,
+      glaArrendada: p.glaArrendadaM2,
+      glaVacante: Math.max(0, p.glaTotalM2 - p.glaArrendadaM2)
+    })),
+    [periodos]
+  );
 
-  const chart5Data = periodos.map((p) => ({
-    periodo: p.periodo,
-    vencimientos: p.contratosQueVencenEsteMes,
-    esFuturo: p.esFuturo
-  }));
+  const chart5Data = useMemo(
+    () => periodos.map((p) => ({ periodo: p.periodo, vencimientos: p.contratosQueVencenEsteMes, esFuturo: p.esFuturo })),
+    [periodos]
+  );
 
-  const chart6Data = periodos.map((p) => ({
-    periodo: p.periodo,
-    regular: p.ingresosFijoUf,
-    simuladorModulo: p.ingresosSimuladorModuloUf,
-    bodegaEspacio: p.ingresosBodegaEspacioUf
-  }));
+  const chart6Data = useMemo(
+    () => periodos.map((p) => ({
+      periodo: p.periodo,
+      regular: p.ingresosFijoUf,
+      simuladorModulo: p.ingresosSimuladorModuloUf,
+      bodegaEspacio: p.ingresosBodegaEspacioUf
+    })),
+    [periodos]
+  );
 
-  const now = new Date();
-  const threshold3Months = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 3, 1));
-  const threshold3Periodo = `${threshold3Months.getUTCFullYear()}-${String(
-    threshold3Months.getUTCMonth() + 1
-  ).padStart(2, "0")}`;
+  const threshold3Periodo = useMemo(() => {
+    const now = new Date();
+    const threshold3Months = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 3, 1));
+    return `${threshold3Months.getUTCFullYear()}-${String(threshold3Months.getUTCMonth() + 1).padStart(2, "0")}`;
+  }, []);
 
   return (
     <section className="space-y-4">

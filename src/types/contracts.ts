@@ -12,6 +12,7 @@ export type ContractApiBaseRow = {
   fechaEntrega: string | null;
   fechaApertura: string | null;
   pctFondoPromocion: string | null;
+  pctAdministracionGgcc: string | null;
   codigoCC: string | null;
   estado: EstadoContrato;
   pdfUrl: string | null;
@@ -36,6 +37,7 @@ export type ContractGgccApiRow = {
   contratoId: string;
   tarifaBaseUfM2: string;
   pctAdministracion: string;
+  pctReajuste: string | null;
   vigenciaDesde: string;
   vigenciaHasta: string | null;
   proximoReajuste: string | null;
@@ -64,6 +66,8 @@ export type ContractManagerListItem = {
   pdfUrl: string | null;
   fechaInicio: string;
   fechaTermino: string;
+  pctFondoPromocion: string | null;
+  pctAdministracionGgcc: string | null;
   local: { id: string; codigo: string; nombre: string };
   locales: Array<{ id: string; codigo: string; nombre: string }>;
   arrendatario: { id: string; nombreComercial: string; razonSocial: string };
@@ -77,6 +81,7 @@ export type ContractManagerListItem = {
   ggcc: Array<{
     tarifaBaseUfM2: string;
     pctAdministracion: string;
+    pctReajuste: string | null;
     vigenciaDesde: string;
     vigenciaHasta: string | null;
     proximoReajuste: string | null;
@@ -93,6 +98,7 @@ export type ContractExtractionResponse = {
   fechaInicio: string | null;
   fechaTermino: string | null;
   pctFondoPromocion: string | null;
+  pctAdministracionGgcc: string | null;
   tarifas: Array<{
     tipo: "FIJO_UF_M2" | "PORCENTAJE";
     valor: string;
@@ -103,6 +109,7 @@ export type ContractExtractionResponse = {
   ggcc: Array<{
     tarifaBaseUfM2: string;
     pctAdministracion: string;
+    pctReajuste: string | null;
     vigenciaDesde: string;
     vigenciaHasta: null;
     proximoReajuste: null;

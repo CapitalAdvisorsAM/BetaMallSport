@@ -8,7 +8,6 @@ type RawRow = Record<string, unknown>;
 type GgccTipoInput = "FIJO_UF_M2" | "FIJO_UF";
 
 const requiredColumns = [
-  "numerocontrato",
   "localcodigo",
   "arrendatariorut",
   "estado",
@@ -39,6 +38,7 @@ export type ContratoUploadRow = {
   pctFondoPromocion: string | null;
   codigoCC: string | null;
   ggccPctAdministracion: string | null;
+  ggccPctReajuste: string | null;
   notas: string | null;
   ggccTipo: GgccTipoInput | null;
   ggccValor: string | null;
@@ -71,6 +71,7 @@ export type ExistingContratoForDiff = {
   ggcc: Array<{
     tarifaBaseUfM2: string;
     pctAdministracion: string;
+    pctReajuste: string | null;
     vigenciaDesde: string;
     vigenciaHasta: string | null;
     mesesReajuste: number | null;
@@ -83,6 +84,27 @@ type ParseContratosOptions = {
   existingLocalData: Map<string, { glam2: string }>;
   existingArrendatarioRuts: Set<string>;
 };
+
+export function buildContratoLookupKey(input: {
+  numeroContrato?: string | null;
+  localCodigo?: string | null;
+  arrendatarioRut?: string | null;
+  fechaInicio?: string | null;
+  fechaTermino?: string | null;
+}): string {
+  const numeroContrato = (input.numeroContrato ?? "").trim();
+  if (numeroContrato) {
+    return `numero:${numeroContrato.toUpperCase()}`;
+  }
+
+  return [
+    "natural",
+    (input.localCodigo ?? "").trim().toUpperCase(),
+    normalizeUploadRut(input.arrendatarioRut ?? ""),
+    input.fechaInicio ?? "",
+    input.fechaTermino ?? ""
+  ].join("|");
+}
 
 function asString(value: unknown): string {
   if (typeof value === "string") {
@@ -191,6 +213,7 @@ function emptyRow(): ContratoUploadRow {
     pctFondoPromocion: null,
     codigoCC: null,
     ggccPctAdministracion: null,
+    ggccPctReajuste: null,
     notas: null,
     ggccTipo: null,
     ggccValor: null,
@@ -277,13 +300,22 @@ function compareWithExisting(
     const existingGgcc = existing.ggcc.find((item) => item.vigenciaDesde === row.ggccVigenciaDesde);
     const storedTarifaBase = toStoredGgccTarifaBaseUfM2(row.ggccTipo, row.ggccValor, glam2);
     if (!existingGgcc || !storedTarifaBase) {
-      changed.push("ggccTipo", "ggccValor", "ggccPctAdministracion", "ggccVigenciaDesde");
+      changed.push(
+        "ggccTipo",
+        "ggccValor",
+        "ggccPctAdministracion",
+        "ggccPctReajuste",
+        "ggccVigenciaDesde"
+      );
     } else {
       if (!decimalEquals(existingGgcc.tarifaBaseUfM2, storedTarifaBase)) {
         changed.push("ggccTipo", "ggccValor");
       }
       if (!decimalEquals(existingGgcc.pctAdministracion, row.ggccPctAdministracion)) {
         changed.push("ggccPctAdministracion");
+      }
+      if (!decimalEquals(existingGgcc.pctReajuste ?? null, row.ggccPctReajuste)) {
+        changed.push("ggccPctReajuste");
       }
       if ((existingGgcc.vigenciaHasta ?? null) !== row.ggccVigenciaHasta) {
         changed.push("ggccVigenciaHasta");
@@ -369,11 +401,10 @@ export function parseContratosFile(
     const tarifaVigenciaDesde = parseDate(rawRow.tarifavigenciadesde);
     const tarifaVigenciaHasta = parseDate(rawRow.tarifavigenciahasta);
     const rentaVariablePct = normalizeNullable(rawRow.rentavariablepct);
-    const rentaVariableVigenciaDesde = parseDate(rawRow.rentavariablevigenciadesde);
-    const rentaVariableVigenciaHasta = parseDate(rawRow.rentavariablevigenciahasta);
     const pctFondoPromocion = normalizeNullable(rawRow.pctfondopromocion);
     const codigoCC = normalizeNullable(rawRow.codigocc);
     const ggccPctAdministracion = normalizeNullable(rawRow.ggccpctadministracion);
+    const ggccPctReajuste = normalizeNullable(rawRow.ggccpctreajuste);
     const notas = normalizeNullable(rawRow.notas);
     const legacyGgccValue = normalizeNullable(rawRow.ggcctarifabaseufm2);
     const ggccValor = normalizeNullable(rawRow.ggccvalor) ?? legacyGgccValue;
@@ -384,18 +415,7 @@ export function parseContratosFile(
     const anexoFecha = parseDate(rawRow.anexofecha);
     const anexoDescripcion = normalizeNullable(rawRow.anexodescripcion);
 
-    const hasAnyRentaVariableValue = Boolean(
-      rentaVariablePct || rentaVariableVigenciaDesde || rentaVariableVigenciaHasta
-    );
-    if (hasAnyRentaVariableValue && (!rentaVariablePct || !rentaVariableVigenciaDesde)) {
-      return {
-        rowNumber,
-        status: "ERROR",
-        data: emptyRow(),
-        errorMessage:
-          "Renta variable incompleta: si informas rentaVariablePct debes incluir rentaVariableVigenciaDesde."
-      };
-    }
+    const hasAnyRentaVariableValue = Boolean(rentaVariablePct);
     if (hasAnyRentaVariableValue && tarifaTipoRaw && tarifaTipoRaw !== "PORCENTAJE") {
       return {
         rowNumber,
@@ -409,13 +429,10 @@ export function parseContratosFile(
     const tarifaTipoFinal = (
       hasAnyRentaVariableValue ? "PORCENTAJE" : tarifaTipoRaw || TipoTarifaContrato.FIJO_UF_M2
     ) as TipoTarifaContrato;
+    const tarifaUsaFechasContrato = tarifaTipoFinal === TipoTarifaContrato.PORCENTAJE;
     const tarifaValorFinal = (hasAnyRentaVariableValue ? rentaVariablePct : tarifaValor) ?? "";
-    const tarifaVigenciaDesdeFinal = hasAnyRentaVariableValue
-      ? rentaVariableVigenciaDesde
-      : tarifaVigenciaDesde;
-    const tarifaVigenciaHastaFinal = hasAnyRentaVariableValue
-      ? rentaVariableVigenciaHasta
-      : tarifaVigenciaHasta;
+    const tarifaVigenciaDesdeFinal = tarifaUsaFechasContrato ? fechaInicio : tarifaVigenciaDesde;
+    const tarifaVigenciaHastaFinal = tarifaUsaFechasContrato ? fechaTermino : tarifaVigenciaHasta;
 
     const data: ContratoUploadRow = {
       numeroContrato,
@@ -433,6 +450,7 @@ export function parseContratosFile(
       pctFondoPromocion,
       codigoCC,
       ggccPctAdministracion,
+      ggccPctReajuste,
       notas,
       ggccTipo,
       ggccValor,
@@ -443,12 +461,12 @@ export function parseContratosFile(
       anexoDescripcion
     };
 
-    if (!numeroContrato || !localCodigo || !arrendatarioRut) {
+    if (!localCodigo || !arrendatarioRut) {
       return {
         rowNumber,
         status: "ERROR",
         data,
-        errorMessage: "numeroContrato, localCodigo y arrendatarioRut son obligatorios."
+        errorMessage: "localCodigo y arrendatarioRut son obligatorios."
       };
     }
     if (!allowedEstadoContrato.has(data.estado)) {
@@ -499,7 +517,11 @@ export function parseContratosFile(
         errorMessage: "pctFondoPromocion debe ser numerico cuando se informa."
       };
     }
-    if (!isValidDecimalOrNull(data.ggccValor) || !isValidDecimalOrNull(data.ggccPctAdministracion)) {
+    if (
+      !isValidDecimalOrNull(data.ggccValor) ||
+      !isValidDecimalOrNull(data.ggccPctAdministracion) ||
+      !isValidDecimalOrNull(data.ggccPctReajuste)
+    ) {
       return {
         rowNumber,
         status: "ERROR",
@@ -513,6 +535,14 @@ export function parseContratosFile(
         status: "ERROR",
         data,
         errorMessage: "ggccMesesReajuste debe ser un entero mayor o igual a 1."
+      };
+    }
+    if (data.ggccMesesReajuste !== null && !data.ggccPctReajuste) {
+      return {
+        rowNumber,
+        status: "ERROR",
+        data,
+        errorMessage: "ggccPctReajuste es obligatorio cuando se informa ggccMesesReajuste."
       };
     }
     if (!/^\d{7,8}-[\dk]$/.test(data.arrendatarioRut)) {
@@ -546,6 +576,7 @@ export function parseContratosFile(
       data.ggccTipo ||
         data.ggccValor ||
         data.ggccPctAdministracion ||
+        data.ggccPctReajuste ||
         data.ggccVigenciaDesde ||
         data.ggccVigenciaHasta ||
         data.ggccMesesReajuste !== null
@@ -593,7 +624,14 @@ export function parseContratosFile(
       };
     }
 
-    const tarifaKey = `${numeroContrato}-${data.tarifaTipo}-${data.tarifaVigenciaDesde}`;
+    const contratoLookupKey = buildContratoLookupKey({
+      numeroContrato,
+      localCodigo: data.localCodigo,
+      arrendatarioRut: data.arrendatarioRut,
+      fechaInicio: data.fechaInicio,
+      fechaTermino: data.fechaTermino
+    });
+    const tarifaKey = `${contratoLookupKey}-${data.tarifaTipo}-${data.tarifaVigenciaDesde}`;
     if (duplicatedTarifaKey.has(tarifaKey)) {
       return {
         rowNumber,
@@ -604,7 +642,7 @@ export function parseContratosFile(
     }
     duplicatedTarifaKey.add(tarifaKey);
 
-    const existing = options.existingContratos.get(numeroContrato);
+    const existing = options.existingContratos.get(contratoLookupKey);
     if (!existing) {
       return {
         rowNumber,

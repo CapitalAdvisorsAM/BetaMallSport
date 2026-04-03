@@ -63,6 +63,7 @@ export const contractPayloadSchema = z
       )
       .default([]),
     pctFondoPromocion: decimalStringSchema.nullable(),
+    pctAdministracionGgcc: decimalStringSchema.nullable(),
     codigoCC: z.string().nullable(),
     pdfUrl: z.string().nullable(),
     notas: z.string().nullable(),
@@ -79,6 +80,7 @@ export const contractPayloadSchema = z
       z.object({
         tarifaBaseUfM2: decimalStringSchema,
         pctAdministracion: decimalStringSchema,
+        pctReajuste: decimalStringSchema.nullable(),
         vigenciaDesde: dateStringSchema,
         vigenciaHasta: nullableDateStringSchema,
         proximoReajuste: nullableDateStringSchema,
@@ -127,6 +129,15 @@ export const contractPayloadSchema = z
         break;
       }
       ggccKeys.add(key);
+
+      if (item.mesesReajuste !== null && item.pctReajuste === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "pctReajuste es obligatorio cuando GGCC tiene mesesReajuste.",
+          path: ["ggcc"]
+        });
+        break;
+      }
     }
 
     const rentaVariableKeys = new Set<string>();

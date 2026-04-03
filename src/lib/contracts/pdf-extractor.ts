@@ -52,6 +52,7 @@ export type ContractExtraction = {
   ggcc: Array<{
     tarifaBaseUfM2: string;
     pctAdministracion: string;
+    pctReajuste: null;
     vigenciaDesde: string;
     vigenciaHasta: null;
     proximoReajuste: null;
@@ -522,6 +523,7 @@ export function extractContractFromText(rawText: string): ContractExtraction {
     ggcc.push({
       tarifaBaseUfM2: ggccTarifaBaseUfM2,
       pctAdministracion: ggccPctAdministracion,
+      pctReajuste: null,
       vigenciaDesde: fechaInicio,
       vigenciaHasta: null,
       proximoReajuste: null

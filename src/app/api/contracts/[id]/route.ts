@@ -137,7 +137,7 @@ function normalizedRentaVariable(
 function normalizedGgcc(
   rows: Array<{
     tarifaBaseUfM2: Prisma.Decimal | string;
-    pctAdministracion: Prisma.Decimal | string;
+    pctReajuste: Prisma.Decimal | string | null;
     vigenciaDesde: Date | string;
     vigenciaHasta: Date | string | null;
     proximoReajuste: Date | string | null;
@@ -149,7 +149,7 @@ function normalizedGgcc(
       .map((item) => ({
         key: ggccKey(item.vigenciaDesde),
         tarifaBaseUfM2: toDecimalString(item.tarifaBaseUfM2),
-        pctAdministracion: toDecimalString(item.pctAdministracion),
+        pctReajuste: toDecimalString(item.pctReajuste),
         vigenciaDesde: toDateOnly(item.vigenciaDesde),
         vigenciaHasta: toDateOnly(item.vigenciaHasta),
         proximoReajuste: toDateOnly(item.proximoReajuste),
@@ -178,6 +178,11 @@ function computeCamposModificados(
       "pctFondoPromocion",
       toDecimalString(existing.pctFondoPromocion),
       toDecimalString(payload.pctFondoPromocion)
+    ],
+    [
+      "pctAdministracionGgcc",
+      toDecimalString(existing.pctAdministracionGgcc),
+      toDecimalString(payload.pctAdministracionGgcc)
     ],
     ["codigoCC", existing.codigoCC, payload.codigoCC],
     ["pdfUrl", existing.pdfUrl, payload.pdfUrl],
@@ -242,6 +247,7 @@ function buildContratoPayload(
     fechaApertura: toDate(parsed.fechaApertura),
     estado: parsed.estado,
     pctFondoPromocion: toDecimal(parsed.pctFondoPromocion),
+    pctAdministracionGgcc: toDecimal(parsed.pctAdministracionGgcc),
     codigoCC: parsed.codigoCC,
     pdfUrl: parsed.pdfUrl,
     notas: parsed.notas
@@ -414,6 +420,7 @@ async function persistGGCC(
         data: {
           tarifaBaseUfM2: new Prisma.Decimal(item.payloadItem.tarifaBaseUfM2),
           pctAdministracion: new Prisma.Decimal(item.payloadItem.pctAdministracion),
+          pctReajuste: toDecimal(item.payloadItem.pctReajuste),
           vigenciaHasta: toDate(item.payloadItem.vigenciaHasta),
           proximoReajuste: toDate(item.payloadItem.proximoReajuste),
           mesesReajuste: item.payloadItem.mesesReajuste ?? null
@@ -428,6 +435,7 @@ async function persistGGCC(
         contratoId,
         tarifaBaseUfM2: new Prisma.Decimal(item.tarifaBaseUfM2),
         pctAdministracion: new Prisma.Decimal(item.pctAdministracion),
+        pctReajuste: toDecimal(item.pctReajuste),
         vigenciaDesde: new Date(item.vigenciaDesde),
         vigenciaHasta: toDate(item.vigenciaHasta),
         proximoReajuste: toDate(item.proximoReajuste),

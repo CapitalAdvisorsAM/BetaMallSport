@@ -1,4 +1,5 @@
-import { requireSession } from "@/lib/permissions";
+import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
+import { canWrite, requireSession } from "@/lib/permissions";
 import { getProjectContext } from "@/lib/project";
 import { ArrendatariosFinanzasClient } from "@/components/finanzas/ArrendatariosFinanzasClient";
 
@@ -7,8 +8,18 @@ export default async function ArrendatariosFinanzasPage({
 }: {
   searchParams: { proyecto?: string; desde?: string; hasta?: string };
 }): Promise<JSX.Element> {
-  await requireSession();
+  const session = await requireSession();
   const { projects, selectedProjectId } = await getProjectContext(searchParams.proyecto);
+
+  if (!selectedProjectId) {
+    return (
+      <ProjectCreationPanel
+        title="Finanzas"
+        description="No hay proyectos activos. Crea uno para analizar la facturacion por arrendatario."
+        canEdit={canWrite(session.user.role)}
+      />
+    );
+  }
 
   return (
     <ArrendatariosFinanzasClient

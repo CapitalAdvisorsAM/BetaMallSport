@@ -19,7 +19,7 @@ export function createEmptyGgccItem(): GgccListItem {
   return {
     _key: crypto.randomUUID(),
     tarifaBaseUfM2: "",
-    pctAdministracion: "",
+    pctReajuste: null,
     vigenciaDesde: "",
     vigenciaHasta: null,
     proximoReajuste: null,
@@ -75,7 +75,7 @@ export function GgccListEditor({
       <div className="space-y-3">
         {ggcc.map((item, index) => (
           <div key={item._key} className="space-y-1.5">
-            <div className="grid gap-2 md:grid-cols-5">
+            <div className="grid gap-2 md:grid-cols-4">
               <Input
                 type="number"
                 step="any"
@@ -85,19 +85,6 @@ export function GgccListEditor({
                 onChange={(event) => {
                   const next = [...ggcc];
                   next[index] = { ...item, tarifaBaseUfM2: event.target.value };
-                  onChange(next);
-                }}
-                className="rounded-md border border-slate-300 px-2 py-2 text-sm"
-              />
-              <Input
-                type="number"
-                step="any"
-                placeholder="% administración"
-                disabled={disabled}
-                value={item.pctAdministracion}
-                onChange={(event) => {
-                  const next = [...ggcc];
-                  next[index] = { ...item, pctAdministracion: event.target.value };
                   onChange(next);
                 }}
                 className="rounded-md border border-slate-300 px-2 py-2 text-sm"
@@ -142,7 +129,11 @@ export function GgccListEditor({
                   disabled={disabled}
                   onCheckedChange={(checked) => {
                     const next = [...ggcc];
-                    next[index] = { ...item, mesesReajuste: checked ? 12 : null };
+                    next[index] = {
+                      ...item,
+                      mesesReajuste: checked ? item.mesesReajuste ?? 12 : null,
+                      pctReajuste: checked ? item.pctReajuste : null
+                    };
                     onChange(next);
                   }}
                 />
@@ -154,7 +145,7 @@ export function GgccListEditor({
                 </Label>
               </div>
               {item.mesesReajuste !== null && (
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-3">
                   <Input
                     type="number"
                     min={1}
@@ -173,6 +164,23 @@ export function GgccListEditor({
                     className="h-7 w-20 rounded-md border border-slate-300 px-2 py-1 text-sm"
                   />
                   <span className="text-xs text-slate-500">meses</span>
+                  <Input
+                    type="number"
+                    step="any"
+                    placeholder="% reajuste"
+                    disabled={disabled}
+                    value={item.pctReajuste ?? ""}
+                    onChange={(event) => {
+                      const next = [...ggcc];
+                      next[index] = {
+                        ...item,
+                        pctReajuste: event.target.value || null
+                      };
+                      onChange(next);
+                    }}
+                    className="h-7 w-28 rounded-md border border-slate-300 px-2 py-1 text-sm"
+                  />
+                  <span className="text-xs text-slate-500">% reajuste</span>
                 </div>
               )}
             </div>

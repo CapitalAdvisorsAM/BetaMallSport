@@ -48,6 +48,7 @@ export type RentRollUploadRow = {
   pctFondoPromocion: string | null;
   codigoCC: string | null;
   ggccPctAdministracion: string | null;
+  ggccPctReajuste: string | null;
   notas: string | null;
   ggccTipo: "FIJO_UF_M2" | "FIJO_UF" | null;
   ggccValor: string | null;
@@ -98,6 +99,7 @@ export type ContractFormPayload = {
     vigenciaHasta: string | null;
   }>;
   pctFondoPromocion: string | null;
+  pctAdministracionGgcc: string | null;
   codigoCC: string | null;
   pdfUrl: string | null;
   notas: string | null;
@@ -111,6 +113,7 @@ export type ContractFormPayload = {
   ggcc: Array<{
     tarifaBaseUfM2: string;
     pctAdministracion: string;
+    pctReajuste: string | null;
     vigenciaDesde: string;
     vigenciaHasta: string | null;
     proximoReajuste: string | null;

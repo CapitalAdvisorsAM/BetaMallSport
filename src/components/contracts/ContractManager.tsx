@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { ContractForm } from "@/components/contracts/ContractForm";
@@ -30,6 +30,7 @@ export function ContractManager({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentCursor = searchParams.get("cursor");
+  const [, startTransitionFn] = useTransition();
   const [contractList, setContractList] = useState<ContractManagerListItem[]>(contracts);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -60,8 +61,10 @@ export function ContractManager({
 
   async function saveContract(payload: ContractFormPayload): Promise<void> {
     await saveContractRequest(payload, selectedId ?? undefined);
-    router.refresh();
     toast.success(selectedId ? "Contrato actualizado correctamente." : "Contrato guardado correctamente.");
+    startTransitionFn(() => {
+      router.refresh();
+    });
   }
 
   async function deleteContract(contractId: string): Promise<void> {

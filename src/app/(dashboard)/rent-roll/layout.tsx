@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { DashboardModuleLayout } from "@/components/layout/DashboardModuleLayout";
 import { RentRollSubNav } from "@/components/rent-roll/RentRollSubNav";
 
 export default function RentRollLayout({
@@ -6,12 +7,5 @@ export default function RentRollLayout({
 }: {
   children: ReactNode;
 }): JSX.Element {
-  return (
-    <div className="space-y-4">
-      <section className="rounded-md bg-white px-4 pt-4 shadow-sm">
-        <RentRollSubNav />
-      </section>
-      {children}
-    </div>
-  );
+  return <DashboardModuleLayout subNav={<RentRollSubNav />}>{children}</DashboardModuleLayout>;
 }

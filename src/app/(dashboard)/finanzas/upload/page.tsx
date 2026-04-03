@@ -1,32 +1,32 @@
-import { requireSession } from "@/lib/permissions";
+import { TipoCargaDatos } from "@prisma/client";
+import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
+import { canWrite, requireSession } from "@/lib/permissions";
 import { getProjectContext } from "@/lib/project";
 import { FinanzasUploadClient } from "@/components/finanzas/FinanzasUploadClient";
-import { prisma } from "@/lib/prisma";
+import { getUploadHistory } from "@/lib/upload/history";
 
 export default async function FinanzasUploadPage({
   searchParams
 }: {
   searchParams: { proyecto?: string };
 }): Promise<JSX.Element> {
-  await requireSession();
+  const session = await requireSession();
   const { projects, selectedProjectId } = await getProjectContext(searchParams.proyecto);
 
-  const [historialContable, historialVentas] = selectedProjectId
-    ? await Promise.all([
-        prisma.cargaDatos.findMany({
-          where: { proyectoId: selectedProjectId, tipo: "CONTABLE" },
-          orderBy: { createdAt: "desc" },
-          take: 5,
-          select: { id: true, archivoNombre: true, registrosCargados: true, estado: true, createdAt: true }
-        }),
-        prisma.cargaDatos.findMany({
-          where: { proyectoId: selectedProjectId, tipo: "VENTAS" },
-          orderBy: { createdAt: "desc" },
-          take: 5,
-          select: { id: true, archivoNombre: true, registrosCargados: true, estado: true, createdAt: true }
-        })
-      ])
-    : [[], []];
+  if (!selectedProjectId) {
+    return (
+      <ProjectCreationPanel
+        title="Finanzas"
+        description="No hay proyectos activos. Crea uno para cargar datos contables y ventas."
+        canEdit={canWrite(session.user.role)}
+      />
+    );
+  }
+
+  const [historialContable, historialVentas] = await Promise.all([
+    getUploadHistory(selectedProjectId, TipoCargaDatos.CONTABLE, "created"),
+    getUploadHistory(selectedProjectId, TipoCargaDatos.VENTAS, "updated")
+  ]);
 
   return (
     <FinanzasUploadClient

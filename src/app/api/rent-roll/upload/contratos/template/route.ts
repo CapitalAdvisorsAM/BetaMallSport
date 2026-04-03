@@ -9,23 +9,16 @@ export const runtime = "nodejs";
 
 const instruccionesGenerales = [
   "Complete solo desde la fila 6 (las filas amarillas son de ejemplo - puede borrarlas)",
-  "Las columnas con fondo dorado son OBLIGATORIAS",
+  "Las columnas con fondo dorado corresponden a condiciones comerciales: complete tarifa fija o renta variable segun corresponda",
   "No modifique los encabezados (fila 3) - el sistema los usa para identificar columnas",
   "Guarde el archivo como .xlsx o .csv antes de subir",
   "Formato de fechas aceptado: YYYY-MM-DD (recomendado) o DD/MM/YYYY",
   "Para los campos con lista desplegable, use solo los valores de la lista",
-  "Para renta variable por periodos, use filas adicionales por contrato (columnas Renta Variable %)."
+  "Si informa % Fondo Promocion, use un numero decimal simple. Ej: 2.5 = 2,5%",
+  "Para renta variable use una sola fila por contrato en la columna Renta Variable %; el sistema aplica las fechas del contrato automaticamente"
 ];
 
 const columns: ColumnDef[] = [
-  {
-    key: "numeroContrato",
-    label: "N Contrato",
-    required: true,
-    description: "Codigo unico del contrato. Ej: C-1001",
-    width: 16,
-    headerPalette: "navy"
-  },
   {
     key: "localCodigo",
     label: "Codigo Local",
@@ -94,7 +87,7 @@ const columns: ColumnDef[] = [
     key: "pctFondoPromocion",
     label: "% Fondo Promocion",
     required: false,
-    description: "Opcional. Porcentaje aplicado al contrato. Ej: 2.5",
+    description: "Opcional. Porcentaje del fondo de promocion del contrato. Ej: 2.5",
     format: "number",
     width: 18,
     headerPalette: "slate"
@@ -128,7 +121,7 @@ const columns: ColumnDef[] = [
     key: "tarifaTipo",
     label: "Tipo Tarifa",
     required: true,
-    description: "FIJO_UF_M2=por m2 | FIJO_UF=monto fijo | PORCENTAJE=% ventas",
+    description: "Para tarifa fija: FIJO_UF_M2=por m2 | FIJO_UF=monto fijo. Dejar vacio si la fila solo carga Renta Variable %",
     validation: {
       type: "list",
       values: ["FIJO_UF_M2", "FIJO_UF", "PORCENTAJE"]
@@ -140,7 +133,7 @@ const columns: ColumnDef[] = [
     key: "tarifaValor",
     label: "Valor Tarifa",
     required: true,
-    description: "UF/m2 si FIJO_UF_M2 | UF si FIJO_UF | % si PORCENTAJE",
+    description: "Obligatorio junto con Tipo Tarifa cuando la fila carga tarifa fija",
     format: "number",
     width: 14,
     headerPalette: "gold"
@@ -149,7 +142,7 @@ const columns: ColumnDef[] = [
     key: "tarifaVigenciaDesde",
     label: "Tarifa Desde",
     required: true,
-    description: "YYYY-MM-DD",
+    description: "Obligatorio para tarifa fija. En PORCENTAJE usa fechaInicio del contrato",
     format: "date",
     width: 14,
     headerPalette: "gold"
@@ -158,7 +151,7 @@ const columns: ColumnDef[] = [
     key: "tarifaVigenciaHasta",
     label: "Tarifa Hasta",
     required: false,
-    description: "Vacio = indefinido",
+    description: "Opcional para tarifa fija. En PORCENTAJE usa fechaTermino del contrato",
     format: "date",
     width: 14,
     headerPalette: "gold"
@@ -167,26 +160,8 @@ const columns: ColumnDef[] = [
     key: "rentaVariablePct",
     label: "Renta Variable %",
     required: false,
-    description: "Opcional. Alternativa para cargar PORCENTAJE por vigencia",
+    description: "Opcional. Una sola fila por contrato. Usa automaticamente fechaInicio y fechaTermino del contrato",
     format: "number",
-    width: 18,
-    headerPalette: "gold"
-  },
-  {
-    key: "rentaVariableVigenciaDesde",
-    label: "Renta Var. Desde",
-    required: false,
-    description: "Obligatorio si informa Renta Variable %",
-    format: "date",
-    width: 18,
-    headerPalette: "gold"
-  },
-  {
-    key: "rentaVariableVigenciaHasta",
-    label: "Renta Var. Hasta",
-    required: false,
-    description: "Vacio = indefinido",
-    format: "date",
     width: 18,
     headerPalette: "gold"
   },
@@ -239,6 +214,15 @@ const columns: ColumnDef[] = [
     headerPalette: "teal"
   },
   {
+    key: "ggccPctReajuste",
+    label: "GGCC % Reajuste",
+    required: false,
+    description: "Obligatorio si informas GGCC Meses Reajuste. Ej: 5",
+    format: "number",
+    width: 18,
+    headerPalette: "teal"
+  },
+  {
     key: "anexoFecha",
     label: "Fecha Anexo",
     required: false,
@@ -268,7 +252,6 @@ export async function GET(): Promise<NextResponse> {
       columns,
       exampleRows: [
         {
-          numeroContrato: "C-1001",
           localCodigo: "L-101",
           arrendatarioRut: "76543210-k",
           estado: "VIGENTE",
@@ -279,24 +262,22 @@ export async function GET(): Promise<NextResponse> {
           pctFondoPromocion: "2.5",
           codigoCC: "CC-101",
           ggccPctAdministracion: "5",
-          notas: "Contrato principal local L-101",
+          notas: "Contrato principal local L-101 con fondo de promocion",
           tarifaTipo: "FIJO_UF_M2",
           tarifaValor: "0.45",
           tarifaVigenciaDesde: "2025-01-01",
           tarifaVigenciaHasta: "",
           rentaVariablePct: "",
-          rentaVariableVigenciaDesde: "",
-          rentaVariableVigenciaHasta: "",
           ggccTipo: "FIJO_UF_M2",
           ggccValor: "0.37",
           ggccVigenciaDesde: "2025-01-01",
           ggccVigenciaHasta: "",
           ggccMesesReajuste: "12",
+          ggccPctReajuste: "5",
           anexoFecha: "",
           anexoDescripcion: ""
         },
         {
-          numeroContrato: "C-1001",
           localCodigo: "L-101",
           arrendatarioRut: "76543210-k",
           estado: "VIGENTE",
@@ -307,24 +288,22 @@ export async function GET(): Promise<NextResponse> {
           pctFondoPromocion: "2.5",
           codigoCC: "CC-101",
           ggccPctAdministracion: "5",
-          notas: "Contrato principal local L-101",
+          notas: "Renta variable sin fechas propias; usa fechas del contrato",
           tarifaTipo: "",
           tarifaValor: "",
           tarifaVigenciaDesde: "",
           tarifaVigenciaHasta: "",
           rentaVariablePct: "5.00",
-          rentaVariableVigenciaDesde: "2025-01-01",
-          rentaVariableVigenciaHasta: "",
           ggccTipo: "",
           ggccValor: "",
           ggccVigenciaDesde: "",
           ggccVigenciaHasta: "",
           ggccMesesReajuste: "",
+          ggccPctReajuste: "",
           anexoFecha: "",
           anexoDescripcion: ""
         },
         {
-          numeroContrato: "C-1002",
           localCodigo: "BOD-01",
           arrendatarioRut: "65432109-8",
           estado: "GRACIA",
@@ -341,13 +320,12 @@ export async function GET(): Promise<NextResponse> {
           tarifaVigenciaDesde: "2026-01-01",
           tarifaVigenciaHasta: "",
           rentaVariablePct: "",
-          rentaVariableVigenciaDesde: "",
-          rentaVariableVigenciaHasta: "",
           ggccTipo: "",
           ggccValor: "",
           ggccVigenciaDesde: "",
           ggccVigenciaHasta: "",
           ggccMesesReajuste: "",
+          ggccPctReajuste: "",
           anexoFecha: "",
           anexoDescripcion: ""
         }
