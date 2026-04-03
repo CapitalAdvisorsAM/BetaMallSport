@@ -36,12 +36,14 @@ export function ConfirmModal({
         }
       }}
     >
-      <DialogContent className="max-w-sm p-6">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription className="mt-2">{description}</DialogDescription>
+      <DialogContent className="z-[70] max-w-sm gap-0 border-slate-200 bg-white p-6 text-slate-900 shadow-2xl [&>button]:hidden">
+        <DialogHeader className="space-y-2 pr-2">
+          <DialogTitle className="text-xl font-semibold text-slate-900">{title}</DialogTitle>
+          <DialogDescription className="text-sm leading-relaxed text-slate-600">
+            {description}
+          </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="mt-5">
+        <DialogFooter className="mt-6 gap-2 sm:justify-end sm:space-x-0">
           <Button type="button" variant="outline" onClick={onCancel} className="rounded-full px-4 py-2">
             Cancelar
           </Button>

@@ -6,7 +6,7 @@ type ParseRentRollLegacyOptions = {
   existingContratos?: Parameters<typeof parseContratosFile>[1]["existingContratos"];
   existingLocalData?: Parameters<typeof parseContratosFile>[1]["existingLocalData"];
   existingLocalCodes?: Set<string>;
-  existingArrendatarioRuts?: Parameters<typeof parseContratosFile>[1]["existingArrendatarioRuts"];
+  existingArrendatarioNombres?: Parameters<typeof parseContratosFile>[1]["existingArrendatarioNombres"];
 };
 
 function toArrayBuffer(buffer: Buffer): ArrayBuffer {
@@ -31,6 +31,6 @@ export function parseRentRollFile(
     fileName,
     existingContratos: options?.existingContratos ?? new Map(),
     existingLocalData,
-    existingArrendatarioRuts: options?.existingArrendatarioRuts ?? new Set()
+    existingArrendatarioNombres: options?.existingArrendatarioNombres ?? new Map()
   });
 }

@@ -86,9 +86,6 @@ function tarifaKey(tipo: string, vigenciaDesde: Date | string): string {
   return `${tipo}|${toDateOnly(vigenciaDesde)}`;
 }
 
-function ggccKey(vigenciaDesde: Date | string): string {
-  return toDateOnly(vigenciaDesde) ?? "";
-}
 
 function normalizedTarifas(
   tarifas: Array<{
@@ -125,7 +122,7 @@ function normalizedRentaVariable(
     rows
       .filter((item) => item.tipo === TipoTarifaContrato.PORCENTAJE)
       .map((item) => ({
-        key: ggccKey(item.vigenciaDesde),
+        key: toDateOnly(item.vigenciaDesde) ?? "",
         pctRentaVariable: toDecimalString(item.valor),
         vigenciaDesde: toDateOnly(item.vigenciaDesde),
         vigenciaHasta: toDateOnly(item.vigenciaHasta)
@@ -137,9 +134,8 @@ function normalizedRentaVariable(
 function normalizedGgcc(
   rows: Array<{
     tarifaBaseUfM2: Prisma.Decimal | string;
+    pctAdministracion: Prisma.Decimal | string;
     pctReajuste: Prisma.Decimal | string | null;
-    vigenciaDesde: Date | string;
-    vigenciaHasta: Date | string | null;
     proximoReajuste: Date | string | null;
     mesesReajuste?: number | null;
   }>
@@ -147,11 +143,16 @@ function normalizedGgcc(
   return JSON.stringify(
     rows
       .map((item) => ({
-        key: ggccKey(item.vigenciaDesde),
+        key: [
+          toDecimalString(item.tarifaBaseUfM2) ?? "",
+          toDecimalString(item.pctAdministracion) ?? "",
+          toDecimalString(item.pctReajuste) ?? "",
+          toDateOnly(item.proximoReajuste) ?? "",
+          String("mesesReajuste" in item ? (item.mesesReajuste ?? null) : null)
+        ].join("|"),
         tarifaBaseUfM2: toDecimalString(item.tarifaBaseUfM2),
+        pctAdministracion: toDecimalString(item.pctAdministracion),
         pctReajuste: toDecimalString(item.pctReajuste),
-        vigenciaDesde: toDateOnly(item.vigenciaDesde),
-        vigenciaHasta: toDateOnly(item.vigenciaHasta),
         proximoReajuste: toDateOnly(item.proximoReajuste),
         mesesReajuste: "mesesReajuste" in item ? (item.mesesReajuste ?? null) : null
       }))
@@ -390,60 +391,21 @@ async function persistContratoLocales(
 async function persistGGCC(
   tx: Prisma.TransactionClient,
   contratoId: string,
-  ggcc: ContractPayload["ggcc"]
+  ggcc: ContractPayload["ggcc"],
+  fechaInicio: string,
+  fechaTermino: string
 ): Promise<void> {
-  const existingGgcc = await tx.contratoGGCC.findMany({
-    where: { contratoId }
-  });
-  const existingGgccByKey = new Map(existingGgcc.map((item) => [ggccKey(item.vigenciaDesde), item]));
-  const payloadGgccByKey = new Map(ggcc.map((item) => [ggccKey(item.vigenciaDesde), item] as const));
+  await tx.contratoGGCC.deleteMany({ where: { contratoId } });
 
-  const ggccToDelete = existingGgcc
-    .filter((item) => !payloadGgccByKey.has(ggccKey(item.vigenciaDesde)))
-    .map((item) => item.id);
-
-  if (ggccToDelete.length > 0) {
-    await tx.contratoGGCC.deleteMany({
-      where: { id: { in: ggccToDelete } }
-    });
-  }
-
-  const ggccToUpdate: Array<{ id: string; payloadItem: ContractPayload["ggcc"][number] }> = [];
-  const ggccToCreate: Array<ContractPayload["ggcc"][number]> = [];
-  for (const item of ggcc) {
-    const found = existingGgccByKey.get(ggccKey(item.vigenciaDesde));
-    if (found) {
-      ggccToUpdate.push({ id: found.id, payloadItem: item });
-    } else {
-      ggccToCreate.push(item);
-    }
-  }
-
-  await Promise.all(
-    ggccToUpdate.map((item) =>
-      tx.contratoGGCC.update({
-        where: { id: item.id },
-        data: {
-          tarifaBaseUfM2: new Prisma.Decimal(item.payloadItem.tarifaBaseUfM2),
-          pctAdministracion: new Prisma.Decimal(item.payloadItem.pctAdministracion),
-          pctReajuste: toDecimal(item.payloadItem.pctReajuste),
-          vigenciaHasta: toDate(item.payloadItem.vigenciaHasta),
-          proximoReajuste: toDate(item.payloadItem.proximoReajuste),
-          mesesReajuste: item.payloadItem.mesesReajuste ?? null
-        }
-      })
-    )
-  );
-
-  if (ggccToCreate.length > 0) {
+  if (ggcc.length > 0) {
     await tx.contratoGGCC.createMany({
-      data: ggccToCreate.map((item) => ({
+      data: ggcc.map((item) => ({
         contratoId,
         tarifaBaseUfM2: new Prisma.Decimal(item.tarifaBaseUfM2),
         pctAdministracion: new Prisma.Decimal(item.pctAdministracion),
         pctReajuste: toDecimal(item.pctReajuste),
-        vigenciaDesde: new Date(item.vigenciaDesde),
-        vigenciaHasta: toDate(item.vigenciaHasta),
+        vigenciaDesde: new Date(fechaInicio),
+        vigenciaHasta: toDate(fechaTermino),
         proximoReajuste: toDate(item.proximoReajuste),
         mesesReajuste: item.mesesReajuste ?? null
       }))
@@ -500,7 +462,7 @@ export async function PUT(
 
       await persistContratoLocales(tx, contractId, localIds);
       await persistTarifas(tx, contractId, payloadTarifas(payload));
-      await persistGGCC(tx, contractId, payload.ggcc);
+      await persistGGCC(tx, contractId, payload.ggcc, payload.fechaInicio, payload.fechaTermino);
 
       const snapshotDespues = await tx.contrato.findUnique({
         where: { id: contractId },

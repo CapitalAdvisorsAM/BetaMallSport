@@ -35,7 +35,7 @@ export type RentRollUploadRow = {
   rowNumber: number;
   numeroContrato: string;
   localCodigo: string;
-  arrendatarioRut: string;
+  arrendatarioNombre: string;
   estado: EstadoContrato;
   fechaInicio: string;
   fechaTermino: string;
@@ -54,8 +54,6 @@ export type RentRollUploadRow = {
   ggccTipo: "FIJO_UF_M2" | "FIJO_UF" | null;
   ggccValor: string | null;
   ggccTarifaBaseUfM2?: string | null;
-  ggccVigenciaDesde: string | null;
-  ggccVigenciaHasta: string | null;
   ggccMesesReajuste: number | null;
   anexoFecha: string | null;
   anexoDescripcion: string | null;
@@ -116,8 +114,6 @@ export type ContractFormPayload = {
     tarifaBaseUfM2: string;
     pctAdministracion: string;
     pctReajuste: string | null;
-    vigenciaDesde: string;
-    vigenciaHasta: string | null;
     proximoReajuste: string | null;
     mesesReajuste: number | null;
   }>;

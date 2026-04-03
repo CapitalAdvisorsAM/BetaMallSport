@@ -84,8 +84,6 @@ function makePayload(): ContractFormPayload {
         tarifaBaseUfM2: "1.25",
         pctAdministracion: "8",
         pctReajuste: null,
-        vigenciaDesde: "2026-01-01",
-        vigenciaHasta: null,
         proximoReajuste: null,
         mesesReajuste: null
       }
@@ -273,11 +271,7 @@ describe("PUT /api/contracts/[id]", () => {
 
     expect(response.status).toBe(200);
     expect(tx.contratoGGCC.deleteMany).toHaveBeenCalledWith({
-      where: {
-        id: {
-          in: ["ggcc-remove"]
-        }
-      }
+      where: { contratoId: "contract-1" }
     });
   });
 
@@ -297,34 +291,6 @@ describe("PUT /api/contracts/[id]", () => {
     expect(response.status).toBe(400);
     expect(data.message).toBe("Payload invalido");
     expect(Array.isArray(data.issues)).toBe(true);
-    expect(prismaMock.contrato.findFirst).not.toHaveBeenCalled();
-  });
-
-  it("returns 400 when ggcc has duplicate vigenciaDesde", async () => {
-    const payload = makePayload();
-    payload.ggcc = [
-      payload.ggcc[0],
-      {
-        tarifaBaseUfM2: "1.50",
-        pctAdministracion: "9",
-        pctReajuste: null,
-        vigenciaDesde: payload.ggcc[0].vigenciaDesde,
-        vigenciaHasta: null,
-        proximoReajuste: null,
-        mesesReajuste: null
-      }
-    ];
-
-    const response = await callPut(
-      new Request("http://localhost/api/contracts/contract-1", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      }),
-      { id: "contract-1" }
-    );
-
-    expect(response.status).toBe(400);
     expect(prismaMock.contrato.findFirst).not.toHaveBeenCalled();
   });
 

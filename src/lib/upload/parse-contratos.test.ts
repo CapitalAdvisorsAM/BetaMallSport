@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { utils, write } from "xlsx";
 import type { ExistingContratoForDiff } from "@/lib/upload/parse-contratos";
-import { buildContratoLookupKey, parseContratosFile } from "@/lib/upload/parse-contratos";
+import {
+  buildContratoLookupKey,
+  parseContratosFile,
+  revalidateContratoPreviewRows
+} from "@/lib/upload/parse-contratos";
 
 function buildWorkbookBuffer(headers: string[], dataRows: string[][]): ArrayBuffer {
   const sheet = utils.aoa_to_sheet([["Plantilla de Contratos"], [], headers, ...dataRows]);
@@ -20,7 +24,7 @@ function parseRows(
     buildWorkbookBuffer(
       [
         "localcodigo",
-        "arrendatariorut",
+        "arrendatarionombre",
         "estado",
         "fechainicio",
         "fechatermino",
@@ -34,16 +38,14 @@ function parseRows(
         "ggccmesesreajuste",
         "ggccpctreajuste",
         "ggcctipo",
-        "ggccvalor",
-        "ggccvigenciadesde",
-        "ggccvigenciahasta"
+        "ggccvalor"
       ],
       dataRows
     ),
     {
       existingContratos,
       existingLocalData: new Map([["L-101", { glam2: "100" }]]),
-      existingArrendatarioRuts: new Set(["76543210-k"])
+      existingArrendatarioNombres: new Map([["acme sport", 1]])
     }
   );
 }
@@ -51,7 +53,7 @@ function parseRows(
 describe("parseContratosFile", () => {
   it("uses contract dates automatically for renta variable loaded via rentaVariablePct", () => {
     const preview = parseRows([
-      ["L-101", "76543210-k", "VIGENTE", "2026-01-01", "2026-12-31", "", "", "", "", "5.5", ""]
+      ["L-101", "ACME SPORT", "VIGENTE", "2026-01-01", "2026-12-31", "", "", "", "", "5.5", ""]
     ]);
 
     expect(preview.rows).toHaveLength(1);
@@ -64,7 +66,7 @@ describe("parseContratosFile", () => {
 
   it("uses contract dates automatically for PORCENTAJE even if tariff dates are empty", () => {
     const preview = parseRows([
-      ["L-101", "76543210-k", "VIGENTE", "2026-03-01", "2027-02-28", "PORCENTAJE", "7", "", "", "", ""]
+      ["L-101", "ACME SPORT", "VIGENTE", "2026-03-01", "2027-02-28", "PORCENTAJE", "7", "", "", "", ""]
     ]);
 
     expect(preview.rows).toHaveLength(1);
@@ -79,7 +81,7 @@ describe("parseContratosFile", () => {
     const preview = parseRows([
       [
         "L-101",
-        "76543210-k",
+        "ACME SPORT",
         "VIGENTE",
         "2026-01-01",
         "2026-12-31",
@@ -93,9 +95,7 @@ describe("parseContratosFile", () => {
         "12",
         "5",
         "FIJO_UF_M2",
-        "0.45",
-        "2026-01-01",
-        ""
+        "0.45"
       ]
     ]);
 
@@ -107,7 +107,7 @@ describe("parseContratosFile", () => {
     const preview = parseRows([
       [
         "L-101",
-        "76543210-k",
+        "ACME SPORT",
         "VIGENTE",
         "2026-01-01",
         "2026-12-31",
@@ -121,9 +121,7 @@ describe("parseContratosFile", () => {
         "12",
         "",
         "FIJO_UF_M2",
-        "0.45",
-        "2026-01-01",
-        ""
+        "0.45"
       ]
     ]);
 
@@ -135,7 +133,7 @@ describe("parseContratosFile", () => {
     const existingSnapshot = {
       numeroContrato: "C-400",
       localCodigo: "L-101",
-      arrendatarioRut: "76543210-k",
+      arrendatarioNombre: "ACME SPORT",
       estado: "VIGENTE" as const,
       fechaInicio: "2026-01-01",
       fechaTermino: "2026-12-31",
@@ -159,8 +157,6 @@ describe("parseContratosFile", () => {
           tarifaBaseUfM2: "0.45",
           pctAdministracion: "8",
           pctReajuste: "4",
-          vigenciaDesde: "2026-01-01",
-          vigenciaHasta: null,
           mesesReajuste: 12
         }
       ]
@@ -174,7 +170,7 @@ describe("parseContratosFile", () => {
       [
         [
           "L-101",
-          "76543210-k",
+          "ACME SPORT",
           "VIGENTE",
           "2026-01-01",
           "2026-12-31",
@@ -188,9 +184,7 @@ describe("parseContratosFile", () => {
           "12",
           "5",
           "FIJO_UF_M2",
-          "0.45",
-          "2026-01-01",
-          ""
+          "0.45"
         ]
       ],
       existingContratos
@@ -202,11 +196,164 @@ describe("parseContratosFile", () => {
 
   it("does not require numeroContrato in the template headers", () => {
     const preview = parseRows([
-      ["L-102", "76543210-k", "VIGENTE", "2026-04-01", "2027-03-31", "FIJO_UF", "12", "2026-04-01", "", "", ""]
+      ["L-102", "ACME SPORT", "VIGENTE", "2026-04-01", "2027-03-31", "FIJO_UF", "12", "2026-04-01", "", "", ""]
     ]);
 
     expect(preview.rows).toHaveLength(1);
     expect(preview.rows[0]?.status).toBe("ERROR");
     expect(preview.rows[0]?.errorMessage).toContain("Local 'L-102' no existe");
+  });
+
+  it("returns ambiguity error when arrendatarioNombre has duplicates in project", () => {
+    const preview = parseContratosFile(
+      buildWorkbookBuffer(
+        [
+          "localcodigo",
+          "arrendatarionombre",
+          "estado",
+          "fechainicio",
+          "fechatermino",
+          "tarifatipo",
+          "tarifavalor",
+          "tarifavigenciadesde"
+        ],
+        [["L-101", "ACME SPORT", "VIGENTE", "2026-01-01", "2026-12-31", "FIJO_UF_M2", "3.5", "2026-01-01"]]
+      ),
+      {
+        existingContratos: new Map(),
+        existingLocalData: new Map([["L-101", { glam2: "100" }]]),
+        existingArrendatarioNombres: new Map([["acme sport", 2]])
+      }
+    );
+
+    expect(preview.rows[0]?.status).toBe("ERROR");
+    expect(preview.rows[0]?.errorMessage).toContain("es ambiguo");
+  });
+});
+
+describe("revalidateContratoPreviewRows", () => {
+  function makeBaseRowData(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      numeroContrato: "",
+      localCodigo: "L-101",
+      arrendatarioNombre: "ACME SPORT",
+      estado: "VIGENTE",
+      fechaInicio: "2026-01-01",
+      fechaTermino: "2026-12-31",
+      fechaEntrega: null,
+      fechaApertura: null,
+      tarifaTipo: "FIJO_UF_M2",
+      tarifaValor: "3.5",
+      tarifaVigenciaDesde: "2026-01-01",
+      tarifaVigenciaHasta: null,
+      pctFondoPromocion: null,
+      multiplicadorDiciembre: null,
+      codigoCC: null,
+      ggccPctAdministracion: null,
+      ggccPctReajuste: null,
+      notas: null,
+      ggccTipo: null,
+      ggccValor: null,
+      ggccMesesReajuste: null,
+      anexoFecha: null,
+      anexoDescripcion: null,
+      ...overrides
+    };
+  }
+
+  const revalidateOptions = {
+    existingContratos: new Map<string, ExistingContratoForDiff>(),
+    existingLocalData: new Map([["L-101", { glam2: "100" }]]),
+    existingArrendatarioNombres: new Map([["acme sport", 1]])
+  };
+
+  it("revalidates all rows and flags duplicates created by editing one row", () => {
+    const preview = revalidateContratoPreviewRows(
+      [
+        { rowNumber: 2, data: makeBaseRowData() },
+        { rowNumber: 3, data: makeBaseRowData({ tarifaVigenciaDesde: "2026-01-01" }) }
+      ],
+      revalidateOptions
+    );
+
+    expect(preview.rows[0]?.status).toBe("NEW");
+    expect(preview.rows[1]?.status).toBe("ERROR");
+    expect(preview.rows[1]?.errorMessage).toContain("Tarifa duplicada");
+    expect(preview.summary.errores).toBe(1);
+  });
+
+  it("turns an ERROR row into NEW when edited with valid values", () => {
+    const preview = revalidateContratoPreviewRows(
+      [
+        {
+          rowNumber: 2,
+          data: makeBaseRowData({ arrendatarioNombre: "NO EXISTE" })
+        }
+      ],
+      revalidateOptions
+    );
+
+    expect(preview.rows[0]?.status).toBe("ERROR");
+
+    const fixedPreview = revalidateContratoPreviewRows(
+      [
+        {
+          rowNumber: 2,
+          data: makeBaseRowData({ arrendatarioNombre: "ACME SPORT" })
+        }
+      ],
+      revalidateOptions
+    );
+
+    expect(fixedPreview.rows[0]?.status).toBe("NEW");
+    expect(fixedPreview.summary.errores).toBe(0);
+  });
+
+  it("marks row as UPDATED and recalculates summary when edited against existing contract", () => {
+    const existingSnapshot = {
+      numeroContrato: "C-200",
+      localCodigo: "L-101",
+      arrendatarioNombre: "ACME SPORT",
+      estado: "VIGENTE" as const,
+      fechaInicio: "2026-01-01",
+      fechaTermino: "2026-12-31",
+      fechaEntrega: null,
+      fechaApertura: null,
+      pctFondoPromocion: null,
+      multiplicadorDiciembre: null,
+      codigoCC: null,
+      ggccPctAdministracion: null,
+      notas: null,
+      tarifas: [
+        {
+          tipo: "FIJO_UF_M2" as const,
+          valor: "3.5",
+          vigenciaDesde: "2026-01-01",
+          vigenciaHasta: null
+        }
+      ],
+      ggcc: []
+    } satisfies ExistingContratoForDiff;
+
+    const existingContratos = new Map<string, ExistingContratoForDiff>([
+      [buildContratoLookupKey(existingSnapshot), existingSnapshot]
+    ]);
+
+    const preview = revalidateContratoPreviewRows(
+      [
+        {
+          rowNumber: 2,
+          data: makeBaseRowData({ numeroContrato: "C-200", tarifaValor: "4.2" })
+        }
+      ],
+      {
+        ...revalidateOptions,
+        existingContratos
+      }
+    );
+
+    expect(preview.rows[0]?.status).toBe("UPDATED");
+    expect(preview.rows[0]?.changedFields).toContain("tarifaValor");
+    expect(preview.summary.actualizado).toBe(1);
   });
 });

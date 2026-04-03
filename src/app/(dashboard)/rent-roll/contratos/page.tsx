@@ -510,10 +510,17 @@ export default async function ContratosPage({
             previewEndpoint="/api/rent-roll/upload/contratos/preview"
             applyEndpoint="/api/rent-roll/upload/contratos/apply"
             templateEndpoint="/api/rent-roll/upload/contratos/template"
+            contractReviewCatalogs={{
+              localCodes: locals.map((local) => local.codigo),
+              arrendatarios: arrendatarios.map((arrendatario) => ({
+                id: arrendatario.nombreComercial,
+                label: arrendatario.nombreComercial || "Arrendatario sin nombre"
+              }))
+            }}
             columns={[
               { key: "numeroContrato", label: "Contrato" },
               { key: "localCodigo", label: "Local" },
-              { key: "arrendatarioRut", label: "Arrendatario RUT" },
+              { key: "arrendatarioNombre", label: "Arrendatario" },
               { key: "estado", label: "Estado" },
               { key: "fechaInicio", label: "Inicio" },
               { key: "fechaTermino", label: "Termino" },
