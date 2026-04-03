@@ -45,7 +45,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const [locales, arrendatarios, contratos] = await Promise.all([
       prisma.local.findMany({
         where: { proyectoId },
-        select: { codigo: true }
+        select: { codigo: true, glam2: true }
       }),
       prisma.arrendatario.findMany({
         where: { proyectoId },
@@ -72,8 +72,12 @@ export async function POST(request: Request): Promise<NextResponse> {
           estado: contrato.estado,
           fechaInicio: toIsoDate(contrato.fechaInicio),
           fechaTermino: toIsoDate(contrato.fechaTermino),
+          fechaEntrega: contrato.fechaEntrega ? toIsoDate(contrato.fechaEntrega) : null,
+          fechaApertura: contrato.fechaApertura ? toIsoDate(contrato.fechaApertura) : null,
           pctFondoPromocion: contrato.pctFondoPromocion?.toString() ?? null,
           codigoCC: contrato.codigoCC,
+          ggccPctAdministracion:
+            contrato.ggcc.length > 0 ? contrato.ggcc[0]?.pctAdministracion.toString() ?? null : null,
           notas: contrato.notas,
           tarifas: contrato.tarifas.map((tarifa) => ({
             tipo: tarifa.tipo,
@@ -85,13 +89,16 @@ export async function POST(request: Request): Promise<NextResponse> {
             tarifaBaseUfM2: ggcc.tarifaBaseUfM2.toString(),
             pctAdministracion: ggcc.pctAdministracion.toString(),
             vigenciaDesde: toIsoDate(ggcc.vigenciaDesde),
-            vigenciaHasta: ggcc.vigenciaHasta ? toIsoDate(ggcc.vigenciaHasta) : null
+            vigenciaHasta: ggcc.vigenciaHasta ? toIsoDate(ggcc.vigenciaHasta) : null,
+            mesesReajuste: ggcc.mesesReajuste ?? null
           }))
         }
       ])
     );
 
-    const existingLocalCodes = new Set(locales.map((local) => local.codigo.toUpperCase()));
+    const existingLocalData = new Map(
+      locales.map((local) => [local.codigo.toUpperCase(), { glam2: local.glam2.toString() }])
+    );
     const existingArrendatarioRuts = new Set(
       arrendatarios.map((arrendatario) => normalizeUploadRut(arrendatario.rut))
     );
@@ -99,7 +106,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const preview = parseContratosFile(await file.arrayBuffer(), {
       fileName: file.name,
       existingContratos,
-      existingLocalCodes,
+      existingLocalData,
       existingArrendatarioRuts
     });
 

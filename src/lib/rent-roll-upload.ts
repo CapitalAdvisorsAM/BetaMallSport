@@ -4,7 +4,8 @@ export { buildErrorCsv };
 
 type ParseRentRollLegacyOptions = {
   existingContratos?: Parameters<typeof parseContratosFile>[1]["existingContratos"];
-  existingLocalCodes?: Parameters<typeof parseContratosFile>[1]["existingLocalCodes"];
+  existingLocalData?: Parameters<typeof parseContratosFile>[1]["existingLocalData"];
+  existingLocalCodes?: Set<string>;
   existingArrendatarioRuts?: Parameters<typeof parseContratosFile>[1]["existingArrendatarioRuts"];
 };
 
@@ -20,10 +21,16 @@ export function parseRentRollFile(
   buffer: Buffer,
   options?: ParseRentRollLegacyOptions
 ) {
+  const existingLocalData =
+    options?.existingLocalData ??
+    new Map(
+      Array.from(options?.existingLocalCodes ?? new Set<string>()).map((codigo) => [codigo, { glam2: "1" }])
+    );
+
   return parseContratosFile(toArrayBuffer(buffer), {
     fileName,
     existingContratos: options?.existingContratos ?? new Map(),
-    existingLocalCodes: options?.existingLocalCodes ?? new Set(),
+    existingLocalData,
     existingArrendatarioRuts: options?.existingArrendatarioRuts ?? new Set()
   });
 }
