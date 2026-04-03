@@ -99,23 +99,13 @@ export function RentRollChartsSection({
   const currentPeriodo = getCurrentPeriodo();
   const total = periodos.length;
 
-  if (total === 0) {
-    return (
-      <section className="rounded-md bg-white p-6 shadow-sm">
-        <p className="text-sm text-slate-500">
-          No hay datos de timeline disponibles para este proyecto.
-        </p>
-      </section>
-    );
-  }
-
   const xAxisTickFormatter = (value: string, index: number): string =>
     tickFormatter(value, index, total);
 
   const tooltipLabelFormatter = (label: ReactNode): ReactNode =>
     typeof label === "string" ? formatPeriodoLabel(label) : label;
 
-  const { chart1Data, maxWaltMeses, waltAxisMax } = useMemo(() => {
+  const { chart1Data, waltAxisMax } = useMemo(() => {
     const data = periodos.map((p) => ({
       periodo: p.periodo,
       pctOcupacion: p.pctOcupacionGLA,
@@ -125,10 +115,19 @@ export function RentRollChartsSection({
     const maxWalt = Math.max(...data.map((item) => item.waltMeses), 0);
     return {
       chart1Data: data,
-      maxWaltMeses: maxWalt,
       waltAxisMax: Math.max(12, Math.ceil(maxWalt / 6) * 6)
     };
   }, [periodos]);
+
+  if (total === 0) {
+    return (
+      <section className="rounded-md bg-white p-6 shadow-sm">
+        <p className="text-sm text-slate-500">
+          No hay datos de timeline disponibles para este proyecto.
+        </p>
+      </section>
+    );
+  }
 
   const chart2Data = useMemo(
     () => periodos.map((p) => ({ periodo: p.periodo, rentaFijaUf: p.rentaFijaUf, esFuturo: p.esFuturo })),
