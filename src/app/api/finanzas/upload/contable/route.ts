@@ -24,11 +24,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       where: { proyectoId },
       select: { id: true, codigo: true, nombre: true }
     });
-    const arrendatarios = await prisma.arrendatario.findMany({
-      where: { proyectoId },
-      select: { id: true, nombreComercial: true, razonSocial: true }
-    });
-
     // Mapeos existentes de locales contables
     const mapeosExistentes = await prisma.mapeoLocalContable.findMany({
       where: { proyectoId },

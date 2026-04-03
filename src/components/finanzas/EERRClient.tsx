@@ -80,8 +80,6 @@ export function EERRClient({
     });
   }
 
-  const colCount = (data?.periodos.length ?? 0) + 2; // nombre + periodos + total
-
   return (
     <div className="space-y-4">
       {/* Header */}
