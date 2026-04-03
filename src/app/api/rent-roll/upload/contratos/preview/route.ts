@@ -5,14 +5,50 @@ import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { normalizeUploadRut } from "@/lib/upload/parse-arrendatarios";
-import { buildContratoLookupKey, parseContratosFile } from "@/lib/upload/parse-contratos";
+import {
+  buildContratoLookupKey,
+  normalizeUploadArrendatarioNombre,
+  parseContratosFile
+} from "@/lib/upload/parse-contratos";
+import { parseStoredUploadPayload } from "@/lib/upload/payload";
 import { validateFileGuards } from "@/lib/upload/parse-utils";
 
 export const runtime = "nodejs";
 
 function toIsoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+export async function GET(request: Request): Promise<NextResponse> {
+  try {
+    await requireWriteAccess();
+    const { searchParams } = new URL(request.url);
+    const cargaId = searchParams.get("cargaId")?.trim() ?? "";
+    if (!cargaId) {
+      return NextResponse.json({ message: "cargaId es obligatorio." }, { status: 400 });
+    }
+
+    const carga = await prisma.cargaDatos.findUnique({ where: { id: cargaId } });
+    if (!carga || carga.tipo !== TipoCargaDatos.RENT_ROLL || !carga.errorDetalle) {
+      return NextResponse.json({ message: "No existe preview para esta carga." }, { status: 404 });
+    }
+
+    const payload = parseStoredUploadPayload(carga.errorDetalle);
+    if (!payload) {
+      return NextResponse.json({ message: "No fue posible leer el preview almacenado." }, { status: 422 });
+    }
+
+    return NextResponse.json({
+      cargaId: carga.id,
+      preview: {
+        rows: payload.rows,
+        summary: payload.summary,
+        warnings: payload.warnings
+      }
+    });
+  } catch (error) {
+    return handleApiError(error);
+  }
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -49,13 +85,13 @@ export async function POST(request: Request): Promise<NextResponse> {
       }),
       prisma.arrendatario.findMany({
         where: { proyectoId },
-        select: { rut: true }
+        select: { nombreComercial: true }
       }),
       prisma.contrato.findMany({
         where: { proyectoId },
         include: {
           local: { select: { codigo: true } },
-          arrendatario: { select: { rut: true } },
+          arrendatario: { select: { nombreComercial: true } },
           tarifas: true,
           ggcc: true
         }
@@ -67,7 +103,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       const snapshot = {
         numeroContrato: contrato.numeroContrato,
         localCodigo: contrato.local.codigo.toUpperCase(),
-        arrendatarioRut: normalizeUploadRut(contrato.arrendatario.rut),
+        arrendatarioNombre: contrato.arrendatario.nombreComercial,
         estado: contrato.estado,
         fechaInicio: toIsoDate(contrato.fechaInicio),
         fechaTermino: toIsoDate(contrato.fechaTermino),
@@ -88,8 +124,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         ggcc: contrato.ggcc.map((ggcc) => ({
           tarifaBaseUfM2: ggcc.tarifaBaseUfM2.toString(),
           pctAdministracion: ggcc.pctAdministracion.toString(),
-          vigenciaDesde: toIsoDate(ggcc.vigenciaDesde),
-          vigenciaHasta: ggcc.vigenciaHasta ? toIsoDate(ggcc.vigenciaHasta) : null,
+          pctReajuste: ggcc.pctReajuste?.toString() ?? null,
           mesesReajuste: ggcc.mesesReajuste ?? null
         }))
       };
@@ -107,15 +142,23 @@ export async function POST(request: Request): Promise<NextResponse> {
     const existingLocalData = new Map(
       locales.map((local) => [local.codigo.toUpperCase(), { glam2: local.glam2.toString() }])
     );
-    const existingArrendatarioRuts = new Set(
-      arrendatarios.map((arrendatario) => normalizeUploadRut(arrendatario.rut))
-    );
+    const existingArrendatarioNombres = new Map<string, number>();
+    for (const arrendatario of arrendatarios) {
+      const normalizedName = normalizeUploadArrendatarioNombre(arrendatario.nombreComercial);
+      if (!normalizedName) {
+        continue;
+      }
+      existingArrendatarioNombres.set(
+        normalizedName,
+        (existingArrendatarioNombres.get(normalizedName) ?? 0) + 1
+      );
+    }
 
     const preview = parseContratosFile(await file.arrayBuffer(), {
       fileName: file.name,
       existingContratos,
       existingLocalData,
-      existingArrendatarioRuts
+      existingArrendatarioNombres
     });
 
     const carga = await prisma.cargaDatos.create({

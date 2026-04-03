@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ContractUploadReviewModal } from "@/components/upload/ContractUploadReviewModal";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/Spinner";
 import {
@@ -15,6 +16,7 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
+import type { ContractManagerOption } from "@/types";
 import type { ApplyReport, PreviewRow, RowStatus, UploadPreview } from "@/types/upload";
 
 type UploadRecord = Record<string, unknown>;
@@ -34,6 +36,10 @@ type UploadSectionProps = {
   applyEndpoint: string;
   templateEndpoint: string;
   columns: ColumnDef[];
+  contractReviewCatalogs?: {
+    localCodes: string[];
+    arrendatarios: ContractManagerOption[];
+  };
 };
 
 type PreviewResponse = {
@@ -168,7 +174,8 @@ export function UploadSection({
   previewEndpoint,
   applyEndpoint,
   templateEndpoint,
-  columns
+  columns,
+  contractReviewCatalogs
 }: UploadSectionProps): JSX.Element {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<UploadPreview<UploadRecord> | null>(null);
@@ -177,6 +184,11 @@ export function UploadSection({
   const [applied, setApplied] = useState<ApplyReport | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [restoringPreview, setRestoringPreview] = useState(false);
+
+  const isContractMode = tipo === "CONTRATOS";
+  const storageKey = `rent-roll-contratos-preview:${proyectoId}`;
 
   const canApply = useMemo(() => {
     if (!preview) {
@@ -185,11 +197,52 @@ export function UploadSection({
     return preview.summary.nuevo + preview.summary.actualizado > 0;
   }, [preview]);
 
+  useEffect(() => {
+    if (!isContractMode || preview || cargaId || restoringPreview) {
+      return;
+    }
+
+    const savedCargaId = window.localStorage.getItem(storageKey);
+    if (!savedCargaId) {
+      return;
+    }
+
+    const controller = new AbortController();
+    setRestoringPreview(true);
+
+    fetch(`${previewEndpoint}?cargaId=${encodeURIComponent(savedCargaId)}`, {
+      method: "GET",
+      signal: controller.signal
+    })
+      .then(async (response) => {
+        const rawPayload = (await response.json()) as unknown;
+        const payload = parsePreviewResponse(rawPayload);
+        if (!response.ok || !payload) {
+          throw new Error(readErrorMessage(rawPayload, "No fue posible restaurar el preview guardado."));
+        }
+        setCargaId(payload.cargaId);
+        setPreview(payload.preview);
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+        window.localStorage.removeItem(storageKey);
+      })
+      .finally(() => setRestoringPreview(false));
+
+    return () => controller.abort();
+  }, [cargaId, isContractMode, preview, previewEndpoint, restoringPreview, storageKey]);
+
   function onFileSelected(nextFile: File | null): void {
     setFile(nextFile);
     setPreview(null);
     setCargaId(null);
     setApplied(null);
+    setReviewOpen(false);
+    if (isContractMode) {
+      window.localStorage.removeItem(storageKey);
+    }
   }
 
   async function handlePreview(): Promise<void> {
@@ -216,6 +269,10 @@ export function UploadSection({
 
       setCargaId(payload.cargaId);
       setPreview(payload.preview);
+      if (isContractMode) {
+        window.localStorage.setItem(storageKey, payload.cargaId);
+        setReviewOpen(true);
+      }
       toast.success("Preview listo. Revisa fila por fila antes de aplicar.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error inesperado al previsualizar.");
@@ -246,6 +303,10 @@ export function UploadSection({
       }
 
       setApplied(payload.report);
+      if (isContractMode) {
+        window.localStorage.removeItem(storageKey);
+        setReviewOpen(false);
+      }
       toast.success("Carga aplicada.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error inesperado al aplicar la carga.");
@@ -254,7 +315,7 @@ export function UploadSection({
     }
   }
 
-  const disabled = !canEdit || previewing || applying;
+  const disabled = !canEdit || previewing || applying || restoringPreview;
 
   return (
     <section className="space-y-4 rounded-md bg-white p-5 shadow-sm">
@@ -325,22 +386,34 @@ export function UploadSection({
             "Previsualizar"
           )}
         </Button>
-        <Button
-          type="button"
-          variant="default"
-          onClick={handleApply}
-          disabled={disabled || !preview || !cargaId || !canApply}
-          className="h-auto gap-2 px-4 py-2 text-sm font-semibold"
-        >
-          {applying ? (
-            <>
-              <Spinner className="border-t-white text-white" />
-              Aplicando...
-            </>
-          ) : (
-            "Aplicar carga"
-          )}
-        </Button>
+        {isContractMode ? (
+          <Button
+            type="button"
+            variant="default"
+            onClick={() => setReviewOpen(true)}
+            disabled={disabled || !preview || !cargaId}
+            className="h-auto gap-2 px-4 py-2 text-sm font-semibold"
+          >
+            Revisar contratos
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="default"
+            onClick={handleApply}
+            disabled={disabled || !preview || !cargaId || !canApply}
+            className="h-auto gap-2 px-4 py-2 text-sm font-semibold"
+          >
+            {applying ? (
+              <>
+                <Spinner className="border-t-white text-white" />
+                Aplicando...
+              </>
+            ) : (
+              "Aplicar carga"
+            )}
+          </Button>
+        )}
       </div>
 
       {!canEdit ? (
@@ -472,6 +545,28 @@ export function UploadSection({
             ) : null}
           </div>
         </div>
+      ) : null}
+
+      {isContractMode && preview && cargaId ? (
+        <ContractUploadReviewModal
+          open={reviewOpen}
+          preview={preview}
+          cargaId={cargaId}
+          previewEndpoint={previewEndpoint}
+          canEdit={canEdit}
+          applying={applying}
+          canApply={canApply}
+          proyectoId={proyectoId}
+          localCodes={contractReviewCatalogs?.localCodes ?? []}
+          arrendatarios={contractReviewCatalogs?.arrendatarios ?? []}
+          onOpenChange={setReviewOpen}
+          onApply={handleApply}
+          onPreviewUpdated={(next) => {
+            setCargaId(next.cargaId);
+            setPreview(next.preview);
+            window.localStorage.setItem(storageKey, next.cargaId);
+          }}
+        />
       ) : null}
     </section>
   );

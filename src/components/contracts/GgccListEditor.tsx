@@ -12,7 +12,6 @@ type GgccListEditorProps = {
   ggcc: GgccListItem[];
   onChange: (updated: GgccListItem[]) => void;
   disabled?: boolean;
-  fechasContrato?: { inicio: string; termino: string };
 };
 
 export function createEmptyGgccItem(): GgccListItem {
@@ -21,8 +20,6 @@ export function createEmptyGgccItem(): GgccListItem {
     tarifaBaseUfM2: "0",
     pctAdministracion: "0",
     pctReajuste: null,
-    vigenciaDesde: "",
-    vigenciaHasta: null,
     proximoReajuste: null,
     mesesReajuste: null
   };
@@ -31,52 +28,26 @@ export function createEmptyGgccItem(): GgccListItem {
 export function GgccListEditor({
   ggcc,
   onChange,
-  disabled = false,
-  fechasContrato
+  disabled = false
 }: GgccListEditorProps): JSX.Element {
-  const canUseContractDates = Boolean(fechasContrato?.inicio && fechasContrato?.termino);
-
   return (
     <div className="rounded-lg border border-slate-200 p-3">
       <div className="mb-2 flex items-center justify-between">
         <h4 className="text-sm font-semibold text-slate-900">GGCC</h4>
-        <div className="flex items-center gap-2">
-          {canUseContractDates ? (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={disabled || ggcc.length === 0}
-              onClick={() => {
-                if (!fechasContrato) {
-                  return;
-                }
-                const next = ggcc.map((item) => ({
-                  ...item,
-                  vigenciaDesde: item.vigenciaDesde || fechasContrato.inicio,
-                  vigenciaHasta: item.vigenciaHasta || fechasContrato.termino
-                }));
-                onChange(next);
-              }}
-              className="h-auto px-2 py-1 text-sm"
-            >
-              Usar fechas del contrato
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            disabled={disabled}
-            onClick={() => onChange([...ggcc, createEmptyGgccItem()])}
-            className="h-auto px-2 py-1 text-sm"
-          >
-            + Agregar
-          </Button>
-        </div>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={disabled}
+          onClick={() => onChange([...ggcc, createEmptyGgccItem()])}
+          className="h-auto px-2 py-1 text-sm"
+        >
+          + Agregar
+        </Button>
       </div>
       <div className="space-y-3">
         {ggcc.map((item, index) => (
           <div key={item._key} className="space-y-1.5">
-            <div className="grid gap-2 md:grid-cols-4">
+            <div className="grid gap-2 md:grid-cols-2">
               <Input
                 type="number"
                 step="any"
@@ -86,28 +57,6 @@ export function GgccListEditor({
                 onChange={(event) => {
                   const next = [...ggcc];
                   next[index] = { ...item, tarifaBaseUfM2: event.target.value };
-                  onChange(next);
-                }}
-                className="rounded-md border border-slate-300 px-2 py-2 text-sm"
-              />
-              <Input
-                type="date"
-                disabled={disabled}
-                value={item.vigenciaDesde}
-                onChange={(event) => {
-                  const next = [...ggcc];
-                  next[index] = { ...item, vigenciaDesde: event.target.value };
-                  onChange(next);
-                }}
-                className="rounded-md border border-slate-300 px-2 py-2 text-sm"
-              />
-              <Input
-                type="date"
-                disabled={disabled}
-                value={item.vigenciaHasta ?? ""}
-                onChange={(event) => {
-                  const next = [...ggcc];
-                  next[index] = { ...item, vigenciaHasta: event.target.value || null };
                   onChange(next);
                 }}
                 className="rounded-md border border-slate-300 px-2 py-2 text-sm"

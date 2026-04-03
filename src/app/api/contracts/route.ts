@@ -193,8 +193,8 @@ export async function POST(request: Request): Promise<NextResponse> {
             tarifaBaseUfM2: new Prisma.Decimal(g.tarifaBaseUfM2),
             pctAdministracion: new Prisma.Decimal(g.pctAdministracion),
             pctReajuste: toDecimal(g.pctReajuste),
-            vigenciaDesde: new Date(g.vigenciaDesde),
-            vigenciaHasta: toDate(g.vigenciaHasta),
+            vigenciaDesde: new Date(payload.fechaInicio),
+            vigenciaHasta: toDate(payload.fechaTermino),
             proximoReajuste: toDate(g.proximoReajuste),
             mesesReajuste: g.mesesReajuste ?? null
           }))
