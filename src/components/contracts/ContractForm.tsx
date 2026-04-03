@@ -99,6 +99,7 @@ function toApiPayload(payload: ContractDraftPayload): ContractFormPayload {
     })),
     ggcc: payload.ggcc.map((item) => ({
       tarifaBaseUfM2: item.tarifaBaseUfM2,
+      pctAdministracion: item.pctAdministracion,
       pctReajuste: item.pctReajuste,
       vigenciaDesde: item.vigenciaDesde,
       vigenciaHasta: item.vigenciaHasta,
@@ -228,6 +229,7 @@ function toDraftGgccFromExtraction(item: ContractExtractionResponse["ggcc"][numb
   return {
     _key: crypto.randomUUID(),
     tarifaBaseUfM2: item.tarifaBaseUfM2,
+    pctAdministracion: "0",
     pctReajuste: item.pctReajuste ?? null,
     vigenciaDesde: item.vigenciaDesde,
     vigenciaHasta: item.vigenciaHasta,
