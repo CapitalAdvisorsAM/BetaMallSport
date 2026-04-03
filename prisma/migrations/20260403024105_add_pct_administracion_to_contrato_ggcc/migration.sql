@@ -1,8 +1,21 @@
 /*
-  Warnings:
-
-  - Added the required column `pctAdministracion` to the `ContratoGGCC` table without a default value. This is not possible if the table is not empty.
-
+  Add pctAdministracion to ContratoGGCC with data migration from Contrato table
 */
--- AlterTable
-ALTER TABLE "ContratoGGCC" ADD COLUMN     "pctAdministracion" DECIMAL(6,3) NOT NULL;
+
+-- First add the column as nullable
+ALTER TABLE "ContratoGGCC" ADD COLUMN "pctAdministracion" DECIMAL(6,3);
+
+-- Copy data from Contrato table (via the relationship)
+UPDATE "ContratoGGCC" AS ggcc
+SET "pctAdministracion" = c."pctAdministracionGgcc"
+FROM "Contrato" AS c
+WHERE ggcc."contratoId" = c.id
+AND c."pctAdministracionGgcc" IS NOT NULL;
+
+-- Set default value for any remaining NULLs (if no matching Contrato or null pctAdministracionGgcc)
+UPDATE "ContratoGGCC"
+SET "pctAdministracion" = 0
+WHERE "pctAdministracion" IS NULL;
+
+-- Now make the column NOT NULL
+ALTER TABLE "ContratoGGCC" ALTER COLUMN "pctAdministracion" SET NOT NULL;
