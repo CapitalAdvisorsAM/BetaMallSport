@@ -119,16 +119,6 @@ export function RentRollChartsSection({
     };
   }, [periodos]);
 
-  if (total === 0) {
-    return (
-      <section className="rounded-md bg-white p-6 shadow-sm">
-        <p className="text-sm text-slate-500">
-          No hay datos de timeline disponibles para este proyecto.
-        </p>
-      </section>
-    );
-  }
-
   const chart2Data = useMemo(
     () => periodos.map((p) => ({ periodo: p.periodo, rentaFijaUf: p.rentaFijaUf, esFuturo: p.esFuturo })),
     [periodos]
@@ -168,6 +158,16 @@ export function RentRollChartsSection({
     const threshold3Months = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 3, 1));
     return `${threshold3Months.getUTCFullYear()}-${String(threshold3Months.getUTCMonth() + 1).padStart(2, "0")}`;
   }, []);
+
+  if (total === 0) {
+    return (
+      <section className="rounded-md bg-white p-6 shadow-sm">
+        <p className="text-sm text-slate-500">
+          No hay datos de timeline disponibles para este proyecto.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-4">
