@@ -2,9 +2,10 @@ import { EstadoContrato, TipoTarifaContrato } from "@prisma/client";
 import { read, utils } from "xlsx";
 import { normalizeUploadRut } from "@/lib/upload/parse-arrendatarios";
 import { MAX_ROWS, normalizeHeaders, parseDate } from "@/lib/upload/parse-utils";
-import type { PreviewRow, UploadPreview, UploadIssue } from "@/types/upload";
+import type { PreviewRow, UploadIssue, UploadPreview } from "@/types/upload";
 
 type RawRow = Record<string, unknown>;
+type GgccTipoInput = "FIJO_UF_M2" | "FIJO_UF";
 
 const requiredColumns = [
   "numerocontrato",
@@ -20,6 +21,7 @@ const requiredColumns = [
 
 const allowedEstadoContrato = new Set(Object.values(EstadoContrato));
 const allowedTipoTarifa = new Set(Object.values(TipoTarifaContrato));
+const allowedGgccTipo = new Set<GgccTipoInput>(["FIJO_UF_M2", "FIJO_UF"]);
 
 export type ContratoUploadRow = {
   numeroContrato: string;
@@ -28,17 +30,21 @@ export type ContratoUploadRow = {
   estado: EstadoContrato;
   fechaInicio: string;
   fechaTermino: string;
+  fechaEntrega: string | null;
+  fechaApertura: string | null;
   tarifaTipo: TipoTarifaContrato;
   tarifaValor: string;
   tarifaVigenciaDesde: string;
   tarifaVigenciaHasta: string | null;
   pctFondoPromocion: string | null;
   codigoCC: string | null;
-  notas: string | null;
-  ggccTarifaBaseUfM2: string | null;
   ggccPctAdministracion: string | null;
+  notas: string | null;
+  ggccTipo: GgccTipoInput | null;
+  ggccValor: string | null;
   ggccVigenciaDesde: string | null;
   ggccVigenciaHasta: string | null;
+  ggccMesesReajuste: number | null;
   anexoFecha: string | null;
   anexoDescripcion: string | null;
 };
@@ -50,8 +56,11 @@ export type ExistingContratoForDiff = {
   estado: EstadoContrato;
   fechaInicio: string;
   fechaTermino: string;
+  fechaEntrega: string | null;
+  fechaApertura: string | null;
   pctFondoPromocion: string | null;
   codigoCC: string | null;
+  ggccPctAdministracion: string | null;
   notas: string | null;
   tarifas: Array<{
     tipo: TipoTarifaContrato;
@@ -64,13 +73,14 @@ export type ExistingContratoForDiff = {
     pctAdministracion: string;
     vigenciaDesde: string;
     vigenciaHasta: string | null;
+    mesesReajuste: number | null;
   }>;
 };
 
 type ParseContratosOptions = {
   fileName?: string;
   existingContratos: Map<string, ExistingContratoForDiff>;
-  existingLocalCodes: Set<string>;
+  existingLocalData: Map<string, { glam2: string }>;
   existingArrendatarioRuts: Set<string>;
 };
 
@@ -108,6 +118,62 @@ function isValidDecimalOrNull(value: string | null): boolean {
   return normalizeDecimal(value) !== null || value === null;
 }
 
+function integerOrNull(value: string | null): number | null {
+  if (!value) {
+    return null;
+  }
+  const numberValue = Number(value);
+  if (!Number.isInteger(numberValue) || numberValue < 1) {
+    return null;
+  }
+  return numberValue;
+}
+
+function normalizeGgccTipo(value: unknown, hasGgccValue: boolean): GgccTipoInput | null {
+  const normalized = asString(value).toUpperCase();
+  if (!normalized) {
+    return hasGgccValue ? "FIJO_UF_M2" : null;
+  }
+  if (!allowedGgccTipo.has(normalized as GgccTipoInput)) {
+    return null;
+  }
+  return normalized as GgccTipoInput;
+}
+
+function parsePositiveDecimal(value: string | null): number | null {
+  const normalized = normalizeDecimal(value);
+  if (!normalized) {
+    return null;
+  }
+  const numberValue = Number(normalized);
+  if (!Number.isFinite(numberValue) || numberValue <= 0) {
+    return null;
+  }
+  return numberValue;
+}
+
+function toStoredGgccTarifaBaseUfM2(
+  ggccTipo: GgccTipoInput | null,
+  ggccValor: string | null,
+  glam2: string | null
+): string | null {
+  const normalizedValue = normalizeDecimal(ggccValor);
+  if (!normalizedValue || !ggccTipo) {
+    return null;
+  }
+
+  if (ggccTipo === "FIJO_UF_M2") {
+    return normalizedValue;
+  }
+
+  const glam2Number = parsePositiveDecimal(glam2);
+  if (!glam2Number) {
+    return null;
+  }
+
+  return normalizeDecimal(String(Number(normalizedValue) / glam2Number));
+}
+
 function emptyRow(): ContratoUploadRow {
   return {
     numeroContrato: "",
@@ -116,17 +182,21 @@ function emptyRow(): ContratoUploadRow {
     estado: EstadoContrato.VIGENTE,
     fechaInicio: "",
     fechaTermino: "",
+    fechaEntrega: null,
+    fechaApertura: null,
     tarifaTipo: TipoTarifaContrato.FIJO_UF_M2,
     tarifaValor: "",
     tarifaVigenciaDesde: "",
     tarifaVigenciaHasta: null,
     pctFondoPromocion: null,
     codigoCC: null,
-    notas: null,
-    ggccTarifaBaseUfM2: null,
     ggccPctAdministracion: null,
+    notas: null,
+    ggccTipo: null,
+    ggccValor: null,
     ggccVigenciaDesde: null,
     ggccVigenciaHasta: null,
+    ggccMesesReajuste: null,
     anexoFecha: null,
     anexoDescripcion: null
   };
@@ -153,7 +223,8 @@ function summarize(rows: PreviewRow<ContratoUploadRow>[]): UploadPreview<Contrat
 
 function compareWithExisting(
   row: ContratoUploadRow,
-  existing: ExistingContratoForDiff
+  existing: ExistingContratoForDiff,
+  glam2: string | null
 ): (keyof ContratoUploadRow)[] {
   const changed: (keyof ContratoUploadRow)[] = [];
 
@@ -171,6 +242,12 @@ function compareWithExisting(
   }
   if (existing.fechaTermino !== row.fechaTermino) {
     changed.push("fechaTermino");
+  }
+  if ((existing.fechaEntrega ?? null) !== row.fechaEntrega) {
+    changed.push("fechaEntrega");
+  }
+  if ((existing.fechaApertura ?? null) !== row.fechaApertura) {
+    changed.push("fechaApertura");
   }
   if (!decimalEquals(existing.pctFondoPromocion, row.pctFondoPromocion)) {
     changed.push("pctFondoPromocion");
@@ -196,19 +273,23 @@ function compareWithExisting(
     }
   }
 
-  if (row.ggccTarifaBaseUfM2 && row.ggccPctAdministracion && row.ggccVigenciaDesde) {
+  if (row.ggccTipo && row.ggccValor && row.ggccPctAdministracion && row.ggccVigenciaDesde) {
     const existingGgcc = existing.ggcc.find((item) => item.vigenciaDesde === row.ggccVigenciaDesde);
-    if (!existingGgcc) {
-      changed.push("ggccTarifaBaseUfM2", "ggccPctAdministracion", "ggccVigenciaDesde");
+    const storedTarifaBase = toStoredGgccTarifaBaseUfM2(row.ggccTipo, row.ggccValor, glam2);
+    if (!existingGgcc || !storedTarifaBase) {
+      changed.push("ggccTipo", "ggccValor", "ggccPctAdministracion", "ggccVigenciaDesde");
     } else {
-      if (!decimalEquals(existingGgcc.tarifaBaseUfM2, row.ggccTarifaBaseUfM2)) {
-        changed.push("ggccTarifaBaseUfM2");
+      if (!decimalEquals(existingGgcc.tarifaBaseUfM2, storedTarifaBase)) {
+        changed.push("ggccTipo", "ggccValor");
       }
       if (!decimalEquals(existingGgcc.pctAdministracion, row.ggccPctAdministracion)) {
         changed.push("ggccPctAdministracion");
       }
       if ((existingGgcc.vigenciaHasta ?? null) !== row.ggccVigenciaHasta) {
         changed.push("ggccVigenciaHasta");
+      }
+      if ((existingGgcc.mesesReajuste ?? null) !== row.ggccMesesReajuste) {
+        changed.push("ggccMesesReajuste");
       }
     }
   }
@@ -281,6 +362,8 @@ export function parseContratosFile(
     const estadoRaw = asString(rawRow.estado).toUpperCase();
     const fechaInicio = parseDate(rawRow.fechainicio);
     const fechaTermino = parseDate(rawRow.fechatermino);
+    const fechaEntrega = parseDate(rawRow.fechaentrega);
+    const fechaApertura = parseDate(rawRow.fechaapertura);
     const tarifaTipoRaw = asString(rawRow.tarifatipo).toUpperCase();
     const tarifaValor = asString(rawRow.tarifavalor).replace(",", ".");
     const tarifaVigenciaDesde = parseDate(rawRow.tarifavigenciadesde);
@@ -290,11 +373,14 @@ export function parseContratosFile(
     const rentaVariableVigenciaHasta = parseDate(rawRow.rentavariablevigenciahasta);
     const pctFondoPromocion = normalizeNullable(rawRow.pctfondopromocion);
     const codigoCC = normalizeNullable(rawRow.codigocc);
-    const notas = normalizeNullable(rawRow.notas);
-    const ggccTarifaBaseUfM2 = normalizeNullable(rawRow.ggcctarifabaseufm2);
     const ggccPctAdministracion = normalizeNullable(rawRow.ggccpctadministracion);
+    const notas = normalizeNullable(rawRow.notas);
+    const legacyGgccValue = normalizeNullable(rawRow.ggcctarifabaseufm2);
+    const ggccValor = normalizeNullable(rawRow.ggccvalor) ?? legacyGgccValue;
+    const ggccTipo = normalizeGgccTipo(rawRow.ggcctipo, Boolean(ggccValor));
     const ggccVigenciaDesde = parseDate(rawRow.ggccvigenciadesde);
     const ggccVigenciaHasta = parseDate(rawRow.ggccvigenciahasta);
+    const ggccMesesReajuste = integerOrNull(normalizeNullable(rawRow.ggccmesesreajuste));
     const anexoFecha = parseDate(rawRow.anexofecha);
     const anexoDescripcion = normalizeNullable(rawRow.anexodescripcion);
 
@@ -320,8 +406,9 @@ export function parseContratosFile(
       };
     }
 
-    const tarifaTipoFinal =
-      (hasAnyRentaVariableValue ? "PORCENTAJE" : tarifaTipoRaw || TipoTarifaContrato.FIJO_UF_M2) as TipoTarifaContrato;
+    const tarifaTipoFinal = (
+      hasAnyRentaVariableValue ? "PORCENTAJE" : tarifaTipoRaw || TipoTarifaContrato.FIJO_UF_M2
+    ) as TipoTarifaContrato;
     const tarifaValorFinal = (hasAnyRentaVariableValue ? rentaVariablePct : tarifaValor) ?? "";
     const tarifaVigenciaDesdeFinal = hasAnyRentaVariableValue
       ? rentaVariableVigenciaDesde
@@ -337,17 +424,21 @@ export function parseContratosFile(
       estado: (estadoRaw || EstadoContrato.VIGENTE) as EstadoContrato,
       fechaInicio: fechaInicio ?? "",
       fechaTermino: fechaTermino ?? "",
+      fechaEntrega,
+      fechaApertura,
       tarifaTipo: tarifaTipoFinal,
       tarifaValor: tarifaValorFinal.replace(",", "."),
       tarifaVigenciaDesde: tarifaVigenciaDesdeFinal ?? "",
       tarifaVigenciaHasta: tarifaVigenciaHastaFinal,
       pctFondoPromocion,
       codigoCC,
-      notas,
-      ggccTarifaBaseUfM2,
       ggccPctAdministracion,
+      notas,
+      ggccTipo,
+      ggccValor,
       ggccVigenciaDesde,
       ggccVigenciaHasta,
+      ggccMesesReajuste,
       anexoFecha,
       anexoDescripcion
     };
@@ -408,12 +499,20 @@ export function parseContratosFile(
         errorMessage: "pctFondoPromocion debe ser numerico cuando se informa."
       };
     }
-    if (!isValidDecimalOrNull(data.ggccTarifaBaseUfM2) || !isValidDecimalOrNull(data.ggccPctAdministracion)) {
+    if (!isValidDecimalOrNull(data.ggccValor) || !isValidDecimalOrNull(data.ggccPctAdministracion)) {
       return {
         rowNumber,
         status: "ERROR",
         data,
         errorMessage: "Campos de GGCC deben ser numericos cuando se informan."
+      };
+    }
+    if (normalizeNullable(rawRow.ggccmesesreajuste) && data.ggccMesesReajuste === null) {
+      return {
+        rowNumber,
+        status: "ERROR",
+        data,
+        errorMessage: "ggccMesesReajuste debe ser un entero mayor o igual a 1."
       };
     }
     if (!/^\d{7,8}-[\dk]$/.test(data.arrendatarioRut)) {
@@ -424,7 +523,9 @@ export function parseContratosFile(
         errorMessage: "arrendatarioRut invalido. Usa formato 12345678-k."
       };
     }
-    if (!options.existingLocalCodes.has(data.localCodigo)) {
+
+    const localData = options.existingLocalData.get(data.localCodigo);
+    if (!localData) {
       return {
         rowNumber,
         status: "ERROR",
@@ -442,10 +543,20 @@ export function parseContratosFile(
     }
 
     const hasAnyGgccValue = Boolean(
-      data.ggccTarifaBaseUfM2 || data.ggccPctAdministracion || data.ggccVigenciaDesde
+      data.ggccTipo ||
+        data.ggccValor ||
+        data.ggccPctAdministracion ||
+        data.ggccVigenciaDesde ||
+        data.ggccVigenciaHasta ||
+        data.ggccMesesReajuste !== null
     );
+    const ggccTarifaBaseUfM2 = toStoredGgccTarifaBaseUfM2(data.ggccTipo, data.ggccValor, localData.glam2);
     const hasCompleteGgcc = Boolean(
-      data.ggccTarifaBaseUfM2 && data.ggccPctAdministracion && data.ggccVigenciaDesde
+      data.ggccTipo &&
+        data.ggccValor &&
+        data.ggccPctAdministracion &&
+        data.ggccVigenciaDesde &&
+        ggccTarifaBaseUfM2
     );
     if (hasAnyGgccValue && !hasCompleteGgcc) {
       return {
@@ -453,7 +564,23 @@ export function parseContratosFile(
         status: "ERROR",
         data,
         errorMessage:
-          "GGCC incompleto: si informas GGCC debes incluir ggccTarifaBaseUfM2, ggccPctAdministracion y ggccVigenciaDesde."
+          "GGCC incompleto: si informas GGCC debes incluir ggccTipo, ggccValor, ggccPctAdministracion y ggccVigenciaDesde."
+      };
+    }
+    if (data.ggccTipo === null && normalizeNullable(rawRow.ggcctipo)) {
+      return {
+        rowNumber,
+        status: "ERROR",
+        data,
+        errorMessage: "ggccTipo invalido. Usa FIJO_UF_M2 o FIJO_UF."
+      };
+    }
+    if (data.ggccTipo === "FIJO_UF" && !parsePositiveDecimal(localData.glam2)) {
+      return {
+        rowNumber,
+        status: "ERROR",
+        data,
+        errorMessage: `El local '${data.localCodigo}' no tiene GLA valida para convertir GGCC FIJO_UF a UF/m2.`
       };
     }
 
@@ -486,7 +613,7 @@ export function parseContratosFile(
       };
     }
 
-    const changedFields = compareWithExisting(data, existing);
+    const changedFields = compareWithExisting(data, existing, localData.glam2);
     if (changedFields.length === 0) {
       return {
         rowNumber,
@@ -512,6 +639,6 @@ export function parseContratosFile(
 
 export function buildErrorCsv(issues: UploadIssue[]): string {
   const header = "rowNumber,message";
-  const lines = issues.map((issue) => `${issue.rowNumber},"${issue.message.replaceAll('"', '""')}"`);
+  const lines = issues.map((issue) => `${issue.rowNumber},\"${issue.message.replaceAll("\"", "\"\"")}\"`);
   return [header, ...lines].join("\n");
 }

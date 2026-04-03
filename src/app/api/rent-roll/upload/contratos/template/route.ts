@@ -73,6 +73,58 @@ const columns: ColumnDef[] = [
     headerPalette: "navy"
   },
   {
+    key: "fechaEntrega",
+    label: "Fecha Entrega",
+    required: false,
+    description: "Opcional. YYYY-MM-DD o DD/MM/YYYY",
+    format: "date",
+    width: 14,
+    headerPalette: "navy"
+  },
+  {
+    key: "fechaApertura",
+    label: "Fecha Apertura",
+    required: false,
+    description: "Opcional. YYYY-MM-DD o DD/MM/YYYY",
+    format: "date",
+    width: 14,
+    headerPalette: "navy"
+  },
+  {
+    key: "pctFondoPromocion",
+    label: "% Fondo Promocion",
+    required: false,
+    description: "Opcional. Porcentaje aplicado al contrato. Ej: 2.5",
+    format: "number",
+    width: 18,
+    headerPalette: "slate"
+  },
+  {
+    key: "codigoCC",
+    label: "Codigo CC",
+    required: false,
+    description: "Opcional. Codigo de centro de costo asociado al contrato",
+    width: 16,
+    headerPalette: "slate"
+  },
+  {
+    key: "ggccPctAdministracion",
+    label: "GGCC % Administracion",
+    required: false,
+    description: "% adicional por gestion. Ej: 5 (para 5%)",
+    format: "number",
+    width: 22,
+    headerPalette: "slate"
+  },
+  {
+    key: "notas",
+    label: "Notas",
+    required: false,
+    description: "Opcional. Observaciones internas del contrato",
+    width: 28,
+    headerPalette: "slate"
+  },
+  {
     key: "tarifaTipo",
     label: "Tipo Tarifa",
     required: true,
@@ -139,21 +191,24 @@ const columns: ColumnDef[] = [
     headerPalette: "gold"
   },
   {
-    key: "ggccTarifaBaseUfM2",
-    label: "GGCC Tarifa Base (UF/m2)",
+    key: "ggccTipo",
+    label: "GGCC Tipo",
     required: false,
-    description: "Costo gasto comun por m2. Ej: 0.37",
-    format: "number",
-    width: 24,
+    description: "FIJO_UF_M2=por m2 | FIJO_UF=monto fijo total",
+    validation: {
+      type: "list",
+      values: ["FIJO_UF_M2", "FIJO_UF"]
+    },
+    width: 16,
     headerPalette: "teal"
   },
   {
-    key: "ggccPctAdministracion",
-    label: "GGCC % Administracion",
+    key: "ggccValor",
+    label: "GGCC Valor",
     required: false,
-    description: "% adicional por gestion. Ej: 5 (para 5%)",
+    description: "UF/m2 si FIJO_UF_M2 | UF total si FIJO_UF. Ej: 0.37 o 37",
     format: "number",
-    width: 22,
+    width: 18,
     headerPalette: "teal"
   },
   {
@@ -172,6 +227,15 @@ const columns: ColumnDef[] = [
     description: "Vacio = indefinido",
     format: "date",
     width: 14,
+    headerPalette: "teal"
+  },
+  {
+    key: "ggccMesesReajuste",
+    label: "GGCC Meses Reajuste",
+    required: false,
+    description: "Meses hasta proximo reajuste. Ej: 12",
+    format: "number",
+    width: 20,
     headerPalette: "teal"
   },
   {
@@ -210,6 +274,12 @@ export async function GET(): Promise<NextResponse> {
           estado: "VIGENTE",
           fechaInicio: "2025-01-01",
           fechaTermino: "2028-12-31",
+          fechaEntrega: "2024-12-15",
+          fechaApertura: "2025-01-10",
+          pctFondoPromocion: "2.5",
+          codigoCC: "CC-101",
+          ggccPctAdministracion: "5",
+          notas: "Contrato principal local L-101",
           tarifaTipo: "FIJO_UF_M2",
           tarifaValor: "0.45",
           tarifaVigenciaDesde: "2025-01-01",
@@ -217,10 +287,11 @@ export async function GET(): Promise<NextResponse> {
           rentaVariablePct: "",
           rentaVariableVigenciaDesde: "",
           rentaVariableVigenciaHasta: "",
-          ggccTarifaBaseUfM2: "0.37",
-          ggccPctAdministracion: "5",
+          ggccTipo: "FIJO_UF_M2",
+          ggccValor: "0.37",
           ggccVigenciaDesde: "2025-01-01",
           ggccVigenciaHasta: "",
+          ggccMesesReajuste: "12",
           anexoFecha: "",
           anexoDescripcion: ""
         },
@@ -231,6 +302,12 @@ export async function GET(): Promise<NextResponse> {
           estado: "VIGENTE",
           fechaInicio: "2025-01-01",
           fechaTermino: "2028-12-31",
+          fechaEntrega: "2024-12-15",
+          fechaApertura: "2025-01-10",
+          pctFondoPromocion: "2.5",
+          codigoCC: "CC-101",
+          ggccPctAdministracion: "5",
+          notas: "Contrato principal local L-101",
           tarifaTipo: "",
           tarifaValor: "",
           tarifaVigenciaDesde: "",
@@ -238,10 +315,11 @@ export async function GET(): Promise<NextResponse> {
           rentaVariablePct: "5.00",
           rentaVariableVigenciaDesde: "2025-01-01",
           rentaVariableVigenciaHasta: "",
-          ggccTarifaBaseUfM2: "",
-          ggccPctAdministracion: "",
+          ggccTipo: "",
+          ggccValor: "",
           ggccVigenciaDesde: "",
           ggccVigenciaHasta: "",
+          ggccMesesReajuste: "",
           anexoFecha: "",
           anexoDescripcion: ""
         },
@@ -252,6 +330,12 @@ export async function GET(): Promise<NextResponse> {
           estado: "GRACIA",
           fechaInicio: "2026-01-01",
           fechaTermino: "2027-12-31",
+          fechaEntrega: "",
+          fechaApertura: "",
+          pctFondoPromocion: "",
+          codigoCC: "CC-BOD-01",
+          ggccPctAdministracion: "",
+          notas: "Bodega con periodo de gracia inicial",
           tarifaTipo: "FIJO_UF",
           tarifaValor: "35",
           tarifaVigenciaDesde: "2026-01-01",
@@ -259,10 +343,11 @@ export async function GET(): Promise<NextResponse> {
           rentaVariablePct: "",
           rentaVariableVigenciaDesde: "",
           rentaVariableVigenciaHasta: "",
-          ggccTarifaBaseUfM2: "",
-          ggccPctAdministracion: "",
+          ggccTipo: "",
+          ggccValor: "",
           ggccVigenciaDesde: "",
           ggccVigenciaHasta: "",
+          ggccMesesReajuste: "",
           anexoFecha: "",
           anexoDescripcion: ""
         }

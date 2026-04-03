@@ -13,7 +13,8 @@ import type { ApplyReport, PreviewRow, UploadIssue } from "@/types/upload";
 
 export const runtime = "nodejs";
 
-type LocalMap = Map<string, string>;
+type GgccTipoInput = "FIJO_UF_M2" | "FIJO_UF";
+type LocalMap = Map<string, { id: string; glam2: string }>;
 type ArrendatarioMap = Map<string, string>;
 type ExistingContratoSnapshot = Prisma.ContratoGetPayload<{ include: { tarifas: true; ggcc: true } }>;
 
@@ -25,17 +26,21 @@ type ContratoApplyRow = {
   estado: EstadoContrato;
   fechaInicio: string;
   fechaTermino: string;
+  fechaEntrega: string | null;
+  fechaApertura: string | null;
   tarifaTipo: TipoTarifaContrato;
   tarifaValor: string;
   tarifaVigenciaDesde: string;
   tarifaVigenciaHasta: string | null;
   pctFondoPromocion: string | null;
   codigoCC: string | null;
-  notas: string | null;
-  ggccTarifaBaseUfM2: string | null;
   ggccPctAdministracion: string | null;
+  notas: string | null;
+  ggccTipo: GgccTipoInput | null;
+  ggccValor: string | null;
   ggccVigenciaDesde: string | null;
   ggccVigenciaHasta: string | null;
+  ggccMesesReajuste: number | null;
   anexoFecha: string | null;
   anexoDescripcion: string | null;
 };
@@ -70,11 +75,17 @@ type TarifaApplyInput = Pick<
 >;
 type GgccApplyInput = Pick<
   ContratoApplyRow,
-  "ggccTarifaBaseUfM2" | "ggccPctAdministracion" | "ggccVigenciaDesde" | "ggccVigenciaHasta"
+  | "ggccTipo"
+  | "ggccValor"
+  | "ggccPctAdministracion"
+  | "ggccVigenciaDesde"
+  | "ggccVigenciaHasta"
+  | "ggccMesesReajuste"
 >;
 
 const allowedEstadoContrato = new Set(Object.values(EstadoContrato));
 const allowedTipoTarifa = new Set(Object.values(TipoTarifaContrato));
+const allowedGgccTipo = new Set<GgccTipoInput>(["FIJO_UF_M2", "FIJO_UF"]);
 
 function asString(value: unknown): string {
   if (typeof value === "string") {
@@ -117,6 +128,52 @@ function dateOrNull(value: string | null): Date | null {
   return new Date(parsed);
 }
 
+function integerOrNull(value: string | null): number | null {
+  if (!value) {
+    return null;
+  }
+  const numberValue = Number(value);
+  if (!Number.isInteger(numberValue) || numberValue < 1) {
+    return null;
+  }
+  return numberValue;
+}
+
+function normalizeGgccTipo(value: unknown, hasGgccValue: boolean): GgccTipoInput | null {
+  const normalized = asString(value).toUpperCase();
+  if (!normalized) {
+    return hasGgccValue ? "FIJO_UF_M2" : null;
+  }
+  if (!allowedGgccTipo.has(normalized as GgccTipoInput)) {
+    return null;
+  }
+  return normalized as GgccTipoInput;
+}
+
+function hasValidPositiveDecimal(value: string | null): boolean {
+  if (!value) {
+    return false;
+  }
+  const numberValue = Number(value.replace(",", "."));
+  return Number.isFinite(numberValue) && numberValue > 0;
+}
+
+function toStoredGgccTarifaBaseUfM2(ggcc: GgccApplyInput, localGlam2: string): Prisma.Decimal | null {
+  const value = decimalOrNull(ggcc.ggccValor);
+  if (!value || !ggcc.ggccTipo) {
+    return null;
+  }
+  if (ggcc.ggccTipo === "FIJO_UF_M2") {
+    return value;
+  }
+
+  if (!hasValidPositiveDecimal(localGlam2)) {
+    return null;
+  }
+
+  return value.div(new Prisma.Decimal(localGlam2));
+}
+
 function normalizeContratoRow(rowNumber: number, data: Record<string, unknown>): ContratoApplyRow | null {
   const numeroContrato = asString(data.numeroContrato);
   const localCodigo = asString(data.localCodigo).toUpperCase();
@@ -124,17 +181,24 @@ function normalizeContratoRow(rowNumber: number, data: Record<string, unknown>):
   const estado = asString(data.estado).toUpperCase();
   const fechaInicio = parseDate(data.fechaInicio);
   const fechaTermino = parseDate(data.fechaTermino);
+  const fechaEntrega = parseDate(data.fechaEntrega);
+  const fechaApertura = parseDate(data.fechaApertura);
   const tarifaTipo = asString(data.tarifaTipo).toUpperCase();
   const tarifaValor = asString(data.tarifaValor).replace(",", ".");
   const tarifaVigenciaDesde = parseDate(data.tarifaVigenciaDesde);
   const tarifaVigenciaHasta = parseDate(data.tarifaVigenciaHasta);
   const pctFondoPromocion = normalizeNullable(data.pctFondoPromocion);
   const codigoCC = normalizeNullable(data.codigoCC);
-  const notas = normalizeNullable(data.notas);
-  const ggccTarifaBaseUfM2 = normalizeNullable(data.ggccTarifaBaseUfM2);
   const ggccPctAdministracion = normalizeNullable(data.ggccPctAdministracion);
+  const notas = normalizeNullable(data.notas);
+  const legacyGgccValue = normalizeNullable(data.ggccTarifaBaseUfM2);
+  const ggccValor = normalizeNullable(data.ggccValor) ?? legacyGgccValue;
+  const ggccTipoRaw = asString(data.ggccTipo).toUpperCase();
+  const ggccTipo = normalizeGgccTipo(data.ggccTipo, Boolean(ggccValor));
   const ggccVigenciaDesde = parseDate(data.ggccVigenciaDesde);
   const ggccVigenciaHasta = parseDate(data.ggccVigenciaHasta);
+  const ggccMesesReajusteRaw = normalizeNullable(data.ggccMesesReajuste);
+  const ggccMesesReajuste = integerOrNull(ggccMesesReajusteRaw);
   const anexoFecha = parseDate(data.anexoFecha);
   const anexoDescripcion = normalizeNullable(data.anexoDescripcion);
 
@@ -163,11 +227,24 @@ function normalizeContratoRow(rowNumber: number, data: Record<string, unknown>):
   if (!isValidDecimalOrNull(pctFondoPromocion)) {
     return null;
   }
-  if (!isValidDecimalOrNull(ggccTarifaBaseUfM2) || !isValidDecimalOrNull(ggccPctAdministracion)) {
+  if (!isValidDecimalOrNull(ggccValor) || !isValidDecimalOrNull(ggccPctAdministracion)) {
     return null;
   }
-  const hasAnyGgccValue = Boolean(ggccTarifaBaseUfM2 || ggccPctAdministracion || ggccVigenciaDesde);
-  const hasCompleteGgcc = Boolean(ggccTarifaBaseUfM2 && ggccPctAdministracion && ggccVigenciaDesde);
+  if (ggccMesesReajusteRaw && ggccMesesReajuste === null) {
+    return null;
+  }
+  if (ggccTipoRaw && ggccTipo === null) {
+    return null;
+  }
+  const hasAnyGgccValue = Boolean(
+    ggccTipo ||
+      ggccValor ||
+      ggccPctAdministracion ||
+      ggccVigenciaDesde ||
+      ggccVigenciaHasta ||
+      ggccMesesReajuste !== null
+  );
+  const hasCompleteGgcc = Boolean(ggccTipo && ggccValor && ggccPctAdministracion && ggccVigenciaDesde);
   if (hasAnyGgccValue && !hasCompleteGgcc) {
     return null;
   }
@@ -186,17 +263,21 @@ function normalizeContratoRow(rowNumber: number, data: Record<string, unknown>):
     estado: estado as EstadoContrato,
     fechaInicio,
     fechaTermino,
+    fechaEntrega,
+    fechaApertura,
     tarifaTipo: tarifaTipo as TipoTarifaContrato,
     tarifaValor,
     tarifaVigenciaDesde,
     tarifaVigenciaHasta,
     pctFondoPromocion,
     codigoCC,
-    notas,
-    ggccTarifaBaseUfM2,
     ggccPctAdministracion,
+    notas,
+    ggccTipo,
+    ggccValor,
     ggccVigenciaDesde,
     ggccVigenciaHasta,
+    ggccMesesReajuste,
     anexoFecha,
     anexoDescripcion
   };
@@ -209,10 +290,10 @@ async function applyContrato(
   localMap: LocalMap,
   arrendatarioMap: ArrendatarioMap
 ): Promise<ApplyContratoResult> {
-  const localId = localMap.get(row.localCodigo.toUpperCase());
+  const localData = localMap.get(row.localCodigo.toUpperCase());
   const arrendatarioId = arrendatarioMap.get(row.arrendatarioRut.toLowerCase());
 
-  if (!localId || !arrendatarioId) {
+  if (!localData || !arrendatarioId) {
     return {
       issue: {
         rowNumber: row.rowNumber,
@@ -240,21 +321,25 @@ async function applyContrato(
     },
     create: {
       proyectoId,
-      localId,
+      localId: localData.id,
       arrendatarioId,
       numeroContrato: row.numeroContrato,
       fechaInicio: new Date(row.fechaInicio),
       fechaTermino: new Date(row.fechaTermino),
+      fechaEntrega: dateOrNull(row.fechaEntrega),
+      fechaApertura: dateOrNull(row.fechaApertura),
       estado: row.estado,
       pctFondoPromocion: decimalOrNull(row.pctFondoPromocion),
       codigoCC: row.codigoCC,
       notas: row.notas
     },
     update: {
-      localId,
+      localId: localData.id,
       arrendatarioId,
       fechaInicio: new Date(row.fechaInicio),
       fechaTermino: new Date(row.fechaTermino),
+      fechaEntrega: dateOrNull(row.fechaEntrega),
+      fechaApertura: dateOrNull(row.fechaApertura),
       estado: row.estado,
       pctFondoPromocion: decimalOrNull(row.pctFondoPromocion),
       codigoCC: row.codigoCC,
@@ -304,9 +389,15 @@ async function applyTarifas(
 async function applyGGCC(
   tx: Prisma.TransactionClient,
   contratoId: string,
-  ggcc: GgccApplyInput
+  ggcc: GgccApplyInput,
+  localGlam2: string
 ): Promise<void> {
-  if (!ggcc.ggccTarifaBaseUfM2 || !ggcc.ggccPctAdministracion || !ggcc.ggccVigenciaDesde) {
+  if (!ggcc.ggccTipo || !ggcc.ggccValor || !ggcc.ggccPctAdministracion || !ggcc.ggccVigenciaDesde) {
+    return;
+  }
+
+  const tarifaBaseUfM2 = toStoredGgccTarifaBaseUfM2(ggcc, localGlam2);
+  if (!tarifaBaseUfM2) {
     return;
   }
 
@@ -320,9 +411,10 @@ async function applyGGCC(
     await tx.contratoGGCC.update({
       where: { id: ggccExists.id },
       data: {
-        tarifaBaseUfM2: new Prisma.Decimal(ggcc.ggccTarifaBaseUfM2),
+        tarifaBaseUfM2,
         pctAdministracion: new Prisma.Decimal(ggcc.ggccPctAdministracion),
-        vigenciaHasta: dateOrNull(ggcc.ggccVigenciaHasta)
+        vigenciaHasta: dateOrNull(ggcc.ggccVigenciaHasta),
+        mesesReajuste: ggcc.ggccMesesReajuste ?? null
       }
     });
     return;
@@ -331,10 +423,12 @@ async function applyGGCC(
   await tx.contratoGGCC.create({
     data: {
       contratoId,
-      tarifaBaseUfM2: new Prisma.Decimal(ggcc.ggccTarifaBaseUfM2),
+      tarifaBaseUfM2,
       pctAdministracion: new Prisma.Decimal(ggcc.ggccPctAdministracion),
       vigenciaDesde: new Date(ggcc.ggccVigenciaDesde),
-      vigenciaHasta: dateOrNull(ggcc.ggccVigenciaHasta)
+      vigenciaHasta: dateOrNull(ggcc.ggccVigenciaHasta),
+      proximoReajuste: null,
+      mesesReajuste: ggcc.ggccMesesReajuste ?? null
     }
   });
 }
@@ -405,14 +499,16 @@ export async function POST(request: Request): Promise<NextResponse> {
     const [locales, arrendatarios] = await Promise.all([
       prisma.local.findMany({
         where: { proyectoId: carga.proyectoId },
-        select: { id: true, codigo: true }
+        select: { id: true, codigo: true, glam2: true }
       }),
       prisma.arrendatario.findMany({
         where: { proyectoId: carga.proyectoId },
         select: { id: true, rut: true }
       })
     ]);
-    const localesMap = new Map(locales.map((item) => [item.codigo.toUpperCase(), item.id]));
+    const localesMap = new Map(
+      locales.map((item) => [item.codigo.toUpperCase(), { id: item.id, glam2: item.glam2.toString() }])
+    );
     const arrendatariosMap = new Map(
       arrendatarios.map((item) => [normalizeUploadRut(item.rut), item.id])
     );
@@ -424,81 +520,95 @@ export async function POST(request: Request): Promise<NextResponse> {
     let skipped = 0;
     const rejectedRows: UploadIssue[] = [];
 
-    await prisma.$transaction(async (tx) => {
-      for (const row of payload.rows) {
-        if (row.status === "ERROR") {
-          rejectedRows.push({
-            rowNumber: row.rowNumber,
-            message: row.errorMessage ?? "Fila invalida en preview."
-          });
-          continue;
+    await prisma.$transaction(
+      async (tx) => {
+        for (const row of payload.rows) {
+          if (row.status === "ERROR") {
+            rejectedRows.push({
+              rowNumber: row.rowNumber,
+              message: row.errorMessage ?? "Fila invalida en preview."
+            });
+            continue;
+          }
+          if (row.status === "UNCHANGED") {
+            skipped += 1;
+            continue;
+          }
+
+          const normalized = normalizeContratoRow(row.rowNumber, row.data);
+          if (!normalized) {
+            rejectedRows.push({
+              rowNumber: row.rowNumber,
+              message: "No se pudo normalizar la fila para aplicar."
+            });
+            continue;
+          }
+
+          const localData = localesMap.get(normalized.localCodigo.toUpperCase());
+          if (normalized.ggccTipo === "FIJO_UF" && !hasValidPositiveDecimal(localData?.glam2 ?? null)) {
+            rejectedRows.push({
+              rowNumber: normalized.rowNumber,
+              message: `El local '${normalized.localCodigo}' no tiene GLA valida para convertir GGCC FIJO_UF a UF/m2.`
+            });
+            continue;
+          }
+
+          const contratoResult = await applyContrato(
+            tx,
+            normalized,
+            carga.proyectoId,
+            localesMap,
+            arrendatariosMap
+          );
+
+          if (contratoResult.issue) {
+            rejectedRows.push(contratoResult.issue);
+            continue;
+          }
+
+          const { before, contrato } = contratoResult;
+
+          if (before) {
+            updated += 1;
+          } else {
+            created += 1;
+          }
+
+          const tarifaKey = `${contrato.id}-${normalized.tarifaTipo}-${normalized.tarifaVigenciaDesde}`;
+          if (duplicatedTarifaKey.has(tarifaKey)) {
+            rejectedRows.push({
+              rowNumber: normalized.rowNumber,
+              message: "Tarifa duplicada en el archivo para tipo + vigenciaDesde."
+            });
+            continue;
+          }
+          duplicatedTarifaKey.add(tarifaKey);
+
+          await applyTarifas(tx, contrato.id, normalized);
+          if (localData) {
+            await applyGGCC(tx, contrato.id, normalized, localData.glam2);
+          }
+
+          if (normalized.anexoFecha && normalized.anexoDescripcion) {
+            await tx.contratoAnexo.create({
+              data: {
+                contratoId: contrato.id,
+                fecha: new Date(normalized.anexoFecha),
+                descripcion: normalized.anexoDescripcion,
+                camposModificados: {
+                  origen: "CARGA_RENT_ROLL",
+                  rowNumber: normalized.rowNumber
+                },
+                snapshotAntes: before ? before : {},
+                snapshotDespues: contrato,
+                usuarioId: session.user.id
+              }
+            });
+          }
         }
-        if (row.status === "UNCHANGED") {
-          skipped += 1;
-          continue;
-        }
-
-        const normalized = normalizeContratoRow(row.rowNumber, row.data);
-        if (!normalized) {
-          rejectedRows.push({
-            rowNumber: row.rowNumber,
-            message: "No se pudo normalizar la fila para aplicar."
-          });
-          continue;
-        }
-
-        const contratoResult = await applyContrato(
-          tx,
-          normalized,
-          carga.proyectoId,
-          localesMap,
-          arrendatariosMap
-        );
-
-        if (contratoResult.issue) {
-          rejectedRows.push(contratoResult.issue);
-          continue;
-        }
-
-        const { before, contrato } = contratoResult;
-
-        if (before) {
-          updated += 1;
-        } else {
-          created += 1;
-        }
-
-        const tarifaKey = `${contrato.id}-${normalized.tarifaTipo}-${normalized.tarifaVigenciaDesde}`;
-        if (duplicatedTarifaKey.has(tarifaKey)) {
-          rejectedRows.push({
-            rowNumber: normalized.rowNumber,
-            message: "Tarifa duplicada en el archivo para tipo + vigenciaDesde."
-          });
-          continue;
-        }
-        duplicatedTarifaKey.add(tarifaKey);
-
-        await applyTarifas(tx, contrato.id, normalized);
-        await applyGGCC(tx, contrato.id, normalized);
-
-        if (normalized.anexoFecha && normalized.anexoDescripcion) {
-          await tx.contratoAnexo.create({
-            data: {
-              contratoId: contrato.id,
-              fecha: new Date(normalized.anexoFecha),
-              descripcion: normalized.anexoDescripcion,
-              camposModificados: {
-                origen: "CARGA_RENT_ROLL",
-                rowNumber: normalized.rowNumber
-              },
-              snapshotAntes: before ? before : {},
-              snapshotDespues: contrato,
-              usuarioId: session.user.id
-            }
-          });
-        }
-      }
-    }, { timeout: 60000, maxWait: 10000 });
+      },
+      { timeout: 60000, maxWait: 10000 }
+    );
 
     const report: ApplyReport = {
       created,
