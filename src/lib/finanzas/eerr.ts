@@ -1,4 +1,4 @@
-import type { EerrData, EerrLine, EerrSection } from "@/types/finanzas";
+import type { EerrCategoria, EerrData, EerrDetalleResponse, EerrLine, EerrLocalDetalle, EerrSection } from "@/types/finanzas";
 
 type NumericLike = number | string | { toString(): string };
 
@@ -7,6 +7,15 @@ type RegistroContableBase = {
   grupo3: string;
   periodo: Date;
   valorUf: NumericLike;
+};
+
+export type RegistroContableDetalle = {
+  periodo: Date;
+  valorUf: NumericLike;
+  categoriaTipo: string | null;
+  localId: string;
+  local: { codigo: string; nombre: string };
+  arrendatario: { nombreComercial: string } | null;
 };
 
 export const COST_GROUPS = new Set([
@@ -94,4 +103,42 @@ export function buildEerrData(
     secciones: [...sections.values()],
     ebitda
   };
+}
+
+export function buildEerrDetalle(registros: RegistroContableDetalle[]): EerrDetalleResponse {
+  const catMap = new Map<string, { cat: EerrCategoria; localMap: Map<string, EerrLocalDetalle> }>();
+
+  for (const r of registros) {
+    const catKey = r.categoriaTipo ?? "Sin categoría";
+    const periodoKey = r.periodo.toISOString().slice(0, 7);
+    const valor = Number(r.valorUf);
+
+    if (!catMap.has(catKey)) {
+      catMap.set(catKey, {
+        cat: { categoriaTipo: catKey, porPeriodo: {}, total: 0, locales: [] },
+        localMap: new Map()
+      });
+    }
+    const { cat, localMap } = catMap.get(catKey)!;
+    cat.porPeriodo[periodoKey] = (cat.porPeriodo[periodoKey] ?? 0) + valor;
+    cat.total += valor;
+
+    if (!localMap.has(r.localId)) {
+      const loc: EerrLocalDetalle = {
+        localId: r.localId,
+        localCodigo: r.local.codigo,
+        localNombre: r.local.nombre,
+        arrendatarioNombre: r.arrendatario?.nombreComercial ?? null,
+        porPeriodo: {},
+        total: 0
+      };
+      localMap.set(r.localId, loc);
+      cat.locales.push(loc);
+    }
+    const loc = localMap.get(r.localId)!;
+    loc.porPeriodo[periodoKey] = (loc.porPeriodo[periodoKey] ?? 0) + valor;
+    loc.total += valor;
+  }
+
+  return { categorias: [...catMap.values()].map(({ cat }) => cat) };
 }

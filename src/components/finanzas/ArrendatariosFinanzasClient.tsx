@@ -7,7 +7,7 @@ import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolbar";
 import { OccupancyBadge } from "@/components/finanzas/OccupancyBadge";
-import type { ProjectOption, TenantFinanceRow } from "@/types/finanzas";
+import type { ArrendatarioPartidaDetalle, ProjectOption, TenantFinanceRow } from "@/types/finanzas";
 import { formatUf } from "@/lib/utils";
 
 type ArrendatariosFinanzasClientProps = {
@@ -29,20 +29,23 @@ export function ArrendatariosFinanzasClient({
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Detalle por partida: clave "tenantId::periodo"
+  const [partidaAbierta, setPartidaAbierta] = useState<string | null>(null);
+  const [partidaCache, setPartidaCache] = useState<Map<string, ArrendatarioPartidaDetalle[]>>(new Map());
+  const [loadingPartida, setLoadingPartida] = useState<Set<string>>(new Set());
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ proyectoId: selectedProjectId });
-      if (desde) {
-        params.set("desde", desde);
-      }
-      if (hasta) {
-        params.set("hasta", hasta);
-      }
-
+      if (desde) params.set("desde", desde);
+      if (hasta) params.set("hasta", hasta);
       const response = await fetch(`/api/finanzas/arrendatario?${params.toString()}`);
       const payload = (await response.json()) as { arrendatarios?: TenantFinanceRow[] };
       setData(payload.arrendatarios ?? []);
+      setExpandedId(null);
+      setPartidaAbierta(null);
+      setPartidaCache(new Map());
     } finally {
       setLoading(false);
     }
@@ -56,6 +59,30 @@ export function ArrendatariosFinanzasClient({
     () => [...new Set(data.flatMap((tenant) => tenant.periodos))].sort(),
     [data]
   );
+
+  async function togglePartida(tenantId: string, periodo: string): Promise<void> {
+    const key = `${tenantId}::${periodo}`;
+    if (partidaAbierta === key) {
+      setPartidaAbierta(null);
+      return;
+    }
+    setPartidaAbierta(key);
+    if (partidaCache.has(key)) return;
+
+    setLoadingPartida((prev) => new Set(prev).add(key));
+    try {
+      const params = new URLSearchParams({ proyectoId: selectedProjectId, arrendatarioId: tenantId, periodo });
+      const res = await fetch(`/api/finanzas/arrendatario/detalle?${params.toString()}`);
+      const payload = (await res.json()) as { partidas: ArrendatarioPartidaDetalle[] };
+      setPartidaCache((prev) => new Map(prev).set(key, payload.partidas ?? []));
+    } finally {
+      setLoadingPartida((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  }
 
   return (
     <main className="space-y-4">
@@ -109,6 +136,7 @@ export function ArrendatariosFinanzasClient({
               <tbody className="divide-y divide-slate-100">
                 {data.map((tenant) => (
                   <Fragment key={tenant.id}>
+                    {/* Fila principal del arrendatario */}
                     <tr
                       className="cursor-pointer hover:bg-slate-50/60"
                       onClick={() => setExpandedId(expandedId === tenant.id ? null : tenant.id)}
@@ -134,8 +162,9 @@ export function ArrendatariosFinanzasClient({
                       </td>
                     </tr>
 
+                    {/* Expansión: tabla de períodos */}
                     {expandedId === tenant.id && periods.length > 0 ? (
-                      <tr key={`${tenant.id}-detalle`} className="bg-slate-50/40">
+                      <tr key={`${tenant.id}-periodos`} className="bg-slate-50/40">
                         <td colSpan={5} className="px-4 py-3">
                           <table className="w-full text-xs">
                             <thead>
@@ -151,20 +180,68 @@ export function ArrendatariosFinanzasClient({
                                 const billed = tenant.facturacionPorPeriodo[period] ?? 0;
                                 const sales = tenant.ventasPorPeriodo[period] ?? 0;
                                 const occupancy = sales > 0 ? (billed / sales) * 100 : null;
+                                const partKey = `${tenant.id}::${period}`;
+                                const isOpen = partidaAbierta === partKey;
+                                const isLoading = loadingPartida.has(partKey);
+                                const partidas = partidaCache.get(partKey);
 
                                 return (
-                                  <tr key={period} className="border-b border-slate-50">
-                                    <td className="py-1 text-slate-600">{period}</td>
-                                    <td className="py-1 text-right text-slate-700">
-                                      {billed > 0 ? formatUf(billed) : "—"}
-                                    </td>
-                                    <td className="py-1 text-right text-slate-600">
-                                      {sales > 0 ? formatUf(sales) : "—"}
-                                    </td>
-                                    <td className="py-1 text-center">
-                                      <OccupancyBadge pct={occupancy} />
-                                    </td>
-                                  </tr>
+                                  <Fragment key={period}>
+                                    <tr
+                                      className={`cursor-pointer border-b border-slate-50 ${billed > 0 ? "hover:bg-brand-700/5" : ""}`}
+                                      onClick={() => {
+                                        if (billed > 0) void togglePartida(tenant.id, period);
+                                      }}
+                                    >
+                                      <td className="py-1.5 text-slate-600">
+                                        {billed > 0 && (
+                                          <span className="mr-1.5 text-slate-300">
+                                            {isLoading ? "⏳" : isOpen ? "▼" : "▶"}
+                                          </span>
+                                        )}
+                                        {period}
+                                      </td>
+                                      <td className="py-1.5 text-right font-medium text-slate-700">
+                                        {billed > 0 ? formatUf(billed) : "—"}
+                                      </td>
+                                      <td className="py-1.5 text-right text-slate-600">
+                                        {sales > 0 ? formatUf(sales) : "—"}
+                                      </td>
+                                      <td className="py-1.5 text-center">
+                                        <OccupancyBadge pct={occupancy} />
+                                      </td>
+                                    </tr>
+
+                                    {/* Detalle de partidas del período */}
+                                    {isOpen && partidas && partidas.length > 0 && (
+                                      <tr>
+                                        <td colSpan={4} className="pb-2 pt-0">
+                                          <table className="w-full border-l-2 border-brand-700/20 bg-white text-xs">
+                                            <thead>
+                                              <tr className="border-b border-slate-100 bg-slate-50/60">
+                                                <th className="px-3 py-1 text-left font-medium text-slate-400">Grupo</th>
+                                                <th className="px-3 py-1 text-left font-medium text-slate-400">Partida</th>
+                                                <th className="px-3 py-1 text-left font-medium text-slate-400">Denominación</th>
+                                                <th className="px-3 py-1 text-right font-medium text-slate-400">UF</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {partidas.map((p, i) => (
+                                                <tr key={i} className="border-b border-slate-50">
+                                                  <td className="px-3 py-1 text-slate-400">{p.grupo1}</td>
+                                                  <td className="px-3 py-1 text-slate-500">{p.grupo3}</td>
+                                                  <td className="px-3 py-1 text-slate-500">{p.denominacion}</td>
+                                                  <td className="px-3 py-1 text-right font-medium text-slate-700">
+                                                    {formatUf(p.valorUf)}
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </Fragment>
                                 );
                               })}
                             </tbody>

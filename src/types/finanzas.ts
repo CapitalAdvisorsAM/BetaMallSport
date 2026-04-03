@@ -24,6 +24,33 @@ export type TenantFinanceRow = {
   costoOcupacion: number | null;
 };
 
+export type EerrLocalDetalle = {
+  localId: string;
+  localCodigo: string;
+  localNombre: string;
+  arrendatarioNombre: string | null;
+  porPeriodo: Record<string, number>;
+  total: number;
+};
+
+export type EerrCategoria = {
+  categoriaTipo: string;
+  porPeriodo: Record<string, number>;
+  total: number;
+  locales: EerrLocalDetalle[];
+};
+
+export type EerrDetalleResponse = {
+  categorias: EerrCategoria[];
+};
+
+export type ArrendatarioPartidaDetalle = {
+  grupo1: string;
+  grupo3: string;
+  denominacion: string;
+  valorUf: number;
+};
+
 export type EerrLine = {
   grupo3: string;
   tipo: "ingreso" | "costo";
