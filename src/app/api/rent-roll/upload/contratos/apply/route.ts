@@ -35,6 +35,7 @@ type ContratoApplyRow = {
   pctFondoPromocion: string | null;
   codigoCC: string | null;
   ggccPctAdministracion: string | null;
+  ggccPctReajuste: string | null;
   notas: string | null;
   ggccTipo: GgccTipoInput | null;
   ggccValor: string | null;
@@ -78,6 +79,7 @@ type GgccApplyInput = Pick<
   | "ggccTipo"
   | "ggccValor"
   | "ggccPctAdministracion"
+  | "ggccPctReajuste"
   | "ggccVigenciaDesde"
   | "ggccVigenciaHasta"
   | "ggccMesesReajuste"
@@ -174,6 +176,28 @@ function toStoredGgccTarifaBaseUfM2(ggcc: GgccApplyInput, localGlam2: string): P
   return value.div(new Prisma.Decimal(localGlam2));
 }
 
+async function generateNumeroContrato(
+  tx: Prisma.TransactionClient,
+  proyectoId: string
+): Promise<string> {
+  while (true) {
+    const numeroContrato = crypto.randomUUID().slice(0, 8).toUpperCase();
+    const existing = await tx.contrato.findUnique({
+      where: {
+        proyectoId_numeroContrato: {
+          proyectoId,
+          numeroContrato
+        }
+      },
+      select: { id: true }
+    });
+
+    if (!existing) {
+      return numeroContrato;
+    }
+  }
+}
+
 function normalizeContratoRow(rowNumber: number, data: Record<string, unknown>): ContratoApplyRow | null {
   const numeroContrato = asString(data.numeroContrato);
   const localCodigo = asString(data.localCodigo).toUpperCase();
@@ -190,6 +214,7 @@ function normalizeContratoRow(rowNumber: number, data: Record<string, unknown>):
   const pctFondoPromocion = normalizeNullable(data.pctFondoPromocion);
   const codigoCC = normalizeNullable(data.codigoCC);
   const ggccPctAdministracion = normalizeNullable(data.ggccPctAdministracion);
+  const ggccPctReajuste = normalizeNullable(data.ggccPctReajuste);
   const notas = normalizeNullable(data.notas);
   const legacyGgccValue = normalizeNullable(data.ggccTarifaBaseUfM2);
   const ggccValor = normalizeNullable(data.ggccValor) ?? legacyGgccValue;
@@ -201,14 +226,17 @@ function normalizeContratoRow(rowNumber: number, data: Record<string, unknown>):
   const ggccMesesReajuste = integerOrNull(ggccMesesReajusteRaw);
   const anexoFecha = parseDate(data.anexoFecha);
   const anexoDescripcion = normalizeNullable(data.anexoDescripcion);
+  const tarifaTipoFinal = tarifaTipo as TipoTarifaContrato;
+  const tarifaUsaFechasContrato = tarifaTipoFinal === TipoTarifaContrato.PORCENTAJE;
+  const tarifaVigenciaDesdeFinal = tarifaUsaFechasContrato ? fechaInicio : tarifaVigenciaDesde;
+  const tarifaVigenciaHastaFinal = tarifaUsaFechasContrato ? fechaTermino : tarifaVigenciaHasta;
 
   if (
-    !numeroContrato ||
     !localCodigo ||
     !arrendatarioRut ||
     !fechaInicio ||
     !fechaTermino ||
-    !tarifaVigenciaDesde
+    !tarifaVigenciaDesdeFinal
   ) {
     return null;
   }
@@ -227,10 +255,17 @@ function normalizeContratoRow(rowNumber: number, data: Record<string, unknown>):
   if (!isValidDecimalOrNull(pctFondoPromocion)) {
     return null;
   }
-  if (!isValidDecimalOrNull(ggccValor) || !isValidDecimalOrNull(ggccPctAdministracion)) {
+  if (
+    !isValidDecimalOrNull(ggccValor) ||
+    !isValidDecimalOrNull(ggccPctAdministracion) ||
+    !isValidDecimalOrNull(ggccPctReajuste)
+  ) {
     return null;
   }
   if (ggccMesesReajusteRaw && ggccMesesReajuste === null) {
+    return null;
+  }
+  if (ggccMesesReajuste !== null && !ggccPctReajuste) {
     return null;
   }
   if (ggccTipoRaw && ggccTipo === null) {
@@ -240,6 +275,7 @@ function normalizeContratoRow(rowNumber: number, data: Record<string, unknown>):
     ggccTipo ||
       ggccValor ||
       ggccPctAdministracion ||
+      ggccPctReajuste ||
       ggccVigenciaDesde ||
       ggccVigenciaHasta ||
       ggccMesesReajuste !== null
@@ -265,13 +301,14 @@ function normalizeContratoRow(rowNumber: number, data: Record<string, unknown>):
     fechaTermino,
     fechaEntrega,
     fechaApertura,
-    tarifaTipo: tarifaTipo as TipoTarifaContrato,
+    tarifaTipo: tarifaTipoFinal,
     tarifaValor,
-    tarifaVigenciaDesde,
-    tarifaVigenciaHasta,
+    tarifaVigenciaDesde: tarifaVigenciaDesdeFinal,
+    tarifaVigenciaHasta: tarifaVigenciaHastaFinal,
     pctFondoPromocion,
     codigoCC,
     ggccPctAdministracion,
+    ggccPctReajuste,
     notas,
     ggccTipo,
     ggccValor,
@@ -302,50 +339,61 @@ async function applyContrato(
     };
   }
 
-  const before = await tx.contrato.findUnique({
-    where: {
-      proyectoId_numeroContrato: {
-        proyectoId,
-        numeroContrato: row.numeroContrato
-      }
-    },
-    include: { tarifas: true, ggcc: true }
-  });
+  const before = row.numeroContrato
+    ? await tx.contrato.findUnique({
+        where: {
+          proyectoId_numeroContrato: {
+            proyectoId,
+            numeroContrato: row.numeroContrato
+          }
+        },
+        include: { tarifas: true, ggcc: true }
+      })
+    : await tx.contrato.findFirst({
+        where: {
+          proyectoId,
+          localId: localData.id,
+          arrendatarioId,
+          fechaInicio: new Date(row.fechaInicio),
+          fechaTermino: new Date(row.fechaTermino)
+        },
+        include: { tarifas: true, ggcc: true }
+      });
 
-  const contrato = await tx.contrato.upsert({
-    where: {
-      proyectoId_numeroContrato: {
-        proyectoId,
-        numeroContrato: row.numeroContrato
-      }
-    },
-    create: {
-      proyectoId,
-      localId: localData.id,
-      arrendatarioId,
-      numeroContrato: row.numeroContrato,
-      fechaInicio: new Date(row.fechaInicio),
-      fechaTermino: new Date(row.fechaTermino),
-      fechaEntrega: dateOrNull(row.fechaEntrega),
-      fechaApertura: dateOrNull(row.fechaApertura),
-      estado: row.estado,
-      pctFondoPromocion: decimalOrNull(row.pctFondoPromocion),
-      codigoCC: row.codigoCC,
-      notas: row.notas
-    },
-    update: {
-      localId: localData.id,
-      arrendatarioId,
-      fechaInicio: new Date(row.fechaInicio),
-      fechaTermino: new Date(row.fechaTermino),
-      fechaEntrega: dateOrNull(row.fechaEntrega),
-      fechaApertura: dateOrNull(row.fechaApertura),
-      estado: row.estado,
-      pctFondoPromocion: decimalOrNull(row.pctFondoPromocion),
-      codigoCC: row.codigoCC,
-      notas: row.notas
-    }
-  });
+  const numeroContrato = before?.numeroContrato || row.numeroContrato || (await generateNumeroContrato(tx, proyectoId));
+
+  const contrato = before
+    ? await tx.contrato.update({
+        where: { id: before.id },
+        data: {
+          localId: localData.id,
+          arrendatarioId,
+          fechaInicio: new Date(row.fechaInicio),
+          fechaTermino: new Date(row.fechaTermino),
+          fechaEntrega: dateOrNull(row.fechaEntrega),
+          fechaApertura: dateOrNull(row.fechaApertura),
+          estado: row.estado,
+          pctFondoPromocion: decimalOrNull(row.pctFondoPromocion),
+          codigoCC: row.codigoCC,
+          notas: row.notas
+        }
+      })
+    : await tx.contrato.create({
+        data: {
+          proyectoId,
+          localId: localData.id,
+          arrendatarioId,
+          numeroContrato,
+          fechaInicio: new Date(row.fechaInicio),
+          fechaTermino: new Date(row.fechaTermino),
+          fechaEntrega: dateOrNull(row.fechaEntrega),
+          fechaApertura: dateOrNull(row.fechaApertura),
+          estado: row.estado,
+          pctFondoPromocion: decimalOrNull(row.pctFondoPromocion),
+          codigoCC: row.codigoCC,
+          notas: row.notas
+        }
+      });
 
   return { before, contrato };
 }
@@ -413,6 +461,7 @@ async function applyGGCC(
       data: {
         tarifaBaseUfM2,
         pctAdministracion: new Prisma.Decimal(ggcc.ggccPctAdministracion),
+        pctReajuste: decimalOrNull(ggcc.ggccPctReajuste),
         vigenciaHasta: dateOrNull(ggcc.ggccVigenciaHasta),
         mesesReajuste: ggcc.ggccMesesReajuste ?? null
       }
@@ -425,6 +474,7 @@ async function applyGGCC(
       contratoId,
       tarifaBaseUfM2,
       pctAdministracion: new Prisma.Decimal(ggcc.ggccPctAdministracion),
+      pctReajuste: decimalOrNull(ggcc.ggccPctReajuste),
       vigenciaDesde: new Date(ggcc.ggccVigenciaDesde),
       vigenciaHasta: dateOrNull(ggcc.ggccVigenciaHasta),
       proximoReajuste: null,

@@ -185,6 +185,7 @@ model Contrato {
   fechaEntrega      DateTime?      @db.Date
   fechaApertura     DateTime?      @db.Date
   pctFondoPromocion Decimal?       @db.Decimal(6, 3)
+  pctAdministracionGgcc Decimal?    @db.Decimal(6, 3)
   codigoCC          String?
   estado            EstadoContrato
   pdfUrl            String?
@@ -264,6 +265,7 @@ model ContratoGGCC {
   contratoId        String    @db.Uuid
   tarifaBaseUfM2    Decimal   @db.Decimal(10, 4)
   pctAdministracion Decimal   @db.Decimal(6, 3)
+  pctReajuste       Decimal?  @db.Decimal(6, 3)
   vigenciaDesde     DateTime  @db.Date
   vigenciaHasta     DateTime? @db.Date
   proximoReajuste   DateTime? @db.Date

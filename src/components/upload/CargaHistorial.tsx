@@ -20,6 +20,13 @@ type CargaHistorialItem = {
 
 type CargaHistorialProps = {
   items: CargaHistorialItem[];
+  title?: string;
+  errorDownloadBasePath?: string | null;
+  countLabels?: {
+    created: string;
+    updated: string;
+    rejected: string;
+  };
 };
 
 const dateFormatter = new Intl.DateTimeFormat("es-CL", {
@@ -47,10 +54,19 @@ function EstadoBadge({ estado }: { estado: string }): JSX.Element {
   );
 }
 
-export function CargaHistorial({ items }: CargaHistorialProps): JSX.Element {
+export function CargaHistorial({
+  items,
+  title = "Ultimas 5 cargas",
+  errorDownloadBasePath = "/api/rent-roll/upload/errors",
+  countLabels = {
+    created: "Creados",
+    updated: "Actualizados",
+    rejected: "Errores"
+  }
+}: CargaHistorialProps): JSX.Element {
   return (
     <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
-      <h4 className="text-sm font-semibold text-slate-900">Ultimas 5 cargas</h4>
+      <h4 className="text-sm font-semibold text-slate-900">{title}</h4>
       {items.length === 0 ? (
         <p className="mt-2 text-sm text-slate-500">Aun no hay cargas registradas para este tipo.</p>
       ) : (
@@ -62,13 +78,13 @@ export function CargaHistorial({ items }: CargaHistorialProps): JSX.Element {
                 <TableHead className="whitespace-nowrap px-3 py-2 font-semibold text-slate-700">Archivo</TableHead>
                 <TableHead className="whitespace-nowrap px-3 py-2 font-semibold text-slate-700">Estado</TableHead>
                 <TableHead className="whitespace-nowrap px-3 py-2 text-right font-semibold text-slate-700">
-                  Creados
+                  {countLabels.created}
                 </TableHead>
                 <TableHead className="whitespace-nowrap px-3 py-2 text-right font-semibold text-slate-700">
-                  Actualizados
+                  {countLabels.updated}
                 </TableHead>
                 <TableHead className="whitespace-nowrap px-3 py-2 text-right font-semibold text-slate-700">
-                  Errores
+                  {countLabels.rejected}
                 </TableHead>
                 <TableHead className="whitespace-nowrap px-3 py-2 font-semibold text-slate-700">Detalle</TableHead>
               </TableRow>
@@ -107,9 +123,9 @@ export function CargaHistorial({ items }: CargaHistorialProps): JSX.Element {
                     )}
                   </TableCell>
                   <TableCell className="whitespace-nowrap px-3 py-2">
-                    {item.rejected > 0 ? (
+                    {item.rejected > 0 && errorDownloadBasePath ? (
                       <a
-                        href={`/api/rent-roll/upload/errors?cargaId=${item.id}`}
+                        href={`${errorDownloadBasePath}?cargaId=${item.id}`}
                         className="text-xs font-medium text-brand-700 underline hover:text-brand-500"
                       >
                         Descargar errores

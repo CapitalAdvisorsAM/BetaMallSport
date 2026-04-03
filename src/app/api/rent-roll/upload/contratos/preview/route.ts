@@ -6,7 +6,7 @@ import { handleApiError } from "@/lib/api-error";
 import { requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { normalizeUploadRut } from "@/lib/upload/parse-arrendatarios";
-import { parseContratosFile } from "@/lib/upload/parse-contratos";
+import { buildContratoLookupKey, parseContratosFile } from "@/lib/upload/parse-contratos";
 import { validateFileGuards } from "@/lib/upload/parse-utils";
 
 export const runtime = "nodejs";
@@ -62,39 +62,46 @@ export async function POST(request: Request): Promise<NextResponse> {
       })
     ]);
 
-    const existingContratos = new Map(
-      contratos.map((contrato) => [
-        contrato.numeroContrato,
-        {
-          numeroContrato: contrato.numeroContrato,
-          localCodigo: contrato.local.codigo.toUpperCase(),
-          arrendatarioRut: normalizeUploadRut(contrato.arrendatario.rut),
-          estado: contrato.estado,
-          fechaInicio: toIsoDate(contrato.fechaInicio),
-          fechaTermino: toIsoDate(contrato.fechaTermino),
-          fechaEntrega: contrato.fechaEntrega ? toIsoDate(contrato.fechaEntrega) : null,
-          fechaApertura: contrato.fechaApertura ? toIsoDate(contrato.fechaApertura) : null,
-          pctFondoPromocion: contrato.pctFondoPromocion?.toString() ?? null,
-          codigoCC: contrato.codigoCC,
-          ggccPctAdministracion:
-            contrato.ggcc.length > 0 ? contrato.ggcc[0]?.pctAdministracion.toString() ?? null : null,
-          notas: contrato.notas,
-          tarifas: contrato.tarifas.map((tarifa) => ({
-            tipo: tarifa.tipo,
-            valor: tarifa.valor.toString(),
-            vigenciaDesde: toIsoDate(tarifa.vigenciaDesde),
-            vigenciaHasta: tarifa.vigenciaHasta ? toIsoDate(tarifa.vigenciaHasta) : null
-          })),
-          ggcc: contrato.ggcc.map((ggcc) => ({
-            tarifaBaseUfM2: ggcc.tarifaBaseUfM2.toString(),
-            pctAdministracion: ggcc.pctAdministracion.toString(),
-            vigenciaDesde: toIsoDate(ggcc.vigenciaDesde),
-            vigenciaHasta: ggcc.vigenciaHasta ? toIsoDate(ggcc.vigenciaHasta) : null,
-            mesesReajuste: ggcc.mesesReajuste ?? null
-          }))
-        }
-      ])
-    );
+    const existingContratos = new Map();
+    for (const contrato of contratos) {
+      const snapshot = {
+        numeroContrato: contrato.numeroContrato,
+        localCodigo: contrato.local.codigo.toUpperCase(),
+        arrendatarioRut: normalizeUploadRut(contrato.arrendatario.rut),
+        estado: contrato.estado,
+        fechaInicio: toIsoDate(contrato.fechaInicio),
+        fechaTermino: toIsoDate(contrato.fechaTermino),
+        fechaEntrega: contrato.fechaEntrega ? toIsoDate(contrato.fechaEntrega) : null,
+        fechaApertura: contrato.fechaApertura ? toIsoDate(contrato.fechaApertura) : null,
+        pctFondoPromocion: contrato.pctFondoPromocion?.toString() ?? null,
+        codigoCC: contrato.codigoCC,
+        ggccPctAdministracion:
+          contrato.ggcc.length > 0 ? contrato.ggcc[0]?.pctAdministracion.toString() ?? null : null,
+        notas: contrato.notas,
+        tarifas: contrato.tarifas.map((tarifa) => ({
+          tipo: tarifa.tipo,
+          valor: tarifa.valor.toString(),
+          vigenciaDesde: toIsoDate(tarifa.vigenciaDesde),
+          vigenciaHasta: tarifa.vigenciaHasta ? toIsoDate(tarifa.vigenciaHasta) : null
+        })),
+        ggcc: contrato.ggcc.map((ggcc) => ({
+          tarifaBaseUfM2: ggcc.tarifaBaseUfM2.toString(),
+          pctAdministracion: ggcc.pctAdministracion.toString(),
+          vigenciaDesde: toIsoDate(ggcc.vigenciaDesde),
+          vigenciaHasta: ggcc.vigenciaHasta ? toIsoDate(ggcc.vigenciaHasta) : null,
+          mesesReajuste: ggcc.mesesReajuste ?? null
+        }))
+      };
+
+      existingContratos.set(buildContratoLookupKey(snapshot), snapshot);
+      existingContratos.set(
+        buildContratoLookupKey({
+          ...snapshot,
+          numeroContrato: ""
+        }),
+        snapshot
+      );
+    }
 
     const existingLocalData = new Map(
       locales.map((local) => [local.codigo.toUpperCase(), { glam2: local.glam2.toString() }])

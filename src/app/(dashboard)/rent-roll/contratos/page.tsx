@@ -79,6 +79,7 @@ const contractQueryArgs = {
       select: {
         tarifaBaseUfM2: true,
         pctAdministracion: true,
+        pctReajuste: true,
         vigenciaDesde: true,
         vigenciaHasta: true,
         proximoReajuste: true,
@@ -366,6 +367,7 @@ export default async function ContratosPage({
                                         <tr>
                                           <th className="px-3 py-2">Tipo</th>
                                           <th className="px-3 py-2 text-right">Valor UF/m²</th>
+                                          <th className="px-3 py-2 text-right">% Reajuste</th>
                                           <th className="px-3 py-2">Vigencia desde</th>
                                           <th className="px-3 py-2">Vigencia hasta</th>
                                           <th className="px-3 py-2 text-center">Es Diciembre</th>
@@ -408,6 +410,7 @@ export default async function ContratosPage({
                                           <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50/60"}>
                                             <td className="px-3 py-2 text-right text-slate-700">{item.tarifaBaseUfM2.toString()}</td>
                                             <td className="px-3 py-2 text-right text-slate-700">{item.pctAdministracion.toString()}%</td>
+                                            <td className="px-3 py-2 text-right text-slate-700">{item.pctReajuste ? `${item.pctReajuste.toString()}%` : "â€”"}</td>
                                             <td className="px-3 py-2 text-slate-700">{formatDate(item.vigenciaDesde)}</td>
                                             <td className="px-3 py-2 text-slate-700">{item.vigenciaHasta ? formatDate(item.vigenciaHasta) : "—"}</td>
                                             <td className="px-3 py-2 text-slate-700">{item.proximoReajuste ? formatDate(item.proximoReajuste) : "—"}</td>
@@ -445,6 +448,8 @@ export default async function ContratosPage({
             pdfUrl: contract.pdfUrl,
             fechaInicio: contract.fechaInicio.toISOString(),
             fechaTermino: contract.fechaTermino.toISOString(),
+            pctFondoPromocion: contract.pctFondoPromocion?.toString() ?? null,
+            pctAdministracionGgcc: contract.pctAdministracionGgcc?.toString() ?? null,
             local: contract.local,
             locales:
               contract.locales.length > 0
@@ -461,6 +466,7 @@ export default async function ContratosPage({
             ggcc: contract.ggcc.map((item) => ({
               tarifaBaseUfM2: item.tarifaBaseUfM2.toString(),
               pctAdministracion: item.pctAdministracion.toString(),
+              pctReajuste: item.pctReajuste?.toString() ?? null,
               vigenciaDesde: item.vigenciaDesde.toISOString().slice(0, 10),
               vigenciaHasta: item.vigenciaHasta ? item.vigenciaHasta.toISOString().slice(0, 10) : null,
               proximoReajuste: item.proximoReajuste

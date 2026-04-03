@@ -1,8 +1,25 @@
+import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
-import { RentRollChartsSection } from "@/components/rent-roll/RentRollChartsSection";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
 import { canWrite, requireSession } from "@/lib/permissions";
+
+const RentRollChartsSection = dynamic(
+  () => import("@/components/rent-roll/RentRollChartsSection").then((m) => m.RentRollChartsSection),
+  {
+    ssr: false,
+    loading: () => (
+      <section className="space-y-4">
+        <div className="h-14 animate-pulse rounded-md bg-slate-100" />
+        <div className="grid gap-4 xl:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-72 animate-pulse rounded-md bg-slate-100" />
+          ))}
+        </div>
+      </section>
+    )
+  }
+);
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
 import { buildCategoryConcentration } from "@/lib/rent-roll/category-concentration";

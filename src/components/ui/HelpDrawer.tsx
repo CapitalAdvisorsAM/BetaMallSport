@@ -246,7 +246,8 @@ const HELP_CONTENT: Record<DrawerSection, HelpContent> = {
     steps: [
       "Crea un contrato seleccionando local y arrendatario (ambos deben existir).",
       "Define fechas de inicio y termino, mas estado inicial VIGENTE o GRACIA.",
-      "Agrega al menos una tarifa: FIJO_UF_M2, FIJO_UF o PORCENTAJE.",
+      "Agrega al menos una tarifa fija o una renta variable (%).",
+      "Opcionalmente informa el % de fondo de promocion del contrato.",
       "Opcionalmente configura GGCC con tarifa base y % de administracion.",
       "Adjunta el PDF del contrato firmado con el boton de carga."
     ],
@@ -261,7 +262,11 @@ const HELP_CONTENT: Record<DrawerSection, HelpContent> = {
       },
       {
         term: "PORCENTAJE",
-        definition: "Renta variable calculada como porcentaje de ventas brutas."
+        definition: "Renta variable calculada como porcentaje de ventas brutas. Usa las fechas del contrato."
+      },
+      {
+        term: "% Fondo Promocion",
+        definition: "Porcentaje adicional asociado al contrato para el fondo de promocion."
       },
       {
         term: "Fecha de Vigencia Tarifa",

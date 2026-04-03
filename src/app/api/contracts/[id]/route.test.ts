@@ -64,6 +64,7 @@ function makePayload() {
       }
     ],
     pctFondoPromocion: "2",
+    pctAdministracionGgcc: null,
     codigoCC: "CC-1",
     pdfUrl: "https://example.com/contract.pdf",
     notas: "Notas",
@@ -80,9 +81,11 @@ function makePayload() {
       {
         tarifaBaseUfM2: "1.25",
         pctAdministracion: "8",
+        pctReajuste: null,
         vigenciaDesde: "2026-01-01",
         vigenciaHasta: null,
-        proximoReajuste: null
+        proximoReajuste: null,
+        mesesReajuste: null
       }
     ],
     anexo: null as { fecha: string; descripcion: string } | null
@@ -102,6 +105,7 @@ function makeExistingContract() {
     fechaApertura: null,
     estado: "VIGENTE" as const,
     pctFondoPromocion: new Prisma.Decimal("2"),
+    pctAdministracionGgcc: null,
     codigoCC: "CC-1",
     pdfUrl: "https://example.com/contract.pdf",
     notas: "Notas",
@@ -134,9 +138,11 @@ function makeExistingContract() {
         contratoId: "contract-1",
         tarifaBaseUfM2: new Prisma.Decimal("1.25"),
         pctAdministracion: new Prisma.Decimal("8"),
+        pctReajuste: null,
         vigenciaDesde: new Date("2026-01-01"),
         vigenciaHasta: null,
         proximoReajuste: null,
+        mesesReajuste: null,
         createdAt: new Date("2026-01-01")
       },
       {
@@ -144,9 +150,11 @@ function makeExistingContract() {
         contratoId: "contract-1",
         tarifaBaseUfM2: new Prisma.Decimal("2"),
         pctAdministracion: new Prisma.Decimal("10"),
+        pctReajuste: null,
         vigenciaDesde: new Date("2026-03-01"),
         vigenciaHasta: null,
         proximoReajuste: null,
+        mesesReajuste: null,
         createdAt: new Date("2026-03-01")
       }
     ]
@@ -296,9 +304,11 @@ describe("PUT /api/contracts/[id]", () => {
       {
         tarifaBaseUfM2: "1.50",
         pctAdministracion: "9",
+        pctReajuste: null,
         vigenciaDesde: payload.ggcc[0].vigenciaDesde,
         vigenciaHasta: null,
-        proximoReajuste: null
+        proximoReajuste: null,
+        mesesReajuste: null
       }
     ];
 
@@ -423,6 +433,72 @@ describe("PUT /api/contracts/[id]", () => {
     const anexoPayload = tx.contratoAnexo.create.mock.calls[0][0].data as { snapshotDespues: typeof finalContract };
     expect(anexoPayload.snapshotDespues.tarifas).toBeDefined();
     expect(anexoPayload.snapshotDespues.ggcc).toBeDefined();
+  });
+
+  it("returns 400 when GGCC reajuste months is sent without pctReajuste", async () => {
+    const payload = makePayload();
+    payload.ggcc = [
+      {
+        ...payload.ggcc[0],
+        mesesReajuste: 12,
+        pctReajuste: null
+      }
+    ];
+
+    const response = await callPut(
+      new Request("http://localhost/api/contracts/contract-1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }),
+      { id: "contract-1" }
+    );
+
+    expect(response.status).toBe(400);
+    expect(prismaMock.contrato.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("marks ggcc as modified when only pctReajuste changes", async () => {
+    const existing = makeExistingContract();
+    const payload = makePayload();
+    payload.ggcc = [
+      {
+        ...payload.ggcc[0],
+        pctReajuste: "5",
+        mesesReajuste: 12
+      }
+    ];
+    const existingAligned = {
+      ...existing,
+      tarifas: [existing.tarifas[0]],
+      ggcc: [
+        {
+          ...existing.ggcc[0],
+          pctReajuste: new Prisma.Decimal("4"),
+          mesesReajuste: 12
+        }
+      ]
+    };
+    payload.anexo = { fecha: "2026-04-01", descripcion: "Cambio pct reajuste GGCC" };
+
+    prismaMock.contrato.findFirst.mockResolvedValue(existingAligned);
+    const tx = setupTransaction({
+      existingTarifas: [existingAligned.tarifas[0]],
+      existingGgcc: existingAligned.ggcc,
+      finalContract: { id: "contract-1", tarifas: [existingAligned.tarifas[0]], ggcc: existingAligned.ggcc }
+    });
+
+    await callPut(
+      new Request("http://localhost/api/contracts/contract-1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }),
+      { id: "contract-1" }
+    );
+
+    const anexoPayload = tx.contratoAnexo.create.mock.calls[0][0].data as { camposModificados: string[] };
+    expect(anexoPayload.camposModificados).toContain("ggcc");
   });
 });
 

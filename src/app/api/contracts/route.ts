@@ -142,6 +142,7 @@ export async function POST(request: Request): Promise<NextResponse> {
           fechaApertura: toDate(payload.fechaApertura),
           estado: payload.estado,
           pctFondoPromocion: toDecimal(payload.pctFondoPromocion),
+          pctAdministracionGgcc: toDecimal(payload.pctAdministracionGgcc),
           codigoCC: payload.codigoCC,
           pdfUrl: payload.pdfUrl,
           notas: payload.notas
@@ -190,6 +191,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             contratoId: created.id,
             tarifaBaseUfM2: new Prisma.Decimal(g.tarifaBaseUfM2),
             pctAdministracion: new Prisma.Decimal(g.pctAdministracion),
+            pctReajuste: toDecimal(g.pctReajuste),
             vigenciaDesde: new Date(g.vigenciaDesde),
             vigenciaHasta: toDate(g.vigenciaHasta),
             proximoReajuste: toDate(g.proximoReajuste),

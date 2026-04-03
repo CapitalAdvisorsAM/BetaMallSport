@@ -63,19 +63,33 @@ function toDraftRentaVariable(
   return { ...item, _key: crypto.randomUUID() };
 }
 
+function toSingleRentaVariableItem(
+  items: ContractFormPayload["rentaVariable"]
+): RentaVariableListItem[] {
+  const firstItem = items[0];
+  return firstItem ? [toDraftRentaVariable(firstItem)] : [];
+}
+
 function toApiPayload(payload: ContractDraftPayload): ContractFormPayload {
   const localIds = Array.from(new Set(payload.localIds.filter(Boolean)));
   const localId = localIds[0] ?? payload.localId;
+  const rentaVariableItem = payload.rentaVariable.find(
+    (item) => !isBlank(item.pctRentaVariable)
+  );
 
   return {
     ...payload,
     localId,
     localIds,
-    rentaVariable: payload.rentaVariable.map((item) => ({
-      pctRentaVariable: item.pctRentaVariable,
-      vigenciaDesde: item.vigenciaDesde,
-      vigenciaHasta: item.vigenciaHasta
-    })),
+    rentaVariable: rentaVariableItem
+      ? [
+          {
+            pctRentaVariable: rentaVariableItem.pctRentaVariable,
+            vigenciaDesde: payload.fechaInicio,
+            vigenciaHasta: payload.fechaTermino
+          }
+        ]
+      : [],
     tarifas: payload.tarifas.map((tarifa) => ({
       tipo: tarifa.tipo,
       valor: tarifa.valor,
@@ -85,7 +99,7 @@ function toApiPayload(payload: ContractDraftPayload): ContractFormPayload {
     })),
     ggcc: payload.ggcc.map((item) => ({
       tarifaBaseUfM2: item.tarifaBaseUfM2,
-      pctAdministracion: item.pctAdministracion,
+      pctReajuste: item.pctReajuste,
       vigenciaDesde: item.vigenciaDesde,
       vigenciaHasta: item.vigenciaHasta,
       proximoReajuste: item.proximoReajuste,
@@ -112,6 +126,7 @@ function createEmptyPayload(
     estado: "VIGENTE",
     rentaVariable: [],
     pctFondoPromocion: null,
+    pctAdministracionGgcc: null,
     codigoCC: null,
     pdfUrl: null,
     notas: null,
@@ -133,15 +148,17 @@ function fromContract(contract: ContractManagerListItem, proyectoId: string): Co
     fechaEntrega: null,
     fechaApertura: null,
     estado: contract.estado,
-    rentaVariable: contract.tarifas
-      .filter((tarifa) => tarifa.tipo === "PORCENTAJE")
-      .map((tarifa) => ({
-        pctRentaVariable: tarifa.valor,
-        vigenciaDesde: tarifa.vigenciaDesde,
-        vigenciaHasta: tarifa.vigenciaHasta
-      }))
-      .map(toDraftRentaVariable),
-    pctFondoPromocion: null,
+    rentaVariable: toSingleRentaVariableItem(
+      contract.tarifas
+        .filter((tarifa) => tarifa.tipo === "PORCENTAJE")
+        .map((tarifa) => ({
+          pctRentaVariable: tarifa.valor,
+          vigenciaDesde: tarifa.vigenciaDesde,
+          vigenciaHasta: tarifa.vigenciaHasta
+        }))
+    ),
+    pctFondoPromocion: contract.pctFondoPromocion,
+    pctAdministracionGgcc: contract.pctAdministracionGgcc,
     codigoCC: null,
     pdfUrl: contract.pdfUrl,
     notas: null,
@@ -169,19 +186,17 @@ function hasMeaningfulTarifas(tarifas: TarifaListItem[]): boolean {
 }
 
 function hasMeaningfulRentaVariable(items: RentaVariableListItem[]): boolean {
-  return items.some(
-    (item) =>
-      !isBlank(item.pctRentaVariable) || !isBlank(item.vigenciaDesde) || !isBlank(item.vigenciaHasta)
-  );
+  return items.some((item) => !isBlank(item.pctRentaVariable));
 }
 
 function hasMeaningfulGgcc(ggcc: GgccListItem[]): boolean {
   return ggcc.some(
     (item) =>
       !isBlank(item.tarifaBaseUfM2) ||
-      !isBlank(item.pctAdministracion) ||
+      !isBlank(item.pctReajuste) ||
       !isBlank(item.vigenciaDesde) ||
-      !isBlank(item.vigenciaHasta)
+      !isBlank(item.vigenciaHasta) ||
+      item.mesesReajuste !== null
   );
 }
 
@@ -204,8 +219,8 @@ function toDraftRentaVariableFromExtraction(
   return {
     _key: crypto.randomUUID(),
     pctRentaVariable: item.valor,
-    vigenciaDesde: item.vigenciaDesde,
-    vigenciaHasta: item.vigenciaHasta
+    vigenciaDesde: "",
+    vigenciaHasta: null
   };
 }
 
@@ -213,7 +228,7 @@ function toDraftGgccFromExtraction(item: ContractExtractionResponse["ggcc"][numb
   return {
     _key: crypto.randomUUID(),
     tarifaBaseUfM2: item.tarifaBaseUfM2,
-    pctAdministracion: item.pctAdministracion,
+    pctReajuste: item.pctReajuste ?? null,
     vigenciaDesde: item.vigenciaDesde,
     vigenciaHasta: item.vigenciaHasta,
     proximoReajuste: item.proximoReajuste,
@@ -284,6 +299,14 @@ export function ContractForm({
   async function saveContract(): Promise<void> {
     if (!hasSelectedLocal) {
       toast.error("Debes seleccionar al menos un local.");
+      return;
+    }
+
+    const hasMissingPctReajuste = payload.ggcc.some(
+      (item) => item.mesesReajuste !== null && isBlank(item.pctReajuste)
+    );
+    if (hasMissingPctReajuste) {
+      toast.error("Debes informar el % de reajuste para cada GGCC con reajuste activo.");
       return;
     }
 
@@ -369,6 +392,13 @@ export function ContractForm({
         missingFields.push("pctFondoPromocion");
       }
 
+      if (data.pctAdministracionGgcc && !nextPayload.pctAdministracionGgcc) {
+        nextPayload.pctAdministracionGgcc = data.pctAdministracionGgcc;
+        completedFields.push("pctAdministracionGgcc");
+      } else if (!data.pctAdministracionGgcc) {
+        missingFields.push("pctAdministracionGgcc");
+      }
+
       const tarifasFijas = data.tarifas.filter((item) => item.tipo !== "PORCENTAJE");
       const rentaVariable = data.tarifas.filter((item) => item.tipo === "PORCENTAJE");
 
@@ -380,7 +410,7 @@ export function ContractForm({
       }
 
       if (rentaVariable.length > 0 && !hasMeaningfulRentaVariable(nextPayload.rentaVariable)) {
-        nextPayload.rentaVariable = rentaVariable.map(toDraftRentaVariableFromExtraction);
+        nextPayload.rentaVariable = [toDraftRentaVariableFromExtraction(rentaVariable[0])];
         completedFields.push("rentaVariable");
       } else if (rentaVariable.length === 0) {
         missingFields.push("rentaVariable");
@@ -522,8 +552,8 @@ export function ContractForm({
         </div>
       </div>
 
-      {/* Row 3: Arrendatario | Fecha inicio | Fecha termino */}
-      <div className="grid gap-3 md:grid-cols-3">
+      {/* Row 3: Arrendatario | Fecha inicio | Fecha termino | % fondo promocion */}
+      <div className="grid gap-3 md:grid-cols-4">
         <label className="text-sm">
           <span className="mb-1 block text-slate-700">
             Arrendatario <span className="text-rose-500">*</span>
@@ -572,6 +602,23 @@ export function ContractForm({
             className="w-full rounded-md border border-slate-300 px-3 py-2"
           />
         </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-slate-700">
+            % Fondo promocion <span className="text-xs text-slate-400">(opcional)</span>
+          </span>
+          <Input
+            inputMode="decimal"
+            placeholder="Ej: 2.5"
+            value={payload.pctFondoPromocion ?? ""}
+            onChange={(event) =>
+              setPayload((previous) => ({
+                ...previous,
+                pctFondoPromocion: event.target.value.trim() ? event.target.value : null
+              }))
+            }
+            className="w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
       </div>
 
       <TarifaListEditor
@@ -583,10 +630,31 @@ export function ContractForm({
 
       <RentaVariableListEditor
         items={payload.rentaVariable}
-        fechasContrato={fechasContrato}
         onChange={(updated) => setPayload((previous) => ({ ...previous, rentaVariable: updated }))}
         disabled={!canEdit}
       />
+
+      <div className="space-y-1 rounded-lg border border-slate-200 p-3">
+        <h4 className="text-sm font-semibold text-slate-900">Costo de administración (GGCC)</h4>
+        <label className="text-sm">
+          <span className="mb-1 block text-slate-700">
+            % administración <span className="text-xs text-slate-400">(opcional)</span>
+          </span>
+          <Input
+            inputMode="decimal"
+            placeholder="Ej: 5"
+            value={payload.pctAdministracionGgcc ?? ""}
+            onChange={(event) =>
+              setPayload((previous) => ({
+                ...previous,
+                pctAdministracionGgcc: event.target.value.trim() ? event.target.value : null
+              }))
+            }
+            disabled={!canEdit}
+            className="w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
+      </div>
 
       <GgccListEditor
         ggcc={payload.ggcc}

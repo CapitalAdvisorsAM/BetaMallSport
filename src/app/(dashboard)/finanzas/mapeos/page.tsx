@@ -1,35 +1,28 @@
-import { requireSession } from "@/lib/permissions";
+import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
+import { canWrite, requireSession } from "@/lib/permissions";
 import { getProjectContext } from "@/lib/project";
 import { MapeosClient } from "@/components/finanzas/MapeosClient";
-import { prisma } from "@/lib/prisma";
+import { getFinanzasMapeosData } from "@/lib/finanzas/mapeos";
 
 export default async function MapeosPage({
   searchParams
 }: {
   searchParams: { proyecto?: string; tab?: string };
 }): Promise<JSX.Element> {
-  await requireSession();
+  const session = await requireSession();
   const { projects, selectedProjectId } = await getProjectContext(searchParams.proyecto);
 
-  const [mapeosContable, mapeosVentas, locales] = selectedProjectId
-    ? await Promise.all([
-        prisma.mapeoLocalContable.findMany({
-          where: { proyectoId: selectedProjectId },
-          include: { local: { select: { codigo: true, nombre: true } } },
-          orderBy: { localExterno: "asc" }
-        }),
-        prisma.mapeoVentasLocal.findMany({
-          where: { proyectoId: selectedProjectId },
-          include: { local: { select: { codigo: true, nombre: true } } },
-          orderBy: { tiendaNombre: "asc" }
-        }),
-        prisma.local.findMany({
-          where: { proyectoId: selectedProjectId, estado: "ACTIVO" },
-          select: { id: true, codigo: true, nombre: true },
-          orderBy: { codigo: "asc" }
-        })
-      ])
-    : [[], [], []];
+  if (!selectedProjectId) {
+    return (
+      <ProjectCreationPanel
+        title="Finanzas"
+        description="No hay proyectos activos. Crea uno para administrar mapeos entre finanzas y rent roll."
+        canEdit={canWrite(session.user.role)}
+      />
+    );
+  }
+
+  const { mapeosContable, mapeosVentas, locales } = await getFinanzasMapeosData(selectedProjectId);
 
   return (
     <MapeosClient
