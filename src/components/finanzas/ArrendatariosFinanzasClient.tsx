@@ -7,6 +7,8 @@ import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolbar";
 import { OccupancyBadge } from "@/components/finanzas/OccupancyBadge";
+import { Button } from "@/components/ui/button";
+import { buildExportExcelUrl } from "@/lib/export/shared";
 import type { ProjectOption, TenantFinanceRow } from "@/types/finanzas";
 import { formatUf } from "@/lib/utils";
 
@@ -56,6 +58,18 @@ export function ArrendatariosFinanzasClient({
     () => [...new Set(data.flatMap((tenant) => tenant.periodos))].sort(),
     [data]
   );
+  const filteredExportHref = buildExportExcelUrl({
+    dataset: "finanzas_arrendatarios",
+    scope: "filtered",
+    proyectoId: selectedProjectId,
+    desde: desde || undefined,
+    hasta: hasta || undefined
+  });
+  const allExportHref = buildExportExcelUrl({
+    dataset: "finanzas_arrendatarios",
+    scope: "all",
+    proyectoId: selectedProjectId
+  });
 
   return (
     <main className="space-y-4">
@@ -66,12 +80,20 @@ export function ArrendatariosFinanzasClient({
         selectedProjectId={selectedProjectId}
         preserve={{ desde, hasta }}
         actions={
-          <ProjectPeriodToolbar
-            desde={desde}
-            hasta={hasta}
-            onDesdeChange={setDesde}
-            onHastaChange={setHasta}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <ProjectPeriodToolbar
+              desde={desde}
+              hasta={hasta}
+              onDesdeChange={setDesde}
+              onHastaChange={setHasta}
+            />
+            <Button asChild type="button" variant="outline" size="sm">
+              <a href={filteredExportHref}>Descargar filtrado</a>
+            </Button>
+            <Button asChild type="button" size="sm">
+              <a href={allExportHref}>Descargar todo</a>
+            </Button>
+          </div>
         }
       />
 

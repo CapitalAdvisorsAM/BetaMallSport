@@ -27,6 +27,7 @@ import {
   TableRow
 } from "@/components/ui/table";
 import type { RentRollMode } from "@/lib/navigation";
+import { buildExportExcelUrl } from "@/lib/export/shared";
 import { canWrite, requireSession } from "@/lib/permissions";
 import {
   buildArrendatariosActiveContractWhere,
@@ -224,6 +225,21 @@ export default async function ArrendatariosPage({
         })
       : null;
 
+  const filteredExportHref = buildExportExcelUrl({
+    dataset: "arrendatarios",
+    scope: "filtered",
+    proyectoId: selectedProjectId,
+    q: q || undefined,
+    vigente: searchParams.vigente === "vigente" || searchParams.vigente === "no-vigente"
+      ? searchParams.vigente
+      : undefined
+  });
+  const allExportHref = buildExportExcelUrl({
+    dataset: "arrendatarios",
+    scope: "all",
+    proyectoId: selectedProjectId
+  });
+
   return (
     <main className="space-y-4">
       <section className="rounded-md bg-white p-5 shadow-sm">
@@ -259,6 +275,20 @@ export default async function ArrendatariosPage({
 
       {mode === "ver" ? (
         <>
+          <section className="rounded-md bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-slate-800">Exportar arrendatarios</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button asChild type="button" variant="outline" size="sm">
+                  <Link href={filteredExportHref}>Descargar filtrado</Link>
+                </Button>
+                <Button asChild type="button" size="sm">
+                  <Link href={allExportHref}>Descargar todo</Link>
+                </Button>
+              </div>
+            </div>
+          </section>
+
           {selectedArrendatario ? (
             <section className="space-y-3 rounded-md border border-brand-200 bg-brand-50 p-4 shadow-sm">
               <div className="flex items-center justify-between">

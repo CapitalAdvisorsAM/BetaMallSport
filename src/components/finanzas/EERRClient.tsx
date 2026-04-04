@@ -6,6 +6,8 @@ import { ModuleHeader } from "@/components/dashboard/ModuleHeader";
 import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolbar";
+import { Button } from "@/components/ui/button";
+import { buildExportExcelUrl } from "@/lib/export/shared";
 import { calculateEbitdaMargin, getEerrValueTone } from "@/lib/finanzas/eerr";
 import type { EerrData, ProjectOption } from "@/types/finanzas";
 import { formatUf } from "@/lib/utils";
@@ -65,6 +67,19 @@ export function EERRClient({
     });
   }
 
+  const filteredExportHref = buildExportExcelUrl({
+    dataset: "finanzas_eerr",
+    scope: "filtered",
+    proyectoId: selectedProjectId,
+    desde: desde || undefined,
+    hasta: hasta || undefined
+  });
+  const allExportHref = buildExportExcelUrl({
+    dataset: "finanzas_eerr",
+    scope: "all",
+    proyectoId: selectedProjectId
+  });
+
   return (
     <main className="space-y-4">
       <ModuleHeader
@@ -74,12 +89,20 @@ export function EERRClient({
         selectedProjectId={selectedProjectId}
         preserve={{ desde, hasta }}
         actions={
-          <ProjectPeriodToolbar
-            desde={desde}
-            hasta={hasta}
-            onDesdeChange={setDesde}
-            onHastaChange={setHasta}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <ProjectPeriodToolbar
+              desde={desde}
+              hasta={hasta}
+              onDesdeChange={setDesde}
+              onHastaChange={setHasta}
+            />
+            <Button asChild type="button" variant="outline" size="sm">
+              <a href={filteredExportHref}>Descargar filtrado</a>
+            </Button>
+            <Button asChild type="button" size="sm">
+              <a href={allExportHref}>Descargar todo</a>
+            </Button>
+          </div>
         }
       />
 
