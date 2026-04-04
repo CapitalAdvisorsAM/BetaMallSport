@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
-import { formatDate } from "@/lib/utils";
+import { formatDateString } from "@/lib/utils";
 import { DataTable } from "@/components/ui/DataTable";
 import { useDataTable } from "@/hooks/useDataTable";
 import type { RentRollRow } from "@/types";
@@ -39,7 +39,7 @@ export function ContractTable({ rows }: ContractTableProps): JSX.Element {
         enableSorting: false,
         cell: ({ row }) => (
           <span className="whitespace-nowrap text-slate-700">
-            {formatDate(row.original.fechaInicio)} - {formatDate(row.original.fechaTermino)}
+            {formatDateString(row.original.fechaInicio)} - {formatDateString(row.original.fechaTermino)}
           </span>
         )
       },

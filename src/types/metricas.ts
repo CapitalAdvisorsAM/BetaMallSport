@@ -14,7 +14,7 @@ export type RentRollMetricaRow = {
   ventasUf: number | null;
   rentaVariableUf: number | null;
   ingresoBrutoUf: number;
-  fechaTermino: Date;
+  fechaTermino: string;
   diasVigentes: number;
 };
 

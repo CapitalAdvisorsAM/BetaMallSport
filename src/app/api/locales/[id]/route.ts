@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { localeSchema } from "@/lib/locales/schema";
+import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
@@ -93,6 +94,7 @@ export async function PUT(
         estado: payload.estado
       }
     });
+    invalidateMetricsCacheByProject(payload.proyectoId);
 
     return NextResponse.json(updated);
   } catch (error) {
@@ -124,6 +126,7 @@ export async function DELETE(
     if (deleted.count === 0) {
       return NextResponse.json({ message: "Local no encontrado." }, { status: 404 });
     }
+    invalidateMetricsCacheByProject(proyectoId);
 
     return NextResponse.json({ message: "Local eliminado correctamente." });
   } catch (error) {

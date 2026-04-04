@@ -23,12 +23,21 @@ describe("buildArrendatariosActiveContractWhere", () => {
     const nextMonthStart = new Date("2026-04-01T00:00:00.000Z");
 
     expect(buildArrendatariosActiveContractWhere({ start, nextMonthStart })).toEqual({
-      contratosDia: {
-        some: {
-          fecha: { gte: start, lt: nextMonthStart },
-          estadoDia: { in: ["OCUPADO", "GRACIA"] }
+      OR: [
+        {
+          contratosDia: {
+            some: {
+              fecha: { gte: start, lt: nextMonthStart },
+              estadoDia: { in: ["OCUPADO", "GRACIA"] }
+            }
+          }
+        },
+        {
+          fechaInicio: { lt: nextMonthStart },
+          fechaTermino: { gte: start },
+          estado: { in: ["VIGENTE", "GRACIA"] }
         }
-      }
+      ]
     });
   });
 });
@@ -42,12 +51,21 @@ describe("buildArrendatariosWhere", () => {
       proyectoId: "p-1",
       contratos: {
         some: {
-          contratosDia: {
-            some: {
-              fecha: { gte: start, lt: nextMonthStart },
-              estadoDia: { in: ["OCUPADO", "GRACIA"] }
+          OR: [
+            {
+              contratosDia: {
+                some: {
+                  fecha: { gte: start, lt: nextMonthStart },
+                  estadoDia: { in: ["OCUPADO", "GRACIA"] }
+                }
+              }
+            },
+            {
+              fechaInicio: { lt: nextMonthStart },
+              fechaTermino: { gte: start },
+              estado: { in: ["VIGENTE", "GRACIA"] }
             }
-          }
+          ]
         }
       }
     });
@@ -67,12 +85,21 @@ describe("buildArrendatariosWhere", () => {
       proyectoId: "p-1",
       contratos: {
         some: {
-          contratosDia: {
-            some: {
-              fecha: { gte: start, lt: nextMonthStart },
-              estadoDia: { in: ["OCUPADO", "GRACIA"] }
+          OR: [
+            {
+              contratosDia: {
+                some: {
+                  fecha: { gte: start, lt: nextMonthStart },
+                  estadoDia: { in: ["OCUPADO", "GRACIA"] }
+                }
+              }
+            },
+            {
+              fechaInicio: { lt: nextMonthStart },
+              fechaTermino: { gte: start },
+              estado: { in: ["VIGENTE", "GRACIA"] }
             }
-          }
+          ]
         }
       },
       vigente: true,

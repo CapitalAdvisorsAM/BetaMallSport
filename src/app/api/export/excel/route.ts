@@ -2,9 +2,12 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { Prisma } from "@prisma/client";
+import { NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { buildArrendatariosActiveContractWhere, buildArrendatariosWhere, parseVigenteFilter } from "@/lib/rent-roll/arrendatarios";
 import { buildLocalesWhere, parseLocalesEstado } from "@/lib/rent-roll/locales";
+import { getOptionalBooleanSearchParam } from "@/lib/http/request";
+import { getRequestId, logDuration, logError } from "@/lib/observability";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { type ExportDataset, type ExportScope, isExportDataset, isExportScope } from "@/lib/export/shared";
@@ -14,6 +17,8 @@ type ExportResult = {
   fileName: string;
   sheets: ExportSheet[];
 };
+
+const EXPORT_MAX_ROWS = 5000;
 
 const GRUPOS_COSTO = new Set([
   "VACANCIA G.C. + CONTRIBUCIONES",
@@ -45,6 +50,36 @@ function formatDateIso(value: Date | null): string {
     return "";
   }
   return value.toISOString().slice(0, 10);
+}
+
+function applyExportRowCap(sheets: ExportSheet[], maxRows: number): ExportSheet[] {
+  let truncatedRows = 0;
+  const cappedSheets = sheets.map((sheet) => {
+    if (sheet.rows.length <= maxRows) {
+      return sheet;
+    }
+    truncatedRows += sheet.rows.length - maxRows;
+    return {
+      ...sheet,
+      rows: sheet.rows.slice(0, maxRows)
+    };
+  });
+
+  if (truncatedRows === 0) {
+    return cappedSheets;
+  }
+
+  return [
+    ...cappedSheets,
+    {
+      name: "Meta",
+      headers: ["Clave", "Valor"],
+      rows: [
+        ["RowsCap", maxRows],
+        ["RowsTruncated", truncatedRows]
+      ]
+    }
+  ];
 }
 
 function asNumber(value: unknown): number {
@@ -345,6 +380,55 @@ async function buildFinanzasArrendatariosExport(
     orderBy: { nombreComercial: "asc" }
   });
 
+  const allLocalIds = Array.from(
+    new Set(arrendatarios.flatMap((arrendatario) => arrendatario.contratos.map((item) => item.localId)))
+  );
+  const [registros, ventas] = await Promise.all([
+    allLocalIds.length > 0
+      ? prisma.registroContable.findMany({
+          where: {
+            proyectoId,
+            localId: { in: allLocalIds },
+            periodo: { gte: desdeDate, lte: hastaDate },
+            grupo1: "INGRESOS DE EXPLOTACION"
+          },
+          select: {
+            localId: true,
+            periodo: true,
+            valorUf: true
+          }
+        })
+      : Promise.resolve([]),
+    allLocalIds.length > 0
+      ? prisma.ventaLocal.findMany({
+          where: {
+            proyectoId,
+            localId: { in: allLocalIds },
+            periodo: { gte: desde ?? "2024-01", lte: hasta ?? "9999-12" }
+          },
+          select: {
+            localId: true,
+            periodo: true,
+            ventasUf: true
+          }
+        })
+      : Promise.resolve([])
+  ]);
+
+  const facturacionByLocal = new Map<string, Map<string, number>>();
+  for (const registro of registros) {
+    const periodoKey = registro.periodo.toISOString().slice(0, 7);
+    const byPeriodo = facturacionByLocal.get(registro.localId) ?? new Map<string, number>();
+    byPeriodo.set(periodoKey, (byPeriodo.get(periodoKey) ?? 0) + asNumber(registro.valorUf));
+    facturacionByLocal.set(registro.localId, byPeriodo);
+  }
+  const ventasByLocal = new Map<string, Map<string, number>>();
+  for (const venta of ventas) {
+    const byPeriodo = ventasByLocal.get(venta.localId) ?? new Map<string, number>();
+    byPeriodo.set(venta.periodo, (byPeriodo.get(venta.periodo) ?? 0) + asNumber(venta.ventasUf));
+    ventasByLocal.set(venta.localId, byPeriodo);
+  }
+
   const rows: Array<Array<string | number | boolean | null>> = [];
 
   for (const arrendatario of arrendatarios) {
@@ -353,34 +437,22 @@ async function buildFinanzasArrendatariosExport(
       continue;
     }
 
-    const [registros, ventas] = await Promise.all([
-      prisma.registroContable.findMany({
-        where: {
-          proyectoId,
-          localId: { in: localIds },
-          periodo: { gte: desdeDate, lte: hastaDate },
-          grupo1: "INGRESOS DE EXPLOTACION"
-        }
-      }),
-      prisma.ventaLocal.findMany({
-        where: {
-          proyectoId,
-          localId: { in: localIds },
-          periodo: { gte: desde ?? "2024-01", lte: hasta ?? "9999-12" }
-        }
-      })
-    ]);
-
     const facturacionPorPeriodo: Record<string, number> = {};
     const ventasPorPeriodo: Record<string, number> = {};
 
-    for (const registro of registros) {
-      const periodo = registro.periodo.toISOString().slice(0, 7);
-      facturacionPorPeriodo[periodo] = (facturacionPorPeriodo[periodo] ?? 0) + asNumber(registro.valorUf);
-    }
-
-    for (const venta of ventas) {
-      ventasPorPeriodo[venta.periodo] = (ventasPorPeriodo[venta.periodo] ?? 0) + asNumber(venta.ventasUf);
+    for (const localId of localIds) {
+      const facturacionLocal = facturacionByLocal.get(localId);
+      if (facturacionLocal) {
+        for (const [periodoKey, amount] of facturacionLocal.entries()) {
+          facturacionPorPeriodo[periodoKey] = (facturacionPorPeriodo[periodoKey] ?? 0) + amount;
+        }
+      }
+      const ventasLocal = ventasByLocal.get(localId);
+      if (ventasLocal) {
+        for (const [periodoKey, amount] of ventasLocal.entries()) {
+          ventasPorPeriodo[periodoKey] = (ventasPorPeriodo[periodoKey] ?? 0) + amount;
+        }
+      }
     }
 
     const totalFacturado = Object.values(facturacionPorPeriodo).reduce((acc, value) => acc + value, 0);
@@ -626,9 +698,20 @@ async function buildExportResult(
 }
 
 export async function GET(request: Request) {
+  const startedAt = Date.now();
+  const requestId = getRequestId(request);
   try {
     await requireSession();
     const { searchParams } = new URL(request.url);
+    const sync = getOptionalBooleanSearchParam(searchParams, "sync") ?? true;
+    if (!sync) {
+      return NextResponse.json(
+        {
+          message: "Exportacion asincrona disponible via POST /api/jobs/exports."
+        },
+        { status: 409 }
+      );
+    }
 
     const datasetRaw = searchParams.get("dataset");
     if (!isExportDataset(datasetRaw)) {
@@ -643,11 +726,28 @@ export async function GET(request: Request) {
     const dataset = datasetRaw;
     const scope = scopeRaw;
     const proyectoId = ensureProyectoId(dataset, searchParams.get("proyectoId"));
+    const requestedLimit = Number.parseInt(searchParams.get("limit") ?? "", 10);
+    const rowLimit =
+      Number.isFinite(requestedLimit) && requestedLimit > 0
+        ? Math.min(requestedLimit, EXPORT_MAX_ROWS)
+        : EXPORT_MAX_ROWS;
 
     const exportResult = await buildExportResult(dataset, scope, proyectoId, searchParams);
-    const buffer = buildExcelWorkbookBuffer(exportResult.sheets);
+    const cappedSheets = applyExportRowCap(exportResult.sheets, rowLimit);
+    const buffer = buildExcelWorkbookBuffer(cappedSheets);
+    logDuration("export_excel", startedAt, {
+      requestId,
+      dataset,
+      scope,
+      proyectoId,
+      sheets: cappedSheets.length
+    });
     return createExcelDownloadResponse(buffer, exportResult.fileName);
   } catch (error) {
+    logError("export_excel_failed", {
+      requestId,
+      error: error instanceof Error ? error.message : "unknown"
+    });
     return handleApiError(error);
   }
 }

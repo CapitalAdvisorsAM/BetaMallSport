@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { prisma } from "@/lib/prisma";
@@ -169,7 +172,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         archivoNombre: file.name,
         archivoUrl: "",
         registrosCargados: insertados,
-        estado: sinMapeo.length > 0 ? "OK" : "OK",
+        estado: "OK",
         errorDetalle: sinMapeo.length > 0 ? ({ sinMapeo } as object) : undefined
       }
     });

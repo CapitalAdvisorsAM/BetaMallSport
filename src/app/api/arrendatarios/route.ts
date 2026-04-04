@@ -3,7 +3,8 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { resolveTenantRut, tenantSchema } from "@/lib/arrendatarios/schema";
-import { parsePaginationParams } from "@/lib/pagination";
+import { getRequiredSearchParam, parseRequiredPaginationParams } from "@/lib/http/request";
+import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
@@ -13,22 +14,8 @@ export async function GET(request: Request): Promise<NextResponse> {
   try {
     await requireSession();
     const { searchParams } = new URL(request.url);
-    const proyectoId = searchParams.get("proyectoId");
-
-    if (!proyectoId) {
-      return NextResponse.json({ message: "proyectoId es obligatorio." }, { status: 400 });
-    }
-
-    const paginationRequested = searchParams.has("limit") || searchParams.has("cursor");
-    if (!paginationRequested) {
-      const arrendatarios = await prisma.arrendatario.findMany({
-        where: { proyectoId },
-        orderBy: { nombreComercial: "asc" }
-      });
-      return NextResponse.json(arrendatarios);
-    }
-
-    const { limit, cursor } = parsePaginationParams(searchParams);
+    const proyectoId = getRequiredSearchParam(searchParams, "proyectoId");
+    const { limit, cursor } = parseRequiredPaginationParams(searchParams);
 
     const items = await prisma.arrendatario.findMany({
       where: { proyectoId },
@@ -70,6 +57,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         telefono: payload.telefono || null
       }
     });
+    invalidateMetricsCacheByProject(payload.proyectoId);
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {

@@ -191,7 +191,7 @@ export function RentRollChartsSection({
           </span>
           <span className="flex items-center gap-1">
             <span
-              className="inline-block h-0.5 w-5 border-t-2 border-dashed border-[#60a5fa]"
+              className="inline-block h-0.5 w-5 border-t-2 border-dashed border-blue-400"
               style={{ background: "none" }}
             />
             Proyectado

@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, handleApiError } from "@/lib/api-error";
+import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { isPeriodoValido } from "@/lib/validators";
@@ -101,6 +102,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         ventasUf: new Prisma.Decimal(parsed.data.ventasUf)
       }
     });
+    invalidateMetricsCacheByProject(parsed.data.proyectoId);
 
     return NextResponse.json(saved, { status: 200 });
   } catch (error) {

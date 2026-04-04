@@ -6,29 +6,8 @@ on:
       - main
 
 jobs:
-  typecheck:
-    name: TypeScript
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate Prisma Client
-        run: npx prisma generate
-
-      - name: Type check
-        run: npx tsc --noEmit
-
-  build:
-    name: Build
+  verify:
+    name: Verify
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -52,6 +31,15 @@ jobs:
 
       - name: Generate Prisma Client
         run: npx prisma generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Type check
+        run: npm run typecheck
 
       - name: Build
         run: npm run build

@@ -6,6 +6,7 @@ import { handleApiError } from "@/lib/api-error";
 import { SLUG_MAX_ATTEMPTS } from "@/lib/constants";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { slugify } from "@/lib/utils";
 
 export const runtime = "nodejs";
 
@@ -18,16 +19,6 @@ const projectSchema = z.object({
     .optional(),
   activo: z.boolean().optional()
 });
-
-function slugify(value: string): string {
-  const normalized = value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return normalized || "proyecto";
-}
 
 async function buildUniqueSlug(baseSlug: string): Promise<string> {
   let candidate = baseSlug;

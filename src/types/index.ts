@@ -23,8 +23,8 @@ export type RentRollRow = {
   local: string;
   arrendatario: string;
   estado: EstadoDiaContrato;
-  fechaInicio: Date;
-  fechaTermino: Date;
+  fechaInicio: string;
+  fechaTermino: string;
   tarifaVigenteUfM2: string;
   m2: string;
 };

@@ -1,0 +1,524 @@
+import { Contrato, EstadoContrato, Prisma, TipoTarifaContrato } from "@prisma/client";
+import { normalizeUploadArrendatarioNombre } from "@/lib/upload/parse-contratos";
+import { parseDate } from "@/lib/upload/parse-utils";
+import type { PreviewRow, UploadIssue } from "@/types/upload";
+
+type GgccTipoInput = "FIJO_UF_M2" | "FIJO_UF";
+export type LocalMap = Map<string, { id: string; glam2: string }>;
+export type ArrendatarioMap = Map<string, string[]>;
+type ExistingContratoSnapshot = Prisma.ContratoGetPayload<{ include: { tarifas: true; ggcc: true } }>;
+
+export type ContratoApplyRow = {
+  rowNumber: number;
+  numeroContrato: string;
+  localCodigo: string;
+  arrendatarioNombre: string;
+  estado: EstadoContrato;
+  fechaInicio: string;
+  fechaTermino: string;
+  fechaEntrega: string | null;
+  fechaApertura: string | null;
+  tarifaTipo: TipoTarifaContrato;
+  tarifaValor: string;
+  tarifaVigenciaDesde: string;
+  tarifaVigenciaHasta: string | null;
+  tarifa2Valor: string | null;
+  tarifa2VigenciaDesde: string | null;
+  tarifa2VigenciaHasta: string | null;
+  tarifa3Valor: string | null;
+  tarifa3VigenciaDesde: string | null;
+  tarifa3VigenciaHasta: string | null;
+  tarifa4Valor: string | null;
+  tarifa4VigenciaDesde: string | null;
+  tarifa4VigenciaHasta: string | null;
+  tarifa5Valor: string | null;
+  tarifa5VigenciaDesde: string | null;
+  tarifa5VigenciaHasta: string | null;
+  rentaVariablePct: string | null;
+  pctFondoPromocion: string | null;
+  multiplicadorDiciembre: string | null;
+  codigoCC: string | null;
+  ggccPctAdministracion: string | null;
+  ggccPctReajuste: string | null;
+  notas: string | null;
+  ggccTipo: GgccTipoInput | null;
+  ggccValor: string | null;
+  ggccMesesReajuste: number | null;
+  anexoFecha: string | null;
+  anexoDescripcion: string | null;
+};
+
+export type ApplyContratoResult =
+  | {
+      issue: UploadIssue;
+      contrato?: never;
+      before?: never;
+    }
+  | {
+      issue?: never;
+      contrato: Contrato;
+      before: ExistingContratoSnapshot | null;
+    };
+
+export type StoredContratoPreview = {
+  rows: PreviewRow<Record<string, unknown>>[];
+  summary: {
+    total: number;
+    nuevo: number;
+    actualizado: number;
+    sinCambio: number;
+    errores: number;
+  };
+  warnings: string[];
+};
+
+export type TarifaApplyInput = Pick<
+  ContratoApplyRow,
+  "tarifaTipo" | "tarifaValor" | "tarifaVigenciaDesde" | "tarifaVigenciaHasta"
+>;
+type GgccApplyInput = Pick<
+  ContratoApplyRow,
+  | "ggccTipo"
+  | "ggccValor"
+  | "ggccPctAdministracion"
+  | "ggccPctReajuste"
+  | "ggccMesesReajuste"
+>;
+
+const allowedEstadoContrato = new Set(Object.values(EstadoContrato));
+const allowedTipoTarifa = new Set(Object.values(TipoTarifaContrato));
+const allowedGgccTipo = new Set<GgccTipoInput>(["FIJO_UF_M2", "FIJO_UF"]);
+
+function asString(value: unknown): string {
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value).trim();
+  }
+  return "";
+}
+
+function normalizeNullable(value: unknown): string | null {
+  const normalized = asString(value);
+  return normalized ? normalized : null;
+}
+
+function isValidDecimalOrNull(value: string | null): boolean {
+  if (!value) {
+    return true;
+  }
+  const normalized = value.replace(",", ".");
+  return Number.isFinite(Number(normalized));
+}
+
+function decimalOrNull(value: string | null): Prisma.Decimal | null {
+  if (value === null || value.trim() === "") {
+    return null;
+  }
+  return new Prisma.Decimal(value.replace(",", "."));
+}
+
+function dateOrNull(value: string | null): Date | null {
+  if (!value) {
+    return null;
+  }
+  const parsed = parseDate(value);
+  if (!parsed) {
+    return null;
+  }
+  return new Date(parsed);
+}
+
+function integerOrNull(value: string | null): number | null {
+  if (!value) {
+    return null;
+  }
+  const numberValue = Number(value);
+  if (!Number.isInteger(numberValue) || numberValue < 1) {
+    return null;
+  }
+  return numberValue;
+}
+
+function normalizeGgccTipo(value: unknown, hasGgccValue: boolean): GgccTipoInput | null {
+  const normalized = asString(value).toUpperCase();
+  if (!normalized) {
+    return hasGgccValue ? "FIJO_UF_M2" : null;
+  }
+  if (!allowedGgccTipo.has(normalized as GgccTipoInput)) {
+    return null;
+  }
+  return normalized as GgccTipoInput;
+}
+
+export function hasValidPositiveDecimal(value: string | null): boolean {
+  if (!value) {
+    return false;
+  }
+  const numberValue = Number(value.replace(",", "."));
+  return Number.isFinite(numberValue) && numberValue > 0;
+}
+
+function toStoredGgccTarifaBaseUfM2(ggcc: GgccApplyInput, localGlam2: string): Prisma.Decimal | null {
+  const value = decimalOrNull(ggcc.ggccValor);
+  if (!value || !ggcc.ggccTipo) {
+    return null;
+  }
+  if (ggcc.ggccTipo === "FIJO_UF_M2") {
+    return value;
+  }
+
+  if (!hasValidPositiveDecimal(localGlam2)) {
+    return null;
+  }
+
+  return value.div(new Prisma.Decimal(localGlam2));
+}
+
+async function generateNumeroContrato(
+  tx: Prisma.TransactionClient,
+  proyectoId: string
+): Promise<string> {
+  while (true) {
+    const numeroContrato = crypto.randomUUID().slice(0, 8).toUpperCase();
+    const existing = await tx.contrato.findUnique({
+      where: {
+        proyectoId_numeroContrato: {
+          proyectoId,
+          numeroContrato
+        }
+      },
+      select: { id: true }
+    });
+
+    if (!existing) {
+      return numeroContrato;
+    }
+  }
+}
+
+export function normalizeContratoRow(
+  rowNumber: number,
+  data: Record<string, unknown>
+): ContratoApplyRow | null {
+  const numeroContrato = asString(data.numeroContrato);
+  const localCodigo = asString(data.localCodigo).toUpperCase();
+  const arrendatarioNombre = asString(data.arrendatarioNombre);
+  const arrendatarioNombreLookup = normalizeUploadArrendatarioNombre(arrendatarioNombre);
+  const estado = asString(data.estado).toUpperCase();
+  const fechaInicio = parseDate(data.fechaInicio);
+  const fechaTermino = parseDate(data.fechaTermino);
+  const fechaEntrega = parseDate(data.fechaEntrega);
+  const fechaApertura = parseDate(data.fechaApertura);
+  const tarifaTipo = asString(data.tarifaTipo).toUpperCase();
+  const tarifaValor = asString(data.tarifaValor).replace(",", ".");
+  const tarifaVigenciaDesde = parseDate(data.tarifaVigenciaDesde);
+  const tarifaVigenciaHasta = parseDate(data.tarifaVigenciaHasta);
+  const tarifa2Valor = normalizeNullable(data.tarifa2Valor)?.replace(",", ".") ?? null;
+  const tarifa2VigenciaDesde = parseDate(data.tarifa2VigenciaDesde);
+  const tarifa2VigenciaHasta = parseDate(data.tarifa2VigenciaHasta);
+  const tarifa3Valor = normalizeNullable(data.tarifa3Valor)?.replace(",", ".") ?? null;
+  const tarifa3VigenciaDesde = parseDate(data.tarifa3VigenciaDesde);
+  const tarifa3VigenciaHasta = parseDate(data.tarifa3VigenciaHasta);
+  const tarifa4Valor = normalizeNullable(data.tarifa4Valor)?.replace(",", ".") ?? null;
+  const tarifa4VigenciaDesde = parseDate(data.tarifa4VigenciaDesde);
+  const tarifa4VigenciaHasta = parseDate(data.tarifa4VigenciaHasta);
+  const tarifa5Valor = normalizeNullable(data.tarifa5Valor)?.replace(",", ".") ?? null;
+  const tarifa5VigenciaDesde = parseDate(data.tarifa5VigenciaDesde);
+  const tarifa5VigenciaHasta = parseDate(data.tarifa5VigenciaHasta);
+  const rentaVariablePct = normalizeNullable(data.rentaVariablePct)?.replace(",", ".") ?? null;
+  const pctFondoPromocion = normalizeNullable(data.pctFondoPromocion);
+  const multiplicadorDiciembre = normalizeNullable(data.multiplicadorDiciembre);
+  const codigoCC = normalizeNullable(data.codigoCC);
+  const ggccPctAdministracion = normalizeNullable(data.ggccPctAdministracion);
+  const ggccPctReajuste = normalizeNullable(data.ggccPctReajuste);
+  const notas = normalizeNullable(data.notas);
+  const legacyGgccValue = normalizeNullable(data.ggccTarifaBaseUfM2);
+  const ggccValor = normalizeNullable(data.ggccValor) ?? legacyGgccValue;
+  const ggccTipoRaw = asString(data.ggccTipo).toUpperCase();
+  const ggccTipo = normalizeGgccTipo(data.ggccTipo, Boolean(ggccValor));
+  const ggccMesesReajusteRaw = normalizeNullable(data.ggccMesesReajuste);
+  const ggccMesesReajuste = integerOrNull(ggccMesesReajusteRaw);
+  const anexoFecha = parseDate(data.anexoFecha);
+  const anexoDescripcion = normalizeNullable(data.anexoDescripcion);
+  const tarifaTipoFinal = tarifaTipo as TipoTarifaContrato;
+  const tarifaUsaFechasContrato = tarifaTipoFinal === TipoTarifaContrato.PORCENTAJE;
+  const tarifaVigenciaDesdeFinal = tarifaUsaFechasContrato ? fechaInicio : tarifaVigenciaDesde;
+  const tarifaVigenciaHastaFinal = tarifaUsaFechasContrato ? fechaTermino : tarifaVigenciaHasta;
+
+  if (
+    !localCodigo ||
+    !arrendatarioNombreLookup ||
+    !fechaInicio ||
+    !fechaTermino ||
+    !tarifaVigenciaDesdeFinal
+  ) {
+    return null;
+  }
+  if (!allowedEstadoContrato.has(estado as EstadoContrato)) {
+    return null;
+  }
+  if (!allowedTipoTarifa.has(tarifaTipo as TipoTarifaContrato)) {
+    return null;
+  }
+  if (!tarifaValor || Number.isNaN(Number(tarifaValor))) {
+    return null;
+  }
+  if (!isValidDecimalOrNull(pctFondoPromocion)) {
+    return null;
+  }
+  if (!isValidDecimalOrNull(multiplicadorDiciembre)) {
+    return null;
+  }
+  if (
+    !isValidDecimalOrNull(ggccValor) ||
+    !isValidDecimalOrNull(ggccPctAdministracion) ||
+    !isValidDecimalOrNull(ggccPctReajuste)
+  ) {
+    return null;
+  }
+  if (ggccMesesReajusteRaw && ggccMesesReajuste === null) {
+    return null;
+  }
+  if (ggccMesesReajuste !== null && !ggccPctReajuste) {
+    return null;
+  }
+  if (ggccTipoRaw && ggccTipo === null) {
+    return null;
+  }
+  const hasAnyGgccValue = Boolean(
+    ggccTipo ||
+      ggccValor ||
+      ggccPctAdministracion ||
+      ggccPctReajuste ||
+      ggccMesesReajuste !== null
+  );
+  const hasCompleteGgcc = Boolean(ggccTipo && ggccValor && ggccPctAdministracion);
+  if (hasAnyGgccValue && !hasCompleteGgcc) {
+    return null;
+  }
+  if ((anexoFecha && !anexoDescripcion) || (!anexoFecha && anexoDescripcion)) {
+    return null;
+  }
+  if (new Date(fechaInicio) > new Date(fechaTermino)) {
+    return null;
+  }
+
+  return {
+    rowNumber,
+    numeroContrato,
+    localCodigo,
+    arrendatarioNombre,
+    estado: estado as EstadoContrato,
+    fechaInicio,
+    fechaTermino,
+    fechaEntrega,
+    fechaApertura,
+    tarifaTipo: tarifaTipoFinal,
+    tarifaValor,
+    tarifaVigenciaDesde: tarifaVigenciaDesdeFinal,
+    tarifaVigenciaHasta: tarifaVigenciaHastaFinal,
+    tarifa2Valor,
+    tarifa2VigenciaDesde,
+    tarifa2VigenciaHasta,
+    tarifa3Valor,
+    tarifa3VigenciaDesde,
+    tarifa3VigenciaHasta,
+    tarifa4Valor,
+    tarifa4VigenciaDesde,
+    tarifa4VigenciaHasta,
+    tarifa5Valor,
+    tarifa5VigenciaDesde,
+    tarifa5VigenciaHasta,
+    rentaVariablePct,
+    pctFondoPromocion,
+    multiplicadorDiciembre,
+    codigoCC,
+    ggccPctAdministracion,
+    ggccPctReajuste,
+    notas,
+    ggccTipo,
+    ggccValor,
+    ggccMesesReajuste,
+    anexoFecha,
+    anexoDescripcion
+  };
+}
+
+export async function applyContrato(
+  tx: Prisma.TransactionClient,
+  row: ContratoApplyRow,
+  proyectoId: string,
+  localMap: LocalMap,
+  arrendatarioMap: ArrendatarioMap
+): Promise<ApplyContratoResult> {
+  const localData = localMap.get(row.localCodigo.toUpperCase());
+  const arrendatarioMatches = arrendatarioMap.get(
+    normalizeUploadArrendatarioNombre(row.arrendatarioNombre)
+  );
+  const arrendatarioId = arrendatarioMatches?.length === 1 ? arrendatarioMatches[0] : null;
+
+  if (!localData || !arrendatarioMatches || arrendatarioMatches.length === 0) {
+    return {
+      issue: {
+        rowNumber: row.rowNumber,
+        message: "No existe localCodigo o arrendatarioNombre en el proyecto seleccionado."
+      }
+    };
+  }
+  if (!arrendatarioId) {
+    return {
+      issue: {
+        rowNumber: row.rowNumber,
+        message: `Arrendatario '${row.arrendatarioNombre}' es ambiguo. Debe ser unico en el proyecto.`
+      }
+    };
+  }
+
+  const before = row.numeroContrato
+    ? await tx.contrato.findUnique({
+        where: {
+          proyectoId_numeroContrato: {
+            proyectoId,
+            numeroContrato: row.numeroContrato
+          }
+        },
+        include: { tarifas: true, ggcc: true }
+      })
+    : await tx.contrato.findFirst({
+        where: {
+          proyectoId,
+          localId: localData.id,
+          arrendatarioId,
+          fechaInicio: new Date(row.fechaInicio),
+          fechaTermino: new Date(row.fechaTermino)
+        },
+        include: { tarifas: true, ggcc: true }
+      });
+
+  const numeroContrato =
+    before?.numeroContrato || row.numeroContrato || (await generateNumeroContrato(tx, proyectoId));
+
+  const contrato = before
+    ? await tx.contrato.update({
+        where: { id: before.id },
+        data: {
+          localId: localData.id,
+          arrendatarioId,
+          fechaInicio: new Date(row.fechaInicio),
+          fechaTermino: new Date(row.fechaTermino),
+          fechaEntrega: dateOrNull(row.fechaEntrega),
+          fechaApertura: dateOrNull(row.fechaApertura),
+          estado: row.estado,
+          pctFondoPromocion: decimalOrNull(row.pctFondoPromocion),
+          multiplicadorDiciembre: decimalOrNull(row.multiplicadorDiciembre),
+          codigoCC: row.codigoCC,
+          notas: row.notas
+        }
+      })
+    : await tx.contrato.create({
+        data: {
+          proyectoId,
+          localId: localData.id,
+          arrendatarioId,
+          numeroContrato,
+          fechaInicio: new Date(row.fechaInicio),
+          fechaTermino: new Date(row.fechaTermino),
+          fechaEntrega: dateOrNull(row.fechaEntrega),
+          fechaApertura: dateOrNull(row.fechaApertura),
+          estado: row.estado,
+          pctFondoPromocion: decimalOrNull(row.pctFondoPromocion),
+          multiplicadorDiciembre: decimalOrNull(row.multiplicadorDiciembre),
+          codigoCC: row.codigoCC,
+          notas: row.notas
+        }
+      });
+
+  return { before, contrato };
+}
+
+export async function applyTarifas(
+  tx: Prisma.TransactionClient,
+  contratoId: string,
+  tarifas: TarifaApplyInput
+): Promise<void> {
+  const existingTarifa = await tx.contratoTarifa.findFirst({
+    where: {
+      contratoId,
+      tipo: tarifas.tarifaTipo,
+      vigenciaDesde: new Date(tarifas.tarifaVigenciaDesde)
+    }
+  });
+
+  if (existingTarifa) {
+    await tx.contratoTarifa.update({
+      where: { id: existingTarifa.id },
+      data: {
+        valor: new Prisma.Decimal(tarifas.tarifaValor),
+        vigenciaHasta: dateOrNull(tarifas.tarifaVigenciaHasta)
+      }
+    });
+    return;
+  }
+
+  await tx.contratoTarifa.create({
+    data: {
+      contratoId,
+      tipo: tarifas.tarifaTipo,
+      valor: new Prisma.Decimal(tarifas.tarifaValor),
+      vigenciaDesde: new Date(tarifas.tarifaVigenciaDesde),
+      vigenciaHasta: dateOrNull(tarifas.tarifaVigenciaHasta),
+      esDiciembre: false
+    }
+  });
+}
+
+export async function applyGGCC(
+  tx: Prisma.TransactionClient,
+  contratoId: string,
+  ggcc: GgccApplyInput,
+  localGlam2: string,
+  fechaInicio: string,
+  fechaTermino: string
+): Promise<void> {
+  if (!ggcc.ggccTipo || !ggcc.ggccValor || !ggcc.ggccPctAdministracion) {
+    return;
+  }
+
+  const tarifaBaseUfM2 = toStoredGgccTarifaBaseUfM2(ggcc, localGlam2);
+  if (!tarifaBaseUfM2) {
+    return;
+  }
+
+  const ggccExists = await tx.contratoGGCC.findFirst({
+    where: { contratoId }
+  });
+  if (ggccExists) {
+    await tx.contratoGGCC.update({
+      where: { id: ggccExists.id },
+      data: {
+        tarifaBaseUfM2,
+        pctAdministracion: new Prisma.Decimal(ggcc.ggccPctAdministracion),
+        pctReajuste: decimalOrNull(ggcc.ggccPctReajuste),
+        vigenciaDesde: new Date(fechaInicio),
+        vigenciaHasta: dateOrNull(fechaTermino),
+        mesesReajuste: ggcc.ggccMesesReajuste ?? null
+      }
+    });
+    return;
+  }
+
+  await tx.contratoGGCC.create({
+    data: {
+      contratoId,
+      tarifaBaseUfM2,
+      pctAdministracion: new Prisma.Decimal(ggcc.ggccPctAdministracion),
+      pctReajuste: decimalOrNull(ggcc.ggccPctReajuste),
+      vigenciaDesde: new Date(fechaInicio),
+      vigenciaHasta: dateOrNull(fechaTermino),
+      proximoReajuste: null,
+      mesesReajuste: ggcc.ggccMesesReajuste ?? null
+    }
+  });
+}
