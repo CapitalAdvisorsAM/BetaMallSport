@@ -10,6 +10,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDataTable } from "@/hooks/useDataTable";
+import { buildExportExcelUrl } from "@/lib/export/shared";
 import type { LocalRef, ProjectOption } from "@/types/finanzas";
 
 type MapeoContable = {
@@ -309,6 +310,17 @@ export function MapeosClient({
 
   const { table: contableTable } = useDataTable(mapeosContable, contableColumns);
   const { table: ventasTable } = useDataTable(mapeosVentas, ventasColumns);
+  const filteredExportHref = buildExportExcelUrl({
+    dataset: "finanzas_mapeos",
+    scope: "filtered",
+    proyectoId: selectedProjectId,
+    tab
+  });
+  const allExportHref = buildExportExcelUrl({
+    dataset: "finanzas_mapeos",
+    scope: "all",
+    proyectoId: selectedProjectId
+  });
 
   return (
     <main className="space-y-4">
@@ -317,6 +329,17 @@ export function MapeosClient({
         description="Vincula los identificadores externos con los locales del rent roll."
         projects={projects}
         selectedProjectId={selectedProjectId}
+        preserve={{ tab }}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild type="button" variant="outline" size="sm">
+              <a href={filteredExportHref}>Descargar filtrado</a>
+            </Button>
+            <Button asChild type="button" size="sm">
+              <a href={allExportHref}>Descargar todo</a>
+            </Button>
+          </div>
+        }
       />
 
       <section className="flex gap-2">

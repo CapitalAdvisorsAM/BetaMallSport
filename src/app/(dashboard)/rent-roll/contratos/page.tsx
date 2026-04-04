@@ -6,6 +6,7 @@ import { RentRollEntityModeNav } from "@/components/rent-roll/RentRollEntityMode
 import { CargaHistorial } from "@/components/upload/CargaHistorial";
 import { UploadSection } from "@/components/upload/UploadSection";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
 import {
@@ -17,6 +18,7 @@ import {
   TableRow
 } from "@/components/ui/table";
 import type { RentRollMode } from "@/lib/navigation";
+import { buildExportExcelUrl } from "@/lib/export/shared";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
@@ -153,6 +155,17 @@ export default async function ContratosPage({
   const uploadHistory =
     mode === "upload" ? await getUploadHistory(selectedProjectId, TipoCargaDatos.RENT_ROLL) : [];
 
+  const filteredExportHref = buildExportExcelUrl({
+    dataset: "contratos",
+    scope: "filtered",
+    proyectoId: selectedProjectId
+  });
+  const allExportHref = buildExportExcelUrl({
+    dataset: "contratos",
+    scope: "all",
+    proyectoId: selectedProjectId
+  });
+
   const buildDetailHref = (id: string | null): string => {
     const params = new URLSearchParams();
     params.set("proyecto", selectedProjectId);
@@ -201,6 +214,20 @@ export default async function ContratosPage({
 
       {mode === "ver" ? (
         <>
+          <section className="rounded-md bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-slate-800">Exportar contratos</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button asChild type="button" variant="outline" size="sm">
+                  <Link href={filteredExportHref}>Descargar filtrado</Link>
+                </Button>
+                <Button asChild type="button" size="sm">
+                  <Link href={allExportHref}>Descargar todo</Link>
+                </Button>
+              </div>
+            </div>
+          </section>
+
           <section className="overflow-hidden rounded-md bg-white shadow-sm">
             <Table className="min-w-full divide-y divide-slate-200">
             <TableHeader className="bg-brand-700">

@@ -27,6 +27,7 @@ import {
   TableRow
 } from "@/components/ui/table";
 import type { RentRollMode } from "@/lib/navigation";
+import { buildExportExcelUrl } from "@/lib/export/shared";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { buildLocalesWhere, parseLocalesEstado } from "@/lib/rent-roll/locales";
 import { getUploadHistory } from "@/lib/rent-roll/upload-history";
@@ -217,6 +218,19 @@ export default async function LocalesPage({
         })
       : null;
 
+  const filteredExportHref = buildExportExcelUrl({
+    dataset: "locales",
+    scope: "filtered",
+    proyectoId: selectedProjectId,
+    q: q || undefined,
+    estado: estado ?? undefined
+  });
+  const allExportHref = buildExportExcelUrl({
+    dataset: "locales",
+    scope: "all",
+    proyectoId: selectedProjectId
+  });
+
   return (
     <main className="space-y-4">
       <section className="rounded-md bg-white p-5 shadow-sm">
@@ -252,6 +266,20 @@ export default async function LocalesPage({
 
       {mode === "ver" ? (
         <>
+          <section className="rounded-md bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-slate-800">Exportar locales</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button asChild type="button" variant="outline" size="sm">
+                  <Link href={filteredExportHref}>Descargar filtrado</Link>
+                </Button>
+                <Button asChild type="button" size="sm">
+                  <Link href={allExportHref}>Descargar todo</Link>
+                </Button>
+              </div>
+            </div>
+          </section>
+
           {selectedLocal ? (
             <section className="space-y-3 rounded-md border border-brand-200 bg-brand-50 p-4 shadow-sm">
               <div className="flex items-center justify-between">
