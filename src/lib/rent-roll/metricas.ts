@@ -207,7 +207,7 @@ export function buildMetricaRow(
     ventasUf,
     rentaVariableUf,
     ingresoBrutoUf,
-    fechaTermino: contrato.fechaTermino,
+    fechaTermino: contrato.fechaTermino.toISOString().slice(0, 10),
     diasVigentes: calcularDiasVigentes(contrato.fechaInicio, contrato.fechaTermino, periodo)
   };
 }
@@ -293,15 +293,15 @@ export function buildResumen(
     .filter((value): value is number => value !== null);
 
   const contratosPorVencer30 = filasOcupadas.filter((fila) => {
-    const days = daysUntilDate(hoy, fila.fechaTermino);
+    const days = daysUntilDate(hoy, new Date(fila.fechaTermino));
     return days >= 0 && days <= 30;
   }).length;
   const contratosPorVencer60 = filasOcupadas.filter((fila) => {
-    const days = daysUntilDate(hoy, fila.fechaTermino);
+    const days = daysUntilDate(hoy, new Date(fila.fechaTermino));
     return days >= 0 && days <= 60;
   }).length;
   const contratosPorVencer90 = filasOcupadas.filter((fila) => {
-    const days = daysUntilDate(hoy, fila.fechaTermino);
+    const days = daysUntilDate(hoy, new Date(fila.fechaTermino));
     return days >= 0 && days <= 90;
   }).length;
 

@@ -3,8 +3,9 @@ export const dynamic = "force-dynamic";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
+import { getRequiredSearchParam, parseRequiredPaginationParams } from "@/lib/http/request";
 import { localeSchema } from "@/lib/locales/schema";
-import { parsePaginationParams } from "@/lib/pagination";
+import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
@@ -14,22 +15,8 @@ export async function GET(request: Request): Promise<NextResponse> {
   try {
     await requireSession();
     const { searchParams } = new URL(request.url);
-    const proyectoId = searchParams.get("proyectoId");
-
-    if (!proyectoId) {
-      return NextResponse.json({ message: "proyectoId es obligatorio." }, { status: 400 });
-    }
-
-    const paginationRequested = searchParams.has("limit") || searchParams.has("cursor");
-    if (!paginationRequested) {
-      const locales = await prisma.local.findMany({
-        where: { proyectoId },
-        orderBy: [{ codigo: "asc" }]
-      });
-      return NextResponse.json(locales);
-    }
-
-    const { limit, cursor } = parsePaginationParams(searchParams);
+    const proyectoId = getRequiredSearchParam(searchParams, "proyectoId");
+    const { limit, cursor } = parseRequiredPaginationParams(searchParams);
 
     const items = await prisma.local.findMany({
       where: { proyectoId },
@@ -90,6 +77,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         estado: payload.estado
       }
     });
+    invalidateMetricsCacheByProject(payload.proyectoId);
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {

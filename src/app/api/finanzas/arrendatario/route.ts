@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 import { buildTenantFinanceRows } from "@/lib/finanzas/arrendatarios";
 import { resolveMonthRange } from "@/lib/finanzas/period-range";

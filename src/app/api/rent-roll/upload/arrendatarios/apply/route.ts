@@ -4,6 +4,7 @@ import { TipoCargaDatos } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { resolveTenantRut } from "@/lib/arrendatarios/schema";
+import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 import { requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { normalizeUploadRut } from "@/lib/upload/parse-arrendatarios";
@@ -199,6 +200,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         errorDetalle: JSON.stringify(finalPayload)
       }
     });
+    invalidateMetricsCacheByProject(carga.proyectoId);
 
     return NextResponse.json({ cargaId: carga.id, report });
   } catch (error) {

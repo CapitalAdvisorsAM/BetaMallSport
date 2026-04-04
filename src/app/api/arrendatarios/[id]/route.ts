@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { resolveTenantRut, tenantSchema } from "@/lib/arrendatarios/schema";
+import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
@@ -71,6 +72,7 @@ export async function PUT(
         telefono: payload.telefono || null
       }
     });
+    invalidateMetricsCacheByProject(payload.proyectoId);
     return NextResponse.json(updated);
   } catch (error) {
     return handleApiError(error);
@@ -95,6 +97,7 @@ export async function DELETE(
     if (deleted.count === 0) {
       return NextResponse.json({ message: "Arrendatario no encontrado." }, { status: 404 });
     }
+    invalidateMetricsCacheByProject(proyectoId);
 
     return new Response(null, { status: 204 });
   } catch (error) {

@@ -3,8 +3,10 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, handleApiError } from "@/lib/api-error";
+import { SLUG_MAX_ATTEMPTS } from "@/lib/constants";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { slugify } from "@/lib/utils";
 
 export const runtime = "nodejs";
 
@@ -17,33 +19,21 @@ const projectUpdateSchema = z.object({
   activo: z.boolean()
 });
 
-function slugify(value: string): string {
-  const normalized = value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return normalized || "proyecto";
-}
-
 async function buildUniqueSlug(baseSlug: string, excludeId: string): Promise<string> {
   let candidate = baseSlug;
-  let index = 2;
-  while (true) {
+  for (let attempt = 1; attempt <= SLUG_MAX_ATTEMPTS; attempt += 1) {
     const exists = await prisma.proyecto.findFirst({
-      where: {
-        slug: candidate,
-        id: { not: excludeId }
-      },
+      where: { slug: candidate, id: { not: excludeId } },
       select: { id: true }
     });
     if (!exists) {
       return candidate;
     }
-    candidate = `${baseSlug}-${index}`;
-    index += 1;
+    candidate = `${baseSlug}-${attempt + 1}`;
   }
+  throw new Error(
+    `No se pudo generar un slug único para "${baseSlug}" tras ${SLUG_MAX_ATTEMPTS} intentos.`
+  );
 }
 
 export async function GET(

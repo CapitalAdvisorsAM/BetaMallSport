@@ -55,3 +55,13 @@ export function startOfDay(date: Date): Date {
   output.setHours(0, 0, 0, 0);
   return output;
 }
+
+export function slugify(value: string): string {
+  const normalized = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || "proyecto";
+}

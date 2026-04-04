@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { read } from "xlsx";
+import { UnauthorizedError } from "@/lib/errors";
 
 const { requireSessionMock, prismaMock } = vi.hoisted(() => ({
   requireSessionMock: vi.fn(),
@@ -112,7 +113,7 @@ afterEach(() => {
 
 describe("GET /api/export/excel", () => {
   it("requires authenticated session", async () => {
-    requireSessionMock.mockRejectedValueOnce(new Error("UNAUTHORIZED"));
+    requireSessionMock.mockRejectedValueOnce(new UnauthorizedError());
 
     const response = await callGet("http://localhost/api/export/excel?dataset=proyectos&scope=all");
     const payload = (await response.json()) as { message: string };
