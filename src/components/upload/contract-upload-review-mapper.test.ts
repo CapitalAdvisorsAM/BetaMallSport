@@ -62,6 +62,7 @@ describe("contract-upload-review-mapper", () => {
       multiplicadorDiciembre: null,
       codigoCC: null,
       pdfUrl: null,
+      diasGracia: 0,
       notas: null,
       tarifas: [
         {
@@ -116,6 +117,7 @@ describe("contract-upload-review-mapper", () => {
       multiplicadorDiciembre: null,
       codigoCC: null,
       pdfUrl: null,
+      diasGracia: 0,
       notas: null,
       tarifas: [],
       ggcc: [],
