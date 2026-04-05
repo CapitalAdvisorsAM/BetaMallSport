@@ -46,6 +46,21 @@ export const TOP_NAV_ITEMS: NavItem[] = [
     href: "/reportes",
     enabled: false,
     match: "startsWith"
+  },
+  {
+    label: "Configuración",
+    href: "/configuracion",
+    enabled: true,
+    match: "startsWith"
+  }
+];
+
+export const CONFIGURACION_SUB_NAV_ITEMS: NavItem[] = [
+  {
+    label: "Proyecto",
+    href: "/configuracion/proyecto",
+    enabled: true,
+    match: "startsWith"
   }
 ];
 

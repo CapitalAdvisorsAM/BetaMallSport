@@ -1,7 +1,6 @@
 import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
-import { ProjectSelector } from "@/components/ui/ProjectSelector";
 import { canWrite, requireSession } from "@/lib/permissions";
 
 const RentRollChartsSection = dynamic(
@@ -38,7 +37,7 @@ export default async function RentRollDashboardPage({
   const session = await requireSession();
   const projectParam = resolveProjectIdFromSearchParams(searchParams);
 
-  const { projects, selectedProjectId } = await getProjectContext(projectParam);
+  const { selectedProjectId } = await getProjectContext(projectParam);
   if (!selectedProjectId) {
     return (
       <ProjectCreationPanel
@@ -92,7 +91,6 @@ export default async function RentRollDashboardPage({
               tendencias.
             </p>
           </div>
-          <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} />
         </div>
       </header>
 

@@ -329,6 +329,7 @@ export function MapeosClient({
         description="Vincula los identificadores externos con los locales del rent roll."
         projects={projects}
         selectedProjectId={selectedProjectId}
+        showProjectSelector={false}
         preserve={{ tab }}
         actions={
           <div className="flex flex-wrap items-center gap-2">

@@ -5,7 +5,6 @@ import { RentRollDashboardTable, type RentRollDashboardTableRow } from "@/compon
 import { OcupacionTamanoTable } from "@/components/rent-roll/OcupacionTamanoTable";
 import { RentRollSnapshotDatePicker } from "@/components/rent-roll/RentRollSnapshotDatePicker";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
-import { ProjectSelector } from "@/components/ui/ProjectSelector";
 import { buildOcupacionDetalle, calculateWalt } from "@/lib/kpi";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -33,7 +32,7 @@ export default async function RentRollPage({
   const session = await requireSession();
   const projectParam = resolveProjectIdFromSearchParams(searchParams);
 
-  const { projects, selectedProjectId } = await getProjectContext(projectParam);
+  const { selectedProjectId } = await getProjectContext(projectParam);
   if (!selectedProjectId) {
     return (
       <ProjectCreationPanel
@@ -260,11 +259,6 @@ export default async function RentRollPage({
               Vista operacional snapshot: estado contractual actual y metricas en una fecha exacta.
             </p>
           </div>
-          <ProjectSelector
-            projects={projects}
-            selectedProjectId={selectedProjectId}
-            preserve={{ fecha }}
-          />
         </div>
       </header>
 
@@ -279,21 +273,25 @@ export default async function RentRollPage({
 
       <section className="grid gap-4 md:grid-cols-4">
         <KpiCard
+          metricId="kpi_rent_roll_snapshot_renta_fija_total_uf"
           title="Renta fija total (UF)"
           value={formatDecimal(totals.rentaFijaUf)}
           accent="slate"
         />
         <KpiCard
+          metricId="kpi_rent_roll_snapshot_ggcc_total_uf"
           title="GGCC total (UF)"
           value={formatDecimal(totals.ggccUf)}
           accent="slate"
         />
         <KpiCard
+          metricId="kpi_rent_roll_snapshot_ventas_periodo_uf"
           title="Ventas periodo (UF)"
           value={formatDecimal(totals.ventasUf)}
           accent="slate"
         />
         <KpiCard
+          metricId="kpi_rent_roll_snapshot_walt_global"
           title="WALT global"
           value={formatWaltValue(walt)}
           subtitle={walt > 0 ? `Promedio ponderado al ${fecha}` : "Sin contratos activos"}

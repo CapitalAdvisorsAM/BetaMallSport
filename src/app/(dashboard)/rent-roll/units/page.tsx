@@ -9,7 +9,6 @@ import { UploadSection } from "@/components/upload/UploadSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
-import { ProjectSelector } from "@/components/ui/ProjectSelector";
 import {
   Select,
   SelectContent,
@@ -79,7 +78,7 @@ export default async function UnitsPage({
   const session = await requireSession();
   const projectParam = resolveProjectIdFromSearchParams(searchParams);
 
-  const { projects, selectedProjectId } = await getProjectContext(projectParam);
+  const { selectedProjectId } = await getProjectContext(projectParam);
   if (!selectedProjectId) {
     return (
       <ProjectCreationPanel
@@ -250,11 +249,6 @@ export default async function UnitsPage({
                   : "Sube archivo, valida el preview y aplica los cambios en lote."}
             </p>
           </div>
-          <ProjectSelector
-            projects={projects}
-            selectedProjectId={selectedProjectId}
-            preserve={{ seccion: mode, q, estado: estado ?? "", page: String(currentPage) }}
-          />
         </div>
       </section>
 
@@ -359,7 +353,7 @@ export default async function UnitsPage({
                 esGLA: unit.esGLA,
                 estado: unit.estado
               }))}
-              buildDetailHref={buildDetailHref}
+              detailBaseHref={buildDetailHref(null)}
             />
             <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
               <span>

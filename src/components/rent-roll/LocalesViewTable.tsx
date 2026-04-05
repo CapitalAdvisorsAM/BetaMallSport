@@ -21,7 +21,7 @@ type LocalesViewRow = {
 
 type LocalesViewTableProps = {
   rows: LocalesViewRow[];
-  buildDetailHref: (id: string | null) => string;
+  detailBaseHref: string;
 };
 
 const SI_NO_OPTIONS = ["Si", "No"];
@@ -32,7 +32,7 @@ function toNumber(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export function LocalesViewTable({ rows, buildDetailHref }: LocalesViewTableProps): JSX.Element {
+export function LocalesViewTable({ rows, detailBaseHref }: LocalesViewTableProps): JSX.Element {
   const tipoOptions = useMemo(
     () => Array.from(new Set(rows.map((row) => row.tipo))).sort(),
     [rows]
@@ -44,7 +44,7 @@ export function LocalesViewTable({ rows, buildDetailHref }: LocalesViewTableProp
         header: "Codigo",
         filterFn: "includesString",
         cell: ({ row }) => (
-          <Link href={buildDetailHref(row.original.id)} className="font-medium text-brand-700 underline">
+          <Link href={`${detailBaseHref}&detalle=${row.original.id}`} className="font-medium text-brand-700 underline">
             {row.original.codigo}
           </Link>
         )
@@ -129,7 +129,7 @@ export function LocalesViewTable({ rows, buildDetailHref }: LocalesViewTableProp
         )
       }
     ],
-    [buildDetailHref, tipoOptions]
+    [detailBaseHref, tipoOptions]
   );
 
   const { table } = useDataTable(rows, columns);

@@ -19,14 +19,14 @@ type ArrendatariosViewRow = {
 
 type ArrendatariosViewTableProps = {
   rows: ArrendatariosViewRow[];
-  buildDetailHref: (id: string | null) => string;
+  detailBaseHref: string;
 };
 
 const VIGENTE_OPTIONS = ["Si", "No"];
 
 export function ArrendatariosViewTable({
   rows,
-  buildDetailHref
+  detailBaseHref
 }: ArrendatariosViewTableProps): JSX.Element {
   const columns = useMemo<ColumnDef<ArrendatariosViewRow, unknown>[]>(
     () => [
@@ -35,7 +35,7 @@ export function ArrendatariosViewTable({
         header: "Arrendatario",
         filterFn: "includesString",
         cell: ({ row }) => (
-          <Link href={buildDetailHref(row.original.id)} className="font-medium text-brand-700 underline">
+          <Link href={`${detailBaseHref}&detalle=${row.original.id}`} className="font-medium text-brand-700 underline">
             {row.original.nombreComercial}
           </Link>
         )
@@ -92,7 +92,7 @@ export function ArrendatariosViewTable({
         cell: ({ row }) => <span>{row.original.contratosVigentesNumeros || "-"}</span>
       }
     ],
-    [buildDetailHref]
+    [detailBaseHref]
   );
 
   const { table } = useDataTable(rows, columns);

@@ -41,6 +41,7 @@ interface DataTableProps<TData> {
   emptyMessage?: string;
   footerContent?: React.ReactNode;
   getRowClassName?: (row: Row<TData>, index: number) => string | undefined;
+  renderSubRow?: (row: Row<TData>) => React.ReactNode;
 }
 
 interface SortableColumnHeaderProps<TData> {
@@ -266,7 +267,8 @@ export function DataTable<TData>({
   table,
   emptyMessage = "No hay filas para mostrar.",
   footerContent,
-  getRowClassName
+  getRowClassName,
+  renderSubRow
 }: DataTableProps<TData>): JSX.Element {
   const rows = table.getRowModel().rows;
   const totalRows = table.getCoreRowModel().rows.length;
@@ -298,24 +300,32 @@ export function DataTable<TData>({
           <TableBody>
             {rows.length > 0 ? (
               rows.map((row, index) => (
-                <TableRow
-                  key={row.id}
-                  className={cn(
-                    index % 2 === 0 ? "bg-white" : "bg-slate-50/60",
-                    "hover:bg-brand-50",
-                    getRowClassName?.(row, index)
-                  )}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      className={cn("px-4 py-3 text-slate-700", getCellAlignClass(getColumnAlign(cell.column)))}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext()) ??
-                        String(cell.getValue() ?? "")}
-                    </TableCell>
-                  ))}
-                </TableRow>
+                <React.Fragment key={row.id}>
+                  <TableRow
+                    className={cn(
+                      index % 2 === 0 ? "bg-white" : "bg-slate-50/60",
+                      "hover:bg-brand-50",
+                      getRowClassName?.(row, index)
+                    )}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        className={cn("px-4 py-3 text-slate-700", getCellAlignClass(getColumnAlign(cell.column)))}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext()) ??
+                          String(cell.getValue() ?? "")}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  {renderSubRow && row.getIsExpanded() ? (
+                    <TableRow className="bg-slate-50/40 hover:bg-slate-50/40">
+                      <TableCell colSpan={columnCount} className="px-4 py-3">
+                        {renderSubRow(row)}
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </React.Fragment>
               ))
             ) : (
               <TableRow className="bg-white hover:bg-white">

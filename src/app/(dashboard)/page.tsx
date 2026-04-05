@@ -27,6 +27,7 @@ import {
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
+import type { MetricFormulaId } from "@/lib/metric-formulas";
 import { isPeriodoValido } from "@/lib/validators";
 import { formatUf, startOfDay } from "@/lib/utils";
 
@@ -41,27 +42,32 @@ type DashboardPageProps = {
 type CarteraCardConfig = {
   title: string;
   accent: "green" | "yellow" | "red" | "slate";
+  metricId: MetricFormulaId;
   subtitle?: string;
 };
 
 const CARTERA_CARD_CONFIG: Record<ContractStatus, CarteraCardConfig> = {
   VIGENTE: {
     title: "Vigentes",
-    accent: "green"
+    accent: "green",
+    metricId: "kpi_dashboard_cartera_vigentes"
   },
   GRACIA: {
     title: "En periodo de gracia",
     accent: "yellow",
+    metricId: "kpi_dashboard_cartera_gracia",
     subtitle: "Sin ingreso hasta inicio efectivo"
   },
   TERMINADO_ANTICIPADO: {
     title: "Terminados anticipadamente",
     accent: "red",
+    metricId: "kpi_dashboard_cartera_terminado_anticipado",
     subtitle: "Rescision antes del plazo pactado"
   },
   TERMINADO: {
     title: "Terminados",
-    accent: "slate"
+    accent: "slate",
+    metricId: "kpi_dashboard_cartera_terminado"
   }
 };
 
@@ -385,12 +391,14 @@ export default async function DashboardPage({
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <KpiCard
+            metricId="kpi_dashboard_ocupacion_pct"
             title="Ocupacion del proyecto"
             value={formatPercent(pctOcupacion)}
             subtitle={`${localesConContratoVigente.size} vigentes · ${localesEnGracia.size} en gracia · ${localesVacantes.length} vacantes`}
             accent={occupancyAccent}
           />
           <KpiCard
+            metricId="kpi_dashboard_gla_arrendada_m2"
             title="GLA arrendada"
             value={formatSquareMeters(ocupacion.glaArrendada)}
             subtitle={`GLA vacante: ${formatSquareMeters(ocupacion.glaVacante)}`}
@@ -398,6 +406,7 @@ export default async function DashboardPage({
             accent="slate"
           />
           <KpiCard
+            metricId="kpi_dashboard_locales_sin_arrendatario"
             title="Locales sin arrendatario"
             value={localesVacantes.length.toString()}
             subtitle={
@@ -409,6 +418,7 @@ export default async function DashboardPage({
             accent={localesVacantes.length > 0 ? "red" : "green"}
           />
           <KpiCard
+            metricId="kpi_dashboard_renta_riesgo_90d_uf"
             title="Renta en riesgo (90d)"
             value={`${formatUf(rentaEnRiesgo.ufEnRiesgo)} UF`}
             subtitle={`de ${rentaEnRiesgo.count} contratos proximos a vencer`}
@@ -434,18 +444,21 @@ export default async function DashboardPage({
 
         <div className="grid gap-4 md:grid-cols-3">
           <KpiCard
+            metricId="kpi_dashboard_facturacion_total_uf"
             title="Facturacion total (UF)"
             value={formatUf(ingresos.totalUf)}
             subtitle={`${formatUf(ingresos.facturacionUfM2, 3)} UF/m2`}
             accent="slate"
           />
           <KpiCard
+            metricId="kpi_dashboard_arriendo_fijo_uf"
             title="Arriendo fijo (UF)"
             value={formatUf(ingresos.arriendoFijoUf)}
             subtitle={`${formatUf(ingresos.arriendoFijoUfM2, 3)} UF/m2`}
             accent="slate"
           />
           <KpiCard
+            metricId="kpi_dashboard_ingreso_mensual_clp"
             title="Ingreso mensual (CLP)"
             value={latestValorUf ? formatClp(ingresoMensualClp) : "Sin valor UF"}
             subtitle={
@@ -463,33 +476,27 @@ export default async function DashboardPage({
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <article className="rounded-md border border-slate-200 bg-slate-50 p-4 shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Renta variable</p>
-            <p className="mt-2 text-2xl font-bold tracking-tight text-brand-700">
-              {formatUf(ingresos.arriendoVariableUf)} UF
-            </p>
-            <p className="mt-1 text-xs font-medium text-slate-600">
-              % sobre ventas de {contratosVariableConVentas} contratos
-            </p>
-          </article>
-          <article className="rounded-md border border-slate-200 bg-slate-50 p-4 shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              Simuladores/Mod.
-            </p>
-            <p className="mt-2 text-2xl font-bold tracking-tight text-brand-700">
-              {formatUf(ingresos.simuladoresModulosUf)} UF
-            </p>
-            <p className="mt-1 text-xs font-medium text-slate-600">{simuladorModuloUnidades} unidades</p>
-          </article>
-          <article className="rounded-md border border-slate-200 bg-slate-50 p-4 shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              Bodega + Espacio
-            </p>
-            <p className="mt-2 text-2xl font-bold tracking-tight text-brand-700">
-              {formatUf(bodegaEspacioUf)} UF
-            </p>
-            <p className="mt-1 text-xs font-medium text-slate-600">{bodegaEspacioSubtitle}</p>
-          </article>
+          <KpiCard
+            metricId="kpi_dashboard_renta_variable_uf"
+            title="Renta variable"
+            value={`${formatUf(ingresos.arriendoVariableUf)} UF`}
+            subtitle={`% sobre ventas de ${contratosVariableConVentas} contratos`}
+            accent="slate"
+          />
+          <KpiCard
+            metricId="kpi_dashboard_simuladores_modulos_uf"
+            title="Simuladores/Mod."
+            value={`${formatUf(ingresos.simuladoresModulosUf)} UF`}
+            subtitle={`${simuladorModuloUnidades} unidades`}
+            accent="slate"
+          />
+          <KpiCard
+            metricId="kpi_dashboard_bodega_espacio_uf"
+            title="Bodega + Espacio"
+            value={`${formatUf(bodegaEspacioUf)} UF`}
+            subtitle={bodegaEspacioSubtitle}
+            accent="slate"
+          />
         </div>
       </section>
 
@@ -500,6 +507,7 @@ export default async function DashboardPage({
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           <KpiCard
+            metricId="kpi_dashboard_ggcc_mensual_uf"
             title="Gasto comun mensual (UF)"
             value={formatUf(ggccUf)}
             subtitle={`${contratosConGgcc} contratos con datos · ${contratosSinGgcc} sin datos`}
@@ -538,6 +546,7 @@ export default async function DashboardPage({
             return (
               <KpiCard
                 key={counter.estado}
+                metricId={config.metricId}
                 title={config.title}
                 value={counter.cantidad.toString()}
                 subtitle={config.subtitle}

@@ -26,6 +26,7 @@ export function FinanzasUploadClient({
         description='Sube el archivo CDG (.xlsx) para procesar las hojas "Data Contable" y "Data Ventas".'
         projects={projects}
         selectedProjectId={selectedProjectId}
+        showProjectSelector={false}
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
