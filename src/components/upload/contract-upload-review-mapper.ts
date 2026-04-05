@@ -128,6 +128,7 @@ export function previewRowToUploadDraft(
       multiplicadorDiciembre: asNullableString(row.data.multiplicadorDiciembre),
       codigoCC: asNullableString(row.data.codigoCC),
       pdfUrl: null,
+      diasGracia: 0,
       notas: asNullableString(row.data.notas),
       tarifas,
       ggcc,

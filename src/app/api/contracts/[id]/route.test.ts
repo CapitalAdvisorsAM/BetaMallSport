@@ -78,6 +78,7 @@ function makePayload(): ContractFormPayload {
     pctFondoPromocion: "2",
     pctAdministracionGgcc: null,
     multiplicadorDiciembre: null,
+    diasGracia: 0,
     codigoCC: "CC-1",
     pdfUrl: "https://example.com/contract.pdf",
     notas: "Notas",

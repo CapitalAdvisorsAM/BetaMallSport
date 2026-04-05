@@ -493,6 +493,7 @@ export default async function ContractsPage({
           contracts={contracts.map((contract) => ({
             id: contract.id,
             numeroContrato: contract.numeroContrato,
+            diasGracia: contract.diasGracia,
             estado: contract.estado,
             pdfUrl: contract.pdfUrl,
             fechaInicio: contract.fechaInicio.toISOString(),
