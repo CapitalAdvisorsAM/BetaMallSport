@@ -4,8 +4,8 @@ export const runtime = "nodejs";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
-import { buildArrendatariosActiveContractWhere, buildArrendatariosWhere, parseVigenteFilter } from "@/lib/rent-roll/arrendatarios";
-import { buildLocalesWhere, parseLocalesEstado } from "@/lib/rent-roll/locales";
+import { buildArrendatariosActiveContractWhere, buildArrendatariosWhere, parseVigenteFilter } from "@/lib/rent-roll/tenants";
+import { buildLocalesWhere, parseLocalesEstado } from "@/lib/rent-roll/units";
 import { getOptionalBooleanSearchParam } from "@/lib/http/request";
 import { getRequestId, logDuration, logError } from "@/lib/observability";
 import { requireSession } from "@/lib/permissions";
@@ -107,7 +107,7 @@ function getMonthBounds(date: Date): { start: Date; nextMonthStart: Date } {
 }
 
 async function buildProyectosExport(scope: ExportScope): Promise<ExportResult> {
-  const projects = await prisma.proyecto.findMany({
+  const projects = await prisma.project.findMany({
     orderBy: [{ activo: "desc" }, { nombre: "asc" }],
     select: {
       nombre: true,
@@ -146,9 +146,9 @@ async function buildLocalesExport(
   const where =
     scope === "filtered"
       ? buildLocalesWhere(proyectoId, { q, estado })
-      : ({ proyectoId } satisfies Prisma.LocalWhereInput);
+      : ({ proyectoId } satisfies Prisma.UnitWhereInput);
 
-  const locales = await prisma.local.findMany({
+  const locales = await prisma.unit.findMany({
     where,
     orderBy: [{ piso: "asc" }, { codigo: "asc" }],
     select: {
@@ -207,9 +207,9 @@ async function buildArrendatariosExport(
           contratos: {
             some: activeContractWhere
           }
-        } satisfies Prisma.ArrendatarioWhereInput);
+        } satisfies Prisma.TenantWhereInput);
 
-  const arrendatarios = await prisma.arrendatario.findMany({
+  const arrendatarios = await prisma.tenant.findMany({
     where,
     include: {
       _count: { select: { contratos: true } },
@@ -255,7 +255,7 @@ async function buildArrendatariosExport(
 }
 
 async function buildContratosExport(scope: ExportScope, proyectoId: string): Promise<ExportResult> {
-  const contracts = await prisma.contrato.findMany({
+  const contracts = await prisma.contract.findMany({
     where: { proyectoId },
     include: {
       local: { select: { codigo: true, nombre: true } },
@@ -362,7 +362,7 @@ async function buildFinanzasArrendatariosExport(
   const desdeDate = desde ? new Date(`${desde}-01`) : new Date("2024-01-01");
   const hastaDate = hasta ? new Date(`${hasta}-01`) : new Date();
 
-  const arrendatarios = await prisma.arrendatario.findMany({
+  const arrendatarios = await prisma.tenant.findMany({
     where: { proyectoId, vigente: true },
     select: {
       id: true,

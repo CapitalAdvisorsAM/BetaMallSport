@@ -1,4 +1,4 @@
-import { EstadoContrato, TipoTarifaContrato } from "@prisma/client";
+import { ContractStatus, ContractRateType } from "@prisma/client";
 import { read, utils } from "xlsx";
 import { MAX_ROWS, normalizeHeaders, parseDate } from "@/lib/upload/parse-utils";
 import type { PreviewRow, UploadIssue, UploadPreview } from "@/types/upload";
@@ -17,20 +17,20 @@ const requiredColumns = [
   "tarifavigenciadesde"
 ];
 
-const allowedEstadoContrato = new Set(Object.values(EstadoContrato));
-const allowedTipoTarifa = new Set(Object.values(TipoTarifaContrato));
+const allowedEstadoContrato = new Set(Object.values(ContractStatus));
+const allowedTipoTarifa = new Set(Object.values(ContractRateType));
 const allowedGgccTipo = new Set<GgccTipoInput>(["FIJO_UF_M2", "FIJO_UF"]);
 
 export type ContratoUploadRow = {
   numeroContrato: string;
   localCodigo: string;
   arrendatarioNombre: string;
-  estado: EstadoContrato;
+  estado: ContractStatus;
   fechaInicio: string;
   fechaTermino: string;
   fechaEntrega: string | null;
   fechaApertura: string | null;
-  tarifaTipo: TipoTarifaContrato;
+  tarifaTipo: ContractRateType;
   tarifaValor: string;
   tarifaVigenciaDesde: string;
   tarifaVigenciaHasta: string | null;
@@ -64,7 +64,7 @@ export type ExistingContratoForDiff = {
   numeroContrato: string;
   localCodigo: string;
   arrendatarioNombre: string;
-  estado: EstadoContrato;
+  estado: ContractStatus;
   fechaInicio: string;
   fechaTermino: string;
   fechaEntrega: string | null;
@@ -75,7 +75,7 @@ export type ExistingContratoForDiff = {
   ggccPctAdministracion: string | null;
   notas: string | null;
   tarifas: Array<{
-    tipo: TipoTarifaContrato;
+    tipo: ContractRateType;
     valor: string;
     vigenciaDesde: string;
     vigenciaHasta: string | null;
@@ -230,12 +230,12 @@ function emptyRow(): ContratoUploadRow {
     numeroContrato: "",
     localCodigo: "",
     arrendatarioNombre: "",
-    estado: EstadoContrato.VIGENTE,
+    estado: ContractStatus.VIGENTE,
     fechaInicio: "",
     fechaTermino: "",
     fechaEntrega: null,
     fechaApertura: null,
-    tarifaTipo: TipoTarifaContrato.FIJO_UF_M2,
+    tarifaTipo: ContractRateType.FIJO_UF_M2,
     tarifaValor: "",
     tarifaVigenciaDesde: "",
     tarifaVigenciaHasta: null,
@@ -341,7 +341,7 @@ function compareWithExisting(
       .filter((t) => t.valor !== null && t.desde !== null)
       .map((t) => ({ tipo: row.tarifaTipo, valor: t.valor as string, vigenciaDesde: t.desde as string, vigenciaHasta: t.hasta }))
   ];
-  if (uploadTarifas.length !== existing.tarifas.filter((t) => t.tipo !== TipoTarifaContrato.PORCENTAJE || row.tarifaTipo === TipoTarifaContrato.PORCENTAJE).length) {
+  if (uploadTarifas.length !== existing.tarifas.filter((t) => t.tipo !== ContractRateType.PORCENTAJE || row.tarifaTipo === ContractRateType.PORCENTAJE).length) {
     changed.push("tarifaValor");
   } else {
     for (const uploadTarifa of uploadTarifas) {
@@ -449,9 +449,9 @@ function buildPreviewRows(
     const tarifaTipoFinal = (
       hasFijoType ? tarifaTipoRaw
       : tarifaTipoRaw === "PORCENTAJE" || hasAnyRentaVariableValue ? "PORCENTAJE"
-      : TipoTarifaContrato.FIJO_UF_M2
-    ) as TipoTarifaContrato;
-    const tarifaUsaFechasContrato = tarifaTipoFinal === TipoTarifaContrato.PORCENTAJE && !hasFijoType;
+      : ContractRateType.FIJO_UF_M2
+    ) as ContractRateType;
+    const tarifaUsaFechasContrato = tarifaTipoFinal === ContractRateType.PORCENTAJE && !hasFijoType;
     const tarifaValorFinal = (!hasFijoType && hasAnyRentaVariableValue ? rentaVariablePct : tarifaValor) ?? "";
     const tarifaVigenciaDesdeFinal = tarifaUsaFechasContrato ? fechaInicio : tarifaVigenciaDesde;
     const tarifaVigenciaHastaFinal = tarifaUsaFechasContrato ? fechaTermino : tarifaVigenciaHasta;
@@ -460,7 +460,7 @@ function buildPreviewRows(
       numeroContrato,
       localCodigo,
       arrendatarioNombre,
-      estado: (estadoRaw || EstadoContrato.VIGENTE) as EstadoContrato,
+      estado: (estadoRaw || ContractStatus.VIGENTE) as ContractStatus,
       fechaInicio: fechaInicio ?? "",
       fechaTermino: fechaTermino ?? "",
       fechaEntrega,
@@ -553,7 +553,7 @@ function buildPreviewRows(
     ];
     const tramosProvided = extraTramoSpecs.filter((t) => t.rawValor !== null || t.rawDesde !== null);
     if (tramosProvided.length > 0) {
-      if (tarifaTipoFinal === TipoTarifaContrato.PORCENTAJE) {
+      if (tarifaTipoFinal === ContractRateType.PORCENTAJE) {
         return { rowNumber, status: "ERROR", data, errorMessage: "Tarifa escalonada no es compatible con PORCENTAJE." };
       }
       // Tramos must be consecutive: 2, 3, 4, 5 — no gaps

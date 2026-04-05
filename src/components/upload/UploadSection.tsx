@@ -2,20 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { type ColumnDef as TanstackColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ContractUploadReviewModal } from "@/components/upload/ContractUploadReviewModal";
+import { DataTable } from "@/components/ui/DataTable";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/Spinner";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
+import { useDataTable } from "@/hooks/useDataTable";
 import type { ContractManagerOption } from "@/types";
 import type { ApplyReport, PreviewRow, RowStatus, UploadPreview } from "@/types/upload";
 
@@ -196,6 +191,81 @@ export function UploadSection({
     }
     return preview.summary.nuevo + preview.summary.actualizado > 0;
   }, [preview]);
+  const previewColumns = useMemo<TanstackColumnDef<PreviewRow<UploadRecord>, unknown>[]>(
+    () => [
+      {
+        accessorKey: "rowNumber",
+        header: "Fila",
+        filterFn: "inNumberRange",
+        meta: { filterType: "number", align: "right" },
+        cell: ({ row }) => <span className="whitespace-nowrap text-slate-700">{row.original.rowNumber}</span>
+      },
+      {
+        accessorKey: "status",
+        header: "Estado",
+        filterFn: (row, columnId, filterValue) => {
+          if (!Array.isArray(filterValue) || filterValue.length === 0) {
+            return true;
+          }
+          return filterValue.includes(String(row.getValue(columnId)));
+        },
+        meta: {
+          filterType: "enum",
+          filterOptions: Object.keys(statusMeta),
+          align: "center"
+        },
+        cell: ({ row }) => (
+          <Badge variant="outline" className={`rounded-md px-2 py-1 ${statusMeta[row.original.status].badgeClass}`}>
+            {statusMeta[row.original.status].label}
+          </Badge>
+        )
+      },
+      ...columns.map((column) => {
+        const align = column.className?.includes("text-right")
+          ? "right"
+          : column.className?.includes("text-center")
+            ? "center"
+            : "left";
+
+        return {
+          id: `data_${column.key}`,
+          accessorFn: (row: PreviewRow<UploadRecord>) => row.data[column.key],
+          header: column.label,
+          filterFn: "includesString",
+          meta: { filterType: "string", align },
+          cell: ({ row }) => {
+            const value = row.original.data[column.key];
+            const renderedValue = column.render ? column.render(value, row.original) : String(value ?? "");
+            const changed = new Set((row.original.changedFields ?? []).map((field) => String(field)));
+            const isChanged = row.original.status === "UPDATED" && changed.has(column.key);
+
+            return (
+              <span className={isChanged ? "font-semibold text-slate-900" : "text-slate-700"}>
+                {renderedValue}
+              </span>
+            );
+          }
+        } satisfies TanstackColumnDef<PreviewRow<UploadRecord>, unknown>;
+      }),
+      {
+        id: "errorMessage",
+        accessorFn: (row) => row.errorMessage ?? "",
+        header: "Error",
+        filterFn: "includesString",
+        cell: ({ row }) =>
+          row.original.errorMessage ? (
+            <span className="flex items-start gap-1 text-rose-700">
+              <span className="mt-px shrink-0 text-xs">!</span>
+              {row.original.errorMessage}
+            </span>
+          ) : (
+            <span className="text-slate-400">-</span>
+          )
+      }
+    ],
+    [columns]
+  );
+  const { table: previewTable } = useDataTable(preview?.rows ?? [], previewColumns);
 
   useEffect(() => {
     if (!isContractMode || preview || cargaId || restoringPreview) {
@@ -449,76 +519,11 @@ export function UploadSection({
             </ul>
           ) : null}
 
-          <div className="overflow-x-auto rounded-md border border-slate-200">
-            <Table className="min-w-full divide-y-0 text-sm">
-              <TableHeader className="bg-slate-50 text-slate-700">
-                <TableRow>
-                  <TableHead className="h-auto whitespace-nowrap px-3 py-2 text-left font-semibold text-slate-700">
-                    Fila
-                  </TableHead>
-                  <TableHead className="h-auto whitespace-nowrap px-3 py-2 text-left font-semibold text-slate-700">
-                    Estado
-                  </TableHead>
-                  {columns.map((column) => (
-                    <TableHead
-                      key={column.key}
-                      className={`h-auto whitespace-nowrap px-3 py-2 text-left font-semibold text-slate-700 ${column.className ?? ""}`}
-                    >
-                      {column.label}
-                    </TableHead>
-                  ))}
-                  <TableHead className="h-auto whitespace-nowrap px-3 py-2 text-left font-semibold text-slate-700">
-                    Error
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="[&_tr]:border-slate-100">
-                {preview.rows.map((row) => {
-                  const status = statusMeta[row.status];
-                  const changed = new Set((row.changedFields ?? []).map((field) => String(field)));
-
-                  return (
-                    <TableRow
-                      key={`${row.rowNumber}-${row.status}`}
-                      className={`${status.rowClass} hover:bg-inherit`}
-                    >
-                      <TableCell className="whitespace-nowrap px-3 py-2 text-slate-700">{row.rowNumber}</TableCell>
-                      <TableCell className="whitespace-nowrap px-3 py-2">
-                        <Badge variant="outline" className={`rounded-md px-2 py-1 ${status.badgeClass}`}>
-                          {status.label}
-                        </Badge>
-                      </TableCell>
-                      {columns.map((column) => {
-                        const value = row.data[column.key];
-                        const renderedValue = column.render ? column.render(value, row) : String(value ?? "");
-                        const isChanged = row.status === "UPDATED" && changed.has(column.key);
-
-                        return (
-                          <TableCell
-                            key={column.key}
-                            className={`whitespace-nowrap px-3 py-2 ${
-                              isChanged ? "font-semibold text-slate-900" : "text-slate-700"
-                            } ${column.className ?? ""}`}
-                          >
-                            {renderedValue}
-                          </TableCell>
-                        );
-                      })}
-                      <TableCell className="px-3 py-2">
-                        {row.errorMessage ? (
-                          <span className="flex items-start gap-1 text-rose-700">
-                            <span className="mt-px shrink-0 text-xs">âš </span>
-                            {row.errorMessage}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">â€”</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+          <div className="overflow-x-auto">
+            <DataTable
+              table={previewTable}
+              getRowClassName={(row) => `${statusMeta[row.original.status].rowClass} hover:bg-inherit`}
+            />
           </div>
         </div>
       ) : null}

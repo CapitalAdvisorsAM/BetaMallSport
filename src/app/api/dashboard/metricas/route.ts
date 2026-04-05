@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { EstadoContrato, EstadoMaestro, TipoTarifaContrato } from "@prisma/client";
+import { ContractStatus, MasterStatus, ContractRateType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import {
@@ -14,7 +14,7 @@ import {
 } from "@/lib/kpi";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { startOfDay } from "@/lib/utils";
+import { computeEstadoContrato, startOfDay } from "@/lib/utils";
 import { isPeriodoValido } from "@/lib/validators";
 import { buildMetricsCacheKey, getOrSetMetricsCache } from "@/lib/metrics-cache";
 import type { DashboardMetricasResponse } from "@/types/dashboard-metricas";
@@ -55,10 +55,10 @@ export async function GET(request: Request): Promise<NextResponse> {
         const today = startOfDay(new Date());
         const [localesActivos, contratosRaw, groupedStates, ventasPeriodo, energiaPeriodo, valorUf] =
           await Promise.all([
-            prisma.local.findMany({
+            prisma.unit.findMany({
               where: {
                 proyectoId,
-                estado: EstadoMaestro.ACTIVO
+                estado: MasterStatus.ACTIVO
               },
               select: {
                 id: true,
@@ -69,12 +69,12 @@ export async function GET(request: Request): Promise<NextResponse> {
                 zona: true
               }
             }),
-            prisma.contrato.findMany({
+            prisma.contract.findMany({
               where: {
                 proyectoId,
-                estado: {
-                  in: [EstadoContrato.VIGENTE, EstadoContrato.GRACIA]
-                }
+                estado: { not: ContractStatus.TERMINADO_ANTICIPADO },
+                fechaInicio: { lte: today },
+                fechaTermino: { gte: today }
               },
               orderBy: { fechaTermino: "asc" },
               select: {
@@ -82,7 +82,9 @@ export async function GET(request: Request): Promise<NextResponse> {
                 estado: true,
                 localId: true,
                 numeroContrato: true,
+                fechaInicio: true,
                 fechaTermino: true,
+                diasGracia: true,
                 local: {
                   select: {
                     codigo: true,
@@ -99,9 +101,9 @@ export async function GET(request: Request): Promise<NextResponse> {
                   where: {
                     tipo: {
                       in: [
-                        TipoTarifaContrato.FIJO_UF_M2,
-                        TipoTarifaContrato.FIJO_UF,
-                        TipoTarifaContrato.PORCENTAJE
+                        ContractRateType.FIJO_UF_M2,
+                        ContractRateType.FIJO_UF,
+                        ContractRateType.PORCENTAJE
                       ]
                     },
                     vigenciaDesde: { lte: today },
@@ -126,7 +128,7 @@ export async function GET(request: Request): Promise<NextResponse> {
                 }
               }
             }),
-            prisma.contrato.groupBy({
+            prisma.contract.groupBy({
               by: ["estado"],
               where: { proyectoId },
               _count: { _all: true }
@@ -159,17 +161,25 @@ export async function GET(request: Request): Promise<NextResponse> {
             })
           ]);
 
-        const contratosWithState = contratosRaw.map((contract) => {
+        const contratosWithState = contratosRaw
+          .map((contract) => {
+          const estadoComputado = computeEstadoContrato(
+            contract.fechaInicio,
+            contract.fechaTermino,
+            contract.diasGracia,
+            contract.estado,
+            today
+          );
           const tarifaFija =
             contract.tarifas.find(
               (item) =>
-                item.tipo === TipoTarifaContrato.FIJO_UF_M2 || item.tipo === TipoTarifaContrato.FIJO_UF
+                item.tipo === ContractRateType.FIJO_UF_M2 || item.tipo === ContractRateType.FIJO_UF
             ) ?? null;
           const tarifaVariable =
-            contract.tarifas.find((item) => item.tipo === TipoTarifaContrato.PORCENTAJE) ?? null;
+            contract.tarifas.find((item) => item.tipo === ContractRateType.PORCENTAJE) ?? null;
 
           return {
-            estado: contract.estado,
+            estado: estadoComputado,
             data: {
               id: contract.id,
               localId: contract.localId,
@@ -184,13 +194,17 @@ export async function GET(request: Request): Promise<NextResponse> {
               ggcc: contract.ggcc[0] ?? null
             } satisfies KpiContractInput
           };
-        });
+        })
+        .filter(
+          (contract) =>
+            contract.estado === ContractStatus.VIGENTE || contract.estado === ContractStatus.GRACIA
+        );
 
         const vigenteContracts = contratosWithState
-          .filter((contract) => contract.estado === EstadoContrato.VIGENTE)
+          .filter((contract) => contract.estado === ContractStatus.VIGENTE)
           .map((contract) => contract.data);
         const graciaContracts = contratosWithState
-          .filter((contract) => contract.estado === EstadoContrato.GRACIA)
+          .filter((contract) => contract.estado === ContractStatus.GRACIA)
           .map((contract) => contract.data);
         const activeContracts = [...vigenteContracts, ...graciaContracts];
 

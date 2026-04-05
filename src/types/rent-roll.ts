@@ -1,6 +1,6 @@
-import type { EstadoDiaContrato } from "@prisma/client";
+import type { ContractDayStatus } from "@prisma/client";
 
-export type EstadoLocal = EstadoDiaContrato;
+export type EstadoLocal = ContractDayStatus;
 
 export type RentRollRow = {
   localId: string;

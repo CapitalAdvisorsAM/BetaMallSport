@@ -1,4 +1,4 @@
-import { Contrato, EstadoContrato, Prisma, TipoTarifaContrato } from "@prisma/client";
+import { Contract, ContractStatus, Prisma, ContractRateType } from "@prisma/client";
 import { normalizeUploadArrendatarioNombre } from "@/lib/upload/parse-contratos";
 import { parseDate } from "@/lib/upload/parse-utils";
 import type { PreviewRow, UploadIssue } from "@/types/upload";
@@ -6,19 +6,19 @@ import type { PreviewRow, UploadIssue } from "@/types/upload";
 type GgccTipoInput = "FIJO_UF_M2" | "FIJO_UF";
 export type LocalMap = Map<string, { id: string; glam2: string }>;
 export type ArrendatarioMap = Map<string, string[]>;
-type ExistingContratoSnapshot = Prisma.ContratoGetPayload<{ include: { tarifas: true; ggcc: true } }>;
+type ExistingContratoSnapshot = Prisma.ContractGetPayload<{ include: { tarifas: true; ggcc: true } }>;
 
 export type ContratoApplyRow = {
   rowNumber: number;
   numeroContrato: string;
   localCodigo: string;
   arrendatarioNombre: string;
-  estado: EstadoContrato;
+  estado: ContractStatus;
   fechaInicio: string;
   fechaTermino: string;
   fechaEntrega: string | null;
   fechaApertura: string | null;
-  tarifaTipo: TipoTarifaContrato;
+  tarifaTipo: ContractRateType;
   tarifaValor: string;
   tarifaVigenciaDesde: string;
   tarifaVigenciaHasta: string | null;
@@ -56,7 +56,7 @@ export type ApplyContratoResult =
     }
   | {
       issue?: never;
-      contrato: Contrato;
+      contrato: Contract;
       before: ExistingContratoSnapshot | null;
     };
 
@@ -85,8 +85,8 @@ type GgccApplyInput = Pick<
   | "ggccMesesReajuste"
 >;
 
-const allowedEstadoContrato = new Set(Object.values(EstadoContrato));
-const allowedTipoTarifa = new Set(Object.values(TipoTarifaContrato));
+const allowedEstadoContrato = new Set(Object.values(ContractStatus));
+const allowedTipoTarifa = new Set(Object.values(ContractRateType));
 const allowedGgccTipo = new Set<GgccTipoInput>(["FIJO_UF_M2", "FIJO_UF"]);
 
 function asString(value: unknown): string {
@@ -182,7 +182,7 @@ async function generateNumeroContrato(
 ): Promise<string> {
   while (true) {
     const numeroContrato = crypto.randomUUID().slice(0, 8).toUpperCase();
-    const existing = await tx.contrato.findUnique({
+    const existing = await tx.contract.findUnique({
       where: {
         proyectoId_numeroContrato: {
           proyectoId,
@@ -242,8 +242,8 @@ export function normalizeContratoRow(
   const ggccMesesReajuste = integerOrNull(ggccMesesReajusteRaw);
   const anexoFecha = parseDate(data.anexoFecha);
   const anexoDescripcion = normalizeNullable(data.anexoDescripcion);
-  const tarifaTipoFinal = tarifaTipo as TipoTarifaContrato;
-  const tarifaUsaFechasContrato = tarifaTipoFinal === TipoTarifaContrato.PORCENTAJE;
+  const tarifaTipoFinal = tarifaTipo as ContractRateType;
+  const tarifaUsaFechasContrato = tarifaTipoFinal === ContractRateType.PORCENTAJE;
   const tarifaVigenciaDesdeFinal = tarifaUsaFechasContrato ? fechaInicio : tarifaVigenciaDesde;
   const tarifaVigenciaHastaFinal = tarifaUsaFechasContrato ? fechaTermino : tarifaVigenciaHasta;
 
@@ -256,10 +256,10 @@ export function normalizeContratoRow(
   ) {
     return null;
   }
-  if (!allowedEstadoContrato.has(estado as EstadoContrato)) {
+  if (!allowedEstadoContrato.has(estado as ContractStatus)) {
     return null;
   }
-  if (!allowedTipoTarifa.has(tarifaTipo as TipoTarifaContrato)) {
+  if (!allowedTipoTarifa.has(tarifaTipo as ContractRateType)) {
     return null;
   }
   if (!tarifaValor || Number.isNaN(Number(tarifaValor))) {
@@ -310,7 +310,7 @@ export function normalizeContratoRow(
     numeroContrato,
     localCodigo,
     arrendatarioNombre,
-    estado: estado as EstadoContrato,
+    estado: estado as ContractStatus,
     fechaInicio,
     fechaTermino,
     fechaEntrega,
@@ -377,7 +377,7 @@ export async function applyContrato(
   }
 
   const before = row.numeroContrato
-    ? await tx.contrato.findUnique({
+    ? await tx.contract.findUnique({
         where: {
           proyectoId_numeroContrato: {
             proyectoId,
@@ -386,7 +386,7 @@ export async function applyContrato(
         },
         include: { tarifas: true, ggcc: true }
       })
-    : await tx.contrato.findFirst({
+    : await tx.contract.findFirst({
         where: {
           proyectoId,
           localId: localData.id,
@@ -401,7 +401,7 @@ export async function applyContrato(
     before?.numeroContrato || row.numeroContrato || (await generateNumeroContrato(tx, proyectoId));
 
   const contrato = before
-    ? await tx.contrato.update({
+    ? await tx.contract.update({
         where: { id: before.id },
         data: {
           localId: localData.id,
@@ -417,7 +417,7 @@ export async function applyContrato(
           notas: row.notas
         }
       })
-    : await tx.contrato.create({
+    : await tx.contract.create({
         data: {
           proyectoId,
           localId: localData.id,
@@ -443,7 +443,7 @@ export async function applyTarifas(
   contratoId: string,
   tarifas: TarifaApplyInput
 ): Promise<void> {
-  const existingTarifa = await tx.contratoTarifa.findFirst({
+  const existingTarifa = await tx.contractRate.findFirst({
     where: {
       contratoId,
       tipo: tarifas.tarifaTipo,
@@ -452,7 +452,7 @@ export async function applyTarifas(
   });
 
   if (existingTarifa) {
-    await tx.contratoTarifa.update({
+    await tx.contractRate.update({
       where: { id: existingTarifa.id },
       data: {
         valor: new Prisma.Decimal(tarifas.tarifaValor),
@@ -462,7 +462,7 @@ export async function applyTarifas(
     return;
   }
 
-  await tx.contratoTarifa.create({
+  await tx.contractRate.create({
     data: {
       contratoId,
       tipo: tarifas.tarifaTipo,
@@ -491,11 +491,11 @@ export async function applyGGCC(
     return;
   }
 
-  const ggccExists = await tx.contratoGGCC.findFirst({
+  const ggccExists = await tx.contractCommonExpense.findFirst({
     where: { contratoId }
   });
   if (ggccExists) {
-    await tx.contratoGGCC.update({
+    await tx.contractCommonExpense.update({
       where: { id: ggccExists.id },
       data: {
         tarifaBaseUfM2,
@@ -509,7 +509,7 @@ export async function applyGGCC(
     return;
   }
 
-  await tx.contratoGGCC.create({
+  await tx.contractCommonExpense.create({
     data: {
       contratoId,
       tarifaBaseUfM2,

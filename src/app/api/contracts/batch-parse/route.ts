@@ -93,11 +93,11 @@ export async function POST(request: Request): Promise<NextResponse> {
     const rows = rawRows.map(normalizeHeaders);
 
     const [locales, arrendatarios] = await Promise.all([
-      prisma.local.findMany({
+      prisma.unit.findMany({
         where: { proyectoId },
         select: { id: true, codigo: true, glam2: true }
       }),
-      prisma.arrendatario.findMany({
+      prisma.tenant.findMany({
         where: { proyectoId },
         select: { id: true, nombreComercial: true }
       })

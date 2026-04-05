@@ -1,3 +1,4 @@
+import { ContractStatus } from "@prisma/client";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -54,6 +55,32 @@ export function startOfDay(date: Date): Date {
   const output = new Date(date);
   output.setHours(0, 0, 0, 0);
   return output;
+}
+
+export function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+export function computeEstadoContrato(
+  fechaInicio: Date,
+  fechaTermino: Date,
+  diasGracia: number,
+  estadoManual: ContractStatus,
+  today: Date
+): ContractStatus {
+  if (estadoManual === ContractStatus.TERMINADO_ANTICIPADO) {
+    return ContractStatus.TERMINADO_ANTICIPADO;
+  }
+  if (today > fechaTermino) {
+    return ContractStatus.TERMINADO;
+  }
+  const finGracia = addDays(fechaInicio, diasGracia);
+  if (today < finGracia) {
+    return ContractStatus.GRACIA;
+  }
+  return ContractStatus.VIGENTE;
 }
 
 export function slugify(value: string): string {

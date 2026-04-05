@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { EstadoMaestro, Prisma, TipoCargaDatos, TipoLocal } from "@prisma/client";
+import { MasterStatus, Prisma, TipoCargaDatos, UnitType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
@@ -16,22 +16,22 @@ type NormalizedLocalRow = {
   nombre: string;
   glam2: string;
   piso: string;
-  tipo: TipoLocal;
+  tipo: UnitType;
   zona: string | null;
   esGLA: boolean;
-  estado: EstadoMaestro;
+  estado: MasterStatus;
 };
 
-const allowedTipo = new Set(Object.values(TipoLocal));
-const allowedEstado = new Set(Object.values(EstadoMaestro));
-const tipoAliases: Record<string, TipoLocal> = {
-  LOCAL_COMERCIAL: TipoLocal.LOCAL_COMERCIAL,
-  TIENDA: TipoLocal.LOCAL_COMERCIAL,
-  SIMULADOR: TipoLocal.SIMULADOR,
-  MODULO: TipoLocal.MODULO,
-  ESPACIO: TipoLocal.ESPACIO,
-  BODEGA: TipoLocal.BODEGA,
-  OTRO: TipoLocal.OTRO
+const allowedTipo = new Set(Object.values(UnitType));
+const allowedEstado = new Set(Object.values(MasterStatus));
+const tipoAliases: Record<string, UnitType> = {
+  LOCAL_COMERCIAL: UnitType.LOCAL_COMERCIAL,
+  TIENDA: UnitType.LOCAL_COMERCIAL,
+  SIMULADOR: UnitType.SIMULADOR,
+  MODULO: UnitType.MODULO,
+  ESPACIO: UnitType.ESPACIO,
+  BODEGA: UnitType.BODEGA,
+  OTRO: UnitType.OTRO
 };
 
 function normalizeToken(value: string): string {
@@ -61,7 +61,7 @@ function normalizeLocalData(data: Record<string, unknown>): NormalizedLocalRow |
   const glam2 = glam2Raw || "0";
   const piso = asString(data.piso);
   const tipoRaw = normalizeToken(asString(data.tipo));
-  const estado = normalizeToken(asString(data.estado)) || EstadoMaestro.ACTIVO;
+  const estado = normalizeToken(asString(data.estado)) || MasterStatus.ACTIVO;
   const zona = asString(data.zona);
   const esGLA = Boolean(data.esGLA);
 
@@ -69,7 +69,7 @@ function normalizeLocalData(data: Record<string, unknown>): NormalizedLocalRow |
     return null;
   }
   const tipo = tipoAliases[tipoRaw];
-  if (!tipo || !allowedTipo.has(tipo) || !allowedEstado.has(estado as EstadoMaestro)) {
+  if (!tipo || !allowedTipo.has(tipo) || !allowedEstado.has(estado as MasterStatus)) {
     return null;
   }
   if (!Number.isFinite(Number(glam2)) || Number(glam2) < 0) {
@@ -84,7 +84,7 @@ function normalizeLocalData(data: Record<string, unknown>): NormalizedLocalRow |
     tipo,
     zona: zona || null,
     esGLA,
-    estado: estado as EstadoMaestro
+    estado: estado as MasterStatus
   };
 }
 
@@ -157,7 +157,7 @@ export async function POST(request: Request): Promise<NextResponse> {
           estado: normalized.estado
         };
 
-        const result = await tx.local.upsert({
+        const result = await tx.unit.upsert({
           where: {
             proyectoId_codigo: {
               proyectoId: carga.proyectoId,

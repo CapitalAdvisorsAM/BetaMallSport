@@ -1,4 +1,4 @@
-import type { EstadoContrato, TipoTarifaContrato } from "@prisma/client";
+import type { ContractStatus, ContractRateType } from "@prisma/client";
 
 export type ContractApiBaseRow = {
   id: string;
@@ -15,7 +15,8 @@ export type ContractApiBaseRow = {
   pctAdministracionGgcc: string | null;
   multiplicadorDiciembre: string | null;
   codigoCC: string | null;
-  estado: EstadoContrato;
+  diasGracia: number;
+  estado: ContractStatus;
   pdfUrl: string | null;
   notas: string | null;
   createdAt: string;
@@ -25,7 +26,7 @@ export type ContractApiBaseRow = {
 export type ContractTarifaApiRow = {
   id: string;
   contratoId: string;
-  tipo: TipoTarifaContrato;
+  tipo: ContractRateType;
   valor: string;
   vigenciaDesde: string;
   vigenciaHasta: string | null;
@@ -63,7 +64,8 @@ export type ContractManagerOption = {
 export type ContractManagerListItem = {
   id: string;
   numeroContrato: string;
-  estado: EstadoContrato;
+  diasGracia: number;
+  estado: ContractStatus;
   pdfUrl: string | null;
   fechaInicio: string;
   fechaTermino: string;

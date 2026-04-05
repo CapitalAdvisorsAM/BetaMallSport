@@ -1,4 +1,4 @@
-import { EstadoContrato, TipoLocal, TipoTarifaContrato } from "@prisma/client";
+import { ContractStatus, UnitType, ContractRateType } from "@prisma/client";
 import {
   CONTRACT_EXPIRY_ROW_LIMIT as CONTRACT_EXPIRY_ROW_LIMIT_VALUE,
   CONTRACT_EXPIRY_WINDOWS as CONTRACT_EXPIRY_WINDOWS_VALUE,
@@ -20,7 +20,7 @@ export type KpiLocalInput = {
 };
 
 export type KpiTarifaInput = {
-  tipo: TipoTarifaContrato;
+  tipo: ContractRateType;
   valor: DecimalLike;
 };
 
@@ -49,7 +49,7 @@ export type ValorUfInput = {
 };
 
 export type ContractStateCounter = {
-  estado: EstadoContrato;
+  estado: ContractStatus;
   cantidad: number;
   porcentaje: number;
 };
@@ -65,7 +65,7 @@ export type ContractExpiryRow = {
 
 export type ContractExpiryBuckets = Record<ExpiryWindow, ContractExpiryRow[]>;
 
-const CONTRACT_STATES: EstadoContrato[] = [
+const CONTRACT_STATES: ContractStatus[] = [
   "VIGENTE",
   "GRACIA",
   "TERMINADO_ANTICIPADO",
@@ -271,10 +271,10 @@ export function calculateFixedRentUf(contracts: KpiContractInput[]): number {
     }
 
     const valorTarifa = toNumber(contract.tarifa.valor);
-    if (contract.tarifa.tipo === TipoTarifaContrato.FIJO_UF_M2) {
+    if (contract.tarifa.tipo === ContractRateType.FIJO_UF_M2) {
       return total + valorTarifa * toNumber(contract.localGlam2);
     }
-    if (contract.tarifa.tipo === TipoTarifaContrato.FIJO_UF) {
+    if (contract.tarifa.tipo === ContractRateType.FIJO_UF) {
       return total + valorTarifa;
     }
 
@@ -363,7 +363,7 @@ export function calculateWalt(
  * @remarks Formula: porcentajeEstado = cantidadEstado / total x 100
  */
 export function calculateContractStateCounters(
-  rawCounts: Array<{ estado: EstadoContrato; cantidad: number }>
+  rawCounts: Array<{ estado: ContractStatus; cantidad: number }>
 ): { total: number; counters: ContractStateCounter[] } {
   const total = rawCounts.reduce((sum, item) => sum + item.cantidad, 0);
   const byState = new Map(rawCounts.map((item) => [item.estado, item.cantidad]));
@@ -447,7 +447,7 @@ export type AlertCounts = {
 };
 
 type AlertContractInput = Pick<KpiContractInput, "fechaTermino"> & {
-  estado: EstadoContrato;
+  estado: ContractStatus;
 };
 
 /**
@@ -471,7 +471,7 @@ export function buildAlertCounts(
   return contratos.reduce<AlertCounts>(
     (acc, contrato) => {
       const endDate = startOfDay(contrato.fechaTermino);
-      if (contrato.estado === EstadoContrato.GRACIA) {
+      if (contrato.estado === ContractStatus.GRACIA) {
         acc.enGracia += 1;
       }
 
@@ -523,9 +523,9 @@ export function buildRentaEnRiesgo(
       }
 
       const valorTarifa = toNumber(contrato.tarifa.valor);
-      if (contrato.tarifa.tipo === TipoTarifaContrato.FIJO_UF_M2) {
+      if (contrato.tarifa.tipo === ContractRateType.FIJO_UF_M2) {
         acc.ufEnRiesgo += valorTarifa * toNumber(contrato.localGlam2);
-      } else if (contrato.tarifa.tipo === TipoTarifaContrato.FIJO_UF) {
+      } else if (contrato.tarifa.tipo === ContractRateType.FIJO_UF) {
         acc.ufEnRiesgo += valorTarifa;
       }
 
@@ -574,7 +574,7 @@ type IngresoContratoInput = Pick<
 
 type IngresoLocalInput = {
   id: string;
-  tipo: TipoLocal;
+  tipo: UnitType;
   esGLA: boolean;
   glam2: DecimalLike;
   zona?: string | null;
@@ -632,10 +632,10 @@ function fixedContractAmount(contract: IngresoContratoInput): number {
   if (!contract.tarifa) {
     return 0;
   }
-  if (contract.tarifa.tipo === TipoTarifaContrato.FIJO_UF_M2) {
+  if (contract.tarifa.tipo === ContractRateType.FIJO_UF_M2) {
     return toFiniteNumber(contract.tarifa.valor) * toFiniteNumber(contract.localGlam2);
   }
-  if (contract.tarifa.tipo === TipoTarifaContrato.FIJO_UF) {
+  if (contract.tarifa.tipo === ContractRateType.FIJO_UF) {
     return toFiniteNumber(contract.tarifa.valor);
   }
   return 0;
@@ -682,10 +682,10 @@ export function mapCategoria(zona: string | null | undefined): string | null {
 }
 
 function mapTamano(local: IngresoLocalInput): (typeof TAMANOS_OCUPACION)[number] {
-  if (local.tipo === TipoLocal.BODEGA) {
+  if (local.tipo === UnitType.BODEGA) {
     return "Bodega";
   }
-  if (local.tipo === TipoLocal.MODULO || local.tipo === TipoLocal.SIMULADOR) {
+  if (local.tipo === UnitType.MODULO || local.tipo === UnitType.SIMULADOR) {
     return "Modulo";
   }
 
@@ -731,11 +731,11 @@ export function buildIngresoDesglosado(
     }
 
     const fixedAmount = fixedContractAmount(contrato);
-    if (local.tipo === TipoLocal.SIMULADOR || local.tipo === TipoLocal.MODULO) {
+    if (local.tipo === UnitType.SIMULADOR || local.tipo === UnitType.MODULO) {
       simuladoresModulosUf += fixedAmount;
-    } else if (local.tipo === TipoLocal.ESPACIO) {
+    } else if (local.tipo === UnitType.ESPACIO) {
       arriendoEspacioUf += fixedAmount;
-    } else if (local.tipo === TipoLocal.BODEGA) {
+    } else if (local.tipo === UnitType.BODEGA) {
       arriendoBodegaUf += fixedAmount;
     } else {
       arriendoFijoUf += fixedAmount;

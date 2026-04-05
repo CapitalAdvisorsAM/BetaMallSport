@@ -1,4 +1,4 @@
-import { EstadoContrato, TipoLocal, TipoTarifaContrato } from "@prisma/client";
+import { ContractStatus, UnitType, ContractRateType } from "@prisma/client";
 import { calculateWalt } from "@/lib/kpi";
 import { prisma } from "@/lib/prisma";
 import type { PeriodoMetrica, TimelineResponse } from "@/types/timeline";
@@ -32,12 +32,12 @@ function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-function isBodegaEspacio(tipo: TipoLocal): boolean {
-  return tipo === TipoLocal.BODEGA || tipo === TipoLocal.ESPACIO;
+function isBodegaEspacio(tipo: UnitType): boolean {
+  return tipo === UnitType.BODEGA || tipo === UnitType.ESPACIO;
 }
 
-function isSimuladorModulo(tipo: TipoLocal): boolean {
-  return tipo === TipoLocal.SIMULADOR || tipo === TipoLocal.MODULO;
+function isSimuladorModulo(tipo: UnitType): boolean {
+  return tipo === UnitType.SIMULADOR || tipo === UnitType.MODULO;
 }
 
 async function buildHistoricalPeriodos(
@@ -46,7 +46,7 @@ async function buildHistoricalPeriodos(
   currentPeriodo: string
 ): Promise<PeriodoMetrica[]> {
   // Fetch all ContratoDia records for the project
-  const allDias = await prisma.contratoDia.findMany({
+  const allDias = await prisma.contractDay.findMany({
     where: { proyectoId },
     select: {
       fecha: true,
@@ -83,7 +83,7 @@ async function buildHistoricalPeriodos(
       estadoDia: string;
       glam2: number;
       tarifaDia: number;
-      tipo: TipoLocal;
+      tipo: UnitType;
       fechaTermino: Date | null;
     }>
   >();
@@ -226,10 +226,10 @@ async function buildFuturePeriodos(
   currentPeriodo: string
 ): Promise<PeriodoMetrica[]> {
   // Fetch all active/vigente contracts with locales and tarifas
-  const activeContracts = await prisma.contrato.findMany({
+  const activeContracts = await prisma.contract.findMany({
     where: {
       proyectoId,
-      estado: { in: [EstadoContrato.VIGENTE, EstadoContrato.GRACIA] }
+      estado: { in: [ContractStatus.VIGENTE, ContractStatus.GRACIA] }
     },
     select: {
       id: true,
@@ -245,7 +245,7 @@ async function buildFuturePeriodos(
       },
       tarifas: {
         where: {
-          tipo: { in: [TipoTarifaContrato.FIJO_UF_M2, TipoTarifaContrato.FIJO_UF] }
+          tipo: { in: [ContractRateType.FIJO_UF_M2, ContractRateType.FIJO_UF] }
         },
         select: {
           tipo: true,
@@ -328,7 +328,7 @@ async function buildFuturePeriodos(
       let renta = 0;
       if (tarifaVigente) {
         const valor = tarifaVigente.valor.toNumber();
-        if (tarifaVigente.tipo === TipoTarifaContrato.FIJO_UF_M2) {
+        if (tarifaVigente.tipo === ContractRateType.FIJO_UF_M2) {
           renta = valor * glam2;
         } else {
           // FIJO_UF
@@ -383,7 +383,7 @@ async function buildFuturePeriodos(
 
 export async function getTimelineData(proyectoId: string): Promise<TimelineResponse> {
   // Get all active locales to compute glaTotalM2
-  const localesActivos = await prisma.local.findMany({
+  const localesActivos = await prisma.unit.findMany({
     where: { proyectoId, estado: "ACTIVO", esGLA: true },
     select: { glam2: true }
   });

@@ -11,7 +11,8 @@ vi.mock("@/lib/permissions", () => ({
 }));
 
 vi.mock("@/lib/contracts/contract-query-service", () => ({
-  listContractsPage: listContractsPageMock
+  listContractsPage: listContractsPageMock,
+  applyEstadoComputado: (contracts: unknown[]) => contracts
 }));
 
 vi.mock("@/lib/contracts/contract-command-service", () => ({
@@ -41,12 +42,12 @@ describe("GET /api/contracts", () => {
   it("returns paginated payload when limit is provided", async () => {
     const { GET } = await import("./route");
     const response = await GET(
-      new Request("http://localhost/api/contracts?proyectoId=p1&limit=10")
+      new Request("http://localhost/api/contracts?projectId=p1&limit=10")
     );
 
     expect(response.status).toBe(200);
     expect(listContractsPageMock).toHaveBeenCalledWith({
-      proyectoId: "p1",
+      projectId: "p1",
       limit: 10,
       cursor: undefined
     });

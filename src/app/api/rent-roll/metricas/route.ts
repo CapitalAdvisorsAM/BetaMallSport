@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { EstadoDiaContrato } from "@prisma/client";
+import { ContractDayStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { requireSession } from "@/lib/permissions";
@@ -63,7 +63,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         const hoy = new Date();
         const [metricas, localesActivos] = await Promise.all([
           getMetricasRentRoll(proyectoId, periodo),
-          prisma.local.findMany({
+          prisma.unit.findMany({
             where: { proyectoId, estado: "ACTIVO" },
             select: {
               id: true,
@@ -73,7 +73,7 @@ export async function GET(request: Request): Promise<NextResponse> {
           })
         ]);
 
-        const estadoFiltro: EstadoDiaContrato | undefined = estado === "TODOS" ? undefined : estado;
+        const estadoFiltro: ContractDayStatus | undefined = estado === "TODOS" ? undefined : estado;
         const filas = estadoFiltro ? metricas.filter((fila) => fila.estado === estadoFiltro) : metricas;
         const resumen = buildResumen(filas, localesActivos, hoy);
 

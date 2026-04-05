@@ -48,6 +48,7 @@ export const contractPayloadSchema = z
     fechaTermino: dateStringSchema,
     fechaEntrega: nullableDateStringSchema,
     fechaApertura: nullableDateStringSchema,
+    diasGracia: z.number().int().min(0).default(0),
     estado: z.enum(["VIGENTE", "TERMINADO", "TERMINADO_ANTICIPADO", "GRACIA"]),
     rentaVariable: z
       .array(

@@ -36,3 +36,53 @@ export function parseRequiredPaginationParams(searchParams: URLSearchParams): {
   }
   return parsePaginationParams(searchParams);
 }
+
+export function getProjectIdSearchParam(searchParams: URLSearchParams): string | null {
+  const projectId = searchParams.get("projectId")?.trim() ?? "";
+  if (projectId.length > 0) {
+    return projectId;
+  }
+
+  const legacyProjectId = searchParams.get("proyectoId")?.trim() ?? "";
+  return legacyProjectId.length > 0 ? legacyProjectId : null;
+}
+
+export function getRequiredProjectIdSearchParam(searchParams: URLSearchParams): string {
+  const projectId = getProjectIdSearchParam(searchParams);
+  if (!projectId) {
+    throw new ApiError(400, "projectId es obligatorio.");
+  }
+  return projectId;
+}
+
+export function getProjectIdFromRequest(request: Request): string | null {
+  const { searchParams } = new URL(request.url);
+  return getProjectIdSearchParam(searchParams);
+}
+
+export function getRequiredProjectIdFromRequest(request: Request): string {
+  const projectId = getProjectIdFromRequest(request);
+  if (!projectId) {
+    throw new ApiError(400, "projectId es obligatorio.");
+  }
+  return projectId;
+}
+
+export function withNormalizedProjectId<T>(body: T): T {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return body;
+  }
+
+  const record = body as Record<string, unknown>;
+  const projectId = typeof record.projectId === "string" ? record.projectId.trim() : "";
+  const legacyProjectId = typeof record.proyectoId === "string" ? record.proyectoId.trim() : "";
+
+  if (projectId && !legacyProjectId) {
+    return {
+      ...record,
+      proyectoId: projectId
+    } as T;
+  }
+
+  return body;
+}

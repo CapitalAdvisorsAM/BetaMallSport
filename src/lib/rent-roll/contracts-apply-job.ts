@@ -1,4 +1,4 @@
-import { TipoCargaDatos, TipoTarifaContrato } from "@prisma/client";
+import { TipoCargaDatos, ContractRateType } from "@prisma/client";
 import { ApiError } from "@/lib/api-error";
 import { parseRentRollPreviewPayload } from "@/lib/carga-datos";
 import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
@@ -78,11 +78,11 @@ export async function runContratosApplyJob(input: {
     processingCargaId = carga.id;
 
     const [locales, arrendatarios] = await Promise.all([
-      prisma.local.findMany({
+      prisma.unit.findMany({
         where: { proyectoId: carga.proyectoId },
         select: { id: true, codigo: true, glam2: true }
       }),
-      prisma.arrendatario.findMany({
+      prisma.tenant.findMany({
         where: { proyectoId: carga.proyectoId },
         select: { id: true, nombreComercial: true }
       })
@@ -177,7 +177,7 @@ export async function runContratosApplyJob(input: {
 
           if (normalized.rentaVariablePct && Number.isFinite(Number(normalized.rentaVariablePct))) {
             await applyTarifas(tx, contrato.id, {
-              tarifaTipo: TipoTarifaContrato.PORCENTAJE,
+              tarifaTipo: ContractRateType.PORCENTAJE,
               tarifaValor: normalized.rentaVariablePct,
               tarifaVigenciaDesde: normalized.fechaInicio,
               tarifaVigenciaHasta: normalized.fechaTermino
@@ -206,7 +206,7 @@ export async function runContratosApplyJob(input: {
           }
 
           if (normalized.anexoFecha && normalized.anexoDescripcion) {
-            await tx.contratoAnexo.create({
+            await tx.contractAmendment.create({
               data: {
                 contratoId: contrato.id,
                 fecha: new Date(normalized.anexoFecha),

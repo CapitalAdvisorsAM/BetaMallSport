@@ -3,7 +3,7 @@ import {
   buildArrendatariosActiveContractWhere,
   buildArrendatariosWhere,
   parseVigenteFilter
-} from "@/lib/rent-roll/arrendatarios";
+} from "@/lib/rent-roll/tenants";
 
 describe("parseVigenteFilter", () => {
   it("parses valid values", () => {

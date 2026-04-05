@@ -35,6 +35,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Naming Guardrail
+        run: npm run check:naming-core
+
       - name: Test
         run: npm test
 

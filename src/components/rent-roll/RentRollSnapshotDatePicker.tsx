@@ -36,6 +36,7 @@ export function RentRollSnapshotDatePicker({
     }
 
     const params = new URLSearchParams(searchParams.toString());
+    params.set("project", projectId);
     params.set("proyecto", projectId);
     params.set("fecha", formatDateParamLocal(nextDate));
     params.delete("periodo");

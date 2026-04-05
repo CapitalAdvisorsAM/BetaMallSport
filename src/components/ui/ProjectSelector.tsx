@@ -22,14 +22,15 @@ export function ProjectSelector({
 }: ProjectSelectorProps): JSX.Element {
   const router = useRouter();
   const pathname = usePathname();
-  const projectSelectorId = "proyecto";
+  const projectSelectorId = "project";
 
   const handleProjectChange = (nextProjectId: string): void => {
     const params = new URLSearchParams();
+    params.set("project", nextProjectId);
     params.set("proyecto", nextProjectId);
 
     Object.entries(preserve).forEach(([key, value]) => {
-      if (!value || key === "proyecto") {
+      if (!value || key === "project" || key === "proyecto") {
         return;
       }
       params.set(key, value);

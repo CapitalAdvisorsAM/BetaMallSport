@@ -17,7 +17,7 @@ export type ArrendatariosContractPeriod = {
  */
 export function buildArrendatariosActiveContractWhere(
   period: ArrendatariosContractPeriod
-): Prisma.ContratoWhereInput {
+): Prisma.ContractWhereInput {
   return {
     OR: [
       // Primary: pre-computed daily records confirm active status
@@ -65,7 +65,7 @@ export function buildArrendatariosWhere(
   proyectoId: string,
   period: ArrendatariosContractPeriod,
   filters: ArrendatariosFilters
-): Prisma.ArrendatarioWhereInput {
+): Prisma.TenantWhereInput {
   const q = filters.q.trim();
   const activeContractWhere = buildArrendatariosActiveContractWhere(period);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { EstadoContrato } from "@prisma/client";
+import { ContractStatus } from "@prisma/client";
 import type { Dispatch, SetStateAction } from "react";
 import { ContractAttachmentZone } from "@/components/contracts/ContractAttachmentZone";
 import { GgccListEditor } from "@/components/contracts/GgccListEditor";
@@ -129,34 +129,40 @@ function ContractStatusAndLocalsSection({
 }: ContractStatusAndLocalsSectionProps) {
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      <label className="text-sm">
-        <span className="mb-1 block text-slate-700">
-          Clasificacion juridica <span className="text-xs text-slate-400">(opcional)</span>
-        </span>
-        <Select
-          value={payload.estado}
-          onValueChange={(value) =>
-            setPayload((previous) => ({
-              ...previous,
-              estado: value as EstadoContrato
-            }))
-          }
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="VIGENTE">VIGENTE</SelectItem>
-            <SelectItem value="GRACIA">GRACIA</SelectItem>
-            <SelectItem value="TERMINADO">TERMINADO</SelectItem>
-            <SelectItem value="TERMINADO_ANTICIPADO">TERMINADO_ANTICIPADO</SelectItem>
-          </SelectContent>
-        </Select>
-        <span className="mt-1 block text-xs text-slate-500">
-          Este estado es clasificacion del documento. El estado en Rent Roll se calcula
-          automaticamente desde las fechas del contrato.
-        </span>
-      </label>
+      <div className="space-y-3">
+        <label className="text-sm">
+          <span className="mb-1 block text-slate-700">Dias de gracia</span>
+          <Input
+            type="number"
+            min={0}
+            value={payload.diasGracia}
+            onChange={(event) =>
+              setPayload((previous) => ({
+                ...previous,
+                diasGracia: Math.max(0, Number(event.target.value) || 0)
+              }))
+            }
+            disabled={!canEdit}
+            className="w-full"
+          />
+          <span className="mt-1 block text-xs text-slate-500">
+            Dias desde entrega del local hasta inicio del arriendo.
+          </span>
+        </label>
+        <label className="flex cursor-pointer items-center gap-2 text-sm">
+          <Checkbox
+            checked={payload.estado === ContractStatus.TERMINADO_ANTICIPADO}
+            onCheckedChange={(checked) =>
+              setPayload((previous) => ({
+                ...previous,
+                estado: checked ? ContractStatus.TERMINADO_ANTICIPADO : ContractStatus.VIGENTE
+              }))
+            }
+            disabled={!canEdit}
+          />
+          <span className="text-slate-700">Terminado anticipadamente</span>
+        </label>
+      </div>
 
       <div className="text-sm">
         <span className="mb-1 block text-slate-700">

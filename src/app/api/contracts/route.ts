@@ -3,9 +3,13 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { createContractCommand } from "@/lib/contracts/contract-command-service";
-import { listContractsPage } from "@/lib/contracts/contract-query-service";
+import { applyEstadoComputado, listContractsPage } from "@/lib/contracts/contract-query-service";
 import { contractPayloadSchema } from "@/lib/contracts/schema";
-import { getRequiredSearchParam, parseRequiredPaginationParams } from "@/lib/http/request";
+import {
+  getRequiredProjectIdSearchParam,
+  parseRequiredPaginationParams,
+  withNormalizedProjectId
+} from "@/lib/http/request";
 import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 
@@ -15,11 +19,11 @@ export async function GET(request: Request): Promise<NextResponse> {
   try {
     await requireSession();
     const { searchParams } = new URL(request.url);
-    const proyectoId = getRequiredSearchParam(searchParams, "proyectoId");
+    const projectId = getRequiredProjectIdSearchParam(searchParams);
 
     const { limit, cursor } = parseRequiredPaginationParams(searchParams);
-    const result = await listContractsPage({ proyectoId, limit, cursor });
-    return NextResponse.json(result);
+    const result = await listContractsPage({ projectId, limit, cursor });
+    return NextResponse.json({ ...result, data: applyEstadoComputado(result.data) });
   } catch (error) {
     return handleApiError(error);
   }
@@ -28,7 +32,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 export async function POST(request: Request): Promise<NextResponse> {
   try {
     const session = await requireWriteAccess();
-    const parsed = contractPayloadSchema.safeParse(await request.json());
+    const parsed = contractPayloadSchema.safeParse(withNormalizedProjectId(await request.json()));
     if (!parsed.success) {
       return NextResponse.json(
         { message: parsed.error.issues[0].message, issues: parsed.error.issues },

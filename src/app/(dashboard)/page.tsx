@@ -1,17 +1,10 @@
-import { EstadoContrato, EstadoMaestro, TipoTarifaContrato } from "@prisma/client";
+import { ContractStatus, MasterStatus, ContractRateType } from "@prisma/client";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AlertBar } from "@/components/dashboard/AlertBar";
 import { KpiCard } from "@/components/dashboard/KpiCard";
+import { VencimientosPorAnioTable } from "@/components/dashboard/VencimientosPorAnioTable";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
 import {
   OCCUPANCY_HIGH_THRESHOLD,
   OCCUPANCY_LOW_THRESHOLD,
@@ -33,12 +26,13 @@ import {
 } from "@/lib/kpi";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { getProjectContext } from "@/lib/project";
+import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
 import { isPeriodoValido } from "@/lib/validators";
-import { cn, formatUf, startOfDay } from "@/lib/utils";
+import { formatUf, startOfDay } from "@/lib/utils";
 
 type DashboardPageProps = {
   searchParams: {
+    project?: string;
     proyecto?: string;
     periodo?: string;
   };
@@ -50,7 +44,7 @@ type CarteraCardConfig = {
   subtitle?: string;
 };
 
-const CARTERA_CARD_CONFIG: Record<EstadoContrato, CarteraCardConfig> = {
+const CARTERA_CARD_CONFIG: Record<ContractStatus, CarteraCardConfig> = {
   VIGENTE: {
     title: "Vigentes",
     accent: "green"
@@ -93,16 +87,6 @@ function formatShortDate(date: Date): string {
   }).format(date);
 }
 
-function urgencyClassForYear(year: number, currentYear: number): string {
-  if (year === currentYear) {
-    return "text-rose-700";
-  }
-  if (year === currentYear + 1) {
-    return "text-amber-700";
-  }
-  return "text-slate-700";
-}
-
 export default async function DashboardPage({
   searchParams
 }: DashboardPageProps): Promise<JSX.Element> {
@@ -112,7 +96,8 @@ export default async function DashboardPage({
     redirect("/login");
   }
 
-  const { projects, selectedProjectId } = await getProjectContext(searchParams.proyecto);
+  const projectParam = resolveProjectIdFromSearchParams(searchParams);
+  const { projects, selectedProjectId } = await getProjectContext(projectParam);
   if (!selectedProjectId) {
     return (
       <main className="rounded-md bg-white p-6 shadow-sm">
@@ -130,8 +115,9 @@ export default async function DashboardPage({
   const currentPeriodo = formatPeriodo(new Date());
   const periodo = isPeriodoValido(searchParams.periodo ?? "") ? (searchParams.periodo as string) : currentPeriodo;
 
-  if (searchParams.proyecto !== selectedProjectId || searchParams.periodo !== periodo) {
+  if (projectParam !== selectedProjectId || searchParams.periodo !== periodo) {
     const params = new URLSearchParams();
+    params.set("project", selectedProjectId);
     params.set("proyecto", selectedProjectId);
     params.set("periodo", periodo);
     redirect(`/?${params.toString()}`);
@@ -140,10 +126,10 @@ export default async function DashboardPage({
   const today = startOfDay(new Date());
   const [activeLocales, activeContractsRaw, groupedStates, latestValorUf, ventasPeriodo, energiaPeriodo] =
     await Promise.all([
-      prisma.local.findMany({
+      prisma.unit.findMany({
         where: {
           proyectoId: selectedProjectId,
-          estado: EstadoMaestro.ACTIVO
+          estado: MasterStatus.ACTIVO
         },
         orderBy: { codigo: "asc" },
         select: {
@@ -155,11 +141,11 @@ export default async function DashboardPage({
           zona: true
         }
       }),
-      prisma.contrato.findMany({
+      prisma.contract.findMany({
         where: {
           proyectoId: selectedProjectId,
           estado: {
-            in: [EstadoContrato.VIGENTE, EstadoContrato.GRACIA]
+            in: [ContractStatus.VIGENTE, ContractStatus.GRACIA]
           }
         },
         orderBy: { fechaTermino: "asc" },
@@ -185,9 +171,9 @@ export default async function DashboardPage({
             where: {
               tipo: {
                 in: [
-                  TipoTarifaContrato.FIJO_UF_M2,
-                  TipoTarifaContrato.FIJO_UF,
-                  TipoTarifaContrato.PORCENTAJE
+                  ContractRateType.FIJO_UF_M2,
+                  ContractRateType.FIJO_UF,
+                  ContractRateType.PORCENTAJE
                 ]
               },
               vigenciaDesde: { lte: today },
@@ -212,7 +198,7 @@ export default async function DashboardPage({
           }
         }
       }),
-      prisma.contrato.groupBy({
+      prisma.contract.groupBy({
         by: ["estado"],
         where: { proyectoId: selectedProjectId },
         _count: { _all: true }
@@ -249,10 +235,10 @@ export default async function DashboardPage({
     const tarifaFija =
       contract.tarifas.find(
         (item) =>
-          item.tipo === TipoTarifaContrato.FIJO_UF_M2 || item.tipo === TipoTarifaContrato.FIJO_UF
+          item.tipo === ContractRateType.FIJO_UF_M2 || item.tipo === ContractRateType.FIJO_UF
       ) ?? null;
     const tarifaVariable =
-      contract.tarifas.find((item) => item.tipo === TipoTarifaContrato.PORCENTAJE) ?? null;
+      contract.tarifas.find((item) => item.tipo === ContractRateType.PORCENTAJE) ?? null;
 
     return {
       estado: contract.estado,
@@ -273,10 +259,10 @@ export default async function DashboardPage({
   });
 
   const vigenteContracts = contractsWithState
-    .filter((contract) => contract.estado === EstadoContrato.VIGENTE)
+    .filter((contract) => contract.estado === ContractStatus.VIGENTE)
     .map((contract) => contract.data);
   const graciaContracts = contractsWithState
-    .filter((contract) => contract.estado === EstadoContrato.GRACIA)
+    .filter((contract) => contract.estado === ContractStatus.GRACIA)
     .map((contract) => contract.data);
   const activeContracts = [...vigenteContracts, ...graciaContracts];
 
@@ -382,7 +368,7 @@ export default async function DashboardPage({
             preserve={{ periodo }}
           />
           <Link
-            href={`/rent-roll/dashboard?proyecto=${selectedProjectId}`}
+            href={`/rent-roll/dashboard?project=${selectedProjectId}&proyecto=${selectedProjectId}`}
             className="ml-auto flex items-center gap-1 rounded-full border border-brand-300 px-4 py-1.5 text-sm font-medium text-brand-500 transition-colors hover:text-brand-700"
           >
             Ver Rent Roll -&gt;
@@ -528,63 +514,10 @@ export default async function DashboardPage({
           <h3 className="text-base font-semibold text-brand-700">Vencimientos por ano</h3>
           <p className="mt-1 text-sm text-slate-600">Maximo 5 anos hacia adelante desde hoy.</p>
         </div>
-        <div className="overflow-x-auto">
-          <Table className="min-w-full text-sm">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="h-auto px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  Ano
-                </TableHead>
-                <TableHead className="h-auto px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  Contratos
-                </TableHead>
-                <TableHead className="h-auto px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  m2
-                </TableHead>
-                <TableHead className="h-auto px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  % del total
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody className="text-slate-800">
-              {vencimientosPorAnio.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="px-4 py-6 text-center text-slate-500">
-                    No hay vencimientos en el horizonte de 5 anos.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                vencimientosPorAnio.map((row, index) => (
-                  <TableRow
-                    key={row.anio}
-                    className={cn(index % 2 === 0 ? "bg-white" : "bg-slate-50/60")}
-                  >
-                    <TableCell
-                      className={cn(
-                        "whitespace-nowrap px-4 py-3 font-semibold",
-                        urgencyClassForYear(row.anio, today.getFullYear())
-                      )}
-                    >
-                      {row.anio}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                      {row.cantidadContratos}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                      {formatUf(row.m2)}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                      {formatPercent(row.pctTotal)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        <VencimientosPorAnioTable rows={vencimientosPorAnio} currentYear={today.getFullYear()} />
         <div className="border-t border-slate-200 px-4 py-3 text-right text-sm">
           <Link
-            href={`/rent-roll/dashboard?proyecto=${selectedProjectId}`}
+            href={`/rent-roll/dashboard?project=${selectedProjectId}&proyecto=${selectedProjectId}`}
             className="text-brand-500 underline hover:text-brand-700"
           >
             Ver detalle de vencimientos en Rent Roll -&gt;

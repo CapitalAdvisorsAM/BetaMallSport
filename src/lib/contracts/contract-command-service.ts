@@ -1,4 +1,4 @@
-import { Prisma, TipoTarifaContrato } from "@prisma/client";
+import { Prisma, ContractRateType } from "@prisma/client";
 import { ApiError } from "@/lib/api-error";
 import { generateNumeroContrato, normalizedLocalIds, toDate, toDecimal } from "@/lib/contracts/persistence";
 import { prisma } from "@/lib/prisma";
@@ -18,11 +18,11 @@ export async function createContractCommand(input: {
   }
 
   const [locals, arrendatario] = await Promise.all([
-    prisma.local.findMany({
+    prisma.unit.findMany({
       where: { id: { in: localIds }, proyectoId: payload.proyectoId },
       select: { id: true }
     }),
-    prisma.arrendatario.findFirst({
+    prisma.tenant.findFirst({
       where: { id: payload.arrendatarioId, proyectoId: payload.proyectoId },
       select: { id: true }
     })
@@ -35,7 +35,7 @@ export async function createContractCommand(input: {
   }
 
   return prisma.$transaction(async (tx) => {
-    const created = await tx.contrato.create({
+    const created = await tx.contract.create({
       data: {
         proyectoId: payload.proyectoId,
         localId: localIds[0],
@@ -45,6 +45,7 @@ export async function createContractCommand(input: {
         fechaTermino: new Date(payload.fechaTermino),
         fechaEntrega: toDate(payload.fechaEntrega),
         fechaApertura: toDate(payload.fechaApertura),
+        diasGracia: payload.diasGracia,
         estado: payload.estado,
         pctFondoPromocion: toDecimal(payload.pctFondoPromocion),
         pctAdministracionGgcc: toDecimal(payload.pctAdministracionGgcc),
@@ -55,7 +56,7 @@ export async function createContractCommand(input: {
       }
     });
 
-    await tx.contratoLocal.createMany({
+    await tx.contractUnit.createMany({
       data: localIds.map((localId) => ({
         contratoId: created.id,
         localId
@@ -79,10 +80,10 @@ export async function createContractCommand(input: {
     }
 
     if (tarifasByKey.size > 0) {
-      await tx.contratoTarifa.createMany({
+      await tx.contractRate.createMany({
         data: Array.from(tarifasByKey.values()).map((t) => ({
           contratoId: created.id,
-          tipo: t.tipo as TipoTarifaContrato,
+          tipo: t.tipo as ContractRateType,
           valor: new Prisma.Decimal(t.valor),
           vigenciaDesde: new Date(t.vigenciaDesde),
           vigenciaHasta: toDate(t.vigenciaHasta),
@@ -92,7 +93,7 @@ export async function createContractCommand(input: {
     }
 
     if (payload.ggcc.length > 0) {
-      await tx.contratoGGCC.createMany({
+      await tx.contractCommonExpense.createMany({
         data: payload.ggcc.map((g) => ({
           contratoId: created.id,
           tarifaBaseUfM2: new Prisma.Decimal(g.tarifaBaseUfM2),
@@ -107,7 +108,7 @@ export async function createContractCommand(input: {
     }
 
     if (payload.anexo) {
-      await tx.contratoAnexo.create({
+      await tx.contractAmendment.create({
         data: {
           contratoId: created.id,
           fecha: new Date(payload.anexo.fecha),

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { computeEstadoContrato, startOfDay } from "@/lib/utils";
 
 export const contractInclude = {
   local: true,
@@ -14,13 +15,36 @@ export const contractInclude = {
   anexos: { orderBy: { createdAt: "desc" as const }, take: 5 }
 } as const;
 
+type ContractWithDates = {
+  fechaInicio: Date;
+  fechaTermino: Date;
+  diasGracia: number;
+  estado: Parameters<typeof computeEstadoContrato>[3];
+};
+
+export function applyEstadoComputado<T extends ContractWithDates>(
+  contracts: T[],
+  today: Date = startOfDay(new Date())
+): T[] {
+  return contracts.map((contract) => ({
+    ...contract,
+    estado: computeEstadoContrato(
+      contract.fechaInicio,
+      contract.fechaTermino,
+      contract.diasGracia,
+      contract.estado,
+      today
+    )
+  }));
+}
+
 export async function listContractsPage(input: {
-  proyectoId: string;
+  projectId: string;
   limit: number;
   cursor?: string;
 }) {
-  const items = await prisma.contrato.findMany({
-    where: { proyectoId: input.proyectoId },
+  const items = await prisma.contract.findMany({
+    where: { proyectoId: input.projectId },
     include: contractInclude,
     take: input.limit + 1,
     ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),

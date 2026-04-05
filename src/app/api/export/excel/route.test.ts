@@ -5,16 +5,16 @@ import { UnauthorizedError } from "@/lib/errors";
 const { requireSessionMock, prismaMock } = vi.hoisted(() => ({
   requireSessionMock: vi.fn(),
   prismaMock: {
-    proyecto: {
+    project: {
       findMany: vi.fn()
     },
-    local: {
+    unit: {
       findMany: vi.fn()
     },
-    arrendatario: {
+    tenant: {
       findMany: vi.fn()
     },
-    contrato: {
+    contract: {
       findMany: vi.fn()
     },
     mapeoLocalContable: {
@@ -49,11 +49,11 @@ beforeEach(() => {
   vi.resetModules();
   requireSessionMock.mockResolvedValue({ user: { id: "u1" } });
 
-  prismaMock.proyecto.findMany.mockResolvedValue([
+  prismaMock.project.findMany.mockResolvedValue([
     { nombre: "Mall Sport", slug: "mall-sport", color: "#0f766e", activo: true }
   ]);
 
-  prismaMock.local.findMany.mockResolvedValue([
+  prismaMock.unit.findMany.mockResolvedValue([
     {
       codigo: "L-101",
       nombre: "Local 101",
@@ -66,7 +66,7 @@ beforeEach(() => {
     }
   ]);
 
-  prismaMock.contrato.findMany.mockResolvedValue([
+  prismaMock.contract.findMany.mockResolvedValue([
     {
       numeroContrato: "C-100",
       estado: "VIGENTE",
@@ -146,9 +146,9 @@ describe("GET /api/export/excel", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(prismaMock.local.findMany).toHaveBeenCalledTimes(1);
+    expect(prismaMock.unit.findMany).toHaveBeenCalledTimes(1);
 
-    const args = prismaMock.local.findMany.mock.calls[0]?.[0] as {
+    const args = prismaMock.unit.findMany.mock.calls[0]?.[0] as {
       where: { proyectoId: string; estado: string; OR: Array<Record<string, unknown>> };
     };
     expect(args.where.proyectoId).toBe("p1");

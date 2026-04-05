@@ -1,4 +1,4 @@
-import { EstadoMaestro, Prisma, TipoLocal } from "@prisma/client";
+import { MasterStatus, Prisma, UnitType } from "@prisma/client";
 import { z } from "zod";
 
 function normalizeGlam2(value: string): string {
@@ -38,8 +38,8 @@ export const localeSchema = z.object({
     )
     .transform((value) => (value === "" ? "0" : value)),
   piso: z.string().trim().min(1, "Piso es obligatorio."),
-  tipo: z.nativeEnum(TipoLocal),
+  tipo: z.nativeEnum(UnitType),
   zona: z.string().trim().nullable(),
   esGLA: z.boolean(),
-  estado: z.nativeEnum(EstadoMaestro)
+  estado: z.nativeEnum(MasterStatus)
 });

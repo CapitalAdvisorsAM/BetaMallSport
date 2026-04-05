@@ -1,5 +1,5 @@
-import { EstadoContrato, TipoTarifaContrato } from "@prisma/client";
-import type { EstadoDiaContrato, Prisma } from "@prisma/client";
+import { ContractStatus, ContractRateType } from "@prisma/client";
+import type { ContractDayStatus, Prisma } from "@prisma/client";
 import { MS_PER_DAY } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 import { startOfUtcDay } from "@/lib/utils";
@@ -21,7 +21,7 @@ async function listContratosConRelaciones(
   nextMonthStart: Date,
   hoy: Date
 ) {
-  return prisma.contrato.findMany({
+  return prisma.contract.findMany({
     where: {
       proyectoId,
       OR: [
@@ -34,7 +34,7 @@ async function listContratosConRelaciones(
           }
         },
         {
-          estado: { in: [EstadoContrato.VIGENTE, EstadoContrato.GRACIA] },
+          estado: { not: ContractStatus.TERMINADO_ANTICIPADO },
           fechaInicio: { lt: nextMonthStart },
           fechaTermino: { gte: start }
         }
@@ -66,7 +66,7 @@ async function listContratosConRelaciones(
       },
       tarifas: {
         where: {
-          tipo: { in: [TipoTarifaContrato.FIJO_UF_M2, TipoTarifaContrato.PORCENTAJE] },
+          tipo: { in: [ContractRateType.FIJO_UF_M2, ContractRateType.PORCENTAJE] },
           vigenciaDesde: { lte: hoy },
           OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: hoy } }]
         },
@@ -173,14 +173,14 @@ export function calcularDiasVigentes(
 
 export function buildMetricaRow(
   contrato: ContratoConRelaciones,
-  estado: EstadoDiaContrato,
+  estado: ContractDayStatus,
   ventasMap: Map<string, number>,
   periodo: string
 ): RentRollMetricaRow {
   const tarifaFijaVigente =
-    contrato.tarifas.find((tarifa) => tarifa.tipo === TipoTarifaContrato.FIJO_UF_M2)?.valor ?? null;
+    contrato.tarifas.find((tarifa) => tarifa.tipo === ContractRateType.FIJO_UF_M2)?.valor ?? null;
   const tarifaVariableVigente =
-    contrato.tarifas.find((tarifa) => tarifa.tipo === TipoTarifaContrato.PORCENTAJE)?.valor ?? null;
+    contrato.tarifas.find((tarifa) => tarifa.tipo === ContractRateType.PORCENTAJE)?.valor ?? null;
   const ggccVigente = contrato.ggcc[0];
   const ventasUf = ventasMap.get(contrato.local.id) ?? null;
 
@@ -212,7 +212,7 @@ export function buildMetricaRow(
   };
 }
 
-export function getEstadoContratoDia(estadosDia: EstadoDiaContrato[]): EstadoDiaContrato | null {
+export function getEstadoContratoDia(estadosDia: ContractDayStatus[]): ContractDayStatus | null {
   if (estadosDia.includes("OCUPADO")) {
     return "OCUPADO";
   }
@@ -225,11 +225,11 @@ export function getEstadoContratoDia(estadosDia: EstadoDiaContrato[]): EstadoDia
   return null;
 }
 
-function fallbackEstadoPorDocumento(estado: EstadoContrato): EstadoDiaContrato | null {
-  if (estado === EstadoContrato.GRACIA) {
+function fallbackEstadoPorDocumento(estado: ContractStatus): ContractDayStatus | null {
+  if (estado === ContractStatus.GRACIA) {
     return "GRACIA";
   }
-  if (estado === EstadoContrato.VIGENTE) {
+  if (estado === ContractStatus.VIGENTE) {
     return "OCUPADO";
   }
   return null;
