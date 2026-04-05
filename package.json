@@ -8,6 +8,7 @@
     "start": "next start -p 3000",
     "lint": "next lint",
     "check:naming-core": "node scripts/check-core-naming.mjs",
+    "check:metric-formulas": "node scripts/check-metric-formulas.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "prisma:generate": "prisma generate",

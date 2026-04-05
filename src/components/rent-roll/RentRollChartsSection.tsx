@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
 import type { ReactNode } from "react";
 import {
   Area,
@@ -74,22 +75,6 @@ function formatWaltAxisTick(value: number): string {
     return "0";
   }
   return value >= 12 ? `${Math.round(value / 12)}a` : `${Math.round(value)}m`;
-}
-
-type ChartCardProps = {
-  title: string;
-  children: React.ReactNode;
-};
-
-function ChartCard({ title, children }: ChartCardProps): JSX.Element {
-  return (
-    <article className="overflow-hidden rounded-md bg-white shadow-sm">
-      <div className="border-b border-slate-200 px-4 py-3">
-        <h3 className="text-sm font-semibold text-brand-700">{title}</h3>
-      </div>
-      <div className="p-4">{children}</div>
-    </article>
-  );
 }
 
 export function RentRollChartsSection({
@@ -200,7 +185,7 @@ export function RentRollChartsSection({
       </header>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <ChartCard title="% Ocupacion GLA + WALT">
+        <MetricChartCard metricId="chart_rent_roll_ocupacion_walt" title="% Ocupacion GLA + WALT">
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={chart1Data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -271,9 +256,9 @@ export function RentRollChartsSection({
           <p className="mt-1 text-right text-xs text-slate-400">
             Azul = ocupacion GLA. Morado = WALT ponderado por m2.
           </p>
-        </ChartCard>
+        </MetricChartCard>
 
-        <ChartCard title="Renta Fija Total (UF)">
+        <MetricChartCard metricId="chart_rent_roll_renta_fija_total_uf" title="Renta Fija Total (UF)">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chart2Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -315,9 +300,9 @@ export function RentRollChartsSection({
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </ChartCard>
+        </MetricChartCard>
 
-        <ChartCard title="Contratos Activos">
+        <MetricChartCard metricId="chart_rent_roll_contratos_activos" title="Contratos Activos">
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={chart3Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -354,9 +339,9 @@ export function RentRollChartsSection({
               />
             </LineChart>
           </ResponsiveContainer>
-        </ChartCard>
+        </MetricChartCard>
 
-        <ChartCard title="GLA Arrendada vs Vacante (m2)">
+        <MetricChartCard metricId="chart_rent_roll_gla_arrendada_vacante_m2" title="GLA Arrendada vs Vacante (m2)">
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={chart4Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
               <defs>
@@ -427,9 +412,9 @@ export function RentRollChartsSection({
               />
             </AreaChart>
           </ResponsiveContainer>
-        </ChartCard>
+        </MetricChartCard>
 
-        <ChartCard title="Vencimientos de Contratos por Mes">
+        <MetricChartCard metricId="chart_rent_roll_vencimientos_por_mes" title="Vencimientos de Contratos por Mes">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chart5Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -480,9 +465,9 @@ export function RentRollChartsSection({
               Mas de 3 meses
             </span>
           </div>
-        </ChartCard>
+        </MetricChartCard>
 
-        <ChartCard title="Ingresos por Tipo de Local (UF)">
+        <MetricChartCard metricId="chart_rent_roll_ingresos_tipo_local_uf" title="Ingresos por Tipo de Local (UF)">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chart6Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -559,7 +544,7 @@ export function RentRollChartsSection({
               />
             </BarChart>
           </ResponsiveContainer>
-        </ChartCard>
+        </MetricChartCard>
       </div>
     </section>
   );

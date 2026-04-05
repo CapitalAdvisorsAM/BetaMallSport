@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,102 +19,62 @@ type ProjectRecord = {
   activo: boolean;
 };
 
-type ProjectForm = {
-  nombre: string;
-  color: string;
-  activo: boolean;
-};
-
 type ProjectCrudPanelProps = {
   canEdit: boolean;
   initialProjects: ProjectRecord[];
 };
 
-function emptyForm(): ProjectForm {
-  return {
-    nombre: "",
-    color: "#0f766e",
-    activo: true
-  };
-}
-
-function toProjectRecord(value: Partial<ProjectRecord>): ProjectRecord {
-  return {
-    id: value.id ?? "",
-    nombre: value.nombre ?? "",
-    slug: value.slug ?? "",
-    color: value.color ?? "#0f766e",
-    activo: Boolean(value.activo)
-  };
-}
-
 export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelProps): JSX.Element {
   const [projects, setProjects] = useState<ProjectRecord[]>(initialProjects);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [form, setForm] = useState<ProjectForm>(emptyForm());
+  const [nombre, setNombre] = useState("");
+  const [color, setColor] = useState("#0f766e");
+  const [activo, setActivo] = useState(true);
 
   const filteredProjects = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) {
-      return projects;
-    }
-    return projects.filter((project) =>
-      [project.nombre, project.slug, project.color, project.activo ? "activo" : "inactivo"]
-        .join(" ")
-        .toLowerCase()
-        .includes(q)
+    if (!q) return projects;
+    return projects.filter((p) =>
+      [p.nombre, p.slug, p.color, p.activo ? "activo" : "inactivo"].join(" ").toLowerCase().includes(q)
     );
   }, [projects, search]);
-  function beginCreate(): void {
-    setSelectedId(null);
-    setForm(emptyForm());
-  }
 
-  function beginEdit(project: ProjectRecord): void {
-    setSelectedId(project.id);
-    setForm({
-      nombre: project.nombre,
-      color: project.color,
-      activo: project.activo
-    });
-  }
-
-  async function handleSubmit(): Promise<void> {
-    if (!canEdit || loading) {
-      return;
-    }
+  async function handleCreate(): Promise<void> {
+    if (!canEdit || loading) return;
 
     setLoading(true);
     setMessage(null);
     try {
-      const isEditing = Boolean(selectedId);
-      const response = await fetch(isEditing ? `/api/projects/${selectedId}` : "/api/projects", {
-        method: isEditing ? "PUT" : "POST",
+      const response = await fetch("/api/projects", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form)
+        body: JSON.stringify({ nombre, color, activo })
       });
 
       const data = (await response.json()) as Partial<ProjectRecord> & { message?: string };
       if (!response.ok || !data.id) {
-        throw new Error(data.message ?? "No se pudo guardar el proyecto.");
+        throw new Error(data.message ?? "No se pudo crear el proyecto.");
       }
 
-      const saved = toProjectRecord(data);
-      if (isEditing) {
-        setProjects((previous) => previous.map((item) => (item.id === saved.id ? saved : item)));
-        setMessage("Proyecto actualizado correctamente.");
-      } else {
-        setProjects((previous) =>
-          [...previous, saved].sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" }))
-        );
-        setMessage("Proyecto creado correctamente.");
-      }
-      beginCreate();
+      const saved: ProjectRecord = {
+        id: data.id,
+        nombre: data.nombre ?? "",
+        slug: data.slug ?? "",
+        color: data.color ?? "#0f766e",
+        activo: Boolean(data.activo)
+      };
+
+      setProjects((prev) =>
+        [...prev, saved].sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" }))
+      );
+      setMessage("Proyecto creado correctamente.");
+      setNombre("");
+      setColor("#0f766e");
+      setActivo(true);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Error inesperado al guardar proyecto.");
+      setMessage(error instanceof Error ? error.message : "Error inesperado al crear proyecto.");
     } finally {
       setLoading(false);
     }
@@ -121,26 +82,16 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
 
   const handleDelete = useCallback(
     async (projectId: string): Promise<void> => {
-      if (!canEdit || loading) {
-        return;
-      }
-      if (!window.confirm("Se eliminara el proyecto si no tiene datos asociados. Continuar?")) {
-        return;
-      }
+      if (!canEdit || loading) return;
+      if (!window.confirm("Se eliminara el proyecto si no tiene datos asociados. Continuar?")) return;
 
       setLoading(true);
       setMessage(null);
       try {
         const response = await fetch(`/api/projects/${projectId}`, { method: "DELETE" });
-        if (!response.ok) {
-          throw new Error("No se pudo eliminar el proyecto.");
-        }
+        if (!response.ok) throw new Error("No se pudo eliminar el proyecto.");
 
-        setProjects((previous) => previous.filter((item) => item.id !== projectId));
-        if (selectedId === projectId) {
-          setSelectedId(null);
-          setForm(emptyForm());
-        }
+        setProjects((prev) => prev.filter((p) => p.id !== projectId));
         setMessage("Proyecto eliminado correctamente.");
       } catch (error) {
         setMessage(error instanceof Error ? error.message : "Error inesperado al eliminar proyecto.");
@@ -148,8 +99,9 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
         setLoading(false);
       }
     },
-    [canEdit, loading, selectedId]
+    [canEdit, loading]
   );
+
   const columns = useMemo<ColumnDef<ProjectRecord, unknown>[]>(
     () => [
       {
@@ -167,7 +119,7 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
       {
         accessorKey: "color",
         header: "Color",
-        filterFn: "includesString",
+        enableColumnFilter: false,
         cell: ({ row }) => (
           <span className="inline-flex items-center gap-2 whitespace-nowrap">
             <span
@@ -183,9 +135,7 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
         accessorFn: (row) => (row.activo ? "Activo" : "Inactivo"),
         header: "Estado",
         filterFn: (row, columnId, filterValue) => {
-          if (!Array.isArray(filterValue) || filterValue.length === 0) {
-            return true;
-          }
+          if (!Array.isArray(filterValue) || filterValue.length === 0) return true;
           return filterValue.includes(String(row.getValue(columnId)));
         },
         meta: { filterType: "enum", filterOptions: ["Activo", "Inactivo"], align: "center" },
@@ -204,20 +154,13 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
       },
       {
         id: "acciones",
-        accessorFn: (row) => row.id,
         header: "Acciones",
         enableSorting: false,
         enableColumnFilter: false,
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => beginEdit(row.original)}
-              disabled={!canEdit}
-              className="h-auto px-2 py-1 text-xs"
-            >
-              Editar
+            <Button asChild type="button" variant="ghost" disabled={!canEdit} className="h-auto px-2 py-1 text-xs">
+              <Link href={`/configuracion/proyecto?proyecto=${row.original.id}`}>Configurar</Link>
             </Button>
             <Button
               type="button"
@@ -234,75 +177,64 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
     ],
     [canEdit, handleDelete, loading]
   );
+
   const { table } = useDataTable(filteredProjects, columns);
 
   return (
     <section className="space-y-4 rounded-md bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-base font-semibold text-slate-900">CRUD de Proyectos</h3>
-        <div className="flex items-center gap-2">
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar proyecto"
-            className="h-10 text-sm"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={beginCreate}
-            className="h-auto px-3 py-2 text-sm"
-          >
-            Nuevo
-          </Button>
-        </div>
+        <h3 className="text-base font-semibold text-slate-900">Proyectos</h3>
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar proyecto"
+          className="h-10 w-56 text-sm"
+        />
       </div>
 
-      {!canEdit ? <p className="text-sm text-amber-700">Tu rol es de solo lectura para proyectos.</p> : null}
+      {!canEdit ? (
+        <p className="text-sm text-amber-700">Tu rol es de solo lectura para proyectos.</p>
+      ) : null}
 
-      <div className="grid gap-3 md:grid-cols-[1fr_200px_160px]">
-        <div className="text-sm">
-          <Label htmlFor="project-name" className="mb-1 block text-slate-700">
-            Nombre
-          </Label>
+      <div className="grid gap-3 md:grid-cols-[1fr_200px_auto_auto]">
+        <div className="space-y-1.5 text-sm">
+          <Label htmlFor="new-project-name">Nombre</Label>
           <Input
-            id="project-name"
-            value={form.nombre}
-            onChange={(event) => setForm({ ...form, nombre: event.target.value })}
-            className="w-full"
+            id="new-project-name"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            placeholder="Nombre del nuevo proyecto"
+            disabled={!canEdit}
           />
         </div>
-        <div className="text-sm">
-          <Label htmlFor="project-color" className="mb-1 block text-slate-700">
-            Color
-          </Label>
+        <div className="space-y-1.5 text-sm">
+          <Label htmlFor="new-project-color">Color</Label>
           <Input
-            id="project-color"
+            id="new-project-color"
             type="color"
-            value={form.color}
-            onChange={(event) => setForm({ ...form, color: event.target.value })}
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            disabled={!canEdit}
             className="h-10 w-full px-2"
           />
         </div>
-        <label className="flex items-center gap-2 pt-7 text-sm text-slate-700">
+        <label className="flex cursor-pointer items-center gap-2 pt-7 text-sm text-slate-700">
           <Checkbox
-            checked={form.activo}
-            onCheckedChange={(value) => setForm({ ...form, activo: value === true })}
+            checked={activo}
+            onCheckedChange={(v) => setActivo(v === true)}
+            disabled={!canEdit}
           />
           Activo
         </label>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <Button
-          type="button"
-          variant="default"
-          onClick={() => void handleSubmit()}
-          disabled={!canEdit || loading}
-          className="rounded-full"
-        >
-          {selectedId ? "Actualizar proyecto" : "Crear proyecto"}
-        </Button>
+        <div className="flex items-end">
+          <Button
+            type="button"
+            onClick={() => void handleCreate()}
+            disabled={!canEdit || loading || nombre.trim().length < 2}
+          >
+            Crear proyecto
+          </Button>
+        </div>
       </div>
 
       {message ? <p className="text-sm text-slate-700">{message}</p> : null}

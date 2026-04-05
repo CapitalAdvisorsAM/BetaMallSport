@@ -38,6 +38,9 @@ jobs:
       - name: Naming Guardrail
         run: npm run check:naming-core
 
+      - name: Metric Formula Guardrail
+        run: npm run check:metric-formulas
+
       - name: Test
         run: npm test
 

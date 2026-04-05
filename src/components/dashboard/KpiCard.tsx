@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
+import { MetricTooltip } from "@/components/ui/MetricTooltip";
+import type { MetricFormulaId } from "@/lib/metric-formulas";
 import { cn } from "@/lib/utils";
 
 type KpiCardProps = {
+  metricId: MetricFormulaId;
   title: string;
   value: ReactNode;
   subtitle?: string;
@@ -9,7 +12,6 @@ type KpiCardProps = {
   accent?: "green" | "yellow" | "red" | "slate";
   detail?: ReactNode;
   titleAttribute?: string;
-  valueAdornment?: ReactNode;
 };
 
 const accentStyles: Record<NonNullable<KpiCardProps["accent"]>, string> = {
@@ -20,13 +22,13 @@ const accentStyles: Record<NonNullable<KpiCardProps["accent"]>, string> = {
 };
 
 export function KpiCard({
+  metricId,
   title,
   value,
   subtitle,
   subtitleClassName,
   detail,
   titleAttribute,
-  valueAdornment,
   accent = "slate"
 }: KpiCardProps): JSX.Element {
   return (
@@ -34,10 +36,12 @@ export function KpiCard({
       title={titleAttribute}
       className={cn("rounded-lg border border-slate-200 p-5 shadow-sm", accentStyles[accent])}
     >
-      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{title}</p>
-      <div className="mt-3 inline-flex max-w-full flex-wrap items-center gap-2 align-middle">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{title}</p>
+        <MetricTooltip metricId={metricId} />
+      </div>
+      <div className="mt-3 inline-flex max-w-full flex-wrap items-center gap-2">
         <p className="tabular-nums text-3xl font-bold tracking-tight text-brand-700">{value}</p>
-        {valueAdornment ? <div className="shrink-0">{valueAdornment}</div> : null}
       </div>
       {subtitle ? (
         <p className={cn("mt-1.5 text-xs font-medium text-slate-500", subtitleClassName)}>{subtitle}</p>
