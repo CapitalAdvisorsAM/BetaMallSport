@@ -1,4 +1,4 @@
-import type { EstadoContrato, EstadoDiaContrato, UserRole } from "@prisma/client";
+import type { ContractStatus, ContractDayStatus, UserRole } from "@prisma/client";
 export type { ApplyReport, PreviewRow, RowStatus, UploadPreview } from "./upload";
 export type {
   ContractApiBaseRow,
@@ -22,7 +22,7 @@ export type RentRollRow = {
   id: string;
   local: string;
   arrendatario: string;
-  estado: EstadoDiaContrato;
+  estado: ContractDayStatus;
   fechaInicio: string;
   fechaTermino: string;
   tarifaVigenteUfM2: string;
@@ -36,7 +36,7 @@ export type RentRollUploadRow = {
   numeroContrato: string;
   localCodigo: string;
   arrendatarioNombre: string;
-  estado: EstadoContrato;
+  estado: ContractStatus;
   fechaInicio: string;
   fechaTermino: string;
   fechaEntrega: string | null;
@@ -91,7 +91,8 @@ export type ContractFormPayload = {
   fechaTermino: string;
   fechaEntrega: string | null;
   fechaApertura: string | null;
-  estado: EstadoContrato;
+  diasGracia: number;
+  estado: ContractStatus;
   rentaVariable: Array<{
     pctRentaVariable: string;
     vigenciaDesde: string;

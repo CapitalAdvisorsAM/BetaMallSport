@@ -21,12 +21,13 @@ const RentRollChartsSection = dynamic(
   }
 );
 import { prisma } from "@/lib/prisma";
-import { getProjectContext } from "@/lib/project";
+import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
 import { buildCategoryConcentration } from "@/lib/rent-roll/category-concentration";
 import { getTimelineData } from "@/lib/rent-roll/timeline";
 
 type RentRollDashboardPageProps = {
   searchParams: {
+    project?: string;
     proyecto?: string;
   };
 };
@@ -35,8 +36,9 @@ export default async function RentRollDashboardPage({
   searchParams
 }: RentRollDashboardPageProps): Promise<JSX.Element> {
   const session = await requireSession();
+  const projectParam = resolveProjectIdFromSearchParams(searchParams);
 
-  const { projects, selectedProjectId } = await getProjectContext(searchParams.proyecto);
+  const { projects, selectedProjectId } = await getProjectContext(projectParam);
   if (!selectedProjectId) {
     return (
       <ProjectCreationPanel
@@ -47,15 +49,16 @@ export default async function RentRollDashboardPage({
     );
   }
 
-  if (searchParams.proyecto !== selectedProjectId) {
+  if (projectParam !== selectedProjectId) {
     const params = new URLSearchParams();
+    params.set("project", selectedProjectId);
     params.set("proyecto", selectedProjectId);
     redirect(`/rent-roll/dashboard?${params.toString()}`);
   }
 
   const [timelineData, activeContracts] = await Promise.all([
     getTimelineData(selectedProjectId),
-    prisma.contrato.findMany({
+    prisma.contract.findMany({
       where: {
         proyectoId: selectedProjectId,
         estado: { in: ["VIGENTE", "GRACIA"] }

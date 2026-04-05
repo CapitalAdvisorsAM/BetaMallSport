@@ -22,7 +22,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     const { desdeDate, hastaDate } = resolveMonthRange(desde, hasta);
 
-    const arrendatarios = await prisma.arrendatario.findMany({
+    const arrendatarios = await prisma.tenant.findMany({
       where: { proyectoId, vigente: true },
       orderBy: { nombreComercial: "asc" },
       select: {

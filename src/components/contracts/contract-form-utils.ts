@@ -1,4 +1,4 @@
-import { EstadoContrato } from "@prisma/client";
+import { ContractStatus } from "@prisma/client";
 import { createEmptyTarifaItem, type TarifaListItem } from "@/components/contracts/TarifaListEditor";
 import type { GgccListItem } from "@/components/contracts/GgccListEditor";
 import type { RentaVariableListItem } from "@/components/contracts/RentaVariableListEditor";
@@ -86,7 +86,8 @@ export function createEmptyPayload(
     fechaTermino: "",
     fechaEntrega: null,
     fechaApertura: null,
-    estado: EstadoContrato.VIGENTE,
+    diasGracia: 0,
+    estado: ContractStatus.VIGENTE,
     rentaVariable: [],
     pctFondoPromocion: null,
     pctAdministracionGgcc: null,
@@ -115,6 +116,7 @@ export function fromContract(
     fechaTermino: contract.fechaTermino.slice(0, 10),
     fechaEntrega: null,
     fechaApertura: null,
+    diasGracia: contract.diasGracia,
     estado: contract.estado,
     rentaVariable: toSingleRentaVariableItem(
       contract.tarifas

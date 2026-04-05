@@ -1,14 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { useMemo } from "react";
+import { type ColumnDef } from "@tanstack/react-table";
 import { formatShortDate, type ContractExpiryRow } from "@/lib/kpi";
 import { cn } from "@/lib/utils";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
+import { DataTable } from "@/components/ui/DataTable";
+import { useDataTable } from "@/hooks/useDataTable";
 
 type ContractExpiryTableProps = {
   rows: ContractExpiryRow[];
@@ -26,7 +24,7 @@ function getUrgencyBadge(diasRestantes: number): UrgencyBadge {
   if (diasRestantes <= 7) {
     return {
       className: "bg-rose-100 text-rose-800",
-      label: "¡Vence esta semana!"
+      label: "Vence esta semana"
     };
   }
   if (diasRestantes <= 30) {
@@ -47,87 +45,75 @@ function getUrgencyBadge(diasRestantes: number): UrgencyBadge {
   };
 }
 
+function toDate(value: Date | string): Date {
+  if (value instanceof Date) {
+    return value;
+  }
+  return new Date(value);
+}
+
 export function ContractExpiryTable({ rows, proyectoId }: ContractExpiryTableProps): JSX.Element {
   const rowsSorted = [...rows].sort((left, right) => left.diasRestantes - right.diasRestantes);
   const visibleRows = rowsSorted.slice(0, CONTRACT_EXPIRY_EXECUTIVE_LIMIT);
   const totalCount = rowsSorted.length;
   const urgentCount = Math.min(totalCount, CONTRACT_EXPIRY_EXECUTIVE_LIMIT);
-  const href = `/rent-roll/dashboard?proyecto=${proyectoId}`;
+  const href = `/rent-roll/dashboard?project=${proyectoId}&proyecto=${proyectoId}`;
+  const columns = useMemo<ColumnDef<ContractExpiryRow, unknown>[]>(
+    () => [
+      {
+        accessorKey: "local",
+        header: "Local",
+        filterFn: "includesString",
+        cell: ({ row }) => <span className="whitespace-nowrap font-medium text-slate-900">{row.original.local}</span>
+      },
+      {
+        accessorKey: "arrendatario",
+        header: "Arrendatario",
+        filterFn: "includesString",
+        cell: ({ row }) => <span className="whitespace-nowrap text-slate-700">{row.original.arrendatario}</span>
+      },
+      {
+        accessorKey: "numeroContrato",
+        header: "Numero Contrato",
+        filterFn: "includesString",
+        cell: ({ row }) => <span className="whitespace-nowrap text-slate-700">{row.original.numeroContrato}</span>
+      },
+      {
+        id: "fechaTermino",
+        accessorFn: (row) => toDate(row.fechaTermino).getTime(),
+        header: "Fecha Termino",
+        enableColumnFilter: false,
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap text-slate-700">{formatShortDate(toDate(row.original.fechaTermino))}</span>
+        )
+      },
+      {
+        accessorKey: "diasRestantes",
+        header: "Dias Restantes",
+        filterFn: "inNumberRange",
+        meta: { filterType: "number", align: "center" },
+        cell: ({ row }) => {
+          const badge = getUrgencyBadge(row.original.diasRestantes);
+          return (
+            <span className={cn("inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold", badge.className)}>
+              {badge.label}
+            </span>
+          );
+        }
+      }
+    ],
+    []
+  );
+  const { table } = useDataTable(visibleRows, columns);
 
   return (
     <section className="overflow-hidden rounded-md bg-white shadow-sm">
       <div className="border-b border-slate-200 px-4 py-3">
         <h3 className="text-base font-semibold text-brand-700">Proximos vencimientos</h3>
-        <p className="mt-1 text-sm text-slate-600">
-          Los {urgentCount} mas urgentes · Actua antes para evitar vacancia
-        </p>
+        <p className="mt-1 text-sm text-slate-600">Los {urgentCount} mas urgentes - Actua antes para evitar vacancia</p>
       </div>
 
-      <div className="overflow-x-auto">
-        <Table className="min-w-full text-sm">
-          <TableHeader>
-            <TableRow>
-              <TableHead className="h-auto px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Local
-              </TableHead>
-              <TableHead className="h-auto px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Arrendatario
-              </TableHead>
-              <TableHead className="h-auto px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Numero Contrato
-              </TableHead>
-              <TableHead className="h-auto px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Fecha Termino
-              </TableHead>
-              <TableHead className="h-auto px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Dias Restantes
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visibleRows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="px-4 py-6 text-center text-slate-500 hover:bg-transparent">
-                  No hay contratos proximos a vencer en los proximos 90 dias.
-                </TableCell>
-              </TableRow>
-            ) : (
-              visibleRows.map((row, index) => {
-                const badge = getUrgencyBadge(row.diasRestantes);
-                return (
-                  <TableRow
-                    key={row.id}
-                    className={cn(index % 2 === 0 ? "bg-white" : "bg-slate-50/60")}
-                  >
-                    <TableCell className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
-                      {row.local}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap px-4 py-3 text-slate-700">
-                      {row.arrendatario}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap px-4 py-3 text-slate-700">
-                      {row.numeroContrato}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap px-4 py-3 text-slate-700">
-                      {formatShortDate(row.fechaTermino)}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap px-4 py-3 text-slate-700">
-                      <span
-                        className={cn(
-                          "inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold",
-                          badge.className
-                        )}
-                      >
-                        {badge.label}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable table={table} emptyMessage="No hay contratos proximos a vencer en los proximos 90 dias." />
 
       <div className="border-t border-slate-200 px-4 py-3 text-right text-sm">
         {totalCount > CONTRACT_EXPIRY_EXECUTIVE_LIMIT ? (

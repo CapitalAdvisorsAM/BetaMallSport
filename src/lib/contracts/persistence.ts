@@ -1,4 +1,4 @@
-import { Prisma, TipoTarifaContrato } from "@prisma/client";
+import { Prisma, ContractRateType } from "@prisma/client";
 
 export type ContractsPayloadShape = {
   localId: string;
@@ -40,12 +40,12 @@ export function normalizedLocalIds(payload: { localId: string; localIds: string[
 }
 
 export async function generateNumeroContrato(
-  prismaClient: Pick<Prisma.TransactionClient, "contrato">,
+  prismaClient: Pick<Prisma.TransactionClient, "contract">,
   proyectoId: string
 ): Promise<string> {
   while (true) {
     const numeroContrato = crypto.randomUUID().slice(0, 8).toUpperCase();
-    const existing = await prismaClient.contrato.findUnique({
+    const existing = await prismaClient.contract.findUnique({
       where: {
         proyectoId_numeroContrato: {
           proyectoId,
@@ -89,7 +89,7 @@ export function payloadTarifas(payload: ContractsPayloadShape): Array<{
       esDiciembre: item.esDiciembre
     })),
     ...payload.rentaVariable.map((item) => ({
-      tipo: TipoTarifaContrato.PORCENTAJE,
+      tipo: ContractRateType.PORCENTAJE,
       valor: item.pctRentaVariable,
       vigenciaDesde: item.vigenciaDesde,
       vigenciaHasta: item.vigenciaHasta,
@@ -109,7 +109,7 @@ export async function persistTarifas(
   contratoId: string,
   tarifas: ReturnType<typeof payloadTarifas>
 ): Promise<void> {
-  const existingTarifas = await tx.contratoTarifa.findMany({
+  const existingTarifas = await tx.contractRate.findMany({
     where: { contratoId }
   });
   const existingTarifasByKey = new Map(
@@ -124,7 +124,7 @@ export async function persistTarifas(
     .map((item) => item.id);
 
   if (tarifasToDelete.length > 0) {
-    await tx.contratoTarifa.deleteMany({
+    await tx.contractRate.deleteMany({
       where: { id: { in: tarifasToDelete } }
     });
   }
@@ -142,7 +142,7 @@ export async function persistTarifas(
 
   await Promise.all(
     tarifasToUpdate.map((item) =>
-      tx.contratoTarifa.update({
+      tx.contractRate.update({
         where: { id: item.id },
         data: {
           valor: new Prisma.Decimal(item.payloadItem.valor),
@@ -154,10 +154,10 @@ export async function persistTarifas(
   );
 
   if (tarifasToCreate.length > 0) {
-    await tx.contratoTarifa.createMany({
+    await tx.contractRate.createMany({
       data: tarifasToCreate.map((item) => ({
         contratoId,
-        tipo: item.tipo as TipoTarifaContrato,
+        tipo: item.tipo as ContractRateType,
         valor: new Prisma.Decimal(item.valor),
         vigenciaDesde: new Date(item.vigenciaDesde),
         vigenciaHasta: toDate(item.vigenciaHasta),
@@ -172,7 +172,7 @@ export async function persistContratoLocales(
   contratoId: string,
   localIds: string[]
 ): Promise<void> {
-  const existing = await tx.contratoLocal.findMany({
+  const existing = await tx.contractUnit.findMany({
     where: { contratoId }
   });
 
@@ -181,14 +181,14 @@ export async function persistContratoLocales(
   const toDelete = existing.filter((item) => !payloadSet.has(item.localId)).map((item) => item.id);
 
   if (toDelete.length > 0) {
-    await tx.contratoLocal.deleteMany({
+    await tx.contractUnit.deleteMany({
       where: { id: { in: toDelete } }
     });
   }
 
   const toCreate = localIds.filter((localId) => !existingSet.has(localId));
   if (toCreate.length > 0) {
-    await tx.contratoLocal.createMany({
+    await tx.contractUnit.createMany({
       data: toCreate.map((localId) => ({
         contratoId,
         localId
@@ -205,10 +205,10 @@ export async function persistGGCC(
   fechaInicio: string,
   fechaTermino: string
 ): Promise<void> {
-  await tx.contratoGGCC.deleteMany({ where: { contratoId } });
+  await tx.contractCommonExpense.deleteMany({ where: { contratoId } });
 
   if (ggcc.length > 0) {
-    await tx.contratoGGCC.createMany({
+    await tx.contractCommonExpense.createMany({
       data: ggcc.map((item) => ({
         contratoId,
         tarifaBaseUfM2: new Prisma.Decimal(item.tarifaBaseUfM2),

@@ -70,7 +70,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: fileGuardError }, { status: 400 });
     }
 
-    const proyecto = await prisma.proyecto.findUnique({
+    const proyecto = await prisma.project.findUnique({
       where: { id: proyectoId },
       select: { id: true }
     });
@@ -79,15 +79,15 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     const [locales, arrendatarios, contratos] = await Promise.all([
-      prisma.local.findMany({
+      prisma.unit.findMany({
         where: { proyectoId },
         select: { codigo: true, glam2: true }
       }),
-      prisma.arrendatario.findMany({
+      prisma.tenant.findMany({
         where: { proyectoId },
         select: { nombreComercial: true }
       }),
-      prisma.contrato.findMany({
+      prisma.contract.findMany({
         where: { proyectoId },
         include: {
           local: { select: { codigo: true } },

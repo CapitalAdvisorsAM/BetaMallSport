@@ -1,20 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { cn } from "@/lib/utils";
+import { useCallback, useMemo, useState } from "react";
+import { type ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DataTable } from "@/components/ui/DataTable";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
+import { useDataTable } from "@/hooks/useDataTable";
 
 type ProjectRecord = {
   id: string;
@@ -73,7 +67,6 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
         .includes(q)
     );
   }, [projects, search]);
-
   function beginCreate(): void {
     setSelectedId(null);
     setForm(emptyForm());
@@ -97,7 +90,7 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
     setMessage(null);
     try {
       const isEditing = Boolean(selectedId);
-      const response = await fetch(isEditing ? `/api/proyectos/${selectedId}` : "/api/proyectos", {
+      const response = await fetch(isEditing ? `/api/projects/${selectedId}` : "/api/projects", {
         method: isEditing ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form)
@@ -126,33 +119,122 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
     }
   }
 
-  async function handleDelete(projectId: string): Promise<void> {
-    if (!canEdit || loading) {
-      return;
-    }
-    if (!window.confirm("Se eliminara el proyecto si no tiene datos asociados. Continuar?")) {
-      return;
-    }
-
-    setLoading(true);
-    setMessage(null);
-    try {
-      const response = await fetch(`/api/proyectos/${projectId}`, { method: "DELETE" });
-      if (!response.ok) {
-        throw new Error("No se pudo eliminar el proyecto.");
+  const handleDelete = useCallback(
+    async (projectId: string): Promise<void> => {
+      if (!canEdit || loading) {
+        return;
+      }
+      if (!window.confirm("Se eliminara el proyecto si no tiene datos asociados. Continuar?")) {
+        return;
       }
 
-      setProjects((previous) => previous.filter((item) => item.id !== projectId));
-      if (selectedId === projectId) {
-        beginCreate();
+      setLoading(true);
+      setMessage(null);
+      try {
+        const response = await fetch(`/api/projects/${projectId}`, { method: "DELETE" });
+        if (!response.ok) {
+          throw new Error("No se pudo eliminar el proyecto.");
+        }
+
+        setProjects((previous) => previous.filter((item) => item.id !== projectId));
+        if (selectedId === projectId) {
+          setSelectedId(null);
+          setForm(emptyForm());
+        }
+        setMessage("Proyecto eliminado correctamente.");
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "Error inesperado al eliminar proyecto.");
+      } finally {
+        setLoading(false);
       }
-      setMessage("Proyecto eliminado correctamente.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Error inesperado al eliminar proyecto.");
-    } finally {
-      setLoading(false);
-    }
-  }
+    },
+    [canEdit, loading, selectedId]
+  );
+  const columns = useMemo<ColumnDef<ProjectRecord, unknown>[]>(
+    () => [
+      {
+        accessorKey: "nombre",
+        header: "Nombre",
+        filterFn: "includesString",
+        cell: ({ row }) => <span className="font-medium">{row.original.nombre}</span>
+      },
+      {
+        accessorKey: "slug",
+        header: "Slug",
+        filterFn: "includesString",
+        cell: ({ row }) => <span className="whitespace-nowrap text-slate-600">{row.original.slug}</span>
+      },
+      {
+        accessorKey: "color",
+        header: "Color",
+        filterFn: "includesString",
+        cell: ({ row }) => (
+          <span className="inline-flex items-center gap-2 whitespace-nowrap">
+            <span
+              className="h-3 w-3 rounded-full border border-slate-300"
+              style={{ backgroundColor: row.original.color }}
+            />
+            {row.original.color}
+          </span>
+        )
+      },
+      {
+        id: "activo",
+        accessorFn: (row) => (row.activo ? "Activo" : "Inactivo"),
+        header: "Estado",
+        filterFn: (row, columnId, filterValue) => {
+          if (!Array.isArray(filterValue) || filterValue.length === 0) {
+            return true;
+          }
+          return filterValue.includes(String(row.getValue(columnId)));
+        },
+        meta: { filterType: "enum", filterOptions: ["Activo", "Inactivo"], align: "center" },
+        cell: ({ row }) => (
+          <Badge
+            variant="outline"
+            className={
+              row.original.activo
+                ? "border-emerald-200 bg-emerald-100 text-emerald-700"
+                : "border-slate-300 bg-slate-200 text-slate-700"
+            }
+          >
+            {row.original.activo ? "Activo" : "Inactivo"}
+          </Badge>
+        )
+      },
+      {
+        id: "acciones",
+        accessorFn: (row) => row.id,
+        header: "Acciones",
+        enableSorting: false,
+        enableColumnFilter: false,
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => beginEdit(row.original)}
+              disabled={!canEdit}
+              className="h-auto px-2 py-1 text-xs"
+            >
+              Editar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => void handleDelete(row.original.id)}
+              disabled={!canEdit || loading}
+              className="h-auto px-2 py-1 text-xs"
+            >
+              Eliminar
+            </Button>
+          </div>
+        )
+      }
+    ],
+    [canEdit, handleDelete, loading]
+  );
+  const { table } = useDataTable(filteredProjects, columns);
 
   return (
     <section className="space-y-4 rounded-md bg-white p-5 shadow-sm">
@@ -225,94 +307,7 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
 
       {message ? <p className="text-sm text-slate-700">{message}</p> : null}
 
-      <div className="overflow-hidden rounded-lg border border-slate-200">
-        <Table className="min-w-full divide-y divide-slate-200">
-          <TableHeader className="bg-brand-700">
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Nombre
-              </TableHead>
-              <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Slug
-              </TableHead>
-              <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Color
-              </TableHead>
-              <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Estado
-              </TableHead>
-              <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Acciones
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody className="text-sm text-slate-800">
-            {filteredProjects.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="px-4 py-6 text-center text-slate-500">
-                  No se encontraron proyectos.
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredProjects.map((project, index) => (
-                <TableRow
-                  key={project.id}
-                  className={cn(
-                    "transition-colors hover:bg-brand-50",
-                    index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
-                  )}
-                >
-                  <TableCell className="px-4 py-3 font-medium">{project.nombre}</TableCell>
-                  <TableCell className="whitespace-nowrap px-4 py-3 text-slate-600">{project.slug}</TableCell>
-                  <TableCell className="whitespace-nowrap px-4 py-3">
-                    <span className="inline-flex items-center gap-2">
-                      <span
-                        className="h-3 w-3 rounded-full border border-slate-300"
-                        style={{ backgroundColor: project.color }}
-                      />
-                      {project.color}
-                    </span>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap px-4 py-3">
-                    <Badge
-                      variant="outline"
-                      className={
-                        project.activo
-                          ? "border-emerald-200 bg-emerald-100 text-emerald-700"
-                          : "border-slate-300 bg-slate-200 text-slate-700"
-                      }
-                    >
-                      {project.activo ? "Activo" : "Inactivo"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => beginEdit(project)}
-                        disabled={!canEdit}
-                        className="h-auto px-2 py-1 text-xs"
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        onClick={() => void handleDelete(project.id)}
-                        disabled={!canEdit}
-                        className="h-auto px-2 py-1 text-xs"
-                        >
-                        Eliminar
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable table={table} emptyMessage="No se encontraron proyectos." />
     </section>
   );
 }

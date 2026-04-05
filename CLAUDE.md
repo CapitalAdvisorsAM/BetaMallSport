@@ -7,7 +7,7 @@
 - **Stack**: Next.js 14 App Router · Prisma ORM · PostgreSQL · NextAuth · Zod · Tailwind CSS
 - **Domain**: Spanish-language real estate management app (Chile)
 - **Source root**: `src/` — always use the `@/` alias (e.g. `@/lib/prisma`)
-- **Language**: Variable names, messages, and schema fields are in Spanish
+- **Language**: Core code structure, file names, route slugs, and technical symbols are canonical English (`contracts`, `tenants`, `units`, `projects`). User-facing copy may remain Spanish. Legacy Spanish aliases are transitional only.
 
 ---
 
@@ -501,7 +501,7 @@ export type { MyApiRow } from "./my-domain";
 | Element | Convention | Examples |
 |---------|-----------|---------|
 | Files | kebab-case | `api-error.ts`, `rent-roll.ts` |
-| API route dirs | kebab-case | `arrendatarios/`, `rent-roll/` |
+| API route dirs | kebab-case | `tenants/`, `units/`, `projects/`, `rent-roll/` |
 | Functions | camelCase verb-noun | `requireSession()`, `fetchContrato()`, `buildTarifaPayload()` |
 | Types / Interfaces | PascalCase | `ContractApiBaseRow`, `RentRollResumen` |
 | Constants | UPPER_SNAKE_CASE | `PAGINATION_MAX`, `MS_PER_DAY` |

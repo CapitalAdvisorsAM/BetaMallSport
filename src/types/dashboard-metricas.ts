@@ -1,4 +1,4 @@
-import type { EstadoContrato } from "@prisma/client";
+import type { ContractStatus } from "@prisma/client";
 import type {
   AlertCounts,
   IngresoDesglosado,
@@ -12,6 +12,6 @@ export type DashboardMetricasResponse = {
   alertas: AlertCounts;
   vencimientosPorAnio: VencimientosPorAnio;
   valorUf: { valor: number; fecha: string } | null;
-  cartera: { estado: EstadoContrato; count: number; pct: number }[];
+  cartera: { estado: ContractStatus; count: number; pct: number }[];
   rentaEnRiesgo: { ufEnRiesgo: number; count: number };
 };

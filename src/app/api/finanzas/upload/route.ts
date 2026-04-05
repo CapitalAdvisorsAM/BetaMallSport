@@ -59,7 +59,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: null });
 
     // Obtener todos los locales del proyecto para matching
-    const locales = await prisma.local.findMany({
+    const locales = await prisma.unit.findMany({
       where: { proyectoId },
       select: { id: true, codigo: true, nombre: true }
     });

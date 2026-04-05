@@ -1,4 +1,4 @@
-import { EstadoContrato, TipoLocal, TipoTarifaContrato } from "@prisma/client";
+import { ContractStatus, UnitType, ContractRateType } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 import {
   buildIngresoDesglosado,
@@ -73,21 +73,21 @@ describe("rent KPIs", () => {
         id: "c1",
         localId: "l1",
         localGlam2: "100",
-        tarifa: { tipo: TipoTarifaContrato.FIJO_UF_M2, valor: "0.5" },
+        tarifa: { tipo: ContractRateType.FIJO_UF_M2, valor: "0.5" },
         ggcc: { tarifaBaseUfM2: "0.2", pctAdministracion: "10" }
       }),
       makeContract({
         id: "c2",
         localId: "l2",
         localGlam2: "80",
-        tarifa: { tipo: TipoTarifaContrato.FIJO_UF, valor: "25" },
+        tarifa: { tipo: ContractRateType.FIJO_UF, valor: "25" },
         ggcc: { tarifaBaseUfM2: "0.1", pctAdministracion: "0" }
       }),
       makeContract({
         id: "c3",
         localId: "l3",
         localGlam2: "60",
-        tarifa: { tipo: TipoTarifaContrato.PORCENTAJE, valor: "8" },
+        tarifa: { tipo: ContractRateType.PORCENTAJE, valor: "8" },
         ggcc: null
       })
     ];
@@ -161,10 +161,10 @@ describe("rent KPIs", () => {
 describe("portfolio KPIs", () => {
   it("calculates contract percentages for mixed states", () => {
     const metrics = calculateContractStateCounters([
-      { estado: EstadoContrato.VIGENTE, cantidad: 2 },
-      { estado: EstadoContrato.GRACIA, cantidad: 1 },
-      { estado: EstadoContrato.TERMINADO_ANTICIPADO, cantidad: 1 },
-      { estado: EstadoContrato.TERMINADO, cantidad: 2 }
+      { estado: ContractStatus.VIGENTE, cantidad: 2 },
+      { estado: ContractStatus.GRACIA, cantidad: 1 },
+      { estado: ContractStatus.TERMINADO_ANTICIPADO, cantidad: 1 },
+      { estado: ContractStatus.TERMINADO, cantidad: 2 }
     ]);
 
     expect(metrics.total).toBe(6);
@@ -227,7 +227,7 @@ describe("cdg mall sport KPIs", () => {
         id: "fijo-comercial",
         localId: "loc-com",
         localGlam2: "100",
-        tarifa: { tipo: TipoTarifaContrato.FIJO_UF_M2, valor: "0.5" }
+        tarifa: { tipo: ContractRateType.FIJO_UF_M2, valor: "0.5" }
       }),
       makeContract({
         id: "variable",
@@ -240,28 +240,28 @@ describe("cdg mall sport KPIs", () => {
         id: "simulador",
         localId: "loc-sim",
         localGlam2: "20",
-        tarifa: { tipo: TipoTarifaContrato.FIJO_UF, valor: "30" }
+        tarifa: { tipo: ContractRateType.FIJO_UF, valor: "30" }
       }),
       makeContract({
         id: "espacio",
         localId: "loc-esp",
         localGlam2: "10",
-        tarifa: { tipo: TipoTarifaContrato.FIJO_UF, valor: "12" }
+        tarifa: { tipo: ContractRateType.FIJO_UF, valor: "12" }
       }),
       makeContract({
         id: "bodega",
         localId: "loc-bod",
         localGlam2: "15",
-        tarifa: { tipo: TipoTarifaContrato.FIJO_UF, valor: "10" }
+        tarifa: { tipo: ContractRateType.FIJO_UF, valor: "10" }
       })
     ];
 
     const locales = [
-      { id: "loc-com", tipo: TipoLocal.LOCAL_COMERCIAL, esGLA: true, glam2: "100" },
-      { id: "loc-var", tipo: TipoLocal.LOCAL_COMERCIAL, esGLA: true, glam2: "80" },
-      { id: "loc-sim", tipo: TipoLocal.SIMULADOR, esGLA: false, glam2: "20" },
-      { id: "loc-esp", tipo: TipoLocal.ESPACIO, esGLA: false, glam2: "10" },
-      { id: "loc-bod", tipo: TipoLocal.BODEGA, esGLA: false, glam2: "15" }
+      { id: "loc-com", tipo: UnitType.LOCAL_COMERCIAL, esGLA: true, glam2: "100" },
+      { id: "loc-var", tipo: UnitType.LOCAL_COMERCIAL, esGLA: true, glam2: "80" },
+      { id: "loc-sim", tipo: UnitType.SIMULADOR, esGLA: false, glam2: "20" },
+      { id: "loc-esp", tipo: UnitType.ESPACIO, esGLA: false, glam2: "10" },
+      { id: "loc-bod", tipo: UnitType.BODEGA, esGLA: false, glam2: "15" }
     ];
 
     const ingresos = buildIngresoDesglosado(
@@ -289,10 +289,10 @@ describe("cdg mall sport KPIs", () => {
         makeContract({
           localId: "loc-a",
           localGlam2: "50",
-          tarifa: { tipo: TipoTarifaContrato.FIJO_UF, valor: "10" }
+          tarifa: { tipo: ContractRateType.FIJO_UF, valor: "10" }
         })
       ],
-      [{ id: "loc-a", tipo: TipoLocal.LOCAL_COMERCIAL, esGLA: true, glam2: "50" }],
+      [{ id: "loc-a", tipo: UnitType.LOCAL_COMERCIAL, esGLA: true, glam2: "50" }],
       [],
       [],
       "2026-04"
@@ -306,28 +306,28 @@ describe("cdg mall sport KPIs", () => {
     const locales = [
       {
         id: "l1",
-        tipo: TipoLocal.LOCAL_COMERCIAL,
+        tipo: UnitType.LOCAL_COMERCIAL,
         esGLA: true,
         glam2: "220",
         zona: "Outdoor"
       },
       {
         id: "l2",
-        tipo: TipoLocal.LOCAL_COMERCIAL,
+        tipo: UnitType.LOCAL_COMERCIAL,
         esGLA: true,
         glam2: "100",
         zona: "Gastronom\u00eda"
       },
       {
         id: "l3",
-        tipo: TipoLocal.MODULO,
+        tipo: UnitType.MODULO,
         esGLA: false,
         glam2: "20",
         zona: "Servicios"
       },
       {
         id: "l4",
-        tipo: TipoLocal.BODEGA,
+        tipo: UnitType.BODEGA,
         esGLA: false,
         glam2: "40",
         zona: "Servicios"

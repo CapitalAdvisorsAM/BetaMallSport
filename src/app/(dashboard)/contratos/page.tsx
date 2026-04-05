@@ -1,1 +1,1 @@
-export { default } from "@/app/(dashboard)/rent-roll/contratos/page";
+export { default } from "@/app/(dashboard)/rent-roll/contracts/page";

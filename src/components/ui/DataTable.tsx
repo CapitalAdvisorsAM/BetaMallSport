@@ -5,6 +5,7 @@ import {
   flexRender,
   type Column,
   type Header,
+  type Row,
   type RowData,
   type Table as TanStackTable
 } from "@tanstack/react-table";
@@ -39,6 +40,7 @@ interface DataTableProps<TData> {
   table: TanStackTable<TData>;
   emptyMessage?: string;
   footerContent?: React.ReactNode;
+  getRowClassName?: (row: Row<TData>, index: number) => string | undefined;
 }
 
 interface SortableColumnHeaderProps<TData> {
@@ -263,7 +265,8 @@ function renderHeader<TData>(header: Header<TData, unknown>): React.ReactNode {
 export function DataTable<TData>({
   table,
   emptyMessage = "No hay filas para mostrar.",
-  footerContent
+  footerContent,
+  getRowClassName
 }: DataTableProps<TData>): JSX.Element {
   const rows = table.getRowModel().rows;
   const totalRows = table.getCoreRowModel().rows.length;
@@ -297,7 +300,11 @@ export function DataTable<TData>({
               rows.map((row, index) => (
                 <TableRow
                   key={row.id}
-                  className={cn(index % 2 === 0 ? "bg-white" : "bg-slate-50/60", "hover:bg-brand-50")}
+                  className={cn(
+                    index % 2 === 0 ? "bg-white" : "bg-slate-50/60",
+                    "hover:bg-brand-50",
+                    getRowClassName?.(row, index)
+                  )}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell

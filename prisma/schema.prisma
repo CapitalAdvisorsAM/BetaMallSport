@@ -8,38 +8,48 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum TipoLocal {
+enum UnitType {
   LOCAL_COMERCIAL
   SIMULADOR
   MODULO
   ESPACIO
   BODEGA
   OTRO
+
+  @@map("TipoLocal")
 }
 
-enum EstadoMaestro {
+enum MasterStatus {
   ACTIVO
   INACTIVO
+
+  @@map("EstadoMaestro")
 }
 
-enum EstadoContrato {
+enum ContractStatus {
   VIGENTE
   TERMINADO
   TERMINADO_ANTICIPADO
   GRACIA
+
+  @@map("EstadoContrato")
 }
 
-enum TipoTarifaContrato {
+enum ContractRateType {
   FIJO_UF_M2
   FIJO_UF
-  // PORCENTAJE se usa para renta variable (%) con vigencias en ContratoTarifa.
+  // PORCENTAJE se usa para renta variable (%) con vigencias en ContractRate.
   PORCENTAJE
+
+  @@map("TipoTarifaContrato")
 }
 
-enum EstadoDiaContrato {
+enum ContractDayStatus {
   OCUPADO
   GRACIA
   VACANTE
+
+  @@map("EstadoDiaContrato")
 }
 
 enum TipoCargaDatos {
@@ -65,19 +75,19 @@ enum UserRole {
   GERENCIA
 }
 
-model Proyecto {
+model Project {
   id             String           @id @default(uuid()) @db.Uuid
   nombre         String
   slug           String           @unique
   color          String
   activo         Boolean          @default(true)
   createdAt      DateTime         @default(now()) @db.Timestamptz(3)
-  locales              Local[]
+  locales              Unit[]
   ventaLocales         VentaLocal[]
   ingresoEnergia       IngresoEnergia[]
-  arrendatarios        Arrendatario[]
-  contratos            Contrato[]
-  contratosDia         ContratoDia[]
+  arrendatarios        Tenant[]
+  contratos            Contract[]
+  contratosDia         ContractDay[]
   cargasDatos          CargaDatos[]
   mapeosLocalContable  MapeoLocalContable[]
   mapeosVentasLocal    MapeoVentasLocal[]
@@ -85,6 +95,7 @@ model Proyecto {
 
   @@index([activo])
   @@index([nombre])
+  @@map("Proyecto")
 }
 
 model ValorUF {
@@ -93,23 +104,23 @@ model ValorUF {
   valor Decimal  @db.Decimal(10, 4)
 }
 
-model Local {
+model Unit {
   id         String        @id @default(uuid()) @db.Uuid
   proyectoId String        @db.Uuid
   codigo     String
   nombre     String
   glam2      Decimal       @db.Decimal(10, 2)
   piso       String
-  tipo       TipoLocal
+  tipo       UnitType
   zona       String?
   esGLA      Boolean       @default(true)
-  estado     EstadoMaestro @default(ACTIVO)
+  estado     MasterStatus @default(ACTIVO)
   createdAt  DateTime      @default(now()) @db.Timestamptz(3)
 
-  proyecto             Proyecto             @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  contratos            Contrato[]
-  contratosAsociados   ContratoLocal[]
-  contratosDia         ContratoDia[]
+  proyecto             Project             @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  contratos            Contract[]
+  contratosAsociados   ContractUnit[]
+  contratosDia         ContractDay[]
   ventaLocales         VentaLocal[]
   ingresoEnergia       IngresoEnergia[]
   mapeosLocalContable  MapeoLocalContable[]
@@ -120,6 +131,7 @@ model Local {
   @@index([proyectoId])
   @@index([estado])
   @@index([proyectoId, estado])
+  @@map("Local")
 }
 
 model IngresoEnergia {
@@ -130,8 +142,8 @@ model IngresoEnergia {
   valorUf    Decimal  @db.Decimal(14, 4)
   createdAt  DateTime @default(now()) @db.Timestamptz(3)
 
-  proyecto Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  local    Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
+  proyecto Project @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  local    Unit    @relation(fields: [localId], references: [id], onDelete: Cascade)
 
   @@unique([localId, periodo])
   @@index([proyectoId, periodo])
@@ -146,14 +158,14 @@ model VentaLocal {
   createdAt  DateTime @default(now()) @db.Timestamptz(3)
   updatedAt  DateTime @updatedAt @db.Timestamptz(3)
 
-  proyecto Proyecto @relation(fields: [proyectoId], references: [id])
-  local    Local    @relation(fields: [localId], references: [id])
+  proyecto Project @relation(fields: [proyectoId], references: [id])
+  local    Unit    @relation(fields: [localId], references: [id])
 
   @@unique([localId, periodo])
   @@index([proyectoId, periodo])
 }
 
-model Arrendatario {
+model Tenant {
   id              String   @id @default(uuid()) @db.Uuid
   proyectoId      String   @db.Uuid
   rut             String
@@ -164,17 +176,18 @@ model Arrendatario {
   telefono        String?
   createdAt       DateTime @default(now()) @db.Timestamptz(3)
 
-  proyecto           Proyecto           @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  contratos          Contrato[]
+  proyecto           Project           @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  contratos          Contract[]
   registrosContables RegistroContable[]
 
   @@unique([proyectoId, rut])
   @@index([proyectoId])
   @@index([vigente])
   @@index([proyectoId, vigente])
+  @@map("Arrendatario")
 }
 
-model Contrato {
+model Contract {
   id                String         @id @default(uuid()) @db.Uuid
   proyectoId        String         @db.Uuid
   localId           String         @db.Uuid
@@ -188,20 +201,21 @@ model Contrato {
   pctAdministracionGgcc Decimal?    @db.Decimal(6, 3)
   multiplicadorDiciembre Decimal?    @db.Decimal(6, 3)
   codigoCC          String?
-  estado            EstadoContrato
+  estado            ContractStatus
+  diasGracia        Int            @default(0)
   pdfUrl            String?
   notas             String?
   createdAt         DateTime       @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime       @updatedAt @db.Timestamptz(3)
 
-  proyecto     Proyecto         @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  local        Local            @relation(fields: [localId], references: [id], onDelete: Restrict)
-  arrendatario Arrendatario     @relation(fields: [arrendatarioId], references: [id], onDelete: Restrict)
-  locales      ContratoLocal[]
-  tarifas      ContratoTarifa[]
-  anexos       ContratoAnexo[]
-  ggcc         ContratoGGCC[]
-  contratosDia ContratoDia[]
+  proyecto     Project         @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  local        Unit            @relation(fields: [localId], references: [id], onDelete: Restrict)
+  arrendatario Tenant     @relation(fields: [arrendatarioId], references: [id], onDelete: Restrict)
+  locales      ContractUnit[]
+  tarifas      ContractRate[]
+  anexos       ContractAmendment[]
+  ggcc         ContractCommonExpense[]
+  contratosDia ContractDay[]
 
   @@unique([proyectoId, numeroContrato])
   @@index([proyectoId])
@@ -210,40 +224,43 @@ model Contrato {
   @@index([estado])
   @@index([proyectoId, estado])
   @@index([proyectoId, updatedAt])
+  @@map("Contrato")
 }
 
-model ContratoLocal {
+model ContractUnit {
   id         String   @id @default(uuid()) @db.Uuid
   contratoId String   @db.Uuid
   localId    String   @db.Uuid
   createdAt  DateTime @default(now()) @db.Timestamptz(3)
 
-  contrato Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
-  local    Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
+  contrato Contract @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  local    Unit    @relation(fields: [localId], references: [id], onDelete: Cascade)
 
   @@unique([contratoId, localId])
   @@index([contratoId])
   @@index([localId])
+  @@map("ContratoLocal")
 }
 
-model ContratoTarifa {
+model ContractRate {
   id            String             @id @default(uuid()) @db.Uuid
   contratoId    String             @db.Uuid
-  tipo          TipoTarifaContrato
+  tipo          ContractRateType
   valor         Decimal            @db.Decimal(10, 4)
   vigenciaDesde DateTime           @db.Date
   vigenciaHasta DateTime?          @db.Date
   esDiciembre   Boolean            @default(false)
   createdAt     DateTime           @default(now()) @db.Timestamptz(3)
 
-  contrato Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  contrato Contract @relation(fields: [contratoId], references: [id], onDelete: Cascade)
 
   @@index([contratoId])
   @@index([vigenciaDesde, vigenciaHasta])
   @@index([contratoId, tipo, vigenciaDesde])
+  @@map("ContratoTarifa")
 }
 
-model ContratoAnexo {
+model ContractAmendment {
   id                String   @id @default(uuid()) @db.Uuid
   contratoId        String   @db.Uuid
   fecha             DateTime @db.Date
@@ -254,14 +271,15 @@ model ContratoAnexo {
   usuarioId         String   @db.Uuid
   createdAt         DateTime @default(now()) @db.Timestamptz(3)
 
-  contrato Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  contrato Contract @relation(fields: [contratoId], references: [id], onDelete: Cascade)
 
   @@index([contratoId])
   @@index([contratoId, fecha])
   @@index([usuarioId])
+  @@map("ContratoAnexo")
 }
 
-model ContratoGGCC {
+model ContractCommonExpense {
   id                String    @id @default(uuid()) @db.Uuid
   contratoId        String    @db.Uuid
   tarifaBaseUfM2    Decimal   @db.Decimal(10, 4)
@@ -273,32 +291,34 @@ model ContratoGGCC {
   mesesReajuste     Int?
   createdAt         DateTime  @default(now()) @db.Timestamptz(3)
 
-  contrato Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  contrato Contract @relation(fields: [contratoId], references: [id], onDelete: Cascade)
 
   @@index([contratoId])
   @@index([contratoId, vigenciaDesde])
+  @@map("ContratoGGCC")
 }
 
-model ContratoDia {
+model ContractDay {
   id         String            @id @default(uuid()) @db.Uuid
   proyectoId String            @db.Uuid
   localId    String            @db.Uuid
   contratoId String?           @db.Uuid
   fecha      DateTime          @db.Date
   tarifaDia  Decimal           @db.Decimal(10, 4)
-  estadoDia  EstadoDiaContrato
+  estadoDia  ContractDayStatus
   glam2      Decimal           @db.Decimal(10, 2)
   ufDia      Decimal?          @db.Decimal(10, 4)
   createdAt  DateTime          @default(now()) @db.Timestamptz(3)
 
-  proyecto Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  local    Local     @relation(fields: [localId], references: [id], onDelete: Restrict)
-  contrato Contrato? @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  proyecto Project  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  local    Unit     @relation(fields: [localId], references: [id], onDelete: Restrict)
+  contrato Contract? @relation(fields: [contratoId], references: [id], onDelete: Cascade)
 
   @@unique([localId, fecha])
   @@index([proyectoId])
   @@index([proyectoId, fecha])
   @@index([contratoId])
+  @@map("ContratoDia")
 }
 
 model CargaDatos {
@@ -313,7 +333,7 @@ model CargaDatos {
   errorDetalle      Json?
   createdAt         DateTime         @default(now()) @db.Timestamptz(3)
 
-  proyecto Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  proyecto Project @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
 
   @@index([proyectoId])
   @@index([tipo])
@@ -374,8 +394,8 @@ model MapeoLocalContable {
   creadoPor    String   @db.Uuid
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
 
-  proyecto Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  local    Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
+  proyecto Project @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  local    Unit    @relation(fields: [localId], references: [id], onDelete: Cascade)
 
   @@unique([proyectoId, localExterno])
   @@index([proyectoId])
@@ -397,9 +417,9 @@ model RegistroContable {
   piso            String?
   createdAt       DateTime @default(now()) @db.Timestamptz(3)
 
-  proyecto     Proyecto      @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  local        Local         @relation(fields: [localId], references: [id], onDelete: Cascade)
-  arrendatario Arrendatario? @relation(fields: [arrendatarioId], references: [id], onDelete: SetNull)
+  proyecto     Project      @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  local        Unit         @relation(fields: [localId], references: [id], onDelete: Cascade)
+  arrendatario Tenant? @relation(fields: [arrendatarioId], references: [id], onDelete: SetNull)
 
   @@unique([localId, periodo, grupo1, grupo3, denominacion])
   @@index([proyectoId, periodo])
@@ -417,8 +437,8 @@ model MapeoVentasLocal {
   creadoPor    String   @db.Uuid
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
 
-  proyecto Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  local    Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
+  proyecto Project @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  local    Unit    @relation(fields: [localId], references: [id], onDelete: Cascade)
 
   @@unique([proyectoId, idCa])
   @@index([proyectoId])

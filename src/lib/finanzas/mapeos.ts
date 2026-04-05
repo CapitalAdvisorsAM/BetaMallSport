@@ -15,7 +15,7 @@ export const ventasMapeoSchema = z.object({
 });
 
 export async function getActiveLocales(proyectoId: string) {
-  return prisma.local.findMany({
+  return prisma.unit.findMany({
     where: { proyectoId, estado: "ACTIVO" },
     select: { id: true, codigo: true, nombre: true },
     orderBy: { codigo: "asc" }

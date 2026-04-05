@@ -88,7 +88,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "No fue posible leer el preview para esta carga." }, { status: 422 });
     }
 
-    const arrendatariosConContratosVigentes = await prisma.arrendatario.findMany({
+    const arrendatariosConContratosVigentes = await prisma.tenant.findMany({
       where: {
         proyectoId: carga.proyectoId,
         contratos: {
@@ -144,7 +144,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             continue;
           }
 
-          await tx.arrendatario.upsert({
+          await tx.tenant.upsert({
             where: {
               proyectoId_rut: {
                 proyectoId: carga.proyectoId,

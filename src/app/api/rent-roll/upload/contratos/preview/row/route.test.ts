@@ -8,13 +8,13 @@ const { requireWriteAccessMock, prismaMock } = vi.hoisted(() => ({
       findUnique: vi.fn(),
       update: vi.fn()
     },
-    local: {
+    unit: {
       findMany: vi.fn()
     },
-    arrendatario: {
+    tenant: {
       findMany: vi.fn()
     },
-    contrato: {
+    contract: {
       findMany: vi.fn()
     }
   }
@@ -87,9 +87,9 @@ beforeEach(() => {
   requireWriteAccessMock.mockResolvedValue({ user: { id: "u1" } });
   prismaMock.cargaDatos.findUnique.mockReset();
   prismaMock.cargaDatos.update.mockReset();
-  prismaMock.local.findMany.mockReset();
-  prismaMock.arrendatario.findMany.mockReset();
-  prismaMock.contrato.findMany.mockReset();
+  prismaMock.unit.findMany.mockReset();
+  prismaMock.tenant.findMany.mockReset();
+  prismaMock.contract.findMany.mockReset();
 });
 
 describe("PATCH /api/rent-roll/upload/contratos/preview/row", () => {
@@ -138,9 +138,9 @@ describe("PATCH /api/rent-roll/upload/contratos/preview/row", () => {
       archivoNombre: "plantilla.xlsx",
       errorDetalle: JSON.stringify(makeStoredPreview())
     });
-    prismaMock.local.findMany.mockResolvedValue([{ codigo: "L-101", glam2: { toString: () => "100" } }]);
-    prismaMock.arrendatario.findMany.mockResolvedValue([{ nombreComercial: "ACME SPORT" }]);
-    prismaMock.contrato.findMany.mockResolvedValue([]);
+    prismaMock.unit.findMany.mockResolvedValue([{ codigo: "L-101", glam2: { toString: () => "100" } }]);
+    prismaMock.tenant.findMany.mockResolvedValue([{ nombreComercial: "ACME SPORT" }]);
+    prismaMock.contract.findMany.mockResolvedValue([]);
     prismaMock.cargaDatos.update.mockResolvedValue({});
 
     const response = await callPatch({

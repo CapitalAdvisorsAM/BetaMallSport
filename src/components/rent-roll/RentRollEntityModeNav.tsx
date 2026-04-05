@@ -7,12 +7,12 @@ import { cn } from "@/lib/utils";
 type RentRollEntityModeNavProps = {
   entity: RentRollEntity;
   mode: RentRollMode;
-  proyectoId: string;
+  projectId: string;
   showConfigTab?: boolean;
 };
 
-function withParams(baseHref: string, proyectoId: string, extra: Record<string, string>): string {
-  const query = new URLSearchParams({ proyecto: proyectoId });
+function withParams(baseHref: string, projectId: string, extra: Record<string, string>): string {
+  const query = new URLSearchParams({ project: projectId });
   Object.entries(extra).forEach(([key, value]) => query.set(key, value));
   return `${baseHref}?${query.toString()}`;
 }
@@ -20,13 +20,13 @@ function withParams(baseHref: string, proyectoId: string, extra: Record<string, 
 export function RentRollEntityModeNav({
   entity,
   mode,
-  proyectoId,
+  projectId,
   showConfigTab = false
 }: RentRollEntityModeNavProps): JSX.Element {
-  const viewHref = withParams(`/rent-roll/${entity}`, proyectoId, { seccion: "ver" });
-  const cargarHref = withParams(`/rent-roll/${entity}`, proyectoId, { seccion: "cargar" });
-  const uploadHref = withParams(`/rent-roll/${entity}`, proyectoId, { seccion: "upload" });
-  const configHref = withParams(`/rent-roll/${entity}`, proyectoId, { seccion: "config" });
+  const viewHref = withParams(`/rent-roll/${entity}`, projectId, { seccion: "ver" });
+  const cargarHref = withParams(`/rent-roll/${entity}`, projectId, { seccion: "cargar" });
+  const uploadHref = withParams(`/rent-roll/${entity}`, projectId, { seccion: "upload" });
+  const configHref = withParams(`/rent-roll/${entity}`, projectId, { seccion: "config" });
 
   return (
     <section className="space-y-3 rounded-md border border-brand-200 bg-brand-50/60 p-4 shadow-sm">

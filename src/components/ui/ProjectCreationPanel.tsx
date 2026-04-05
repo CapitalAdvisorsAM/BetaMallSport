@@ -38,7 +38,7 @@ export function ProjectCreationPanel({
     setLoading(true);
     setMessage(null);
     try {
-      const response = await fetch("/api/proyectos", {
+      const response = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nombre, color })
@@ -48,7 +48,8 @@ export function ProjectCreationPanel({
         throw new Error(data.message ?? "No se pudo crear el proyecto.");
       }
 
-      const targetUrl = `${pathname}?proyecto=${encodeURIComponent(data.id)}`;
+      const projectId = encodeURIComponent(data.id);
+      const targetUrl = `${pathname}?project=${projectId}&proyecto=${projectId}`;
       router.push(targetUrl);
       router.refresh();
     } catch (error) {
