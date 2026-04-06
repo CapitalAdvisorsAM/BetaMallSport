@@ -23,12 +23,26 @@ import {
   RentRollCategoryConcentration,
   type RentRollCategoryConcentrationDatum
 } from "@/components/rent-roll/RentRollCategoryConcentration";
+import { CustomWidgetChart } from "@/components/rent-roll/CustomWidgetChart";
 import { formatWaltValue } from "@/lib/rent-roll/snapshot-date";
 import type { PeriodoMetrica } from "@/types/timeline";
+import type { FormulaConfig } from "@/lib/dashboard/custom-widget-engine";
+
+type CustomWidgetRow = {
+  id: string;
+  title: string;
+  chartType: string;
+  enabled: boolean;
+  position: number;
+  formulaConfig: FormulaConfig;
+};
 
 type RentRollChartsSectionProps = {
   periodos: PeriodoMetrica[];
   categoryConcentration: RentRollCategoryConcentrationDatum[];
+  enabledCharts?: Set<string>;
+  waltVariant?: string;
+  customWidgets?: CustomWidgetRow[];
 };
 
 const MESES_ES = [
@@ -79,8 +93,15 @@ function formatWaltAxisTick(value: number): string {
 
 export function RentRollChartsSection({
   periodos,
-  categoryConcentration
+  categoryConcentration,
+  enabledCharts,
+  waltVariant = "con_walt",
+  customWidgets = []
 }: RentRollChartsSectionProps): JSX.Element {
+  function chartEnabled(id: string): boolean {
+    return enabledCharts ? enabledCharts.has(id) : true;
+  }
+
   const currentPeriodo = getCurrentPeriodo();
   const total = periodos.length;
 
@@ -156,7 +177,9 @@ export function RentRollChartsSection({
 
   return (
     <section className="space-y-4">
-      <RentRollCategoryConcentration data={categoryConcentration} />
+      {chartEnabled("chart_concentracion_gla") && (
+        <RentRollCategoryConcentration data={categoryConcentration} />
+      )}
 
       <header className="rounded-md bg-white p-4 shadow-sm">
         <div className="mb-1 flex items-center gap-2">
@@ -185,80 +208,87 @@ export function RentRollChartsSection({
       </header>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <MetricChartCard metricId="chart_rent_roll_ocupacion_walt" title="% Ocupacion GLA + WALT">
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={chart1Data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis
-                dataKey="periodo"
-                tickFormatter={xAxisTickFormatter}
-                tick={{ fontSize: 11, fill: "#64748b" }}
-                tickLine={false}
-              />
-              <YAxis
-                yAxisId="ocupacion"
-                domain={[0, 100]}
-                tickFormatter={(value: number) => `${value}%`}
-                tick={{ fontSize: 11, fill: "#64748b" }}
-                tickLine={false}
-                axisLine={false}
-                width={40}
-              />
-              <YAxis
-                yAxisId="walt"
-                orientation="right"
-                domain={[0, waltAxisMax]}
-                tickFormatter={formatWaltAxisTick}
-                tick={{ fontSize: 11, fill: "#7c3aed" }}
-                tickLine={false}
-                axisLine={false}
-                width={36}
-              />
-              <Tooltip
-                labelFormatter={tooltipLabelFormatter}
-                formatter={(value, name) => {
-                  if (name === "WALT") {
-                    return [formatWaltValue(Number(value)), "WALT"];
-                  }
-                  return [`${Number(value).toFixed(1)}%`, "Ocupacion GLA"];
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <ReferenceLine
-                x={currentPeriodo}
-                stroke="#f59e0b"
-                strokeDasharray="4 2"
-                label={{ value: "Hoy", position: "top", fontSize: 10, fill: "#f59e0b" }}
-              />
-              <Line
-                yAxisId="ocupacion"
-                type="monotone"
-                dataKey="pctOcupacion"
-                stroke="#1e40af"
-                strokeWidth={2}
-                dot={false}
-                name="Ocupacion GLA"
-                connectNulls={false}
-              />
-              <Line
-                yAxisId="walt"
-                type="monotone"
-                dataKey="waltMeses"
-                stroke="#7c3aed"
-                strokeWidth={2}
-                strokeDasharray="6 3"
-                dot={false}
-                name="WALT"
-                connectNulls={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-          <p className="mt-1 text-right text-xs text-slate-400">
-            Azul = ocupacion GLA. Morado = WALT ponderado por m2.
-          </p>
-        </MetricChartCard>
+        {chartEnabled("chart_ocupacion_walt") && (
+          <MetricChartCard metricId="chart_rent_roll_ocupacion_walt" title="% Ocupacion GLA + WALT">
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={chart1Data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis
+                  dataKey="periodo"
+                  tickFormatter={xAxisTickFormatter}
+                  tick={{ fontSize: 11, fill: "#64748b" }}
+                  tickLine={false}
+                />
+                <YAxis
+                  yAxisId="ocupacion"
+                  domain={[0, 100]}
+                  tickFormatter={(value: number) => `${value}%`}
+                  tick={{ fontSize: 11, fill: "#64748b" }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={40}
+                />
+                {waltVariant !== "solo_ocupacion" && (
+                  <YAxis
+                    yAxisId="walt"
+                    orientation="right"
+                    domain={[0, waltAxisMax]}
+                    tickFormatter={formatWaltAxisTick}
+                    tick={{ fontSize: 11, fill: "#7c3aed" }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={36}
+                  />
+                )}
+                <Tooltip
+                  labelFormatter={tooltipLabelFormatter}
+                  formatter={(value, name) => {
+                    if (name === "WALT") {
+                      return [formatWaltValue(Number(value)), "WALT"];
+                    }
+                    return [`${Number(value).toFixed(1)}%`, "Ocupacion GLA"];
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <ReferenceLine
+                  x={currentPeriodo}
+                  stroke="#f59e0b"
+                  strokeDasharray="4 2"
+                  label={{ value: "Hoy", position: "top", fontSize: 10, fill: "#f59e0b" }}
+                />
+                <Line
+                  yAxisId="ocupacion"
+                  type="monotone"
+                  dataKey="pctOcupacion"
+                  stroke="#1e40af"
+                  strokeWidth={2}
+                  dot={false}
+                  name="Ocupacion GLA"
+                  connectNulls={false}
+                />
+                {waltVariant !== "solo_ocupacion" && (
+                  <Line
+                    yAxisId="walt"
+                    type="monotone"
+                    dataKey="waltMeses"
+                    stroke="#7c3aed"
+                    strokeWidth={2}
+                    strokeDasharray="6 3"
+                    dot={false}
+                    name="WALT"
+                    connectNulls={false}
+                  />
+                )}
+              </LineChart>
+            </ResponsiveContainer>
+            <p className="mt-1 text-right text-xs text-slate-400">
+              Azul = ocupacion GLA. Morado = WALT ponderado por m2.
+            </p>
+          </MetricChartCard>
+        )}
 
-        <MetricChartCard metricId="chart_rent_roll_renta_fija_total_uf" title="Renta Fija Total (UF)">
+        {chartEnabled("chart_renta_fija_serie") && (
+          <MetricChartCard metricId="chart_rent_roll_renta_fija_total_uf" title="Renta Fija Total (UF)">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chart2Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -301,8 +331,10 @@ export function RentRollChartsSection({
             </BarChart>
           </ResponsiveContainer>
         </MetricChartCard>
+        )}
 
-        <MetricChartCard metricId="chart_rent_roll_contratos_activos" title="Contratos Activos">
+        {chartEnabled("chart_contratos_activos") && (
+          <MetricChartCard metricId="chart_rent_roll_contratos_activos" title="Contratos Activos">
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={chart3Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -340,8 +372,10 @@ export function RentRollChartsSection({
             </LineChart>
           </ResponsiveContainer>
         </MetricChartCard>
+        )}
 
-        <MetricChartCard metricId="chart_rent_roll_gla_arrendada_vacante_m2" title="GLA Arrendada vs Vacante (m2)">
+        {chartEnabled("chart_gla_arrendada_vacante") && (
+          <MetricChartCard metricId="chart_rent_roll_gla_arrendada_vacante_m2" title="GLA Arrendada vs Vacante (m2)">
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={chart4Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
               <defs>
@@ -413,8 +447,10 @@ export function RentRollChartsSection({
             </AreaChart>
           </ResponsiveContainer>
         </MetricChartCard>
+        )}
 
-        <MetricChartCard metricId="chart_rent_roll_vencimientos_por_mes" title="Vencimientos de Contratos por Mes">
+        {chartEnabled("chart_vencimientos_mes") && (
+          <MetricChartCard metricId="chart_rent_roll_vencimientos_por_mes" title="Vencimientos de Contratos por Mes">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chart5Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -466,8 +502,10 @@ export function RentRollChartsSection({
             </span>
           </div>
         </MetricChartCard>
+        )}
 
-        <MetricChartCard metricId="chart_rent_roll_ingresos_tipo_local_uf" title="Ingresos por Tipo de Local (UF)">
+        {chartEnabled("chart_ingresos_tipo_local") && (
+          <MetricChartCard metricId="chart_rent_roll_ingresos_tipo_local_uf" title="Ingresos por Tipo de Local (UF)">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chart6Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -545,6 +583,18 @@ export function RentRollChartsSection({
             </BarChart>
           </ResponsiveContainer>
         </MetricChartCard>
+        )}
+
+        {customWidgets.filter((w) => w.enabled && w.chartType !== "kpi").map((widget) => (
+          <CustomWidgetChart
+            key={widget.id}
+            widget={widget}
+            periodos={periodos}
+            currentPeriodo={currentPeriodo}
+            xAxisTickFormatter={xAxisTickFormatter}
+            tooltipLabelFormatter={tooltipLabelFormatter}
+          />
+        ))}
       </div>
     </section>
   );

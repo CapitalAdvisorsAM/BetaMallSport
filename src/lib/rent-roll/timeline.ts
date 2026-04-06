@@ -1,4 +1,4 @@
-import { ContractStatus, UnitType, ContractRateType } from "@prisma/client";
+import { ContractStatus, UnitType, ContractRateType, Prisma } from "@prisma/client";
 import { calculateWalt } from "@/lib/kpi";
 import { prisma } from "@/lib/prisma";
 import type { PeriodoMetrica, TimelineResponse } from "@/types/timeline";
@@ -40,10 +40,97 @@ function isSimuladorModulo(tipo: UnitType): boolean {
   return tipo === UnitType.SIMULADOR || tipo === UnitType.MODULO;
 }
 
+// ---------------------------------------------------------------------------
+// Variable rent data helpers
+// ---------------------------------------------------------------------------
+
+type ContractWithPct = {
+  localId: string;
+  fechaInicio: Date;
+  fechaTermino: Date;
+  tarifas: Array<{ valor: Prisma.Decimal; vigenciaDesde: Date; vigenciaHasta: Date | null }>;
+};
+
+type VariableRentData = {
+  ventaMap: Map<string, { rentaVariableUf: number; ventasTotalUf: number }>;
+  contractsWithPct: ContractWithPct[];
+};
+
+async function buildVariableRentData(proyectoId: string): Promise<VariableRentData> {
+  const [ventas, contractsRaw] = await Promise.all([
+    prisma.ventaLocal.findMany({
+      where: { proyectoId },
+      select: { localId: true, periodo: true, ventasUf: true },
+    }),
+    prisma.contract.findMany({
+      where: { proyectoId },
+      select: {
+        localId: true,
+        fechaInicio: true,
+        fechaTermino: true,
+        tarifas: {
+          where: { tipo: ContractRateType.PORCENTAJE },
+          select: { valor: true, vigenciaDesde: true, vigenciaHasta: true },
+        },
+      },
+    }),
+  ]);
+
+  const contractsWithPct = contractsRaw.filter((c) => c.tarifas.length > 0);
+  const contractByLocalId = new Map(contractsWithPct.map((c) => [c.localId, c]));
+
+  const ventaMap = new Map<string, { rentaVariableUf: number; ventasTotalUf: number }>();
+
+  for (const venta of ventas) {
+    const contract = contractByLocalId.get(venta.localId);
+    if (!contract) continue;
+
+    // Find the PORCENTAJE rate active at the mid-point of the period
+    const midMonth = new Date(`${venta.periodo}-15`);
+    const rate = contract.tarifas.find(
+      (t) => t.vigenciaDesde <= midMonth && (t.vigenciaHasta === null || t.vigenciaHasta >= midMonth)
+    );
+    if (!rate) continue;
+
+    const ventasUf = venta.ventasUf.toNumber();
+    const rentaVar = round2(ventasUf * (rate.valor.toNumber() / 100));
+    const existing = ventaMap.get(venta.periodo) ?? { rentaVariableUf: 0, ventasTotalUf: 0 };
+    ventaMap.set(venta.periodo, {
+      rentaVariableUf: round2(existing.rentaVariableUf + rentaVar),
+      ventasTotalUf: round2(existing.ventasTotalUf + ventasUf),
+    });
+  }
+
+  return { ventaMap, contractsWithPct };
+}
+
+function computePctPromedioForPeriodo(
+  periodo: string,
+  contractsWithPct: ContractWithPct[]
+): number | null {
+  const { year, month } = parsePeriodoKey(periodo);
+  const periodStart = startOfMonth(year, month);
+  const periodEnd = endOfMonth(year, month);
+  const midMonth = new Date((periodStart.getTime() + periodEnd.getTime()) / 2);
+
+  const pcts: number[] = [];
+  for (const c of contractsWithPct) {
+    if (c.fechaInicio > periodEnd || c.fechaTermino < periodStart) continue;
+    const rate = c.tarifas.find(
+      (t) => t.vigenciaDesde <= midMonth && (t.vigenciaHasta === null || t.vigenciaHasta >= midMonth)
+    );
+    if (rate) pcts.push(rate.valor.toNumber());
+  }
+
+  if (pcts.length === 0) return null;
+  return round2(pcts.reduce((a, b) => a + b, 0) / pcts.length);
+}
+
 async function buildHistoricalPeriodos(
   proyectoId: string,
   glaTotalM2: number,
-  currentPeriodo: string
+  currentPeriodo: string,
+  variableRentData: VariableRentData
 ): Promise<PeriodoMetrica[]> {
   // Fetch all ContratoDia records for the project
   const allDias = await prisma.contractDay.findMany({
@@ -200,6 +287,7 @@ async function buildHistoricalPeriodos(
     );
 
     const contratosQueVencenEsteMes = vencimientosByMonth.get(periodo) ?? 0;
+    const ventaEntry = variableRentData.ventaMap.get(periodo);
 
     result.push({
       periodo,
@@ -213,7 +301,13 @@ async function buildHistoricalPeriodos(
       ingresosFijoUf,
       ingresosSimuladorModuloUf,
       ingresosBodegaEspacioUf,
-      contratosQueVencenEsteMes
+      contratosQueVencenEsteMes,
+      rentaVariableUf: ventaEntry?.rentaVariableUf ?? null,
+      ventasTotalUf: ventaEntry?.ventasTotalUf ?? null,
+      pctRentaVariableContratoPromedio: computePctPromedioForPeriodo(
+        periodo,
+        variableRentData.contractsWithPct
+      ),
     });
   }
 
@@ -223,7 +317,8 @@ async function buildHistoricalPeriodos(
 async function buildFuturePeriodos(
   proyectoId: string,
   glaTotalM2: number,
-  currentPeriodo: string
+  currentPeriodo: string,
+  variableRentData: VariableRentData
 ): Promise<PeriodoMetrica[]> {
   // Fetch all active/vigente contracts with locales and tarifas
   const activeContracts = await prisma.contract.findMany({
@@ -374,7 +469,14 @@ async function buildFuturePeriodos(
       ingresosFijoUf: round2(ingresosFijoUf),
       ingresosSimuladorModuloUf: round2(ingresosSimuladorModuloUf),
       ingresosBodegaEspacioUf: round2(ingresosBodegaEspacioUf),
-      contratosQueVencenEsteMes: vencimientosByMonth.get(periodo) ?? 0
+      contratosQueVencenEsteMes: vencimientosByMonth.get(periodo) ?? 0,
+      // Variable rent can't be projected without a sales forecast
+      rentaVariableUf: null,
+      ventasTotalUf: null,
+      pctRentaVariableContratoPromedio: computePctPromedioForPeriodo(
+        periodo,
+        variableRentData.contractsWithPct
+      ),
     });
   }
 
@@ -382,11 +484,14 @@ async function buildFuturePeriodos(
 }
 
 export async function getTimelineData(proyectoId: string): Promise<TimelineResponse> {
-  // Get all active locales to compute glaTotalM2
-  const localesActivos = await prisma.unit.findMany({
-    where: { proyectoId, estado: "ACTIVO", esGLA: true },
-    select: { glam2: true }
-  });
+  // Get all active locales to compute glaTotalM2, and variable rent data in parallel
+  const [localesActivos, variableRentData] = await Promise.all([
+    prisma.unit.findMany({
+      where: { proyectoId, estado: "ACTIVO", esGLA: true },
+      select: { glam2: true },
+    }),
+    buildVariableRentData(proyectoId),
+  ]);
 
   const glaTotalM2 = round2(localesActivos.reduce((sum, l) => sum + l.glam2.toNumber(), 0));
 
@@ -394,8 +499,8 @@ export async function getTimelineData(proyectoId: string): Promise<TimelineRespo
   const currentPeriodo = toPeriodoKey(now);
 
   const [historical, future] = await Promise.all([
-    buildHistoricalPeriodos(proyectoId, glaTotalM2, currentPeriodo),
-    buildFuturePeriodos(proyectoId, glaTotalM2, currentPeriodo)
+    buildHistoricalPeriodos(proyectoId, glaTotalM2, currentPeriodo, variableRentData),
+    buildFuturePeriodos(proyectoId, glaTotalM2, currentPeriodo, variableRentData),
   ]);
 
   // Merge: historical has esFuturo=false, future has esFuturo=true
