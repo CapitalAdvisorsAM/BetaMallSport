@@ -24,6 +24,34 @@ export type TenantFinanceRow = {
   costoOcupacion: number | null;
 };
 
+export type EerrLocalDetalle = {
+  localId: string;
+  localCodigo: string;
+  localNombre: string;
+  arrendatarioId: string | null;
+  arrendatarioNombre: string | null;
+  porPeriodo: Record<string, number>;
+  total: number;
+};
+
+export type EerrCategoria = {
+  categoriaTipo: string;
+  porPeriodo: Record<string, number>;
+  total: number;
+  locales: EerrLocalDetalle[];
+};
+
+export type EerrDetalleResponse = {
+  categorias: EerrCategoria[];
+};
+
+export type ArrendatarioPartidaDetalle = {
+  grupo1: string;
+  grupo3: string;
+  denominacion: string;
+  valorUf: number;
+};
+
 export type EerrLine = {
   grupo3: string;
   tipo: "ingreso" | "costo";
@@ -42,10 +70,8 @@ export type EerrSection = {
 export type EerrData = {
   periodos: string[];
   secciones: EerrSection[];
-  ebitda: {
-    porPeriodo: Record<string, number>;
-    total: number;
-  };
+  ebitda: { porPeriodo: Record<string, number>; total: number };
+  ebit:   { porPeriodo: Record<string, number>; total: number };
 };
 
 export type ContableSuggestion = {

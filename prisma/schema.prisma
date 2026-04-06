@@ -405,7 +405,7 @@ model MapeoLocalContable {
 model RegistroContable {
   id              String   @id @default(uuid()) @db.Uuid
   proyectoId      String   @db.Uuid
-  localId         String   @db.Uuid
+  localId         String?  @db.Uuid
   arrendatarioId  String?  @db.Uuid
   periodo         DateTime @db.Date
   grupo1          String
@@ -421,7 +421,7 @@ model RegistroContable {
   local        Unit         @relation(fields: [localId], references: [id], onDelete: Cascade)
   arrendatario Tenant? @relation(fields: [arrendatarioId], references: [id], onDelete: SetNull)
 
-  @@unique([localId, periodo, grupo1, grupo3, denominacion])
+  @@unique([proyectoId, localId, periodo, grupo1, grupo3, denominacion])
   @@index([proyectoId, periodo])
   @@index([localId, periodo])
   @@index([arrendatarioId, periodo])

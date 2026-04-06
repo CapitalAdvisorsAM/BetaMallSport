@@ -72,8 +72,20 @@ export const CONFIGURACION_SUB_NAV_ITEMS: NavItem[] = [
 
 export const FINANZAS_SUB_NAV_ITEMS: NavItem[] = [
   {
+    label: "Dashboard",
+    href: "/finanzas/dashboard",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
     label: "EE.RR",
     href: "/finanzas/eerr",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
+    label: "Análisis",
+    href: "/finanzas/analisis",
     enabled: true,
     match: "startsWith"
   },
