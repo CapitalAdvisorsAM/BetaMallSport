@@ -14,6 +14,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
 import {
   evaluateFormula,
   type FormulaConfig,
@@ -124,43 +125,38 @@ export function CustomWidgetChart({
   );
 
   return (
-    <article className="overflow-hidden rounded-md bg-white shadow-sm">
-      <div className="border-b border-slate-200 px-4 py-3">
-        <h3 className="text-sm font-semibold text-brand-700">{widget.title}</h3>
-      </div>
-      <div className="p-4">
-        <ResponsiveContainer width="100%" height={220}>
-          {widget.chartType === "bar" ? (
-            <BarChart {...commonProps}>
-              {commonAxes}
-              <Bar dataKey="value" fill="#1e40af" radius={[2, 2, 0, 0]} />
-            </BarChart>
-          ) : widget.chartType === "area" ? (
-            <AreaChart {...commonProps}>
-              {commonAxes}
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke="#1e40af"
-                strokeWidth={2}
-                fill="#dbeafe"
-                dot={false}
-              />
-            </AreaChart>
-          ) : (
-            <LineChart {...commonProps}>
-              {commonAxes}
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke="#1e40af"
-                strokeWidth={2}
-                dot={false}
-              />
-            </LineChart>
-          )}
-        </ResponsiveContainer>
-      </div>
-    </article>
+    <MetricChartCard title={widget.title} metricId="chart_rent_roll_custom_widget">
+      <ResponsiveContainer width="100%" height={220}>
+        {widget.chartType === "bar" ? (
+          <BarChart {...commonProps}>
+            {commonAxes}
+            <Bar dataKey="value" fill="#1e40af" radius={[2, 2, 0, 0]} />
+          </BarChart>
+        ) : widget.chartType === "area" ? (
+          <AreaChart {...commonProps}>
+            {commonAxes}
+            <Area
+              type="monotone"
+              dataKey="value"
+              stroke="#1e40af"
+              strokeWidth={2}
+              fill="#dbeafe"
+              dot={false}
+            />
+          </AreaChart>
+        ) : (
+          <LineChart {...commonProps}>
+            {commonAxes}
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke="#1e40af"
+              strokeWidth={2}
+              dot={false}
+            />
+          </LineChart>
+        )}
+      </ResponsiveContainer>
+    </MetricChartCard>
   );
 }
