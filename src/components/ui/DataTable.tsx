@@ -26,6 +26,14 @@ import { cn } from "@/lib/utils";
 
 type DataTableFilterType = "string" | "enum" | "number";
 type DataTableAlign = "left" | "center" | "right";
+type DataTableSummaryMeta = {
+  type: "sum";
+  formatter?: (value: number) => React.ReactNode;
+};
+type DataTableSummaryConfig = {
+  enabled?: boolean;
+  label?: string;
+};
 
 declare module "@tanstack/react-table" {
   interface ColumnMeta<TData extends RowData, TValue> {
@@ -33,6 +41,7 @@ declare module "@tanstack/react-table" {
     align?: DataTableAlign;
     filterOptions?: string[];
     filterType?: DataTableFilterType;
+    summary?: DataTableSummaryMeta;
   }
 }
 
@@ -40,6 +49,7 @@ interface DataTableProps<TData> {
   table: TanStackTable<TData>;
   emptyMessage?: string;
   footerContent?: React.ReactNode;
+  summaryRow?: DataTableSummaryConfig;
   getRowClassName?: (row: Row<TData>, index: number) => string | undefined;
   renderSubRow?: (row: Row<TData>) => React.ReactNode;
 }
@@ -71,6 +81,10 @@ function getFilterType<TData>(column: Column<TData, unknown>): DataTableFilterTy
     return "enum";
   }
   return "string";
+}
+
+function getSummaryMeta<TData>(column: Column<TData, unknown>): DataTableSummaryMeta | undefined {
+  return column.columnDef.meta?.summary;
 }
 
 function hasActiveFilter<TData>(column: Column<TData, unknown>): boolean {
@@ -267,6 +281,7 @@ export function DataTable<TData>({
   table,
   emptyMessage = "No hay filas para mostrar.",
   footerContent,
+  summaryRow,
   getRowClassName,
   renderSubRow
 }: DataTableProps<TData>): JSX.Element {
@@ -274,7 +289,43 @@ export function DataTable<TData>({
   const totalRows = table.getCoreRowModel().rows.length;
   const filteredRows = table.getFilteredRowModel().rows.length;
   const hasActiveFilters = table.getState().columnFilters.length > 0;
-  const columnCount = table.getAllLeafColumns().length;
+  const visibleColumns = table.getVisibleLeafColumns();
+  const columnCount = visibleColumns.length;
+
+  const summaryEnabled = summaryRow?.enabled ?? false;
+  const summaryLabel = summaryRow?.label ?? "Totales";
+  const summaryColumns = visibleColumns
+    .map((column, index) => ({ column, index, summary: getSummaryMeta(column) }))
+    .filter((item) => item.summary?.type === "sum");
+  const firstSummaryColumnIndex = summaryColumns.length > 0 ? summaryColumns[0].index : -1;
+
+  const summaryValues = new Map<string, number>();
+  if (summaryEnabled && rows.length > 0 && summaryColumns.length > 0) {
+    for (const { column } of summaryColumns) {
+      summaryValues.set(column.id, 0);
+    }
+
+    for (const row of rows) {
+      for (const { column } of summaryColumns) {
+        const cellValue = row.getValue(column.id);
+        if (typeof cellValue !== "number" || !Number.isFinite(cellValue)) {
+          continue;
+        }
+        summaryValues.set(column.id, (summaryValues.get(column.id) ?? 0) + cellValue);
+      }
+    }
+  }
+
+  const showSummaryRow = summaryEnabled && rows.length > 0 && summaryColumns.length > 0;
+  const summaryLabelColSpan = firstSummaryColumnIndex <= 0 ? 1 : firstSummaryColumnIndex;
+  const summaryCellsStartIndex = firstSummaryColumnIndex === 0 ? 1 : summaryLabelColSpan;
+  const firstSummaryColumn = firstSummaryColumnIndex >= 0 ? visibleColumns[firstSummaryColumnIndex] : null;
+  const firstSummaryMeta = firstSummaryColumn ? getSummaryMeta(firstSummaryColumn) : undefined;
+  const firstSummaryValue = firstSummaryColumn ? (summaryValues.get(firstSummaryColumn.id) ?? 0) : 0;
+  const renderedFirstSummaryValue =
+    firstSummaryMeta?.type === "sum" && firstSummaryMeta.formatter
+      ? firstSummaryMeta.formatter(firstSummaryValue)
+      : firstSummaryValue;
 
   return (
     <div className="overflow-hidden rounded-md border border-slate-200">
@@ -335,7 +386,7 @@ export function DataTable<TData>({
               </TableRow>
             )}
           </TableBody>
-          {footerContent || hasActiveFilters ? (
+          {footerContent || hasActiveFilters || showSummaryRow ? (
             <TableFooter className="bg-white">
               {footerContent}
               {hasActiveFilters ? (
@@ -343,6 +394,44 @@ export function DataTable<TData>({
                   <TableCell colSpan={columnCount} className="px-4 py-2 text-right text-xs text-slate-500">
                     {filteredRows} de {totalRows} filas
                   </TableCell>
+                </TableRow>
+              ) : null}
+              {showSummaryRow ? (
+                <TableRow className="border-t border-slate-200 bg-brand-50 font-semibold text-slate-900 hover:bg-brand-50">
+                  <TableCell className="px-4 py-3 font-semibold" colSpan={summaryLabelColSpan}>
+                    {firstSummaryColumnIndex === 0 ? (
+                      <div className="flex items-center justify-between gap-2">
+                        <span>{summaryLabel}</span>
+                        <span className="whitespace-nowrap">{renderedFirstSummaryValue}</span>
+                      </div>
+                    ) : (
+                      summaryLabel
+                    )}
+                  </TableCell>
+                  {visibleColumns.slice(summaryCellsStartIndex).map((column) => {
+                    const summaryMeta = getSummaryMeta(column);
+                    if (summaryMeta?.type !== "sum") {
+                      return (
+                        <TableCell
+                          key={`summary-empty-${column.id}`}
+                          className={cn("px-4 py-3", getCellAlignClass(getColumnAlign(column)))}
+                        />
+                      );
+                    }
+
+                    const value = summaryValues.get(column.id) ?? 0;
+                    return (
+                      <TableCell
+                        key={`summary-${column.id}`}
+                        className={cn(
+                          "whitespace-nowrap px-4 py-3",
+                          getCellAlignClass(getColumnAlign(column))
+                        )}
+                      >
+                        {summaryMeta.formatter ? summaryMeta.formatter(value) : value}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               ) : null}
             </TableFooter>

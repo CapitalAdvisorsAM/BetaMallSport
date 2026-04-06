@@ -61,6 +61,12 @@ export const CONFIGURACION_SUB_NAV_ITEMS: NavItem[] = [
     href: "/configuracion/proyecto",
     enabled: true,
     match: "startsWith"
+  },
+  {
+    label: "Dashboard",
+    href: "/configuracion/dashboard",
+    enabled: true,
+    match: "startsWith"
   }
 ];
 

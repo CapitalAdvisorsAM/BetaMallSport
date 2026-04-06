@@ -428,6 +428,29 @@ model RegistroContable {
   @@index([proyectoId, grupo1, periodo])
 }
 
+model CustomWidget {
+  id            String   @id @default(uuid()) @db.Uuid
+  title         String
+  chartType     String   @default("line")
+  enabled       Boolean  @default(true)
+  position      Int      @default(0)
+  formulaConfig Json
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([enabled])
+}
+
+model DashboardConfig {
+  id             String  @id @default(uuid()) @db.Uuid
+  widgetId       String  @unique
+  enabled        Boolean @default(true)
+  position       Int     @default(0)
+  formulaVariant String?
+  parameters     Json?
+
+  @@index([enabled])
+}
+
 model MapeoVentasLocal {
   id           String   @id @default(uuid()) @db.Uuid
   proyectoId   String   @db.Uuid
