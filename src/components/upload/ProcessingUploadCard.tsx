@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { ContableUploadResult, VentasUploadResult } from "@/types/finanzas";
+import type { ContableUploadResult, VentasUploadResult } from "@/types/finance";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,7 +63,7 @@ export function ProcessingUploadCard({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("proyectoId", projectId);
+      formData.append("projectId", projectId);
 
       const response = await fetch(endpoint, { method: "POST", body: formData });
       const payload = (await response.json()) as unknown;
@@ -141,7 +141,7 @@ export function ProcessingUploadCard({
               <div className="mt-2">
                 <p className="font-semibold text-amber-600">
                   {unmappedItems.length} local(es) sin mapeo.{" "}
-                  <a href={`/finanzas/mapeos?proyecto=${projectId}&tab=contable`} className="underline">
+                  <a href={`/finance/mappings?project=${projectId}&tab=accounting`} className="underline">
                     Ir a Mapeos
                   </a>
                 </p>
@@ -160,7 +160,7 @@ export function ProcessingUploadCard({
               <div className="mt-2">
                 <p className="font-semibold text-amber-600">
                   {unmappedSales.length} tienda(s) sin mapeo.{" "}
-                  <a href={`/finanzas/mapeos?proyecto=${projectId}&tab=ventas`} className="underline">
+                  <a href={`/finance/mappings?project=${projectId}&tab=sales`} className="underline">
                     Ir a Mapeos
                   </a>
                 </p>
@@ -182,3 +182,6 @@ export function ProcessingUploadCard({
     </ModuleSectionCard>
   );
 }
+
+
+

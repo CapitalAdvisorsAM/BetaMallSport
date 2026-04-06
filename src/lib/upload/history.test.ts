@@ -8,10 +8,10 @@ describe("mapUploadHistory", () => {
         {
           id: "1",
           createdAt: new Date("2026-01-01T00:00:00.000Z"),
-          archivoNombre: "ventas.xlsx",
-          estado: "OK",
-          registrosCargados: 12,
-          errorDetalle: null
+          fileName: "ventas.xlsx",
+          status: "OK",
+          recordsLoaded: 12,
+          errorDetail: null
         }
       ],
       "updated"
@@ -29,10 +29,10 @@ describe("mapUploadHistory", () => {
       {
         id: "2",
         createdAt: new Date("2026-01-01T00:00:00.000Z"),
-        archivoNombre: "preview.xlsx",
-        estado: "OK",
-        registrosCargados: 999,
-        errorDetalle: {
+        fileName: "preview.xlsx",
+        status: "OK",
+        recordsLoaded: 999,
+        errorDetail: {
           rows: [],
           summary: { total: 1, nuevo: 1, actualizado: 0, sinCambio: 0, errores: 0 },
           warnings: [],

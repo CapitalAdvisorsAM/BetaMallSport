@@ -1,10 +1,10 @@
-import { TipoCargaDatos } from "@prisma/client";
+import { DataUploadType } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { requireWriteAccessMock, prismaMock } = vi.hoisted(() => ({
   requireWriteAccessMock: vi.fn(),
   prismaMock: {
-    cargaDatos: {
+    dataUpload: {
       findUnique: vi.fn(),
       update: vi.fn()
     },
@@ -85,8 +85,8 @@ function makeStoredPreview() {
 
 beforeEach(() => {
   requireWriteAccessMock.mockResolvedValue({ user: { id: "u1" } });
-  prismaMock.cargaDatos.findUnique.mockReset();
-  prismaMock.cargaDatos.update.mockReset();
+  prismaMock.dataUpload.findUnique.mockReset();
+  prismaMock.dataUpload.update.mockReset();
   prismaMock.unit.findMany.mockReset();
   prismaMock.tenant.findMany.mockReset();
   prismaMock.contract.findMany.mockReset();
@@ -103,7 +103,7 @@ describe("PATCH /api/rent-roll/upload/contratos/preview/row", () => {
   });
 
   it("returns 404 when carga does not exist", async () => {
-    prismaMock.cargaDatos.findUnique.mockResolvedValue(null);
+    prismaMock.dataUpload.findUnique.mockResolvedValue(null);
     const response = await callPatch({
       cargaId: "c1",
       rowNumber: 2,
@@ -113,13 +113,13 @@ describe("PATCH /api/rent-roll/upload/contratos/preview/row", () => {
   });
 
   it("returns 404 when row is not present in preview", async () => {
-    prismaMock.cargaDatos.findUnique.mockResolvedValue({
+    prismaMock.dataUpload.findUnique.mockResolvedValue({
       id: "c1",
-      tipo: TipoCargaDatos.RENT_ROLL,
-      estado: "PENDIENTE",
-      proyectoId: "p1",
-      archivoNombre: "plantilla.xlsx",
-      errorDetalle: JSON.stringify(makeStoredPreview())
+      type: DataUploadType.RENT_ROLL,
+      status: "PENDING",
+      projectId: "p1",
+      fileName: "plantilla.xlsx",
+      errorDetail: JSON.stringify(makeStoredPreview())
     });
     const response = await callPatch({
       cargaId: "c1",
@@ -130,18 +130,18 @@ describe("PATCH /api/rent-roll/upload/contratos/preview/row", () => {
   });
 
   it("persists and returns updated preview for a valid edited row", async () => {
-    prismaMock.cargaDatos.findUnique.mockResolvedValue({
+    prismaMock.dataUpload.findUnique.mockResolvedValue({
       id: "c1",
-      tipo: TipoCargaDatos.RENT_ROLL,
-      estado: "PENDIENTE",
-      proyectoId: "p1",
-      archivoNombre: "plantilla.xlsx",
-      errorDetalle: JSON.stringify(makeStoredPreview())
+      type: DataUploadType.RENT_ROLL,
+      status: "PENDING",
+      projectId: "p1",
+      fileName: "plantilla.xlsx",
+      errorDetail: JSON.stringify(makeStoredPreview())
     });
     prismaMock.unit.findMany.mockResolvedValue([{ codigo: "L-101", glam2: { toString: () => "100" } }]);
     prismaMock.tenant.findMany.mockResolvedValue([{ nombreComercial: "ACME SPORT" }]);
     prismaMock.contract.findMany.mockResolvedValue([]);
-    prismaMock.cargaDatos.update.mockResolvedValue({});
+    prismaMock.dataUpload.update.mockResolvedValue({});
 
     const response = await callPatch({
       cargaId: "c1",
@@ -157,9 +157,10 @@ describe("PATCH /api/rent-roll/upload/contratos/preview/row", () => {
     expect(payload.cargaId).toBe("c1");
     expect(payload.preview.rows[0]?.data.tarifaValor).toBe("4.1");
 
-    expect(prismaMock.cargaDatos.update).toHaveBeenCalledTimes(1);
-    const updateArgs = prismaMock.cargaDatos.update.mock.calls[0][0];
+    expect(prismaMock.dataUpload.update).toHaveBeenCalledTimes(1);
+    const updateArgs = prismaMock.dataUpload.update.mock.calls[0][0];
     expect(updateArgs.where.id).toBe("c1");
-    expect(typeof updateArgs.data.errorDetalle).toBe("string");
+    expect(typeof updateArgs.data.errorDetail).toBe("string");
   });
 });
+

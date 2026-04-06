@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { TipoCargaDatos } from "@prisma/client";
+import { DataUploadType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { requireWriteAccess } from "@/lib/permissions";
@@ -28,12 +28,12 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "cargaId es obligatorio." }, { status: 400 });
     }
 
-    const carga = await prisma.cargaDatos.findUnique({ where: { id: cargaId } });
-    if (!carga || carga.tipo !== TipoCargaDatos.RENT_ROLL || !carga.errorDetalle) {
+    const carga = await prisma.dataUpload.findUnique({ where: { id: cargaId } });
+    if (!carga || carga.type !== DataUploadType.RENT_ROLL || !carga.errorDetail) {
       return NextResponse.json({ message: "No existe preview para esta carga." }, { status: 404 });
     }
 
-    const payload = parseStoredUploadPayload(carga.errorDetalle);
+    const payload = parseStoredUploadPayload(carga.errorDetail);
     if (!payload) {
       return NextResponse.json({ message: "No fue posible leer el preview almacenado." }, { status: 422 });
     }
@@ -56,10 +56,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     const session = await requireWriteAccess();
     const formData = await request.formData();
     const file = formData.get("file");
-    const proyectoId = String(formData.get("proyectoId") ?? "").trim();
+    const projectId = String(formData.get("projectId") ?? "").trim();
 
-    if (!proyectoId) {
-      return NextResponse.json({ message: "proyectoId es obligatorio." }, { status: 400 });
+    if (!projectId) {
+      return NextResponse.json({ message: "projectId es obligatorio." }, { status: 400 });
     }
     if (!(file instanceof File)) {
       return NextResponse.json({ message: "Debes adjuntar un archivo." }, { status: 400 });
@@ -71,7 +71,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     const proyecto = await prisma.project.findUnique({
-      where: { id: proyectoId },
+      where: { id: projectId },
       select: { id: true }
     });
     if (!proyecto) {
@@ -80,15 +80,15 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     const [locales, arrendatarios, contratos] = await Promise.all([
       prisma.unit.findMany({
-        where: { proyectoId },
+        where: { proyectoId: projectId },
         select: { codigo: true, glam2: true }
       }),
       prisma.tenant.findMany({
-        where: { proyectoId },
+        where: { proyectoId: projectId },
         select: { nombreComercial: true }
       }),
       prisma.contract.findMany({
-        where: { proyectoId },
+        where: { proyectoId: projectId },
         include: {
           local: { select: { codigo: true } },
           arrendatario: { select: { nombreComercial: true } },
@@ -161,16 +161,16 @@ export async function POST(request: Request): Promise<NextResponse> {
       existingArrendatarioNombres
     });
 
-    const carga = await prisma.cargaDatos.create({
+    const carga = await prisma.dataUpload.create({
       data: {
-        proyectoId,
-        tipo: TipoCargaDatos.RENT_ROLL,
-        usuarioId: session.user.id,
-        archivoNombre: file.name,
-        archivoUrl: `upload://${Date.now()}-${file.name}`,
-        registrosCargados: preview.summary.total - preview.summary.errores,
-        estado: "PENDIENTE",
-        errorDetalle: JSON.stringify(preview)
+        projectId,
+        type: DataUploadType.RENT_ROLL,
+        userId: session.user.id,
+        fileName: file.name,
+        fileUrl: `upload://${Date.now()}-${file.name}`,
+        recordsLoaded: preview.summary.total - preview.summary.errores,
+        status: "PENDING",
+        errorDetail: JSON.stringify(preview)
       }
     });
 
@@ -179,3 +179,4 @@ export async function POST(request: Request): Promise<NextResponse> {
     return handleApiError(error);
   }
 }
+

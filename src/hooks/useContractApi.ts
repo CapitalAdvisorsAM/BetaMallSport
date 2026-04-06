@@ -1,23 +1,10 @@
 import type { ContractFormPayload } from "@/types";
 import type { ContractWriteApiResponse } from "@/types/contracts";
+import { extractApiErrorMessage } from "@/lib/http/client-errors";
 
 export type ContractDraft = ContractFormPayload;
 
 export type ContractRow = ContractWriteApiResponse;
-
-async function readErrorMessage(response: Response, fallback: string): Promise<string> {
-  const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) {
-    return fallback;
-  }
-
-  try {
-    const data = (await response.json()) as { message?: string };
-    return data.message ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 export function useContractApi(): {
   saveContract: (draft: ContractDraft, existingId?: string) => Promise<ContractRow>;
@@ -37,7 +24,7 @@ export function useContractApi(): {
     );
 
     if (!response.ok) {
-      throw new Error(await readErrorMessage(response, "No se pudo guardar el contrato."));
+      throw new Error(await extractApiErrorMessage(response, "No se pudo guardar el contrato."));
     }
 
     return (await response.json()) as ContractRow;
@@ -49,7 +36,7 @@ export function useContractApi(): {
     });
 
     if (!response.ok) {
-      throw new Error(await readErrorMessage(response, "No se pudo eliminar el contrato."));
+      throw new Error(await extractApiErrorMessage(response, "No se pudo eliminar el contrato."));
     }
   }
 

@@ -9,8 +9,10 @@ import { useDataTable } from "@/hooks/useDataTable";
 type CargaHistorialItem = {
   id: string;
   createdAt: Date | string;
-  archivoNombre: string;
-  estado: string;
+  archivoNombre?: string;
+  fileName?: string;
+  estado?: string;
+  status?: string;
   created: number;
   updated: number;
   rejected: number;
@@ -36,7 +38,9 @@ const estadoMeta: Record<string, { label: string; className: string }> = {
   OK: { label: "OK", className: "border-emerald-200 bg-emerald-100 text-emerald-800" },
   ERROR: { label: "ERROR", className: "border-rose-200 bg-rose-100 text-rose-800" },
   PROCESANDO: { label: "PROCESANDO", className: "border-blue-200 bg-blue-100 text-blue-800" },
-  PENDIENTE: { label: "PENDIENTE", className: "border-amber-200 bg-amber-100 text-amber-800" }
+  PROCESSING: { label: "PROCESANDO", className: "border-blue-200 bg-blue-100 text-blue-800" },
+  PENDIENTE: { label: "PENDIENTE", className: "border-amber-200 bg-amber-100 text-amber-800" },
+  PENDING: { label: "PENDIENTE", className: "border-amber-200 bg-amber-100 text-amber-800" }
 };
 
 function toDate(value: Date | string): Date {
@@ -44,6 +48,14 @@ function toDate(value: Date | string): Date {
     return value;
   }
   return new Date(value);
+}
+
+function getFileName(item: CargaHistorialItem): string {
+  return item.fileName ?? item.archivoNombre ?? "-";
+}
+
+function getStatus(item: CargaHistorialItem): string {
+  return item.status ?? item.estado ?? "";
 }
 
 function EstadoBadge({ estado }: { estado: string }): JSX.Element {
@@ -82,17 +94,19 @@ export function CargaHistorial({
         )
       },
       {
-        accessorKey: "archivoNombre",
+        id: "archivo",
+        accessorFn: (row) => getFileName(row),
         header: "Archivo",
         filterFn: "includesString",
         cell: ({ row }) => (
-          <span className="block max-w-[220px] truncate text-slate-700" title={row.original.archivoNombre}>
-            {row.original.archivoNombre}
+          <span className="block max-w-[220px] truncate text-slate-700" title={getFileName(row.original)}>
+            {getFileName(row.original)}
           </span>
         )
       },
       {
-        accessorKey: "estado",
+        id: "estado",
+        accessorFn: (row) => getStatus(row),
         header: "Estado",
         filterFn: (row, columnId, filterValue) => {
           if (!Array.isArray(filterValue) || filterValue.length === 0) {
@@ -105,7 +119,7 @@ export function CargaHistorial({
           filterOptions: Object.keys(estadoMeta),
           align: "center"
         },
-        cell: ({ row }) => <EstadoBadge estado={row.original.estado} />
+        cell: ({ row }) => <EstadoBadge estado={getStatus(row.original)} />
       },
       {
         accessorKey: "created",
@@ -148,7 +162,7 @@ export function CargaHistorial({
         accessorFn: (row) =>
           row.rejected > 0 && errorDownloadBasePath
             ? "Descargar errores"
-            : row.estado === "PENDIENTE"
+            : getStatus(row) === "PENDIENTE" || getStatus(row) === "PENDING"
               ? "Preview sin aplicar"
               : "-",
         header: "Detalle",
@@ -161,7 +175,7 @@ export function CargaHistorial({
             >
               Descargar errores
             </a>
-          ) : row.original.estado === "PENDIENTE" ? (
+          ) : getStatus(row.original) === "PENDIENTE" || getStatus(row.original) === "PENDING" ? (
             <span className="text-xs text-amber-600">Preview sin aplicar</span>
           ) : (
             <span className="text-xs text-slate-400">-</span>

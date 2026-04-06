@@ -5,8 +5,8 @@ import { ApiError, handleApiError } from "@/lib/api-error";
 import { getProjectIdFromRequest, withNormalizedProjectId } from "@/lib/http/request";
 import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
-import { prisma } from "@/lib/prisma";
-import { resolveTenantRut, tenantSchema } from "@/lib/tenants/schema";
+import { tenantSchema } from "@/lib/tenants/schema";
+import { deleteTenant, getTenantById, updateTenant } from "@/lib/tenants/tenant-service";
 
 export const runtime = "nodejs";
 
@@ -26,9 +26,7 @@ export async function GET(
     await requireSession();
     const projectId = getRequiredProjectId(request);
 
-    const item = await prisma.tenant.findFirst({
-      where: { id: context.params.id, proyectoId: projectId }
-    });
+    const item = await getTenantById({ projectId, tenantId: context.params.id });
     if (!item) {
       throw new ApiError(404, "No encontrado.");
     }
@@ -54,25 +52,7 @@ export async function PUT(
 
     const payload = result.data;
     const tenantId = context.params.id;
-    const existing = await prisma.tenant.findFirst({
-      where: { id: tenantId, proyectoId: payload.proyectoId },
-      select: { id: true, proyectoId: true }
-    });
-    if (!existing) {
-      return NextResponse.json({ message: "Arrendatario no encontrado." }, { status: 404 });
-    }
-
-    const updated = await prisma.tenant.update({
-      where: { id: tenantId },
-      data: {
-        rut: resolveTenantRut(payload.rut, payload.razonSocial, payload.nombreComercial),
-        razonSocial: payload.razonSocial,
-        nombreComercial: payload.nombreComercial,
-        vigente: payload.vigente,
-        email: payload.email || null,
-        telefono: payload.telefono || null
-      }
-    });
+    const updated = await updateTenant({ tenantId, payload });
     invalidateMetricsCacheByProject(payload.proyectoId);
     return NextResponse.json(updated);
   } catch (error) {
@@ -89,12 +69,7 @@ export async function DELETE(
     const projectId = getRequiredProjectId(request);
 
     const tenantId = context.params.id;
-    const deleted = await prisma.tenant.deleteMany({
-      where: { id: tenantId, proyectoId: projectId }
-    });
-    if (deleted.count === 0) {
-      return NextResponse.json({ message: "Arrendatario no encontrado." }, { status: 404 });
-    }
+    await deleteTenant({ projectId, tenantId });
     invalidateMetricsCacheByProject(projectId);
 
     return new Response(null, { status: 204 });

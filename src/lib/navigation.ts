@@ -1,4 +1,4 @@
-export type NavItem = {
+﻿export type NavItem = {
   label: string;
   href: string;
   enabled: boolean;
@@ -37,7 +37,7 @@ export const TOP_NAV_ITEMS: NavItem[] = [
   },
   {
     label: "Finanzas",
-    href: "/finanzas",
+    href: "/finance",
     enabled: true,
     match: "startsWith"
   },
@@ -48,7 +48,7 @@ export const TOP_NAV_ITEMS: NavItem[] = [
     match: "startsWith"
   },
   {
-    label: "Configuración",
+    label: "ConfiguraciÃ³n",
     href: "/configuracion",
     enabled: true,
     match: "startsWith"
@@ -73,41 +73,43 @@ export const CONFIGURACION_SUB_NAV_ITEMS: NavItem[] = [
 export const FINANZAS_SUB_NAV_ITEMS: NavItem[] = [
   {
     label: "Dashboard",
-    href: "/finanzas/dashboard",
+    href: "/finance/dashboard",
     enabled: true,
     match: "startsWith"
   },
   {
     label: "EE.RR",
-    href: "/finanzas/eerr",
+    href: "/finance/eerr",
     enabled: true,
     match: "startsWith"
   },
   {
-    label: "Análisis",
-    href: "/finanzas/analisis",
+    label: "AnÃ¡lisis",
+    href: "/finance/analysis",
     enabled: true,
     match: "startsWith"
   },
   {
     label: "Arrendatarios",
-    href: "/finanzas/arrendatarios",
+    href: "/finance/tenants",
     enabled: true,
     match: "startsWith"
   },
   {
     label: "Cargar Datos",
-    href: "/finanzas/upload",
+    href: "/finance/upload",
     enabled: true,
     match: "startsWith"
   },
   {
     label: "Mapeos",
-    href: "/finanzas/mapeos",
+    href: "/finance/mappings",
     enabled: true,
     match: "startsWith"
   }
 ];
+
+export const FINANCE_SUB_NAV_ITEMS: NavItem[] = FINANZAS_SUB_NAV_ITEMS;
 
 export const RENT_ROLL_SUB_NAV_ITEMS: NavItem[] = [
   {
@@ -147,3 +149,5 @@ export const RENT_ROLL_SUB_NAV_ITEMS: NavItem[] = [
     match: "exact"
   }
 ];
+
+

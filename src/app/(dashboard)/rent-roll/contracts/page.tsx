@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { type Prisma, TipoCargaDatos } from "@prisma/client";
+import { type Prisma, DataUploadType } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { ContractManager } from "@/components/contracts/ContractManager";
 import { ContractsViewTable } from "@/components/rent-roll/ContractsViewTable";
@@ -153,7 +153,7 @@ export default async function ContractsPage({
   const nextCursor = contracts.length === 50 ? contracts[contracts.length - 1]?.id : undefined;
 
   const uploadHistory =
-    mode === "upload" ? await getUploadHistory(selectedProjectId, TipoCargaDatos.RENT_ROLL) : [];
+    mode === "upload" ? await getUploadHistory(selectedProjectId, DataUploadType.RENT_ROLL) : [];
 
   const filteredExportHref = buildExportExcelUrl({
     dataset: "contratos",
@@ -506,3 +506,4 @@ export default async function ContractsPage({
     </main>
   );
 }
+

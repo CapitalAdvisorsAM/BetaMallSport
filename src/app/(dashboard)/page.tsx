@@ -131,7 +131,7 @@ export default async function DashboardPage({
   }
 
   const today = startOfDay(new Date());
-  const [activeLocales, activeContractsRaw, groupedStates, latestValorUf, ventasPeriodo, energiaPeriodo, dashboardConfigRows] =
+  const [activeLocales, activeContractsRaw, groupedStates, latestValorUf, ventasPeriodoRaw, energiaPeriodo, dashboardConfigRows] =
     await Promise.all([
       prisma.unit.findMany({
         where: {
@@ -214,15 +214,15 @@ export default async function DashboardPage({
         orderBy: { fecha: "desc" },
         select: { fecha: true, valor: true }
       }),
-      prisma.ventaLocal.findMany({
+      prisma.unitSale.findMany({
         where: {
-          proyectoId: selectedProjectId,
-          periodo
+          projectId: selectedProjectId,
+          period: periodo
         },
         select: {
-          localId: true,
-          periodo: true,
-          ventasUf: true
+          unitId: true,
+          period: true,
+          salesUf: true
         }
       }),
       prisma.ingresoEnergia.findMany({
@@ -238,6 +238,12 @@ export default async function DashboardPage({
       }),
       prisma.dashboardConfig.findMany({ orderBy: { position: "asc" } }),
     ]);
+
+  const ventasPeriodo = ventasPeriodoRaw.map((sale) => ({
+    localId: sale.unitId,
+    periodo: sale.period,
+    ventasUf: sale.salesUf
+  }));
 
   const widgetConfigs = resolveWidgetConfigs(dashboardConfigRows);
   const configMap = new Map<string, ResolvedWidgetConfig>(widgetConfigs.map((c) => [c.widgetId, c]));
@@ -609,3 +615,4 @@ export default async function DashboardPage({
     </main>
   );
 }
+

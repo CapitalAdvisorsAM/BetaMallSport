@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
-import { resolveTenantRut, tenantSchema } from "@/lib/tenants/schema";
+import { tenantSchema } from "@/lib/tenants/schema";
 import {
   getRequiredProjectIdSearchParam,
   parseRequiredPaginationParams,
@@ -10,7 +10,7 @@ import {
 } from "@/lib/http/request";
 import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
-import { prisma } from "@/lib/prisma";
+import { createTenant, listTenantsPage } from "@/lib/tenants/tenant-service";
 
 export const runtime = "nodejs";
 
@@ -21,18 +21,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     const projectId = getRequiredProjectIdSearchParam(searchParams);
     const { limit, cursor } = parseRequiredPaginationParams(searchParams);
 
-    const items = await prisma.tenant.findMany({
-      where: { proyectoId: projectId },
-      take: limit + 1,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      orderBy: { id: "asc" }
-    });
-
-    const hasMore = items.length > limit;
-    const data = hasMore ? items.slice(0, limit) : items;
-    const nextCursor = hasMore ? data[data.length - 1]?.id ?? null : null;
-
-    return NextResponse.json({ data, nextCursor, hasMore });
+    const result = await listTenantsPage({ projectId, limit, cursor });
+    return NextResponse.json(result);
   } catch (error) {
     return handleApiError(error);
   }
@@ -50,17 +40,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     const payload = result.data;
-    const created = await prisma.tenant.create({
-      data: {
-        proyectoId: payload.proyectoId,
-        rut: resolveTenantRut(payload.rut, payload.razonSocial, payload.nombreComercial),
-        razonSocial: payload.razonSocial,
-        nombreComercial: payload.nombreComercial,
-        vigente: payload.vigente,
-        email: payload.email || null,
-        telefono: payload.telefono || null
-      }
-    });
+    const created = await createTenant({ payload });
     invalidateMetricsCacheByProject(payload.proyectoId);
 
     return NextResponse.json(created, { status: 201 });

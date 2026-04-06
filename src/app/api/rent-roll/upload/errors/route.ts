@@ -18,16 +18,16 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "cargaId es obligatorio." }, { status: 400 });
     }
 
-    const carga = await prisma.cargaDatos.findUnique({ where: { id: cargaId } });
-    if (!carga?.errorDetalle) {
+    const carga = await prisma.dataUpload.findUnique({ where: { id: cargaId } });
+    if (!carga?.errorDetail) {
       return NextResponse.json({ message: "No se encontraron errores para la carga." }, { status: 404 });
     }
 
-    const legacyPayload = parseRentRollPreviewPayload(carga.errorDetalle);
+    const legacyPayload = parseRentRollPreviewPayload(carga.errorDetail);
     const errors = legacyPayload
       ? [...legacyPayload.errors, ...(legacyPayload.report?.rejectedRows ?? [])]
       : (() => {
-          const modernPayload = parseStoredUploadPayload(carga.errorDetalle);
+          const modernPayload = parseStoredUploadPayload(carga.errorDetail);
           if (!modernPayload) {
             return null;
           }
@@ -60,3 +60,4 @@ export async function GET(request: Request): Promise<NextResponse> {
     return NextResponse.json({ message: "No fue posible generar el archivo." }, { status: 500 });
   }
 }
+

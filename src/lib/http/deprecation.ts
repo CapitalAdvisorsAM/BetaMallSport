@@ -1,4 +1,4 @@
-const DEPRECATION_SUNSET = "Mon, 04 May 2026 00:00:00 GMT";
+const DEPRECATION_SUNSET = "Wed, 06 May 2026 00:00:00 GMT";
 
 type DeprecationOptions = {
   canonicalPath: string;

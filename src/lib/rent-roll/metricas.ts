@@ -244,17 +244,17 @@ export async function getMetricasRentRoll(
 
   const [contratosConRelaciones, ventasPeriodo] = await Promise.all([
     listContratosConRelaciones(proyectoId, start, nextMonthStart, hoy),
-    prisma.ventaLocal.findMany({
-      where: { proyectoId, periodo },
+    prisma.unitSale.findMany({
+      where: { projectId: proyectoId, period: periodo },
       select: {
-        localId: true,
-        ventasUf: true
+        unitId: true,
+        salesUf: true
       }
     })
   ]);
 
   const ventasMap = new Map<string, number>(
-    ventasPeriodo.map((venta) => [venta.localId, venta.ventasUf.toNumber()])
+    ventasPeriodo.map((venta) => [venta.unitId, venta.salesUf.toNumber()])
   );
 
   return contratosConRelaciones
@@ -322,3 +322,4 @@ export function buildResumen(
     contratosPorVencer90
   };
 }
+

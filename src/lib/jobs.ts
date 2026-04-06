@@ -1,4 +1,4 @@
-import { EstadoCargaDatos, TipoCargaDatos } from "@prisma/client";
+import { DataUploadStatus, DataUploadType } from "@prisma/client";
 import { ApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 
@@ -41,21 +41,21 @@ function parsePayload(value: unknown): JobPayload | null {
   return candidate as JobPayload;
 }
 
-function toEstado(status: JobStatus): EstadoCargaDatos {
+function toEstado(status: JobStatus): DataUploadStatus {
   if (status === "QUEUED") {
-    return EstadoCargaDatos.PENDIENTE;
+    return DataUploadStatus.PENDING;
   }
   if (status === "PROCESSING") {
-    return EstadoCargaDatos.PROCESANDO;
+    return DataUploadStatus.PROCESSING;
   }
   if (status === "SUCCEEDED") {
-    return EstadoCargaDatos.OK;
+    return DataUploadStatus.OK;
   }
-  return EstadoCargaDatos.ERROR;
+  return DataUploadStatus.ERROR;
 }
 
 export async function createJob(input: {
-  proyectoId: string;
+  projectId: string;
   userId: string;
   kind: JobKind;
   payload: Record<string, unknown>;
@@ -67,16 +67,16 @@ export async function createJob(input: {
     progress: 0
   };
 
-  const created = await prisma.cargaDatos.create({
+  const created = await prisma.dataUpload.create({
     data: {
-      proyectoId: input.proyectoId,
-      tipo: TipoCargaDatos.BANCO,
-      usuarioId: input.userId,
-      archivoNombre: `JOB::${input.kind}`,
-      archivoUrl: "internal://jobs",
-      estado: EstadoCargaDatos.PENDIENTE,
-      errorDetalle: JSON.stringify(jobPayload),
-      registrosCargados: 0
+      projectId: input.projectId,
+      type: DataUploadType.BANK,
+      userId: input.userId,
+      fileName: `JOB::${input.kind}`,
+      fileUrl: "internal://jobs",
+      status: DataUploadStatus.PENDING,
+      errorDetail: JSON.stringify(jobPayload),
+      recordsLoaded: 0
     },
     select: { id: true }
   });
@@ -86,34 +86,34 @@ export async function createJob(input: {
 
 export async function getJob(jobId: string): Promise<{
   id: string;
-  proyectoId: string;
+  projectId: string;
   userId: string;
   status: JobStatus;
   kind: JobKind;
   payload: JobPayload;
 }> {
-  const job = await prisma.cargaDatos.findUnique({
+  const job = await prisma.dataUpload.findUnique({
     where: { id: jobId },
     select: {
       id: true,
-      proyectoId: true,
-      usuarioId: true,
-      archivoNombre: true,
-      errorDetalle: true
+      projectId: true,
+      userId: true,
+      fileName: true,
+      errorDetail: true
     }
   });
-  if (!job || !job.archivoNombre.startsWith("JOB::")) {
+  if (!job || !job.fileName.startsWith("JOB::")) {
     throw new ApiError(404, "Job no encontrado.");
   }
-  const payload = parsePayload(job.errorDetalle);
+  const payload = parsePayload(job.errorDetail);
   if (!payload) {
     throw new ApiError(422, "Job invalido.");
   }
 
   return {
     id: job.id,
-    proyectoId: job.proyectoId,
-    userId: job.usuarioId,
+    projectId: job.projectId,
+    userId: job.userId,
     status: payload.status,
     kind: payload.kind,
     payload
@@ -144,24 +144,25 @@ export async function updateJobStatus(input: {
         : undefined
   };
 
-  await prisma.cargaDatos.update({
+  await prisma.dataUpload.update({
     where: { id: input.jobId },
     data: {
-      estado: toEstado(input.status),
-      errorDetalle: JSON.stringify(nextPayload)
+      status: toEstado(input.status),
+      errorDetail: JSON.stringify(nextPayload)
     }
   });
 }
 
 export async function listQueuedJobs(limit = 10): Promise<Array<{ id: string }>> {
-  return prisma.cargaDatos.findMany({
+  return prisma.dataUpload.findMany({
     where: {
-      tipo: TipoCargaDatos.BANCO,
-      estado: EstadoCargaDatos.PENDIENTE,
-      archivoNombre: { startsWith: "JOB::" }
+      type: DataUploadType.BANK,
+      status: DataUploadStatus.PENDING,
+      fileName: { startsWith: "JOB::" }
     },
     orderBy: { createdAt: "asc" },
     take: limit,
     select: { id: true }
   });
 }
+

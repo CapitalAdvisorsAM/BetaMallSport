@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE "Contrato" ADD COLUMN "diasGracia" INTEGER NOT NULL DEFAULT 0;

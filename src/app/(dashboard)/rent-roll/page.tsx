@@ -59,7 +59,7 @@ export default async function RentRollPage({
     redirect(`/rent-roll?${params.toString()}`);
   }
 
-  const [contracts, ventaLocales, localesActivos] = await Promise.all([
+  const [contracts, unitSalesRaw, localesActivos] = await Promise.all([
     prisma.contract.findMany({
       where: {
         proyectoId: selectedProjectId,
@@ -110,14 +110,14 @@ export default async function RentRollPage({
       },
       orderBy: [{ local: { codigo: "asc" } }]
     }),
-    prisma.ventaLocal.findMany({
+    prisma.unitSale.findMany({
       where: {
-        proyectoId: selectedProjectId,
-        periodo: periodoVentas
+        projectId: selectedProjectId,
+        period: periodoVentas
       },
       select: {
-        localId: true,
-        ventasUf: true,
+        unitId: true,
+        salesUf: true,
         createdAt: true
       },
       orderBy: [{ createdAt: "desc" }]
@@ -136,6 +136,12 @@ export default async function RentRollPage({
       }
     })
   ]);
+
+  const ventaLocales = unitSalesRaw.map((sale) => ({
+    localId: sale.unitId,
+    ventasUf: sale.salesUf,
+    createdAt: sale.createdAt
+  }));
 
   const ventasByLocalId = new Map<string, number>();
   for (const venta of ventaLocales) {
@@ -312,3 +318,4 @@ export default async function RentRollPage({
     </main>
   );
 }
+

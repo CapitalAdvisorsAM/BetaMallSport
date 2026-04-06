@@ -1,24 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { formatCalculatedLocalSize, getCalculatedLocalSize } from "@/lib/locales/size";
-import { cn, formatDecimal } from "@/lib/utils";
+import { EntityActionsCell } from "@/components/crud/EntityActionsCell";
+import { EntityCrudShell } from "@/components/crud/EntityCrudShell";
+import { EntityFormSection } from "@/components/crud/EntityFormSection";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { DataTable } from "@/components/ui/DataTable";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
-import { Spinner } from "@/components/ui/Spinner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { enumFilterColumn, numberFilterColumn } from "@/components/ui/data-table-columns";
+import { useCrudResource } from "@/hooks/useCrudResource";
 import { useDataTable } from "@/hooks/useDataTable";
+import { extractApiErrorMessage } from "@/lib/http/client-errors";
+import { formatCalculatedLocalSize, getCalculatedLocalSize } from "@/lib/locales/size";
+import { buildProjectIdQueryString } from "@/lib/project-query";
+import { cn, formatDecimal } from "@/lib/utils";
 
 type LocalTipo =
   | "LOCAL_COMERCIAL"
@@ -85,18 +85,61 @@ function parseDecimal(value: string): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+async function createUnit(form: LocalForm): Promise<LocalRecord> {
+  const response = await fetch("/api/units", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(form)
+  });
+  const data = (await response.json()) as Partial<LocalRecord> & { message?: string };
+  if (!response.ok || !data.id) {
+    throw new Error(data.message ?? "No se pudo guardar el local.");
+  }
+  return toLocalRecord(data);
+}
+
+async function updateUnit(id: string, form: LocalForm): Promise<LocalRecord> {
+  const query = buildProjectIdQueryString(form.proyectoId);
+  const response = await fetch(`/api/units/${id}?${query}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(form)
+  });
+  const data = (await response.json()) as Partial<LocalRecord> & { message?: string };
+  if (!response.ok || !data.id) {
+    throw new Error(data.message ?? "No se pudo guardar el local.");
+  }
+  return toLocalRecord(data);
+}
+
+async function removeUnit(id: string, projectId: string): Promise<void> {
+  const query = buildProjectIdQueryString(projectId);
+  const response = await fetch(`/api/units/${id}?${query}`, { method: "DELETE" });
+  if (!response.ok) {
+    throw new Error(await extractApiErrorMessage(response, "No se pudo eliminar el local."));
+  }
+}
+
 export function LocalesCrudPanel({
   projectId,
   canEdit,
   initialLocales
 }: LocalesCrudPanelProps): JSX.Element {
-  const [locales, setLocales] = useState<LocalRecord[]>(initialLocales);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState<LocalForm>(createEmptyForm(projectId));
   const glam2Missing = !String(form.glam2).trim();
+
+  const { data: locales, status, error, isLoading, createOne, updateOne, deleteOne, resetStatus } =
+    useCrudResource<LocalRecord, LocalForm, LocalForm>({
+      initialData: initialLocales,
+      getId: (local) => local.id,
+      create: createUnit,
+      update: updateUnit,
+      remove: (localId) => removeUnit(localId, projectId),
+      sort: (a, b) => a.codigo.localeCompare(b.codigo, "es", { sensitivity: "base" })
+    });
 
   const columns = useMemo<ColumnDef<LocalRecord, unknown>[]>(
     () => [
@@ -112,21 +155,12 @@ export function LocalesCrudPanel({
         filterFn: "includesString",
         cell: ({ row }) => <span>{row.original.nombre || "-"}</span>
       },
-      {
+      enumFilterColumn<LocalRecord>({
         accessorKey: "tipo",
         header: "Tipo",
-        filterFn: (row, columnId, filterValue) => {
-          if (!Array.isArray(filterValue) || filterValue.length === 0) {
-            return true;
-          }
-          return filterValue.includes(String(row.getValue(columnId)));
-        },
-        meta: {
-          filterType: "enum",
-          filterOptions: ["LOCAL_COMERCIAL", "SIMULADOR", "MODULO", "ESPACIO", "BODEGA", "OTRO"]
-        },
-        cell: ({ row }) => <span className="whitespace-nowrap">{row.original.tipo}</span>
-      },
+        options: ["LOCAL_COMERCIAL", "SIMULADOR", "MODULO", "ESPACIO", "BODEGA", "OTRO"],
+        cell: (row) => <span className="whitespace-nowrap">{row.tipo}</span>
+      }),
       {
         accessorKey: "piso",
         header: "Piso",
@@ -139,15 +173,12 @@ export function LocalesCrudPanel({
         enableColumnFilter: false,
         cell: ({ row }) => <span className="whitespace-nowrap">{row.original.zona ?? "-"}</span>
       },
-      {
+      numberFilterColumn<LocalRecord>({
         id: "glam2",
-        accessorFn: (row) => parseDecimal(row.glam2),
+        accessorFn: (row) => parseDecimal(row.glam2) ?? 0,
         header: "GLA m2",
-        enableColumnFilter: false,
-        sortUndefined: "last",
-        meta: { align: "right" },
-        cell: ({ row }) => <span className="whitespace-nowrap">{formatDecimal(row.original.glam2)}</span>
-      },
+        cell: (row) => <span className="whitespace-nowrap">{formatDecimal(row.glam2)}</span>
+      }),
       {
         id: "tamanoCalculado",
         accessorFn: (row) => formatCalculatedLocalSize(getCalculatedLocalSize(row.tipo, row.glam2)),
@@ -160,26 +191,20 @@ export function LocalesCrudPanel({
           </span>
         )
       },
-      {
+      enumFilterColumn<LocalRecord>({
         id: "esGLA",
-        accessorFn: (row) => (row.esGLA ? 1 : 0),
+        accessorFn: (row) => (row.esGLA ? "Si" : "No"),
         header: "Es GLA",
-        enableColumnFilter: false,
-        meta: { align: "center" },
-        cell: ({ row }) => <span className="whitespace-nowrap">{row.original.esGLA ? "Si" : "No"}</span>
-      },
-      {
+        options: ["Si", "No"],
+        align: "center",
+        cell: (row) => <span className="whitespace-nowrap">{row.esGLA ? "Si" : "No"}</span>
+      }),
+      enumFilterColumn<LocalRecord>({
         accessorKey: "estado",
         header: "Estado",
-        filterFn: (row, columnId, filterValue) => {
-          if (!Array.isArray(filterValue) || filterValue.length === 0) {
-            return true;
-          }
-          return filterValue.includes(String(row.getValue(columnId)));
-        },
-        meta: { filterType: "enum", filterOptions: ["ACTIVO", "INACTIVO"] },
-        cell: ({ row }) => <span className="whitespace-nowrap">{row.original.estado}</span>
-      },
+        options: ["ACTIVO", "INACTIVO"],
+        cell: (row) => <span className="whitespace-nowrap">{row.estado}</span>
+      }),
       {
         id: "acciones",
         accessorFn: (row) => row.id,
@@ -187,41 +212,28 @@ export function LocalesCrudPanel({
         enableSorting: false,
         enableColumnFilter: false,
         cell: ({ row }) => (
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => beginEdit(row.original)}
-              disabled={!canEdit}
-              className="h-auto px-2 py-1 text-xs"
-            >
-              Editar
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => setPendingDeleteId(row.original.id)}
-              disabled={!canEdit || loading}
-              className="h-auto px-2 py-1 text-xs"
-            >
-              Eliminar
-            </Button>
-          </div>
+          <EntityActionsCell
+            canEdit={canEdit}
+            loading={isLoading}
+            onEdit={() => beginEdit(row.original)}
+            onDelete={() => setPendingDeleteId(row.original.id)}
+          />
         )
       }
     ],
-    [canEdit, loading]
+    [beginEdit, canEdit, isLoading]
   );
 
   const { table } = useDataTable(locales, columns);
 
-  function beginCreate(): void {
+  const beginCreate = useCallback((): void => {
     setSelectedId(null);
     setFieldErrors({});
     setForm(createEmptyForm(projectId));
-  }
+    resetStatus();
+  }, [projectId, resetStatus]);
 
-  function beginEdit(local: LocalRecord): void {
+  const beginEdit = useCallback((local: LocalRecord): void => {
     setSelectedId(local.id);
     setFieldErrors({});
     setForm({
@@ -235,7 +247,8 @@ export function LocalesCrudPanel({
       esGLA: local.esGLA,
       estado: local.estado
     });
-  }
+    resetStatus();
+  }, [resetStatus]);
 
   function clearFieldError(field: string): void {
     setFieldErrors((previous) => {
@@ -262,7 +275,7 @@ export function LocalesCrudPanel({
   }
 
   async function handleSubmit(): Promise<void> {
-    if (!canEdit || loading) {
+    if (!canEdit || isLoading) {
       return;
     }
 
@@ -274,260 +287,230 @@ export function LocalesCrudPanel({
     }
 
     setFieldErrors({});
-    setLoading(true);
-    try {
-      const isEditing = Boolean(selectedId);
-      const editQuery = `?projectId=${encodeURIComponent(form.proyectoId)}&proyectoId=${encodeURIComponent(form.proyectoId)}`;
-      const response = await fetch(
-        isEditing ? `/api/units/${selectedId}${editQuery}` : "/api/units",
-        {
-          method: isEditing ? "PUT" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form)
-        }
-      );
-      const data = (await response.json()) as Partial<LocalRecord> & { message?: string };
-      if (!response.ok || !data.id) {
-        throw new Error(data.message ?? "No se pudo guardar el local.");
-      }
+    resetStatus();
 
-      const saved = toLocalRecord(data);
-      if (isEditing) {
-        setLocales((previous) => previous.map((item) => (item.id === saved.id ? saved : item)));
-        toast.success("Local actualizado correctamente.");
-      } else {
-        setLocales((previous) =>
-          [...previous, saved].sort((a, b) => a.codigo.localeCompare(b.codigo, "es", { sensitivity: "base" }))
-        );
-        toast.success("Local creado correctamente.");
-      }
-      beginCreate();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Error inesperado al guardar local.");
-    } finally {
-      setLoading(false);
-    }
-  }
+    const saved = selectedId
+      ? await updateOne(selectedId, form, "No se pudo guardar el local.")
+      : await createOne(form, "No se pudo guardar el local.");
 
-  async function handleDelete(localId: string): Promise<void> {
-    if (!canEdit || loading) {
+    if (!saved) {
+      toast.error("No se pudo guardar el local.");
       return;
     }
 
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `/api/units/${localId}?projectId=${encodeURIComponent(projectId)}&proyectoId=${encodeURIComponent(projectId)}`,
-        { method: "DELETE" }
-      );
-      const data = (await response.json()) as { message?: string };
-      if (!response.ok) {
-        throw new Error(data.message ?? "No se pudo eliminar el local.");
-      }
+    toast.success(selectedId ? "Local actualizado correctamente." : "Local creado correctamente.");
+    beginCreate();
+  }
 
-      setLocales((previous) => previous.filter((item) => item.id !== localId));
-      if (selectedId === localId) {
-        beginCreate();
-      }
-      toast.success("Local eliminado correctamente.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Error inesperado al eliminar local.");
-    } finally {
-      setLoading(false);
+  async function handleDelete(): Promise<void> {
+    if (!pendingDeleteId || !canEdit || isLoading) {
+      return;
     }
+
+    resetStatus();
+    const deleted = await deleteOne(pendingDeleteId, "No se pudo eliminar el local.");
+    if (!deleted) {
+      toast.error("No se pudo eliminar el local.");
+      return;
+    }
+
+    if (selectedId === pendingDeleteId) {
+      beginCreate();
+    }
+
+    setPendingDeleteId(null);
+    toast.success("Local eliminado correctamente.");
   }
 
   return (
-    <section className="space-y-4 rounded-md bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-base font-semibold text-slate-900">CRUD de Locales</h3>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={beginCreate}
-          className="h-auto px-3 py-2 text-sm"
-        >
-          Nuevo
-        </Button>
-      </div>
-
-      {!canEdit ? <p className="text-sm text-amber-700">Tu rol es de solo lectura para locales.</p> : null}
-
-      <div className="grid gap-3 md:grid-cols-4">
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-700">
-            Codigo <span className="text-rose-500">*</span>
-          </span>
-          <Input
-            value={form.codigo}
-            onChange={(event) => {
-              setForm({ ...form, codigo: event.target.value });
-              clearFieldError("codigo");
-            }}
-            className={cn(
-              "w-full rounded-md border px-3 py-2",
-              fieldErrors.codigo ? "border-rose-500" : "border-slate-300"
-            )}
-          />
-          {fieldErrors.codigo ? <p className="mt-0.5 text-xs text-rose-600">{fieldErrors.codigo}</p> : null}
-        </label>
-        <label className="text-sm md:col-span-2">
-          <span className="mb-1 block text-slate-700">
-            Nombre <span className="text-xs text-slate-400">(opcional)</span>
-          </span>
-          <Input
-            value={form.nombre}
-            onChange={(event) => setForm({ ...form, nombre: event.target.value })}
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
-          />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-700">
-            GLA m2 <span className="text-xs text-slate-400">(opcional)</span>
-          </span>
-          <Input
-            value={form.glam2}
-            onChange={(event) => {
-              setForm({ ...form, glam2: event.target.value });
-              clearFieldError("glam2");
-            }}
-            placeholder="Ej: 88.5 o 88,5"
-            className={cn(
-              "w-full rounded-md border px-3 py-2",
-              fieldErrors.glam2 ? "border-rose-500" : "border-slate-300"
-            )}
-          />
-          {fieldErrors.glam2 ? <p className="mt-0.5 text-xs text-rose-600">{fieldErrors.glam2}</p> : null}
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-700">
-            Piso <span className="text-rose-500">*</span>
-          </span>
-          <Input
-            value={form.piso}
-            onChange={(event) => {
-              setForm({ ...form, piso: event.target.value });
-              clearFieldError("piso");
-            }}
-            className={cn(
-              "w-full rounded-md border px-3 py-2",
-              fieldErrors.piso ? "border-rose-500" : "border-slate-300"
-            )}
-          />
-          {fieldErrors.piso ? <p className="mt-0.5 text-xs text-rose-600">{fieldErrors.piso}</p> : null}
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-700">
-            Tipo <span className="text-rose-500">*</span>
-          </span>
-          <Select
-            value={form.tipo}
-            onValueChange={(value) => setForm({ ...form, tipo: value as LocalTipo })}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="LOCAL_COMERCIAL">LOCAL COMERCIAL</SelectItem>
-              <SelectItem value="SIMULADOR">SIMULADOR</SelectItem>
-              <SelectItem value="MODULO">MODULO</SelectItem>
-              <SelectItem value="ESPACIO">ESPACIO</SelectItem>
-              <SelectItem value="BODEGA">BODEGA</SelectItem>
-              <SelectItem value="OTRO">OTRO</SelectItem>
-            </SelectContent>
-          </Select>
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-700">
-            Zona <span className="text-xs text-slate-400">(opcional)</span>
-          </span>
-          <Input
-            value={form.zona ?? ""}
-            onChange={(event) => setForm({ ...form, zona: event.target.value || null })}
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
-          />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-700">
-            Estado <span className="text-rose-500">*</span>
-          </span>
-          <Select
-            value={form.estado}
-            onValueChange={(value) => setForm({ ...form, estado: value as MasterStatus })}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ACTIVO">ACTIVO</SelectItem>
-              <SelectItem value="INACTIVO">INACTIVO</SelectItem>
-            </SelectContent>
-          </Select>
-        </label>
-        <label className="flex items-center gap-2 pt-7 text-sm text-slate-700">
-          <Checkbox
-            checked={form.esGLA}
-            onCheckedChange={(value) => setForm({ ...form, esGLA: value === true })}
-          />
-          Es GLA
-        </label>
-      </div>
-      {glam2Missing ? (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          Alerta: GLA m2 esta vacio. Se guardara como 0 y puede impactar metricas de ocupacion/GLA.
-        </div>
-      ) : null}
-
-      <div className="flex items-center gap-3">
-        <Button
-          type="button"
-          variant="default"
-          onClick={() => void handleSubmit()}
-          disabled={!canEdit || loading}
-          className="rounded-full"
-        >
-          {loading ? (
-            <>
-              <Spinner className="mr-1.5" />
-              Guardando…
-            </>
-          ) : selectedId ? (
-            "Actualizar local"
-          ) : (
-            "Crear local"
-          )}
-        </Button>
-      </div>
-
-      <DataTable
-        table={table}
-        emptyMessage="Aun no hay locales registrados. Completa el formulario de arriba para agregar el primero."
-      />
-      {locales.length === 0 ? (
-        <div className="flex justify-center">
+    <>
+      <EntityCrudShell
+        title="CRUD de Locales"
+        canEdit={canEdit}
+        readOnlyMessage="Tu rol es de solo lectura para locales."
+        toolbar={
           <Button
             type="button"
-            variant="default"
             onClick={beginCreate}
-            className="h-auto rounded-full px-3 py-1.5 text-xs"
+            variant="outline"
+            className="h-auto px-3 py-2 text-sm"
           >
-            Crear primer local
+            Nuevo
           </Button>
-        </div>
-      ) : null}
+        }
+        message={status === "error" ? error : null}
+        form={
+          <div className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-4">
+              <label className="text-sm">
+                <span className="mb-1 block text-slate-700">
+                  Codigo <span className="text-rose-500">*</span>
+                </span>
+                <Input
+                  value={form.codigo}
+                  onChange={(event) => {
+                    setForm({ ...form, codigo: event.target.value });
+                    clearFieldError("codigo");
+                  }}
+                  className={cn(
+                    "w-full rounded-md border px-3 py-2",
+                    fieldErrors.codigo ? "border-rose-500" : "border-slate-300"
+                  )}
+                />
+                {fieldErrors.codigo ? <p className="mt-0.5 text-xs text-rose-600">{fieldErrors.codigo}</p> : null}
+              </label>
+              <label className="text-sm md:col-span-2">
+                <span className="mb-1 block text-slate-700">
+                  Nombre <span className="text-xs text-slate-400">(opcional)</span>
+                </span>
+                <Input
+                  value={form.nombre}
+                  onChange={(event) => setForm({ ...form, nombre: event.target.value })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2"
+                />
+              </label>
+              <label className="text-sm">
+                <span className="mb-1 block text-slate-700">
+                  GLA m2 <span className="text-xs text-slate-400">(opcional)</span>
+                </span>
+                <Input
+                  value={form.glam2}
+                  onChange={(event) => {
+                    setForm({ ...form, glam2: event.target.value });
+                    clearFieldError("glam2");
+                  }}
+                  placeholder="Ej: 88.5 o 88,5"
+                  className={cn(
+                    "w-full rounded-md border px-3 py-2",
+                    fieldErrors.glam2 ? "border-rose-500" : "border-slate-300"
+                  )}
+                />
+                {fieldErrors.glam2 ? <p className="mt-0.5 text-xs text-rose-600">{fieldErrors.glam2}</p> : null}
+              </label>
+              <label className="text-sm">
+                <span className="mb-1 block text-slate-700">
+                  Piso <span className="text-rose-500">*</span>
+                </span>
+                <Input
+                  value={form.piso}
+                  onChange={(event) => {
+                    setForm({ ...form, piso: event.target.value });
+                    clearFieldError("piso");
+                  }}
+                  className={cn(
+                    "w-full rounded-md border px-3 py-2",
+                    fieldErrors.piso ? "border-rose-500" : "border-slate-300"
+                  )}
+                />
+                {fieldErrors.piso ? <p className="mt-0.5 text-xs text-rose-600">{fieldErrors.piso}</p> : null}
+              </label>
+              <label className="text-sm">
+                <span className="mb-1 block text-slate-700">
+                  Tipo <span className="text-rose-500">*</span>
+                </span>
+                <Select
+                  value={form.tipo}
+                  onValueChange={(value) => setForm({ ...form, tipo: value as LocalTipo })}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="LOCAL_COMERCIAL">LOCAL COMERCIAL</SelectItem>
+                    <SelectItem value="SIMULADOR">SIMULADOR</SelectItem>
+                    <SelectItem value="MODULO">MODULO</SelectItem>
+                    <SelectItem value="ESPACIO">ESPACIO</SelectItem>
+                    <SelectItem value="BODEGA">BODEGA</SelectItem>
+                    <SelectItem value="OTRO">OTRO</SelectItem>
+                  </SelectContent>
+                </Select>
+              </label>
+              <label className="text-sm">
+                <span className="mb-1 block text-slate-700">
+                  Zona <span className="text-xs text-slate-400">(opcional)</span>
+                </span>
+                <Input
+                  value={form.zona ?? ""}
+                  onChange={(event) => setForm({ ...form, zona: event.target.value || null })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2"
+                />
+              </label>
+              <label className="text-sm">
+                <span className="mb-1 block text-slate-700">
+                  Estado <span className="text-rose-500">*</span>
+                </span>
+                <Select
+                  value={form.estado}
+                  onValueChange={(value) => setForm({ ...form, estado: value as MasterStatus })}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ACTIVO">ACTIVO</SelectItem>
+                    <SelectItem value="INACTIVO">INACTIVO</SelectItem>
+                  </SelectContent>
+                </Select>
+              </label>
+              <label className="flex items-center gap-2 pt-7 text-sm text-slate-700">
+                <Checkbox
+                  checked={form.esGLA}
+                  onCheckedChange={(value) => setForm({ ...form, esGLA: value === true })}
+                />
+                Es GLA
+              </label>
+            </div>
+
+            {glam2Missing ? (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                Alerta: GLA m2 esta vacio. Se guardara como 0 y puede impactar metricas de ocupacion/GLA.
+              </div>
+            ) : null}
+
+            <EntityFormSection
+              mode={selectedId ? "edit" : "create"}
+              canEdit={canEdit}
+              isLoading={isLoading}
+              onSubmit={() => {
+                void handleSubmit();
+              }}
+              submitCreateLabel="Crear local"
+              submitEditLabel="Actualizar local"
+            />
+          </div>
+        }
+        table={
+          <>
+            <DataTable
+              table={table}
+              emptyMessage="Aun no hay locales registrados. Completa el formulario de arriba para agregar el primero."
+            />
+            {locales.length === 0 ? (
+              <div className="mt-3 flex justify-center">
+                <Button
+                  type="button"
+                  onClick={beginCreate}
+                  variant="default"
+                  className="h-auto rounded-full px-3 py-1.5 text-xs"
+                >
+                  Crear primer local
+                </Button>
+              </div>
+            ) : null}
+          </>
+        }
+      />
+
       <ConfirmModal
         open={Boolean(pendingDeleteId)}
         title="Eliminar local"
         description="Se eliminara este local. Esta accion no se puede deshacer."
         confirmLabel="Eliminar"
         onConfirm={() => {
-          if (pendingDeleteId) {
-            void handleDelete(pendingDeleteId);
-            setPendingDeleteId(null);
-          }
+          void handleDelete();
         }}
         onCancel={() => setPendingDeleteId(null)}
       />
-    </section>
+    </>
   );
 }

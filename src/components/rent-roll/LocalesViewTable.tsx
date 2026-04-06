@@ -1,10 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
-import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/DataTable";
+import {
+  enumFilterColumn,
+  linkColumn,
+  numberFilterColumn,
+  statusBadgeColumn
+} from "@/components/ui/data-table-columns";
 import { useDataTable } from "@/hooks/useDataTable";
 import { formatDecimal } from "@/lib/utils";
 
@@ -39,28 +43,18 @@ export function LocalesViewTable({ rows, detailBaseHref }: LocalesViewTableProps
   );
   const columns = useMemo<ColumnDef<LocalesViewRow, unknown>[]>(
     () => [
-      {
+      linkColumn<LocalesViewRow>({
         accessorKey: "codigo",
         header: "Codigo",
-        filterFn: "includesString",
-        cell: ({ row }) => (
-          <Link href={`${detailBaseHref}&detalle=${row.original.id}`} className="font-medium text-brand-700 underline">
-            {row.original.codigo}
-          </Link>
-        )
-      },
-      {
+        href: (row) => `${detailBaseHref}&detalle=${row.id}`,
+        label: (row) => row.codigo
+      }),
+      enumFilterColumn<LocalesViewRow>({
         accessorKey: "tipo",
         header: "Tipo",
-        filterFn: (row, columnId, filterValue) => {
-          if (!Array.isArray(filterValue) || filterValue.length === 0) {
-            return true;
-          }
-          return filterValue.includes(String(row.getValue(columnId)));
-        },
-        meta: { filterType: "enum", filterOptions: tipoOptions },
-        cell: ({ row }) => <span className="whitespace-nowrap">{row.original.tipo}</span>
-      },
+        options: tipoOptions,
+        cell: (row) => <span className="whitespace-nowrap">{row.tipo}</span>
+      }),
       {
         accessorKey: "piso",
         header: "Piso",
@@ -73,61 +67,33 @@ export function LocalesViewTable({ rows, detailBaseHref }: LocalesViewTableProps
         filterFn: "includesString",
         cell: ({ row }) => <span className="whitespace-nowrap">{row.original.zona ?? "-"}</span>
       },
-      {
+      numberFilterColumn<LocalesViewRow>({
         id: "glam2",
         accessorFn: (row) => toNumber(row.glam2),
         header: "GLA m2",
-        filterFn: "inNumberRange",
-        meta: { filterType: "number", align: "right" },
-        cell: ({ row }) => <span className="whitespace-nowrap">{formatDecimal(row.original.glam2)}</span>
-      },
-      {
+        cell: (row) => <span className="whitespace-nowrap">{formatDecimal(row.glam2)}</span>
+      }),
+      statusBadgeColumn<LocalesViewRow>({
         id: "esGLA",
         accessorFn: (row) => (row.esGLA ? "Si" : "No"),
         header: "Es GLA",
-        filterFn: (row, columnId, filterValue) => {
-          if (!Array.isArray(filterValue) || filterValue.length === 0) {
-            return true;
-          }
-          return filterValue.includes(String(row.getValue(columnId)));
-        },
-        meta: { filterType: "enum", filterOptions: SI_NO_OPTIONS, align: "center" },
-        cell: ({ row }) => (
-          <Badge
-            variant="outline"
-            className={
-              row.original.esGLA
-                ? "rounded-full border-emerald-200 bg-emerald-100 text-emerald-700"
-                : "rounded-full border-slate-200 bg-slate-100 text-slate-700"
-            }
-          >
-            {row.original.esGLA ? "Si" : "No"}
-          </Badge>
-        )
-      },
-      {
+        options: SI_NO_OPTIONS,
+        getValue: (row) => (row.esGLA ? "Si" : "No"),
+        getClassName: (value) =>
+          value === "Si"
+            ? "rounded-full border-emerald-200 bg-emerald-100 text-emerald-700"
+            : "rounded-full border-slate-200 bg-slate-100 text-slate-700"
+      }),
+      statusBadgeColumn<LocalesViewRow>({
         accessorKey: "estado",
         header: "Estado",
-        filterFn: (row, columnId, filterValue) => {
-          if (!Array.isArray(filterValue) || filterValue.length === 0) {
-            return true;
-          }
-          return filterValue.includes(String(row.getValue(columnId)));
-        },
-        meta: { filterType: "enum", filterOptions: ESTADO_OPTIONS, align: "center" },
-        cell: ({ row }) => (
-          <Badge
-            variant="outline"
-            className={
-              row.original.estado === "ACTIVO"
-                ? "rounded-full border-brand-200 bg-brand-100 text-brand-700"
-                : "rounded-full border-slate-300 bg-slate-200 text-slate-700"
-            }
-          >
-            {row.original.estado}
-          </Badge>
-        )
-      }
+        options: ESTADO_OPTIONS,
+        getValue: (row) => row.estado,
+        getClassName: (value) =>
+          value === "ACTIVO"
+            ? "rounded-full border-brand-200 bg-brand-100 text-brand-700"
+            : "rounded-full border-slate-300 bg-slate-200 text-slate-700"
+      })
     ],
     [detailBaseHref, tipoOptions]
   );

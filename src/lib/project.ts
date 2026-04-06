@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { resolveProjectIdFromQuery } from "@/lib/project-query";
 
 export function resolveProjectQueryParam(value?: string | string[]): string | undefined {
   if (Array.isArray(value)) {
@@ -11,9 +12,10 @@ export function resolveProjectIdFromSearchParams(searchParams: {
   project?: string | string[];
   proyecto?: string | string[];
 }): string | undefined {
-  return (
-    resolveProjectQueryParam(searchParams.project) ?? resolveProjectQueryParam(searchParams.proyecto)
-  );
+  return resolveProjectIdFromQuery({
+    project: resolveProjectQueryParam(searchParams.project),
+    proyecto: resolveProjectQueryParam(searchParams.proyecto)
+  });
 }
 
 export async function getProjectContext(projectId?: string) {

@@ -1,13 +1,12 @@
 export const dynamic = "force-dynamic";
 
-import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { getProjectIdFromRequest, withNormalizedProjectId } from "@/lib/http/request";
 import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
-import { prisma } from "@/lib/prisma";
 import { unitSchema } from "@/lib/units/schema";
+import { deleteUnit, getUnitById, updateUnit } from "@/lib/units/unit-service";
 
 export const runtime = "nodejs";
 
@@ -27,9 +26,7 @@ export async function GET(
     await requireSession();
     const projectId = getRequiredProjectId(request);
 
-    const item = await prisma.unit.findFirst({
-      where: { id: context.params.id, proyectoId: projectId }
-    });
+    const item = await getUnitById({ projectId, unitId: context.params.id });
     if (!item) {
       throw new ApiError(404, "No encontrado.");
     }
@@ -55,56 +52,11 @@ export async function PUT(
 
     const payload = result.data;
     const unitId = context.params.id;
-    const existing = await prisma.unit.findFirst({
-      where: { id: unitId, proyectoId: payload.proyectoId },
-      select: { id: true, proyectoId: true }
-    });
-
-    if (!existing) {
-      return NextResponse.json({ message: "Local no encontrado." }, { status: 404 });
-    }
-
-    const duplicatedUnit = await prisma.unit.findFirst({
-      where: {
-        proyectoId: payload.proyectoId,
-        id: { not: unitId },
-        codigo: {
-          equals: payload.codigo,
-          mode: "insensitive"
-        }
-      },
-      select: { id: true }
-    });
-    if (duplicatedUnit) {
-      return NextResponse.json(
-        { message: "Ya existe un local con ese codigo en este proyecto." },
-        { status: 409 }
-      );
-    }
-
-    const updated = await prisma.unit.update({
-      where: { id: unitId },
-      data: {
-        codigo: payload.codigo,
-        nombre: payload.nombre,
-        glam2: new Prisma.Decimal(payload.glam2),
-        piso: payload.piso,
-        tipo: payload.tipo,
-        zona: payload.zona || null,
-        esGLA: payload.esGLA,
-        estado: payload.estado
-      }
-    });
+    const updated = await updateUnit({ unitId, payload });
     invalidateMetricsCacheByProject(payload.proyectoId);
 
     return NextResponse.json(updated);
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json(
-        { message: "Ya existe un local con ese codigo en este proyecto." },
-        { status: 409 }
-      );
-    }
     return handleApiError(error);
   }
 }
@@ -118,12 +70,7 @@ export async function DELETE(
     const projectId = getRequiredProjectId(request);
 
     const unitId = context.params.id;
-    const deleted = await prisma.unit.deleteMany({
-      where: { id: unitId, proyectoId: projectId }
-    });
-    if (deleted.count === 0) {
-      return NextResponse.json({ message: "Local no encontrado." }, { status: 404 });
-    }
+    await deleteUnit({ projectId, unitId });
     invalidateMetricsCacheByProject(projectId);
 
     return NextResponse.json({ message: "Local eliminado correctamente." });

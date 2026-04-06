@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { ProjectOption } from "@/types/finanzas";
+import type { ProjectOption } from "@/types/finance";
 import { toast } from "sonner";
 
 type ProjectRecord = {
@@ -77,7 +77,7 @@ export function ProyectoConfigClient({
   return (
     <main className="space-y-4">
       <ModuleHeader
-        title="Configuración del Proyecto"
+        title="ConfiguraciÃ³n del Proyecto"
         description="Edita el nombre, color y estado del proyecto seleccionado."
         projects={projects}
         selectedProjectId={selectedProjectId}
@@ -135,10 +135,11 @@ export function ProyectoConfigClient({
 
           <p className="text-xs text-slate-400">
             Slug actual: <span className="font-mono">{project.slug}</span>
-            {nombre !== project.nombre ? " — se regenerará al guardar" : ""}
+            {nombre !== project.nombre ? " â€” se regenerarÃ¡ al guardar" : ""}
           </p>
         </div>
       </ModuleSectionCard>
     </main>
   );
 }
+

@@ -1,26 +1,27 @@
-## ¿Qué hace este PR?
+## What does this PR do?
 
-<!-- Descripción breve de los cambios -->
+<!-- Short description of the change -->
 
-## Tipo de cambio
+## Change type
 
-- [ ] Nueva feature
+- [ ] New feature
 - [ ] Bug fix
 - [ ] Refactor
-- [ ] Chore (dependencias, config, etc.)
+- [ ] Chore (deps, config, etc.)
 
-## ¿Hay cambios en el schema de Prisma?
+## Prisma schema changes?
 
-- [ ] Sí → la migración está incluida en este PR (`prisma/migrations/`)
+- [ ] Yes -> migration is included in `prisma/migrations/`
 - [ ] No
 
 ## Checklist
 
-- [ ] `npx tsc --noEmit` pasa sin errores
-- [ ] Probado localmente
-- [ ] `.env.example` actualizado si se agregó una variable de entorno nueva
-- [ ] No hay `console.log` de debug olvidados
+- [ ] `npx tsc --noEmit` passes
+- [ ] Tested locally
+- [ ] `.env.example` updated if new env vars were added
+- [ ] No debug `console.log` left behind
+- [ ] Reused existing CRUD scaffold (`EntityCrudShell`, `EntityFormSection`, `EntityActionsCell`, `useCrudResource`) before creating new ad-hoc patterns
 
-## Screenshots (si aplica)
+## Screenshots (if applicable)
 
-<!-- Pegar capturas de UI si el cambio es visual -->
+<!-- Paste UI screenshots if this is visual -->

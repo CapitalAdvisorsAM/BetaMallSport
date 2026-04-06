@@ -3,6 +3,9 @@ export const EXPORT_DATASETS = [
   "locales",
   "arrendatarios",
   "contratos",
+  "finance_tenants",
+  "finance_eerr",
+  "finance_mappings",
   "finanzas_arrendatarios",
   "finanzas_eerr",
   "finanzas_mapeos"
@@ -14,6 +17,7 @@ export type ExportScope = "filtered" | "all";
 export type ExportExcelQuery = {
   dataset: ExportDataset;
   scope: ExportScope;
+  projectId?: string;
   proyectoId?: string;
   q?: string;
   estado?: string;
@@ -46,6 +50,7 @@ export function buildExportExcelUrl(query: ExportExcelQuery): string {
   const params = new URLSearchParams();
   params.set("dataset", query.dataset);
   params.set("scope", query.scope);
+  setOptionalParam(params, "projectId", query.projectId);
   setOptionalParam(params, "proyectoId", query.proyectoId);
   setOptionalParam(params, "q", query.q);
   setOptionalParam(params, "estado", query.estado);

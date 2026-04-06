@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { MasterStatus, Prisma, TipoCargaDatos, UnitType } from "@prisma/client";
+import { MasterStatus, Prisma, DataUploadType, UnitType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
@@ -60,8 +60,8 @@ function normalizeLocalData(data: Record<string, unknown>): NormalizedLocalRow |
   const glam2Raw = asString(data.glam2).replace(",", ".");
   const glam2 = glam2Raw || "0";
   const piso = asString(data.piso);
-  const tipoRaw = normalizeToken(asString(data.tipo));
-  const estado = normalizeToken(asString(data.estado)) || MasterStatus.ACTIVO;
+  const tipoRaw = normalizeToken(asString(data.tipo) || asString(data.type));
+  const estado = normalizeToken(asString(data.estado) || asString(data.status)) || MasterStatus.ACTIVO;
   const zona = asString(data.zona);
   const esGLA = Boolean(data.esGLA);
 
@@ -99,22 +99,22 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "cargaId es obligatorio." }, { status: 400 });
     }
 
-    const carga = await prisma.cargaDatos.findUnique({ where: { id: cargaId } });
-    if (!carga || carga.tipo !== TipoCargaDatos.LOCALES) {
+    const carga = await prisma.dataUpload.findUnique({ where: { id: cargaId } });
+    if (!carga || carga.type !== DataUploadType.UNITS) {
       return NextResponse.json({ message: "No existe preview para esta carga." }, { status: 404 });
     }
-    if (carga.estado === "PROCESANDO") {
+    if (carga.status === "PROCESSING") {
       return NextResponse.json({ message: "La carga ya esta siendo procesada." }, { status: 409 });
     }
 
-    const payload = parseStoredUploadPayload(carga.errorDetalle);
+    const payload = parseStoredUploadPayload(carga.errorDetail);
     if (!payload) {
       return NextResponse.json({ message: "No fue posible leer el preview para esta carga." }, { status: 422 });
     }
 
-    await prisma.cargaDatos.update({
+    await prisma.dataUpload.update({
       where: { id: carga.id },
-      data: { estado: "PROCESANDO", usuarioId: session.user.id }
+      data: { status: "PROCESSING", userId: session.user.id }
     });
     processingCargaId = carga.id;
 
@@ -160,13 +160,13 @@ export async function POST(request: Request): Promise<NextResponse> {
         const result = await tx.unit.upsert({
           where: {
             proyectoId_codigo: {
-              proyectoId: carga.proyectoId,
+              proyectoId: carga.projectId,
               codigo: normalized.codigo
             }
           },
           update: localData,
           create: {
-            proyectoId: carga.proyectoId,
+            proyectoId: carga.projectId,
             codigo: normalized.codigo,
             ...localData
           },
@@ -195,23 +195,23 @@ export async function POST(request: Request): Promise<NextResponse> {
       report
     };
 
-    await prisma.cargaDatos.update({
+    await prisma.dataUpload.update({
       where: { id: carga.id },
       data: {
-        estado: created + updated > 0 ? "OK" : "ERROR",
-        registrosCargados: created + updated,
-        errorDetalle: JSON.stringify(finalPayload)
+        status: created + updated > 0 ? "OK" : "ERROR",
+        recordsLoaded: created + updated,
+        errorDetail: JSON.stringify(finalPayload)
       }
     });
-    invalidateMetricsCacheByProject(carga.proyectoId);
+    invalidateMetricsCacheByProject(carga.projectId);
 
     return NextResponse.json({ cargaId: carga.id, report });
   } catch (error) {
     if (processingCargaId) {
-      await prisma.cargaDatos
+      await prisma.dataUpload
         .update({
           where: { id: processingCargaId },
-          data: { estado: "ERROR" }
+          data: { status: "ERROR" }
         })
         .catch(() => undefined);
     }
@@ -224,3 +224,4 @@ export async function POST(request: Request): Promise<NextResponse> {
     return handleApiError(error);
   }
 }
+

@@ -52,20 +52,24 @@ enum ContractDayStatus {
   @@map("EstadoDiaContrato")
 }
 
-enum TipoCargaDatos {
-  LOCALES
-  ARRENDATARIOS
+enum DataUploadType {
+  UNITS      @map("LOCALES")
+  TENANTS    @map("ARRENDATARIOS")
   RENT_ROLL
-  VENTAS
-  CONTABLE
-  BANCO
+  SALES      @map("VENTAS")
+  ACCOUNTING @map("CONTABLE")
+  BANK       @map("BANCO")
+
+  @@map("TipoCargaDatos")
 }
 
-enum EstadoCargaDatos {
-  PENDIENTE
-  PROCESANDO
+enum DataUploadStatus {
+  PENDING    @map("PENDIENTE")
+  PROCESSING @map("PROCESANDO")
   OK
   ERROR
+
+  @@map("EstadoCargaDatos")
 }
 
 enum UserRole {
@@ -83,15 +87,15 @@ model Project {
   activo         Boolean          @default(true)
   createdAt      DateTime         @default(now()) @db.Timestamptz(3)
   locales              Unit[]
-  ventaLocales         VentaLocal[]
+  unitSales            UnitSale[]
   ingresoEnergia       IngresoEnergia[]
   arrendatarios        Tenant[]
   contratos            Contract[]
   contratosDia         ContractDay[]
-  cargasDatos          CargaDatos[]
-  mapeosLocalContable  MapeoLocalContable[]
-  mapeosVentasLocal    MapeoVentasLocal[]
-  registrosContables   RegistroContable[]
+  dataUploads          DataUpload[]
+  accountingUnitMappings AccountingUnitMapping[]
+  salesUnitMappings    SalesUnitMapping[]
+  accountingRecords    AccountingRecord[]
 
   @@index([activo])
   @@index([nombre])
@@ -121,11 +125,11 @@ model Unit {
   contratos            Contract[]
   contratosAsociados   ContractUnit[]
   contratosDia         ContractDay[]
-  ventaLocales         VentaLocal[]
+  unitSales            UnitSale[]
   ingresoEnergia       IngresoEnergia[]
-  mapeosLocalContable  MapeoLocalContable[]
-  mapeosVentasLocal    MapeoVentasLocal[]
-  registrosContables   RegistroContable[]
+  accountingUnitMappings AccountingUnitMapping[]
+  salesUnitMappings    SalesUnitMapping[]
+  accountingRecords    AccountingRecord[]
 
   @@unique([proyectoId, codigo])
   @@index([proyectoId])
@@ -149,20 +153,21 @@ model IngresoEnergia {
   @@index([proyectoId, periodo])
 }
 
-model VentaLocal {
+model UnitSale {
   id         String   @id @default(uuid()) @db.Uuid
-  proyectoId String   @db.Uuid
-  localId    String   @db.Uuid
-  periodo    String
-  ventasUf   Decimal  @db.Decimal(14, 4)
+  projectId  String   @db.Uuid @map("proyectoId")
+  unitId     String   @db.Uuid @map("localId")
+  period     String   @map("periodo")
+  salesUf    Decimal  @db.Decimal(14, 4) @map("ventasUf")
   createdAt  DateTime @default(now()) @db.Timestamptz(3)
   updatedAt  DateTime @updatedAt @db.Timestamptz(3)
 
-  proyecto Project @relation(fields: [proyectoId], references: [id])
-  local    Unit    @relation(fields: [localId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+  unit    Unit    @relation(fields: [unitId], references: [id])
 
-  @@unique([localId, periodo])
-  @@index([proyectoId, periodo])
+  @@unique([unitId, period])
+  @@index([projectId, period])
+  @@map("VentaLocal")
 }
 
 model Tenant {
@@ -178,7 +183,7 @@ model Tenant {
 
   proyecto           Project           @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   contratos          Contract[]
-  registrosContables RegistroContable[]
+  accountingRecords AccountingRecord[]
 
   @@unique([proyectoId, rut])
   @@index([proyectoId])
@@ -321,24 +326,25 @@ model ContractDay {
   @@map("ContratoDia")
 }
 
-model CargaDatos {
+model DataUpload {
   id                String           @id @default(uuid()) @db.Uuid
-  proyectoId        String           @db.Uuid
-  tipo              TipoCargaDatos
-  usuarioId         String           @db.Uuid
-  archivoNombre     String
-  archivoUrl        String
-  registrosCargados Int              @default(0)
-  estado            EstadoCargaDatos
-  errorDetalle      Json?
+  projectId         String           @db.Uuid @map("proyectoId")
+  type              DataUploadType   @map("tipo")
+  userId            String           @db.Uuid @map("usuarioId")
+  fileName          String           @map("archivoNombre")
+  fileUrl           String           @map("archivoUrl")
+  recordsLoaded     Int              @default(0) @map("registrosCargados")
+  status            DataUploadStatus @map("estado")
+  errorDetail       Json?            @map("errorDetalle")
   createdAt         DateTime         @default(now()) @db.Timestamptz(3)
 
-  proyecto Project @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@index([proyectoId])
-  @@index([tipo])
-  @@index([proyectoId, tipo])
-  @@index([estado])
+  @@index([projectId])
+  @@index([type])
+  @@index([projectId, type])
+  @@index([status])
+  @@map("CargaDatos")
 }
 
 model User {
@@ -386,46 +392,48 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-model MapeoLocalContable {
+model AccountingUnitMapping {
   id           String   @id @default(uuid()) @db.Uuid
-  proyectoId   String   @db.Uuid
-  localExterno String
-  localId      String   @db.Uuid
-  creadoPor    String   @db.Uuid
+  projectId    String   @db.Uuid @map("proyectoId")
+  externalUnit String   @map("localExterno")
+  unitId       String   @db.Uuid @map("localId")
+  createdBy    String   @db.Uuid @map("creadoPor")
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
 
-  proyecto Project @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  local    Unit    @relation(fields: [localId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  unit    Unit    @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
-  @@unique([proyectoId, localExterno])
-  @@index([proyectoId])
-  @@index([localId])
+  @@unique([projectId, externalUnit])
+  @@index([projectId])
+  @@index([unitId])
+  @@map("MapeoLocalContable")
 }
 
-model RegistroContable {
+model AccountingRecord {
   id              String   @id @default(uuid()) @db.Uuid
-  proyectoId      String   @db.Uuid
-  localId         String?  @db.Uuid
-  arrendatarioId  String?  @db.Uuid
-  periodo         DateTime @db.Date
-  grupo1          String
-  grupo3          String
-  denominacion    String
-  valorUf         Decimal  @db.Decimal(14, 4)
-  categoriaTamano String?
-  categoriaTipo   String?
-  piso            String?
+  projectId       String   @db.Uuid @map("proyectoId")
+  unitId          String?  @db.Uuid @map("localId")
+  tenantId        String?  @db.Uuid @map("arrendatarioId")
+  period          DateTime @db.Date @map("periodo")
+  group1          String   @map("grupo1")
+  group3          String   @map("grupo3")
+  denomination    String   @map("denominacion")
+  valueUf         Decimal  @db.Decimal(14, 4) @map("valorUf")
+  sizeCategory    String?  @map("categoriaTamano")
+  typeCategory    String?  @map("categoriaTipo")
+  floor           String?  @map("piso")
   createdAt       DateTime @default(now()) @db.Timestamptz(3)
 
-  proyecto     Project      @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  local        Unit         @relation(fields: [localId], references: [id], onDelete: Cascade)
-  arrendatario Tenant? @relation(fields: [arrendatarioId], references: [id], onDelete: SetNull)
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  unit         Unit?        @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  tenant       Tenant?      @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
-  @@unique([proyectoId, localId, periodo, grupo1, grupo3, denominacion])
-  @@index([proyectoId, periodo])
-  @@index([localId, periodo])
-  @@index([arrendatarioId, periodo])
-  @@index([proyectoId, grupo1, periodo])
+  @@unique([projectId, unitId, period, group1, group3, denomination])
+  @@index([projectId, period])
+  @@index([unitId, period])
+  @@index([tenantId, period])
+  @@index([projectId, group1, period])
+  @@map("RegistroContable")
 }
 
 model CustomWidget {
@@ -451,19 +459,20 @@ model DashboardConfig {
   @@index([enabled])
 }
 
-model MapeoVentasLocal {
+model SalesUnitMapping {
   id           String   @id @default(uuid()) @db.Uuid
-  proyectoId   String   @db.Uuid
-  idCa         Int
-  tiendaNombre String
-  localId      String   @db.Uuid
-  creadoPor    String   @db.Uuid
+  projectId    String   @db.Uuid @map("proyectoId")
+  salesAccountId Int    @map("idCa")
+  storeName    String   @map("tiendaNombre")
+  unitId       String   @db.Uuid @map("localId")
+  createdBy    String   @db.Uuid @map("creadoPor")
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
 
-  proyecto Project @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  local    Unit    @relation(fields: [localId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  unit    Unit    @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
-  @@unique([proyectoId, idCa])
-  @@index([proyectoId])
-  @@index([localId])
+  @@unique([projectId, salesAccountId])
+  @@index([projectId])
+  @@index([unitId])
+  @@map("MapeoVentasLocal")
 }
