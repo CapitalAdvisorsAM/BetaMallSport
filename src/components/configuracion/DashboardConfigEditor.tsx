@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { ResolvedWidgetConfig, WidgetId } from "@/lib/dashboard/widget-registry";
-import { getWidget, WIDGET_REGISTRY, WIDGET_IDS } from "@/lib/dashboard/widget-registry";
+import { getWidget, WIDGET_IDS } from "@/lib/dashboard/widget-registry";
 import { CustomWidgetForm } from "./CustomWidgetForm";
 import type { FormulaConfig } from "@/lib/dashboard/custom-widget-engine";
 import { getFormulaDisplay } from "@/lib/dashboard/custom-widget-engine";
