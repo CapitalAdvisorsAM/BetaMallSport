@@ -10,10 +10,12 @@ type RegistroContableBase = {
 };
 
 export type RegistroContableDetalle = {
+  grupo1: string;
   periodo: Date;
   valorUf: NumericLike;
   categoriaTipo: string | null;
   localId: string | null;
+  arrendatarioId: string | null;
   local: { codigo: string; nombre: string } | null;
   arrendatario: { nombreComercial: string } | null;
 };
@@ -34,6 +36,43 @@ export const BELOW_EBITDA_GROUPS = new Set([
 ]);
 
 export const COST_GROUPS = new Set([...OPERATING_COST_GROUPS, ...BELOW_EBITDA_GROUPS]);
+
+// Orden de líneas (grupo3) dentro de cada sección — igual al CDG EE.RR sheet
+const LINE_ORDER: Record<string, string[]> = {
+  "INGRESOS DE EXPLOTACION": [
+    "ARRIENDO DE LOCAL FIJO",
+    "ARRIENDO DE LOCAL VARIABLE",
+    "SIMULADORES Y MODULO",
+    "ARRIENDO DE ESPACIO",
+    "ARRIENDO BODEGA",
+    "INGRESOS POR VENTA DE ENERGIA",
+    "Otros Ingresos.",
+    "5% ADMINISTRACION GASTO COMUN",
+    "INGRESO  MARKETING",
+  ],
+  "VACANCIA G.C. + CONTRIBUCIONES": [
+    "Contribuciones",
+    "Gastos Operaciones",
+    "Mano de Obra y Gastos del Personal",
+    "Gastos Administración",
+    "RECUPERACION GASTOS COMUNES",
+  ],
+  "GASTOS MARKETING": [
+    "FONDO DE PROMOCION",
+    "Auspicios / Ferias Externas",
+    "BTL / Eventos / Ferias Internas",
+    "Medios",
+    "POP / Merchandising",
+    "Publicidad y Campaña",
+    "Finelizacion y Experiencia",
+    "Sitio WEB",
+    "Varios MK",
+  ],
+  "GASTOS INMOBILIARIA": [
+    "Gastos Administración Inmobiliaria",
+    "Honorarios Externos",
+  ],
+};
 
 // Orden preferido de secciones para el EE.RR
 const SECTION_ORDER = [
@@ -72,6 +111,7 @@ export function buildEerrData(registros: RegistroContableBase[]): EerrData {
   for (const registro of registros) {
     const tipo: "ingreso" | "costo" = COST_GROUPS.has(registro.grupo1) ? "costo" : "ingreso";
     const periodoKey = registro.periodo.toISOString().slice(0, 7);
+    // CDG ya almacena los valores con signo correcto — sin negación adicional.
     const valor = Number(registro.valorUf);
 
     let section = sections.get(registro.grupo1);
@@ -113,6 +153,18 @@ export function buildEerrData(registros: RegistroContableBase[]): EerrData {
     return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
   });
 
+  // Ordenar líneas (grupo3) dentro de cada sección según orden CDG
+  secciones.forEach((s) => {
+    const order = LINE_ORDER[s.grupo1];
+    if (order) {
+      s.lineas.sort((a, b) => {
+        const ia = order.indexOf(a.grupo3);
+        const ib = order.indexOf(b.grupo3);
+        return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+      });
+    }
+  });
+
   return { periodos, secciones, ebitda, ebit };
 }
 
@@ -122,6 +174,7 @@ export function buildEerrDetalle(registros: RegistroContableDetalle[]): EerrDeta
   for (const r of registros) {
     const catKey = r.categoriaTipo ?? "Sin categoría";
     const periodoKey = r.periodo.toISOString().slice(0, 7);
+    // CDG ya almacena los valores con signo correcto — sin negación adicional.
     const valor = Number(r.valorUf);
 
     if (!catMap.has(catKey)) {
@@ -141,6 +194,7 @@ export function buildEerrDetalle(registros: RegistroContableDetalle[]): EerrDeta
         localId: r.localId,
         localCodigo: r.local.codigo,
         localNombre: r.local.nombre,
+        arrendatarioId: r.arrendatarioId ?? null,
         arrendatarioNombre: r.arrendatario?.nombreComercial ?? null,
         porPeriodo: {},
         total: 0

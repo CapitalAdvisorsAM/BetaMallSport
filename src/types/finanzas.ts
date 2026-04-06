@@ -28,6 +28,7 @@ export type EerrLocalDetalle = {
   localId: string;
   localCodigo: string;
   localNombre: string;
+  arrendatarioId: string | null;
   arrendatarioNombre: string | null;
   porPeriodo: Record<string, number>;
   total: number;

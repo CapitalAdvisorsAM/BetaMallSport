@@ -30,10 +30,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       },
       orderBy: { periodo: "asc" },
       select: {
+        grupo1: true,
         periodo: true,
         valorUf: true,
         categoriaTipo: true,
         localId: true,
+        arrendatarioId: true,
         local: { select: { codigo: true, nombre: true } },
         arrendatario: { select: { nombreComercial: true } }
       }

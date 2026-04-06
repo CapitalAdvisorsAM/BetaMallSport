@@ -5,6 +5,11 @@ import { PrismaClient } from "@prisma/client";
 const PROYECTO_ID = "befc6344-a1f1-48b4-a7ff-7d7747baddb0";
 const SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000001";
 
+// El CDG ya almacena los valores con signo correcto:
+//   - Ingresos y recuperaciones: POSITIVOS
+//   - Costos y gastos: NEGATIVOS
+// No se requiere ninguna normalización de signo al guardar.
+
 const prisma = new PrismaClient();
 
 function serialToDate(serial) {
@@ -143,8 +148,7 @@ async function main() {
     if (isNaN(mes.getTime())) return;
 
     const localRaw = str(get(row, "Local") ?? "");
-    const localCodigo = extractLocalCodigo(localRaw);
-    if (!localCodigo) return;
+    const localCodigo = extractLocalCodigo(localRaw); // puede ser "" para costos de propiedad
 
     const grupo1 = str(get(row, "GRUPO 1") ?? "");
     if (!grupo1) return;
@@ -176,6 +180,11 @@ async function main() {
   const nuevosMapeos = [];
 
   for (const codigo of codigosUnicos) {
+    // Fila sin local (costo a nivel de propiedad) → guardar con localId=null directamente
+    if (!codigo) {
+      mapeoMap.set(codigo, null);
+      continue;
+    }
     if (mapeoMap.has(codigo)) continue;
     const exacto = locales.find((l) => l.codigo === codigo || l.codigo === `L${codigo}`);
     if (exacto) {
@@ -223,17 +232,32 @@ async function main() {
       grupo1: fila.grupo1,
       grupo3: fila.grupo3,
       denominacion: fila.denominacion || fila.grupo3,
-      valorUf: fila.valorUf,
+      valorUf: fila.valorUf, // CDG ya tiene signo correcto
       categoriaTamano: fila.categoriaTamano,
       categoriaTipo: fila.categoriaTipo,
       piso: fila.piso
     });
   }
 
-  console.log(`\n📊 Registros a insertar: ${registros.length}`);
+  // Agregar filas con la misma clave (periodo, grupo1, grupo3, denominacion, localId)
+  // para evitar conflictos del índice único parcial cuando hay múltiples transacciones
+  // del mismo tipo sin local asignado (costos a nivel propiedad).
+  const aggMap = new Map();
+  for (const r of registros) {
+    const key = `${r.periodo.toISOString()}::${r.grupo1}::${r.grupo3}::${r.denominacion}::${r.localId ?? "null"}`;
+    if (aggMap.has(key)) {
+      const existing = aggMap.get(key);
+      existing.valorUf = Number(existing.valorUf) + Number(r.valorUf);
+    } else {
+      aggMap.set(key, { ...r, valorUf: Number(r.valorUf) });
+    }
+  }
+  const registrosAgg = [...aggMap.values()];
+
+  console.log(`\n📊 Registros CDG: ${registros.length} → tras agregación: ${registrosAgg.length}`);
   console.log(`   Períodos: ${[...periodos].sort().join(", ")}`);
 
-  if (registros.length === 0) {
+  if (registrosAgg.length === 0) {
     console.error("❌ 0 registros. Probablemente los locales no matchean. Revisar sin-mapeo arriba.");
     process.exit(1);
   }
@@ -246,7 +270,7 @@ async function main() {
     if (deleted.count > 0) console.log(`   🗑️  ${periodoStr}: ${deleted.count} reemplazados`);
   }
 
-  const result = await prisma.registroContable.createMany({ data: registros, skipDuplicates: true });
+  const result = await prisma.registroContable.createMany({ data: registrosAgg, skipDuplicates: false });
   console.log(`\n✅ Insertados: ${result.count} registros`);
 
   await prisma.cargaDatos.create({
@@ -256,7 +280,7 @@ async function main() {
       usuarioId: SYSTEM_USER_ID,
       archivoNombre: filePath.split(/[/\\]/).pop(),
       archivoUrl: "",
-      registrosCargados: result.count,
+      registrosCargados: registros.length,
       estado: "OK",
       errorDetalle: sinMapeo.length > 0 ? { sinMapeo } : undefined
     }
