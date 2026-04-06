@@ -19,8 +19,18 @@ const canonicalTargets = [
   "src/components/rent-roll/TenantsViewTable.tsx",
   "src/components/rent-roll/UnitsCrudPanel.tsx",
   "src/components/rent-roll/UnitsViewTable.tsx",
+  "src/components/rent-roll/ProjectCrudPanel.tsx",
+  "src/components/crud",
+  "src/components/ui/data-table-columns.tsx",
+  "src/hooks/useCrudResource.ts",
+  "src/lib/http/client-errors.ts",
+  "src/lib/project-query.ts",
+  "src/lib/tenants/tenant-service.ts",
+  "src/lib/units/unit-service.ts",
   "src/lib/rent-roll/tenants.ts",
-  "src/lib/rent-roll/units.ts"
+  "src/lib/rent-roll/units.ts",
+  "src/app/api/tenants",
+  "src/app/api/units"
 ];
 
 const fileExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);

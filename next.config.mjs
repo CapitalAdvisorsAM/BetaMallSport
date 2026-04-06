@@ -22,6 +22,11 @@ const nextConfig = {
         source: "/rent-roll/proyectos/:path*",
         destination: "/rent-roll/projects/:path*",
         permanent: false
+      },
+      {
+        source: "/finanzas/:path*",
+        destination: "/finance/:path*",
+        permanent: false
       }
     ];
   }

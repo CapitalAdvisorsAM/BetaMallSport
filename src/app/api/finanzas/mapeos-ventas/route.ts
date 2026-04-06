@@ -1,57 +1,32 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getActiveLocales, getVentasMapeos, upsertVentasMapeo, ventasMapeoSchema } from "@/lib/finanzas/mapeos";
-import { handleApiError, ApiError } from "@/lib/api-error";
-import { requireSession, requireWriteAccess } from "@/lib/permissions";
-import { prisma } from "@/lib/prisma";
+﻿export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
-  try {
-    await requireSession();
-    const { searchParams } = new URL(req.url);
-    const proyectoId = searchParams.get("proyectoId");
-    if (!proyectoId) {
-      throw new ApiError(400, "proyectoId requerido.");
-    }
+import {
+  DELETE as financeMappingsSalesDELETE,
+  GET as financeMappingsSalesGET,
+  POST as financeMappingsSalesPOST
+} from "@/app/api/finance/mappings/sales/route";
+import { withDeprecatedEndpointHeaders } from "@/lib/http/deprecation";
 
-    const [mapeos, locales] = await Promise.all([
-      getVentasMapeos(proyectoId),
-      getActiveLocales(proyectoId)
-    ]);
+const CANONICAL_ENDPOINT = "/api/finance/mappings/sales";
 
-    return NextResponse.json({ mapeos, locales });
-  } catch (error) {
-    return handleApiError(error);
-  }
+export async function GET(request: Request): Promise<Response> {
+  const response = await financeMappingsSalesGET(
+    request as Parameters<typeof financeMappingsSalesGET>[0]
+  );
+  return withDeprecatedEndpointHeaders(response, { canonicalPath: CANONICAL_ENDPOINT });
 }
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
-  try {
-    const session = await requireWriteAccess();
-    const body = await req.json();
-    const result = ventasMapeoSchema.safeParse(body);
-    if (!result.success) {
-      throw new ApiError(400, "Datos invalidos.");
-    }
-
-    const mapeo = await upsertVentasMapeo(result.data, session.user.id);
-    return NextResponse.json(mapeo, { status: 201 });
-  } catch (error) {
-    return handleApiError(error);
-  }
+export async function POST(request: Request): Promise<Response> {
+  const response = await financeMappingsSalesPOST(
+    request as Parameters<typeof financeMappingsSalesPOST>[0]
+  );
+  return withDeprecatedEndpointHeaders(response, { canonicalPath: CANONICAL_ENDPOINT });
 }
 
-export async function DELETE(req: NextRequest): Promise<NextResponse> {
-  try {
-    await requireWriteAccess();
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id");
-    if (!id) {
-      throw new ApiError(400, "id requerido.");
-    }
-
-    await prisma.mapeoVentasLocal.delete({ where: { id } });
-    return NextResponse.json({ message: "Eliminado." });
-  } catch (error) {
-    return handleApiError(error);
-  }
+export async function DELETE(request: Request): Promise<Response> {
+  const response = await financeMappingsSalesDELETE(
+    request as Parameters<typeof financeMappingsSalesDELETE>[0]
+  );
+  return withDeprecatedEndpointHeaders(response, { canonicalPath: CANONICAL_ENDPOINT });
 }

@@ -385,31 +385,31 @@ async function buildFinanzasArrendatariosExport(
   );
   const [registros, ventas] = await Promise.all([
     allLocalIds.length > 0
-      ? prisma.registroContable.findMany({
+      ? prisma.accountingRecord.findMany({
           where: {
-            proyectoId,
-            localId: { in: allLocalIds },
-            periodo: { gte: desdeDate, lte: hastaDate },
-            grupo1: "INGRESOS DE EXPLOTACION"
+            projectId: proyectoId,
+            unitId: { in: allLocalIds },
+            period: { gte: desdeDate, lte: hastaDate },
+            group1: "INGRESOS DE EXPLOTACION"
           },
           select: {
-            localId: true,
-            periodo: true,
-            valorUf: true
+            unitId: true,
+            period: true,
+            valueUf: true
           }
         })
       : Promise.resolve([]),
     allLocalIds.length > 0
-      ? prisma.ventaLocal.findMany({
+      ? prisma.unitSale.findMany({
           where: {
-            proyectoId,
-            localId: { in: allLocalIds },
-            periodo: { gte: desde ?? "2024-01", lte: hasta ?? "9999-12" }
+            projectId: proyectoId,
+            unitId: { in: allLocalIds },
+            period: { gte: desde ?? "2024-01", lte: hasta ?? "9999-12" }
           },
           select: {
-            localId: true,
-            periodo: true,
-            ventasUf: true
+            unitId: true,
+            period: true,
+            salesUf: true
           }
         })
       : Promise.resolve([])
@@ -417,16 +417,17 @@ async function buildFinanzasArrendatariosExport(
 
   const facturacionByLocal = new Map<string, Map<string, number>>();
   for (const registro of registros) {
-    const periodoKey = registro.periodo.toISOString().slice(0, 7);
-    const byPeriodo = facturacionByLocal.get(registro.localId) ?? new Map<string, number>();
-    byPeriodo.set(periodoKey, (byPeriodo.get(periodoKey) ?? 0) + asNumber(registro.valorUf));
-    facturacionByLocal.set(registro.localId, byPeriodo);
+    if (!registro.unitId) continue;
+    const periodoKey = registro.period.toISOString().slice(0, 7);
+    const byPeriodo = facturacionByLocal.get(registro.unitId) ?? new Map<string, number>();
+    byPeriodo.set(periodoKey, (byPeriodo.get(periodoKey) ?? 0) + asNumber(registro.valueUf));
+    facturacionByLocal.set(registro.unitId, byPeriodo);
   }
   const ventasByLocal = new Map<string, Map<string, number>>();
   for (const venta of ventas) {
-    const byPeriodo = ventasByLocal.get(venta.localId) ?? new Map<string, number>();
-    byPeriodo.set(venta.periodo, (byPeriodo.get(venta.periodo) ?? 0) + asNumber(venta.ventasUf));
-    ventasByLocal.set(venta.localId, byPeriodo);
+    const byPeriodo = ventasByLocal.get(venta.unitId) ?? new Map<string, number>();
+    byPeriodo.set(venta.period, (byPeriodo.get(venta.period) ?? 0) + asNumber(venta.salesUf));
+    ventasByLocal.set(venta.unitId, byPeriodo);
   }
 
   const rows: Array<Array<string | number | boolean | null>> = [];
@@ -478,7 +479,7 @@ async function buildFinanzasArrendatariosExport(
   }
 
   return {
-    fileName: `finanzas-arrendatarios-${scope}-${dateStamp()}`,
+    fileName: `finance-tenants-${scope}-${dateStamp()}`,
     sheets: [
       {
         name: "Arrendatarios",
@@ -508,15 +509,15 @@ async function buildFinanzasEerrExport(
   const desdeDate = desde ? new Date(`${desde}-01`) : new Date("2024-01-01");
   const hastaDate = hasta ? new Date(`${hasta}-01`) : new Date();
 
-  const registros = await prisma.registroContable.findMany({
+  const registros = await prisma.accountingRecord.findMany({
     where: {
-      proyectoId,
-      periodo: { gte: desdeDate, lte: hastaDate }
+      projectId: proyectoId,
+      period: { gte: desdeDate, lte: hastaDate }
     },
-    orderBy: { periodo: "asc" }
+    orderBy: { period: "asc" }
   });
 
-  const periodos = Array.from(new Set(registros.map((item) => item.periodo.toISOString().slice(0, 7)))).sort();
+  const periodos = Array.from(new Set(registros.map((item) => item.period.toISOString().slice(0, 7)))).sort();
 
   type Linea = {
     grupo3: string;
@@ -536,27 +537,27 @@ async function buildFinanzasEerrExport(
   const seccionMap = new Map<string, Seccion>();
 
   for (const registro of registros) {
-    const tipo: "ingreso" | "costo" = GRUPOS_COSTO.has(registro.grupo1) ? "costo" : "ingreso";
-    const periodoKey = registro.periodo.toISOString().slice(0, 7);
-    const valor = asNumber(registro.valorUf);
+    const tipo: "ingreso" | "costo" = GRUPOS_COSTO.has(registro.group1) ? "costo" : "ingreso";
+    const periodoKey = registro.period.toISOString().slice(0, 7);
+    const valor = asNumber(registro.valueUf);
 
-    if (!seccionMap.has(registro.grupo1)) {
-      seccionMap.set(registro.grupo1, {
-        grupo1: registro.grupo1,
+    if (!seccionMap.has(registro.group1)) {
+      seccionMap.set(registro.group1, {
+        grupo1: registro.group1,
         tipo,
         lineas: [],
         porPeriodo: {},
         total: 0
       });
     }
-    const seccion = seccionMap.get(registro.grupo1)!;
+    const seccion = seccionMap.get(registro.group1)!;
     seccion.porPeriodo[periodoKey] = (seccion.porPeriodo[periodoKey] ?? 0) + valor;
     seccion.total += valor;
 
-    let linea = seccion.lineas.find((item) => item.grupo3 === registro.grupo3);
+    let linea = seccion.lineas.find((item) => item.grupo3 === registro.group3);
     if (!linea) {
       linea = {
-        grupo3: registro.grupo3,
+        grupo3: registro.group3,
         tipo,
         porPeriodo: {},
         total: 0
@@ -608,7 +609,7 @@ async function buildFinanzasEerrExport(
   ]);
 
   return {
-    fileName: `finanzas-eerr-${scope}-${dateStamp()}`,
+    fileName: `finance-eerr-${scope}-${dateStamp()}`,
     sheets: [
       {
         name: "EERR",
@@ -624,23 +625,24 @@ async function buildFinanzasMapeosExport(
   proyectoId: string,
   searchParams: URLSearchParams
 ): Promise<ExportResult> {
-  const tab = searchParams.get("tab") === "ventas" ? "ventas" : "contable";
-  const includeContable = scope === "all" || tab === "contable";
-  const includeVentas = scope === "all" || tab === "ventas";
+  const tabRaw = searchParams.get("tab");
+  const tab = tabRaw === "sales" || tabRaw === "ventas" ? "sales" : "accounting";
+  const includeContable = scope === "all" || tab === "accounting";
+  const includeVentas = scope === "all" || tab === "sales";
 
   const [contableMapeos, ventasMapeos] = await Promise.all([
     includeContable
-      ? prisma.mapeoLocalContable.findMany({
-          where: { proyectoId },
-          include: { local: { select: { codigo: true, nombre: true } } },
-          orderBy: { localExterno: "asc" }
+      ? prisma.accountingUnitMapping.findMany({
+          where: { projectId: proyectoId },
+          include: { unit: { select: { codigo: true, nombre: true } } },
+          orderBy: { externalUnit: "asc" }
         })
       : Promise.resolve([]),
     includeVentas
-      ? prisma.mapeoVentasLocal.findMany({
-          where: { proyectoId },
-          include: { local: { select: { codigo: true, nombre: true } } },
-          orderBy: { tiendaNombre: "asc" }
+      ? prisma.salesUnitMapping.findMany({
+          where: { projectId: proyectoId },
+          include: { unit: { select: { codigo: true, nombre: true } } },
+          orderBy: { storeName: "asc" }
         })
       : Promise.resolve([])
   ]);
@@ -651,7 +653,7 @@ async function buildFinanzasMapeosExport(
     sheets.push({
       name: "Mapeo Contable",
       headers: ["Codigo externo", "Local codigo", "Local nombre"],
-      rows: contableMapeos.map((item) => [item.localExterno, item.local.codigo, item.local.nombre])
+      rows: contableMapeos.map((item) => [item.externalUnit, item.unit.codigo, item.unit.nombre])
     });
   }
 
@@ -659,13 +661,13 @@ async function buildFinanzasMapeosExport(
     sheets.push({
       name: "Mapeo Ventas",
       headers: ["ID CA", "Tienda", "Local codigo", "Local nombre"],
-      rows: ventasMapeos.map((item) => [item.idCa, item.tiendaNombre, item.local.codigo, item.local.nombre])
+      rows: ventasMapeos.map((item) => [item.salesAccountId, item.storeName, item.unit.codigo, item.unit.nombre])
     });
   }
 
   const filteredSuffix = scope === "filtered" ? `-${tab}` : "";
   return {
-    fileName: `finanzas-mapeos-${scope}${filteredSuffix}-${dateStamp()}`,
+    fileName: `finance-mappings-${scope}${filteredSuffix}-${dateStamp()}`,
     sheets
   };
 }
@@ -688,10 +690,10 @@ async function buildExportResult(
   if (dataset === "contratos") {
     return buildContratosExport(scope, proyectoId);
   }
-  if (dataset === "finanzas_arrendatarios") {
+  if (dataset === "finance_tenants" || dataset === "finanzas_arrendatarios") {
     return buildFinanzasArrendatariosExport(scope, proyectoId, searchParams);
   }
-  if (dataset === "finanzas_eerr") {
+  if (dataset === "finance_eerr" || dataset === "finanzas_eerr") {
     return buildFinanzasEerrExport(scope, proyectoId, searchParams);
   }
   return buildFinanzasMapeosExport(scope, proyectoId, searchParams);
@@ -725,7 +727,7 @@ export async function GET(request: Request) {
 
     const dataset = datasetRaw;
     const scope = scopeRaw;
-    const proyectoId = ensureProyectoId(dataset, searchParams.get("proyectoId"));
+    const proyectoId = ensureProyectoId(dataset, searchParams.get("projectId") ?? searchParams.get("proyectoId"));
     const requestedLimit = Number.parseInt(searchParams.get("limit") ?? "", 10);
     const rowLimit =
       Number.isFinite(requestedLimit) && requestedLimit > 0
@@ -751,3 +753,4 @@ export async function GET(request: Request) {
     return handleApiError(error);
   }
 }
+

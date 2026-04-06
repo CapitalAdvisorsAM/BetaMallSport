@@ -1,4 +1,4 @@
-import { TipoCargaDatos, ContractRateType } from "@prisma/client";
+import { DataUploadType, ContractRateType } from "@prisma/client";
 import { ApiError } from "@/lib/api-error";
 import { parseRentRollPreviewPayload } from "@/lib/carga-datos";
 import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
@@ -20,24 +20,24 @@ import type { ApplyReport, PreviewRow, UploadIssue } from "@/types/upload";
 export async function runContratosApplyJob(input: {
   cargaId: string;
   userId: string;
-}): Promise<{ cargaId: string; proyectoId: string; report: ApplyReport }> {
+}): Promise<{ cargaId: string; projectId: string; report: ApplyReport }> {
   const { cargaId, userId } = input;
   let processingCargaId: string | null = null;
 
   try {
-    const carga = await prisma.cargaDatos.findUnique({ where: { id: cargaId } });
-    if (!carga || carga.tipo !== TipoCargaDatos.RENT_ROLL || !carga.errorDetalle) {
+    const carga = await prisma.dataUpload.findUnique({ where: { id: cargaId } });
+    if (!carga || carga.type !== DataUploadType.RENT_ROLL || !carga.errorDetail) {
       throw new ApiError(404, "No existe preview para esta carga.");
     }
-    if (carga.estado === "PROCESANDO") {
+    if (carga.status === "PROCESSING") {
       throw new ApiError(409, "La carga ya esta siendo procesada.");
     }
 
-    const modernPayload = parseStoredUploadPayload(carga.errorDetalle);
+    const modernPayload = parseStoredUploadPayload(carga.errorDetail);
     const payload: StoredContratoPreview | null = modernPayload
       ? modernPayload
       : (() => {
-          const legacyPayload = parseRentRollPreviewPayload(carga.errorDetalle);
+          const legacyPayload = parseRentRollPreviewPayload(carga.errorDetail);
           if (!legacyPayload) {
             return null;
           }
@@ -71,19 +71,19 @@ export async function runContratosApplyJob(input: {
       throw new ApiError(422, "No fue posible leer el preview para esta carga.");
     }
 
-    await prisma.cargaDatos.update({
+    await prisma.dataUpload.update({
       where: { id: carga.id },
-      data: { estado: "PROCESANDO", usuarioId: userId }
+      data: { status: "PROCESSING", userId: userId }
     });
     processingCargaId = carga.id;
 
     const [locales, arrendatarios] = await Promise.all([
       prisma.unit.findMany({
-        where: { proyectoId: carga.proyectoId },
+        where: { proyectoId: carga.projectId },
         select: { id: true, codigo: true, glam2: true }
       }),
       prisma.tenant.findMany({
-        where: { proyectoId: carga.proyectoId },
+        where: { proyectoId: carga.projectId },
         select: { id: true, nombreComercial: true }
       })
     ]);
@@ -145,7 +145,7 @@ export async function runContratosApplyJob(input: {
           const contratoResult = await applyContrato(
             tx,
             normalized,
-            carga.proyectoId,
+            carga.projectId,
             localesMap,
             arrendatariosMap
           );
@@ -167,7 +167,7 @@ export async function runContratosApplyJob(input: {
           if (duplicatedTarifaKey.has(tarifaKey)) {
             rejectedRows.push({
               rowNumber: normalized.rowNumber,
-              message: "Tarifa duplicada en el archivo para tipo + vigenciaDesde."
+              message: "Tarifa duplicada en el archivo para type + vigenciaDesde."
             });
             continue;
           }
@@ -238,26 +238,27 @@ export async function runContratosApplyJob(input: {
       report
     };
 
-    await prisma.cargaDatos.update({
+    await prisma.dataUpload.update({
       where: { id: carga.id },
       data: {
-        estado: created + updated > 0 ? "OK" : "ERROR",
-        registrosCargados: created + updated,
-        errorDetalle: JSON.stringify(finalPayload)
+        status: created + updated > 0 ? "OK" : "ERROR",
+        recordsLoaded: created + updated,
+        errorDetail: JSON.stringify(finalPayload)
       }
     });
-    invalidateMetricsCacheByProject(carga.proyectoId);
+    invalidateMetricsCacheByProject(carga.projectId);
 
-    return { cargaId: carga.id, proyectoId: carga.proyectoId, report };
+    return { cargaId: carga.id, projectId: carga.projectId, report };
   } catch (error) {
     if (processingCargaId) {
-      await prisma.cargaDatos
+      await prisma.dataUpload
         .update({
           where: { id: processingCargaId },
-          data: { estado: "ERROR" }
+          data: { status: "ERROR" }
         })
         .catch(() => undefined);
     }
     throw error;
   }
 }
+

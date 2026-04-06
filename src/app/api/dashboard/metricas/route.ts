@@ -53,7 +53,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       120_000,
       async (): Promise<DashboardMetricasResponse> => {
         const today = startOfDay(new Date());
-        const [localesActivos, contratosRaw, groupedStates, ventasPeriodo, energiaPeriodo, valorUf] =
+        const [localesActivos, contratosRaw, groupedStates, ventasPeriodoRaw, energiaPeriodo, valorUf] =
           await Promise.all([
             prisma.unit.findMany({
               where: {
@@ -133,15 +133,15 @@ export async function GET(request: Request): Promise<NextResponse> {
               where: { proyectoId },
               _count: { _all: true }
             }),
-            prisma.ventaLocal.findMany({
+            prisma.unitSale.findMany({
               where: {
-                proyectoId,
-                periodo
+                projectId: proyectoId,
+                period: periodo
               },
               select: {
-                localId: true,
-                periodo: true,
-                ventasUf: true
+                unitId: true,
+                period: true,
+                salesUf: true
               }
             }),
             prisma.ingresoEnergia.findMany({
@@ -160,6 +160,12 @@ export async function GET(request: Request): Promise<NextResponse> {
               select: { fecha: true, valor: true }
             })
           ]);
+
+        const ventasPeriodo = ventasPeriodoRaw.map((sale) => ({
+          localId: sale.unitId,
+          periodo: sale.period,
+          ventasUf: sale.salesUf
+        }));
 
         const contratosWithState = contratosRaw
           .map((contract) => {
@@ -266,3 +272,4 @@ export async function GET(request: Request): Promise<NextResponse> {
     return handleApiError(error);
   }
 }
+

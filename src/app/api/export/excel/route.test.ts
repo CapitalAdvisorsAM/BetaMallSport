@@ -17,16 +17,16 @@ const { requireSessionMock, prismaMock } = vi.hoisted(() => ({
     contract: {
       findMany: vi.fn()
     },
-    mapeoLocalContable: {
+    accountingUnitMapping: {
       findMany: vi.fn()
     },
-    mapeoVentasLocal: {
+    salesUnitMapping: {
       findMany: vi.fn()
     },
-    registroContable: {
+    accountingRecord: {
       findMany: vi.fn()
     },
-    ventaLocal: {
+    unitSale: {
       findMany: vi.fn()
     }
   }
@@ -99,11 +99,11 @@ beforeEach(() => {
     }
   ]);
 
-  prismaMock.mapeoLocalContable.findMany.mockResolvedValue([
-    { localExterno: "102", local: { codigo: "L-102", nombre: "Local 102" } }
+  prismaMock.accountingUnitMapping.findMany.mockResolvedValue([
+    { externalUnit: "102", unit: { codigo: "L-102", nombre: "Local 102" } }
   ]);
-  prismaMock.mapeoVentasLocal.findMany.mockResolvedValue([
-    { idCa: 217, tiendaNombre: "Tienda X", local: { codigo: "L-217", nombre: "Local 217" } }
+  prismaMock.salesUnitMapping.findMany.mockResolvedValue([
+    { salesAccountId: 217, storeName: "Tienda X", unit: { codigo: "L-217", nombre: "Local 217" } }
   ]);
 });
 

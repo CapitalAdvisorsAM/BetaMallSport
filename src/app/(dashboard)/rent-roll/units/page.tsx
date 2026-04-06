@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TipoCargaDatos } from "@prisma/client";
+import { DataUploadType } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { UnitsViewTable } from "@/components/rent-roll/UnitsViewTable";
 import { RentRollEntityModeNav } from "@/components/rent-roll/RentRollEntityModeNav";
@@ -24,6 +24,7 @@ import { buildUnitsWhere, parseUnitsStatus } from "@/lib/rent-roll/units";
 import { getUploadHistory } from "@/lib/rent-roll/upload-history";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
+import { appendProjectQuery, buildProjectQueryString } from "@/lib/project-query";
 import { DEFAULT_COMMERCIAL_SIZE_RULES } from "@/lib/locales/size";
 import { formatDecimal } from "@/lib/utils";
 
@@ -90,7 +91,7 @@ export default async function UnitsPage({
   }
 
   if (!projectParam) {
-    redirect(`/rent-roll/units?project=${selectedProjectId}&proyecto=${selectedProjectId}`);
+    redirect(`/rent-roll/units?${buildProjectQueryString(selectedProjectId)}`);
   }
 
   const q = searchParams.q?.trim() ?? "";
@@ -157,15 +158,13 @@ export default async function UnitsPage({
   }
 
   const uploadHistory =
-    mode === "upload" ? await getUploadHistory(selectedProjectId, TipoCargaDatos.LOCALES) : [];
+    mode === "upload" ? await getUploadHistory(selectedProjectId, DataUploadType.UNITS) : [];
   const totalPages = Math.max(1, Math.ceil(totalUnits / PAGE_SIZE));
   const prevPage = Math.max(1, currentPage - 1);
   const nextPage = Math.min(totalPages, currentPage + 1);
 
   const buildPageHref = (page: number): string => {
-    const params = new URLSearchParams();
-    params.set("project", selectedProjectId);
-    params.set("proyecto", selectedProjectId);
+    const params = appendProjectQuery(new URLSearchParams(), selectedProjectId);
     params.set("seccion", "ver");
     if (q) {
       params.set("q", q);
@@ -178,9 +177,7 @@ export default async function UnitsPage({
   };
 
   const buildDetailHref = (id: string | null): string => {
-    const params = new URLSearchParams();
-    params.set("project", selectedProjectId);
-    params.set("proyecto", selectedProjectId);
+    const params = appendProjectQuery(new URLSearchParams(), selectedProjectId);
     params.set("seccion", "ver");
     if (q) {
       params.set("q", q);
@@ -469,5 +466,6 @@ export default async function UnitsPage({
     </main>
   );
 }
+
 
 

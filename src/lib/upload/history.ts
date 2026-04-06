@@ -1,4 +1,4 @@
-import type { Prisma, TipoCargaDatos } from "@prisma/client";
+import type { Prisma, DataUploadType } from "@prisma/client";
 import { parseRentRollPreviewPayload } from "@/lib/carga-datos";
 import { prisma } from "@/lib/prisma";
 import { parseStoredUploadPayload } from "@/lib/upload/payload";
@@ -6,8 +6,8 @@ import { parseStoredUploadPayload } from "@/lib/upload/payload";
 export type UploadHistoryItem = {
   id: string;
   createdAt: Date;
-  archivoNombre: string;
-  estado: string;
+  fileName: string;
+  status: string;
   created: number;
   updated: number;
   rejected: number;
@@ -16,15 +16,15 @@ export type UploadHistoryItem = {
 type HistoryFallbackMode = "created" | "updated";
 
 function extractHistoryCounts(
-  errorDetalle: Prisma.JsonValue | null,
-  registrosCargados: number,
+  errorDetail: Prisma.JsonValue | null,
+  recordsLoaded: number,
   fallbackMode: HistoryFallbackMode
 ): {
   created: number;
   updated: number;
   rejected: number;
 } {
-  const modernPayload = parseStoredUploadPayload(errorDetalle);
+  const modernPayload = parseStoredUploadPayload(errorDetail);
   if (modernPayload?.report) {
     return {
       created: modernPayload.report.created,
@@ -40,7 +40,7 @@ function extractHistoryCounts(
     };
   }
 
-  const legacyPayload = parseRentRollPreviewPayload(errorDetalle);
+  const legacyPayload = parseRentRollPreviewPayload(errorDetail);
   if (legacyPayload?.report) {
     return {
       created: legacyPayload.report.created,
@@ -57,28 +57,28 @@ function extractHistoryCounts(
   }
 
   return fallbackMode === "created"
-    ? { created: registrosCargados, updated: 0, rejected: 0 }
-    : { created: 0, updated: registrosCargados, rejected: 0 };
+    ? { created: recordsLoaded, updated: 0, rejected: 0 }
+    : { created: 0, updated: recordsLoaded, rejected: 0 };
 }
 
 export function mapUploadHistory(
   cargas: Array<{
     id: string;
     createdAt: Date;
-    archivoNombre: string;
-    estado: string;
-    registrosCargados: number;
-    errorDetalle: Prisma.JsonValue | null;
+    fileName: string;
+    status: string;
+    recordsLoaded: number;
+    errorDetail: Prisma.JsonValue | null;
   }>,
   fallbackMode: HistoryFallbackMode = "created"
 ): UploadHistoryItem[] {
   return cargas.map((carga) => {
-    const counts = extractHistoryCounts(carga.errorDetalle, carga.registrosCargados, fallbackMode);
+    const counts = extractHistoryCounts(carga.errorDetail, carga.recordsLoaded, fallbackMode);
     return {
       id: carga.id,
       createdAt: carga.createdAt,
-      archivoNombre: carga.archivoNombre,
-      estado: carga.estado,
+      fileName: carga.fileName,
+      status: carga.status,
       created: counts.created,
       updated: counts.updated,
       rejected: counts.rejected
@@ -87,23 +87,24 @@ export function mapUploadHistory(
 }
 
 export async function getUploadHistory(
-  proyectoId: string,
-  tipo: TipoCargaDatos,
+  projectId: string,
+  type: DataUploadType,
   fallbackMode: HistoryFallbackMode = "created"
 ): Promise<UploadHistoryItem[]> {
-  const cargas = await prisma.cargaDatos.findMany({
-    where: { proyectoId, tipo },
+  const cargas = await prisma.dataUpload.findMany({
+    where: { projectId, type },
     orderBy: { createdAt: "desc" },
     take: 5,
     select: {
       id: true,
       createdAt: true,
-      archivoNombre: true,
-      estado: true,
-      registrosCargados: true,
-      errorDetalle: true
+      fileName: true,
+      status: true,
+      recordsLoaded: true,
+      errorDetail: true
     }
   });
 
   return mapUploadHistory(cargas, fallbackMode);
 }
+

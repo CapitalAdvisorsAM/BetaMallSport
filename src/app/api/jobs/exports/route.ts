@@ -10,6 +10,7 @@ export const runtime = "nodejs";
 type ExportJobBody = {
   dataset?: string;
   scope?: string;
+  projectId?: string;
   proyectoId?: string;
   params?: Record<string, string>;
   sync?: boolean;
@@ -25,6 +26,7 @@ function buildDownloadUrl(input: ExportJobBody): string {
   const search = new URLSearchParams({
     dataset,
     scope,
+    ...(input.projectId ? { projectId: input.projectId } : {}),
     ...(input.proyectoId ? { proyectoId: input.proyectoId } : {}),
     ...(input.params ?? {})
   });
@@ -36,20 +38,22 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     const session = await requireSession();
     const body = (await request.json()) as ExportJobBody;
-    const proyectoId = body.proyectoId?.trim() ?? "";
-    if (!proyectoId) {
-      throw new ApiError(400, "proyectoId es obligatorio.");
+    const projectId = body.projectId?.trim() ?? body.proyectoId?.trim() ?? "";
+    if (!projectId) {
+      throw new ApiError(400, "projectId es obligatorio.");
     }
+    body.projectId = projectId;
 
     const downloadUrl = buildDownloadUrl(body);
     const jobId = await createJob({
-      proyectoId,
+      projectId,
       userId: session.user.id,
       kind: "EXPORT_EXCEL",
       payload: {
         dataset: body.dataset,
         scope: body.scope,
-        proyectoId,
+        projectId,
+        proyectoId: projectId,
         params: body.params ?? {},
         downloadUrl
       }

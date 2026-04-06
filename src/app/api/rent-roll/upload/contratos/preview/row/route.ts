@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { TipoCargaDatos } from "@prisma/client";
+import { DataUploadType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { requireWriteAccess } from "@/lib/permissions";
@@ -29,22 +29,22 @@ function isDataRecord(value: unknown): value is Record<string, unknown> {
   return isObject(value);
 }
 
-async function loadLookupData(proyectoId: string): Promise<{
+async function loadLookupData(projectId: string): Promise<{
   existingContratos: ExistingContratoMap;
   existingLocalData: Map<string, { glam2: string }>;
   existingArrendatarioNombres: Map<string, number>;
 }> {
   const [locales, arrendatarios, contratos] = await Promise.all([
     prisma.unit.findMany({
-      where: { proyectoId },
+      where: { proyectoId: projectId },
       select: { codigo: true, glam2: true }
     }),
     prisma.tenant.findMany({
-      where: { proyectoId },
+      where: { proyectoId: projectId },
       select: { nombreComercial: true }
     }),
     prisma.contract.findMany({
-      where: { proyectoId },
+      where: { proyectoId: projectId },
       include: {
         local: { select: { codigo: true } },
         arrendatario: { select: { nombreComercial: true } },
@@ -136,18 +136,18 @@ export async function PATCH(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "data debe ser un objeto con la fila editada." }, { status: 400 });
     }
 
-    const carga = await prisma.cargaDatos.findUnique({ where: { id: cargaId } });
-    if (!carga || carga.tipo !== TipoCargaDatos.RENT_ROLL || !carga.errorDetalle) {
+    const carga = await prisma.dataUpload.findUnique({ where: { id: cargaId } });
+    if (!carga || carga.type !== DataUploadType.RENT_ROLL || !carga.errorDetail) {
       return NextResponse.json({ message: "No existe preview para esta carga." }, { status: 404 });
     }
-    if (carga.estado !== "PENDIENTE") {
+    if (carga.status !== "PENDING") {
       return NextResponse.json(
-        { message: "Solo se pueden editar previews en estado pendiente." },
+        { message: "Solo se pueden editar previews en status pendiente." },
         { status: 409 }
       );
     }
 
-    const storedPreview = parseStoredUploadPayload(carga.errorDetalle);
+    const storedPreview = parseStoredUploadPayload(carga.errorDetail);
     if (!storedPreview) {
       return NextResponse.json({ message: "No fue posible leer el preview almacenado." }, { status: 422 });
     }
@@ -157,25 +157,25 @@ export async function PATCH(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "No existe la fila indicada en el preview." }, { status: 404 });
     }
 
-    const lookupData = await loadLookupData(carga.proyectoId);
+    const lookupData = await loadLookupData(carga.projectId);
     const nextPreview = revalidateContratoPreviewRows(
       storedPreview.rows.map((row) => ({
         rowNumber: row.rowNumber,
         data: row.rowNumber === rowNumber ? rowData : row.data
       })),
       {
-        fileName: carga.archivoNombre,
+        fileName: carga.fileName,
         existingContratos: lookupData.existingContratos,
         existingLocalData: lookupData.existingLocalData,
         existingArrendatarioNombres: lookupData.existingArrendatarioNombres
       }
     );
 
-    await prisma.cargaDatos.update({
+    await prisma.dataUpload.update({
       where: { id: carga.id },
       data: {
-        errorDetalle: JSON.stringify(nextPreview),
-        registrosCargados: nextPreview.summary.total - nextPreview.summary.errores
+        errorDetail: JSON.stringify(nextPreview),
+        recordsLoaded: nextPreview.summary.total - nextPreview.summary.errores
       }
     });
 
@@ -187,3 +187,4 @@ export async function PATCH(request: Request): Promise<NextResponse> {
     return handleApiError(error);
   }
 }
+

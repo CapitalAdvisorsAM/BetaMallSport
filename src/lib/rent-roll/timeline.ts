@@ -58,9 +58,9 @@ type VariableRentData = {
 
 async function buildVariableRentData(proyectoId: string): Promise<VariableRentData> {
   const [ventas, contractsRaw] = await Promise.all([
-    prisma.ventaLocal.findMany({
-      where: { proyectoId },
-      select: { localId: true, periodo: true, ventasUf: true },
+    prisma.unitSale.findMany({
+      where: { projectId: proyectoId },
+      select: { unitId: true, period: true, salesUf: true },
     }),
     prisma.contract.findMany({
       where: { proyectoId },
@@ -82,20 +82,20 @@ async function buildVariableRentData(proyectoId: string): Promise<VariableRentDa
   const ventaMap = new Map<string, { rentaVariableUf: number; ventasTotalUf: number }>();
 
   for (const venta of ventas) {
-    const contract = contractByLocalId.get(venta.localId);
+    const contract = contractByLocalId.get(venta.unitId);
     if (!contract) continue;
 
     // Find the PORCENTAJE rate active at the mid-point of the period
-    const midMonth = new Date(`${venta.periodo}-15`);
+    const midMonth = new Date(`${venta.period}-15`);
     const rate = contract.tarifas.find(
       (t) => t.vigenciaDesde <= midMonth && (t.vigenciaHasta === null || t.vigenciaHasta >= midMonth)
     );
     if (!rate) continue;
 
-    const ventasUf = venta.ventasUf.toNumber();
+    const ventasUf = venta.salesUf.toNumber();
     const rentaVar = round2(ventasUf * (rate.valor.toNumber() / 100));
-    const existing = ventaMap.get(venta.periodo) ?? { rentaVariableUf: 0, ventasTotalUf: 0 };
-    ventaMap.set(venta.periodo, {
+    const existing = ventaMap.get(venta.period) ?? { rentaVariableUf: 0, ventasTotalUf: 0 };
+    ventaMap.set(venta.period, {
       rentaVariableUf: round2(existing.rentaVariableUf + rentaVar),
       ventasTotalUf: round2(existing.ventasTotalUf + ventasUf),
     });
@@ -514,3 +514,4 @@ export async function getTimelineData(proyectoId: string): Promise<TimelineRespo
 
   return { periodos };
 }
+

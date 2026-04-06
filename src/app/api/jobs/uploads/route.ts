@@ -24,9 +24,9 @@ export async function POST(request: Request): Promise<NextResponse> {
       throw new ApiError(400, "cargaId es obligatorio.");
     }
 
-    const carga = await prisma.cargaDatos.findUnique({
+    const carga = await prisma.dataUpload.findUnique({
       where: { id: cargaId },
-      select: { id: true, proyectoId: true }
+      select: { id: true, projectId: true }
     });
     if (!carga) {
       throw new ApiError(404, "Carga no encontrada.");
@@ -37,7 +37,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     const jobId = await createJob({
-      proyectoId: carga.proyectoId,
+      projectId: carga.projectId,
       userId: session.user.id,
       kind: "UPLOAD_CONTRATOS_APPLY",
       payload: {
@@ -66,3 +66,4 @@ export async function POST(request: Request): Promise<NextResponse> {
     return handleApiError(error);
   }
 }
+

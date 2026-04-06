@@ -120,7 +120,7 @@ export async function DELETE(
             arrendatarios: true,
             contratos: true,
             contratosDia: true,
-            cargasDatos: true
+            dataUploads: true
           }
         }
       }
@@ -135,7 +135,7 @@ export async function DELETE(
       project._count.arrendatarios +
       project._count.contratos +
       project._count.contratosDia +
-      project._count.cargasDatos;
+      project._count.dataUploads;
 
     if (relatedRows > 0) {
       return NextResponse.json(

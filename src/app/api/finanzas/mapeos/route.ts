@@ -1,57 +1,32 @@
-import { NextRequest, NextResponse } from "next/server";
-import { contableMapeoSchema, getActiveLocales, getContableMapeos, upsertContableMapeo } from "@/lib/finanzas/mapeos";
-import { handleApiError, ApiError } from "@/lib/api-error";
-import { requireSession, requireWriteAccess } from "@/lib/permissions";
-import { prisma } from "@/lib/prisma";
+﻿export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
-  try {
-    await requireSession();
-    const { searchParams } = new URL(req.url);
-    const proyectoId = searchParams.get("proyectoId");
-    if (!proyectoId) {
-      throw new ApiError(400, "proyectoId requerido.");
-    }
+import {
+  DELETE as financeMappingsAccountingDELETE,
+  GET as financeMappingsAccountingGET,
+  POST as financeMappingsAccountingPOST
+} from "@/app/api/finance/mappings/accounting/route";
+import { withDeprecatedEndpointHeaders } from "@/lib/http/deprecation";
 
-    const [mapeos, locales] = await Promise.all([
-      getContableMapeos(proyectoId),
-      getActiveLocales(proyectoId)
-    ]);
+const CANONICAL_ENDPOINT = "/api/finance/mappings/accounting";
 
-    return NextResponse.json({ mapeos, locales });
-  } catch (error) {
-    return handleApiError(error);
-  }
+export async function GET(request: Request): Promise<Response> {
+  const response = await financeMappingsAccountingGET(
+    request as Parameters<typeof financeMappingsAccountingGET>[0]
+  );
+  return withDeprecatedEndpointHeaders(response, { canonicalPath: CANONICAL_ENDPOINT });
 }
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
-  try {
-    const session = await requireWriteAccess();
-    const body = await req.json();
-    const result = contableMapeoSchema.safeParse(body);
-    if (!result.success) {
-      throw new ApiError(400, "Datos invalidos.");
-    }
-
-    const mapeo = await upsertContableMapeo(result.data, session.user.id);
-    return NextResponse.json(mapeo, { status: 201 });
-  } catch (error) {
-    return handleApiError(error);
-  }
+export async function POST(request: Request): Promise<Response> {
+  const response = await financeMappingsAccountingPOST(
+    request as Parameters<typeof financeMappingsAccountingPOST>[0]
+  );
+  return withDeprecatedEndpointHeaders(response, { canonicalPath: CANONICAL_ENDPOINT });
 }
 
-export async function DELETE(req: NextRequest): Promise<NextResponse> {
-  try {
-    await requireWriteAccess();
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id");
-    if (!id) {
-      throw new ApiError(400, "id requerido.");
-    }
-
-    await prisma.mapeoLocalContable.delete({ where: { id } });
-    return NextResponse.json({ message: "Eliminado." });
-  } catch (error) {
-    return handleApiError(error);
-  }
+export async function DELETE(request: Request): Promise<Response> {
+  const response = await financeMappingsAccountingDELETE(
+    request as Parameters<typeof financeMappingsAccountingDELETE>[0]
+  );
+  return withDeprecatedEndpointHeaders(response, { canonicalPath: CANONICAL_ENDPOINT });
 }

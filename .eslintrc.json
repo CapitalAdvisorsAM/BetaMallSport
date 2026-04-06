@@ -1,3 +1,29 @@
 {
-  "extends": ["next/core-web-vitals", "next/typescript"]
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "rules": {
+    "no-alert": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["@/app/api/locales", "@/app/api/locales/*"],
+            "message": "Use canonical /api/units modules for new code."
+          },
+          {
+            "group": ["@/app/api/arrendatarios", "@/app/api/arrendatarios/*"],
+            "message": "Use canonical /api/tenants modules for new code."
+          },
+          {
+            "group": ["@/app/api/proyectos", "@/app/api/proyectos/*"],
+            "message": "Use canonical /api/projects modules for new code."
+          },
+          {
+            "group": ["@/app/api/finanzas", "@/app/api/finanzas/*"],
+            "message": "Use canonical /api/finance modules for new code."
+          }
+        ]
+      }
+    ]
+  }
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TipoCargaDatos } from "@prisma/client";
+import { DataUploadType } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { TenantsCrudPanel } from "@/components/rent-roll/TenantsCrudPanel";
 import { TenantsViewTable } from "@/components/rent-roll/TenantsViewTable";
@@ -28,6 +28,7 @@ import {
 import { getUploadHistory } from "@/lib/rent-roll/upload-history";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
+import { appendProjectQuery, buildProjectQueryString } from "@/lib/project-query";
 
 type TenantsPageProps = {
   searchParams: {
@@ -86,7 +87,7 @@ export default async function TenantsPage({
   }
 
   if (!projectParam) {
-    redirect(`/rent-roll/tenants?project=${selectedProjectId}&proyecto=${selectedProjectId}`);
+    redirect(`/rent-roll/tenants?${buildProjectQueryString(selectedProjectId)}`);
   }
 
   const q = searchParams.q?.trim() ?? "";
@@ -166,15 +167,13 @@ export default async function TenantsPage({
   }
 
   const uploadHistory =
-    mode === "upload" ? await getUploadHistory(selectedProjectId, TipoCargaDatos.ARRENDATARIOS) : [];
+    mode === "upload" ? await getUploadHistory(selectedProjectId, DataUploadType.TENANTS) : [];
   const totalPages = Math.max(1, Math.ceil(totalTenants / PAGE_SIZE));
   const prevPage = Math.max(1, currentPage - 1);
   const nextPage = Math.min(totalPages, currentPage + 1);
 
   const buildPageHref = (page: number): string => {
-    const params = new URLSearchParams();
-    params.set("project", selectedProjectId);
-    params.set("proyecto", selectedProjectId);
+    const params = appendProjectQuery(new URLSearchParams(), selectedProjectId);
     params.set("seccion", "ver");
     if (q) {
       params.set("q", q);
@@ -187,9 +186,7 @@ export default async function TenantsPage({
   };
 
   const buildDetailHref = (id: string | null): string => {
-    const params = new URLSearchParams();
-    params.set("project", selectedProjectId);
-    params.set("proyecto", selectedProjectId);
+    const params = appendProjectQuery(new URLSearchParams(), selectedProjectId);
     params.set("seccion", "ver");
     if (q) {
       params.set("q", q);
@@ -441,5 +438,6 @@ export default async function TenantsPage({
     </main>
   );
 }
+
 
 

@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { TipoCargaDatos } from "@prisma/client";
+import { DataUploadType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { resolveTenantRut } from "@/lib/arrendatarios/schema";
@@ -75,22 +75,22 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "cargaId es obligatorio." }, { status: 400 });
     }
 
-    const carga = await prisma.cargaDatos.findUnique({ where: { id: cargaId } });
-    if (!carga || carga.tipo !== TipoCargaDatos.ARRENDATARIOS) {
+    const carga = await prisma.dataUpload.findUnique({ where: { id: cargaId } });
+    if (!carga || carga.type !== DataUploadType.TENANTS) {
       return NextResponse.json({ message: "No existe preview para esta carga." }, { status: 404 });
     }
-    if (carga.estado === "PROCESANDO") {
+    if (carga.status === "PROCESSING") {
       return NextResponse.json({ message: "La carga ya esta siendo procesada." }, { status: 409 });
     }
 
-    const payload = parseStoredUploadPayload(carga.errorDetalle);
+    const payload = parseStoredUploadPayload(carga.errorDetail);
     if (!payload) {
       return NextResponse.json({ message: "No fue posible leer el preview para esta carga." }, { status: 422 });
     }
 
     const arrendatariosConContratosVigentes = await prisma.tenant.findMany({
       where: {
-        proyectoId: carga.proyectoId,
+        proyectoId: carga.projectId,
         contratos: {
           some: { estado: "VIGENTE" }
         }
@@ -101,9 +101,9 @@ export async function POST(request: Request): Promise<NextResponse> {
       arrendatariosConContratosVigentes.map((arrendatario) => normalizeUploadRut(arrendatario.rut))
     );
 
-    await prisma.cargaDatos.update({
+    await prisma.dataUpload.update({
       where: { id: carga.id },
-      data: { estado: "PROCESANDO", usuarioId: session.user.id }
+      data: { status: "PROCESSING", userId: session.user.id }
     });
     processingCargaId = carga.id;
 
@@ -147,12 +147,12 @@ export async function POST(request: Request): Promise<NextResponse> {
           await tx.tenant.upsert({
             where: {
               proyectoId_rut: {
-                proyectoId: carga.proyectoId,
+                proyectoId: carga.projectId,
                 rut: normalized.rut
               }
             },
             create: {
-              proyectoId: carga.proyectoId,
+              proyectoId: carga.projectId,
               rut: normalized.rut,
               razonSocial: normalized.razonSocial,
               nombreComercial: normalized.nombreComercial,
@@ -192,26 +192,27 @@ export async function POST(request: Request): Promise<NextResponse> {
       report
     };
 
-    await prisma.cargaDatos.update({
+    await prisma.dataUpload.update({
       where: { id: carga.id },
       data: {
-        estado: created + updated > 0 ? "OK" : "ERROR",
-        registrosCargados: created + updated,
-        errorDetalle: JSON.stringify(finalPayload)
+        status: created + updated > 0 ? "OK" : "ERROR",
+        recordsLoaded: created + updated,
+        errorDetail: JSON.stringify(finalPayload)
       }
     });
-    invalidateMetricsCacheByProject(carga.proyectoId);
+    invalidateMetricsCacheByProject(carga.projectId);
 
     return NextResponse.json({ cargaId: carga.id, report });
   } catch (error) {
     if (processingCargaId) {
-      await prisma.cargaDatos
+      await prisma.dataUpload
         .update({
           where: { id: processingCargaId },
-          data: { estado: "ERROR" }
+          data: { status: "ERROR" }
         })
         .catch(() => undefined);
     }
     return handleApiError(error);
   }
 }
+

@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
@@ -9,22 +10,20 @@ import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { isPeriodoValido } from "@/lib/validators";
 
-export const runtime = "nodejs";
-
 const allowedWriteRoles = new Set(["ADMIN", "CONTABILIDAD"]);
 
-const ventasUpsertSchema = z.object({
-  proyectoId: z.string().trim().min(1, "proyectoId es obligatorio."),
-  localId: z.string().trim().min(1, "localId es obligatorio."),
-  periodo: z
+const salesUpsertSchema = z.object({
+  projectId: z.string().trim().min(1, "projectId es obligatorio."),
+  unitId: z.string().trim().min(1, "unitId es obligatorio."),
+  period: z
     .string()
     .trim()
-    .refine(isPeriodoValido, "periodo debe tener formato YYYY-MM."),
-  ventasUf: z
+    .refine(isPeriodoValido, "period debe tener formato YYYY-MM."),
+  salesUf: z
     .coerce
     .string()
     .trim()
-    .min(1, "ventasUf es obligatorio.")
+    .min(1, "salesUf es obligatorio.")
     .refine((value) => {
       try {
         // Decimal constructor throws when input is invalid.
@@ -34,36 +33,74 @@ const ventasUpsertSchema = z.object({
       } catch {
         return false;
       }
-    }, "ventasUf debe ser decimal valido.")
+    }, "salesUf debe ser decimal valido.")
 });
+
+function normalizeBody(record: Record<string, unknown>) {
+  return {
+    projectId:
+      typeof record.projectId === "string"
+        ? record.projectId
+        : typeof record.proyectoId === "string"
+          ? record.proyectoId
+          : "",
+    unitId:
+      typeof record.unitId === "string"
+        ? record.unitId
+        : typeof record.localId === "string"
+          ? record.localId
+          : "",
+    period:
+      typeof record.period === "string"
+        ? record.period
+        : typeof record.periodo === "string"
+          ? record.periodo
+          : "",
+    salesUf:
+      typeof record.salesUf === "string" || typeof record.salesUf === "number"
+        ? record.salesUf
+        : typeof record.ventasUf === "string" || typeof record.ventasUf === "number"
+          ? record.ventasUf
+          : ""
+  };
+}
 
 export async function GET(request: Request): Promise<NextResponse> {
   try {
     await requireSession();
 
     const { searchParams } = new URL(request.url);
-    const proyectoId = searchParams.get("proyectoId");
-    const periodo = searchParams.get("periodo");
+    const projectId = searchParams.get("projectId") ?? searchParams.get("proyectoId");
+    const period = searchParams.get("period") ?? searchParams.get("periodo");
 
-    if (!proyectoId) {
-      return NextResponse.json({ message: "proyectoId es obligatorio." }, { status: 400 });
+    if (!projectId) {
+      return NextResponse.json({ message: "projectId es obligatorio." }, { status: 400 });
     }
-    if (!periodo) {
-      return NextResponse.json({ message: "periodo es obligatorio." }, { status: 400 });
+    if (!period) {
+      return NextResponse.json({ message: "period es obligatorio." }, { status: 400 });
     }
-    if (!isPeriodoValido(periodo)) {
-      return NextResponse.json({ message: "periodo debe tener formato YYYY-MM." }, { status: 400 });
+    if (!isPeriodoValido(period)) {
+      return NextResponse.json({ message: "period debe tener formato YYYY-MM." }, { status: 400 });
     }
 
-    const ventas = await prisma.ventaLocal.findMany({
+    const sales = await prisma.unitSale.findMany({
       where: {
-        proyectoId,
-        periodo
+        projectId,
+        period
       },
-      orderBy: [{ localId: "asc" }]
+      orderBy: [{ unitId: "asc" }]
     });
 
-    return NextResponse.json(ventas, { status: 200 });
+    return NextResponse.json(
+      sales.map((sale) => ({
+        ...sale,
+        proyectoId: sale.projectId,
+        localId: sale.unitId,
+        periodo: sale.period,
+        ventasUf: sale.salesUf
+      })),
+      { status: 200 }
+    );
   } catch (error) {
     return handleApiError(error);
   }
@@ -76,7 +113,8 @@ export async function POST(request: Request): Promise<NextResponse> {
       throw new ApiError(403, "No autorizado para registrar ventas.");
     }
 
-    const parsed = ventasUpsertSchema.safeParse(await request.json());
+    const raw = (await request.json()) as Record<string, unknown>;
+    const parsed = salesUpsertSchema.safeParse(normalizeBody(raw));
     if (!parsed.success) {
       return NextResponse.json(
         { message: parsed.error.issues[0]?.message ?? "Payload invalido.", issues: parsed.error.issues },
@@ -84,27 +122,36 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
 
-    const saved = await prisma.ventaLocal.upsert({
+    const saved = await prisma.unitSale.upsert({
       where: {
-        localId_periodo: {
-          localId: parsed.data.localId,
-          periodo: parsed.data.periodo
+        unitId_period: {
+          unitId: parsed.data.unitId,
+          period: parsed.data.period
         }
       },
       update: {
-        proyectoId: parsed.data.proyectoId,
-        ventasUf: new Prisma.Decimal(parsed.data.ventasUf)
+        projectId: parsed.data.projectId,
+        salesUf: new Prisma.Decimal(parsed.data.salesUf)
       },
       create: {
-        proyectoId: parsed.data.proyectoId,
-        localId: parsed.data.localId,
-        periodo: parsed.data.periodo,
-        ventasUf: new Prisma.Decimal(parsed.data.ventasUf)
+        projectId: parsed.data.projectId,
+        unitId: parsed.data.unitId,
+        period: parsed.data.period,
+        salesUf: new Prisma.Decimal(parsed.data.salesUf)
       }
     });
-    invalidateMetricsCacheByProject(parsed.data.proyectoId);
+    invalidateMetricsCacheByProject(parsed.data.projectId);
 
-    return NextResponse.json(saved, { status: 200 });
+    return NextResponse.json(
+      {
+        ...saved,
+        proyectoId: saved.projectId,
+        localId: saved.unitId,
+        periodo: saved.period,
+        ventasUf: saved.salesUf
+      },
+      { status: 200 }
+    );
   } catch (error) {
     return handleApiError(error);
   }

@@ -208,6 +208,23 @@ npm run prisma:push
 npm run prisma:migrate
 ```
 
+## Guia rapida: scaffold CRUD reutilizable
+Para nuevas pantallas CRUD, usar este stack base antes de crear componentes ad-hoc:
+
+1. `EntityCrudShell`: estructura comun (titulo, toolbar, formulario, tabla, mensajes).
+2. `EntityFormSection`: submit consistente create/edit con estados de carga.
+3. `EntityActionsCell`: acciones de fila (editar/eliminar/configurar).
+4. `useCrudResource`: estado uniforme (`idle/loading/success/error`) para create/update/delete.
+5. `data-table-columns`: helpers para columnas (`enumFilterColumn`, `numberFilterColumn`, `statusBadgeColumn`, `linkColumn`).
+
+Checklist recomendado para nuevas entidades:
+
+1. Definir tipos `Record` + `Form`.
+2. Crear funciones API (`create/update/delete`) reutilizando `extractApiErrorMessage`.
+3. Conectar con `useCrudResource`.
+4. Construir tabla con los helpers de columna.
+5. Usar `ConfirmModal` para acciones destructivas (no usar `window.confirm`).
+
 ## Estandar de nombres (desarrollo)
 Para evitar mezcla Spanglish en codigo nuevo del core de Rent Roll:
 
