@@ -156,6 +156,11 @@ export const METRIC_FORMULAS = {
     formula:
       "SUM(renta fija UF) por tipo: regular, simulador/modulo, bodega/espacio",
     detail: "Apila ingresos mensuales por segmento de tipo de local."
+  },
+  chart_rent_roll_custom_widget: {
+    title: "Widget personalizado",
+    formula: "Formula configurable definida en Configuracion de dashboard.",
+    detail: "Evalua la expresion seleccionada por el usuario sobre la serie historica mensual."
   }
 } as const satisfies Record<string, MetricFormulaDefinition>;
 
