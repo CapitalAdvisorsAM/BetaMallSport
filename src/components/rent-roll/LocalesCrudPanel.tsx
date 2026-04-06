@@ -27,7 +27,7 @@ type LocalTipo =
   | "ESPACIO"
   | "BODEGA"
   | "OTRO";
-type EstadoMaestro = "ACTIVO" | "INACTIVO";
+type MasterStatus = "ACTIVO" | "INACTIVO";
 
 type LocalRecord = {
   id: string;
@@ -39,20 +39,20 @@ type LocalRecord = {
   tipo: LocalTipo;
   zona: string | null;
   esGLA: boolean;
-  estado: EstadoMaestro;
+  estado: MasterStatus;
 };
 
 type LocalForm = Omit<LocalRecord, "id">;
 
 type LocalesCrudPanelProps = {
-  proyectoId: string;
+  projectId: string;
   canEdit: boolean;
   initialLocales: LocalRecord[];
 };
 
-function createEmptyForm(proyectoId: string): LocalForm {
+function createEmptyForm(projectId: string): LocalForm {
   return {
-    proyectoId,
+    proyectoId: projectId,
     codigo: "",
     nombre: "",
     glam2: "",
@@ -86,7 +86,7 @@ function parseDecimal(value: string): number | undefined {
 }
 
 export function LocalesCrudPanel({
-  proyectoId,
+  projectId,
   canEdit,
   initialLocales
 }: LocalesCrudPanelProps): JSX.Element {
@@ -95,7 +95,7 @@ export function LocalesCrudPanel({
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [form, setForm] = useState<LocalForm>(createEmptyForm(proyectoId));
+  const [form, setForm] = useState<LocalForm>(createEmptyForm(projectId));
   const glam2Missing = !String(form.glam2).trim();
 
   const columns = useMemo<ColumnDef<LocalRecord, unknown>[]>(
@@ -218,7 +218,7 @@ export function LocalesCrudPanel({
   function beginCreate(): void {
     setSelectedId(null);
     setFieldErrors({});
-    setForm(createEmptyForm(proyectoId));
+    setForm(createEmptyForm(projectId));
   }
 
   function beginEdit(local: LocalRecord): void {
@@ -277,9 +277,9 @@ export function LocalesCrudPanel({
     setLoading(true);
     try {
       const isEditing = Boolean(selectedId);
-      const editQuery = `?proyectoId=${encodeURIComponent(form.proyectoId)}`;
+      const editQuery = `?projectId=${encodeURIComponent(form.proyectoId)}&proyectoId=${encodeURIComponent(form.proyectoId)}`;
       const response = await fetch(
-        isEditing ? `/api/locales/${selectedId}${editQuery}` : "/api/locales",
+        isEditing ? `/api/units/${selectedId}${editQuery}` : "/api/units",
         {
           method: isEditing ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
@@ -317,7 +317,7 @@ export function LocalesCrudPanel({
     setLoading(true);
     try {
       const response = await fetch(
-        `/api/locales/${localId}?proyectoId=${encodeURIComponent(proyectoId)}`,
+        `/api/units/${localId}?projectId=${encodeURIComponent(projectId)}&proyectoId=${encodeURIComponent(projectId)}`,
         { method: "DELETE" }
       );
       const data = (await response.json()) as { message?: string };
@@ -453,7 +453,7 @@ export function LocalesCrudPanel({
           </span>
           <Select
             value={form.estado}
-            onValueChange={(value) => setForm({ ...form, estado: value as EstadoMaestro })}
+            onValueChange={(value) => setForm({ ...form, estado: value as MasterStatus })}
           >
             <SelectTrigger className="w-full">
               <SelectValue />

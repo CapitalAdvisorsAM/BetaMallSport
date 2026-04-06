@@ -8,7 +8,7 @@ export function AlertBar({
   vacantes,
   proyectoId
 }: AlertCounts): JSX.Element | null {
-  const href = `/rent-roll/dashboard?proyecto=${proyectoId}`;
+  const href = `/rent-roll/dashboard?project=${proyectoId}&proyecto=${proyectoId}`;
 
   const items = [
     {

@@ -1,4 +1,4 @@
-import { EstadoMaestro, TipoLocal } from "@prisma/client";
+import { MasterStatus, UnitType } from "@prisma/client";
 import { read, utils } from "xlsx";
 import { MAX_ROWS, normalizeHeaders } from "@/lib/upload/parse-utils";
 import type { PreviewRow, UploadPreview } from "@/types/upload";
@@ -10,10 +10,10 @@ export type LocalUploadRow = {
   nombre: string;
   glam2: string;
   piso: string;
-  tipo: TipoLocal;
+  tipo: UnitType;
   zona: string | null;
   esGLA: boolean;
-  estado: EstadoMaestro;
+  estado: MasterStatus;
 };
 
 export type ExistingLocalForDiff = {
@@ -21,24 +21,24 @@ export type ExistingLocalForDiff = {
   nombre: string;
   glam2: string | number;
   piso: string;
-  tipo: TipoLocal;
+  tipo: UnitType;
   zona: string | null;
   esGLA: boolean;
-  estado: EstadoMaestro;
+  estado: MasterStatus;
 };
 
 const requiredColumns = ["codigo", "piso", "tipo"];
 const trueLiterals = new Set(["true", "1", "si", "s\u00ed", "yes", "y"]);
-const allowedTipo = new Set(Object.values(TipoLocal));
-const allowedEstado = new Set(Object.values(EstadoMaestro));
-const tipoAliases: Record<string, TipoLocal> = {
-  LOCAL_COMERCIAL: TipoLocal.LOCAL_COMERCIAL,
-  TIENDA: TipoLocal.LOCAL_COMERCIAL,
-  SIMULADOR: TipoLocal.SIMULADOR,
-  MODULO: TipoLocal.MODULO,
-  ESPACIO: TipoLocal.ESPACIO,
-  BODEGA: TipoLocal.BODEGA,
-  OTRO: TipoLocal.OTRO
+const allowedTipo = new Set(Object.values(UnitType));
+const allowedEstado = new Set(Object.values(MasterStatus));
+const tipoAliases: Record<string, UnitType> = {
+  LOCAL_COMERCIAL: UnitType.LOCAL_COMERCIAL,
+  TIENDA: UnitType.LOCAL_COMERCIAL,
+  SIMULADOR: UnitType.SIMULADOR,
+  MODULO: UnitType.MODULO,
+  ESPACIO: UnitType.ESPACIO,
+  BODEGA: UnitType.BODEGA,
+  OTRO: UnitType.OTRO
 };
 
 function normalizeToken(value: string): string {
@@ -87,7 +87,7 @@ function parseBoolean(value: unknown): boolean {
   return trueLiterals.has(normalized);
 }
 
-function parseTipo(rawTipo: string): TipoLocal | null {
+function parseTipo(rawTipo: string): UnitType | null {
   return tipoAliases[rawTipo] ?? null;
 }
 
@@ -97,10 +97,10 @@ function emptyRow(): LocalUploadRow {
     nombre: "",
     glam2: "",
     piso: "",
-    tipo: TipoLocal.LOCAL_COMERCIAL,
+    tipo: UnitType.LOCAL_COMERCIAL,
     zona: null,
     esGLA: false,
-    estado: EstadoMaestro.ACTIVO
+    estado: MasterStatus.ACTIVO
   };
 }
 
@@ -227,7 +227,7 @@ export function parseLocalesFile(
     const zona = normalizeNullable(rawRow.zona);
     const esGLA = parseBoolean(rawRow.esgla);
     const estadoRaw = normalizeToken(asString(rawRow.estado));
-    const estado = (estadoRaw || EstadoMaestro.ACTIVO) as EstadoMaestro;
+    const estado = (estadoRaw || MasterStatus.ACTIVO) as MasterStatus;
     const tipo = parseTipo(tipoRaw || "LOCAL_COMERCIAL");
     const existing = codigo ? existingMap.get(codigo) : undefined;
     const existingGlam2 = Number(existing?.glam2 ?? 0);
@@ -242,7 +242,7 @@ export function parseLocalesFile(
       nombre,
       glam2: glam2Value,
       piso,
-      tipo: tipo ?? TipoLocal.LOCAL_COMERCIAL,
+      tipo: tipo ?? UnitType.LOCAL_COMERCIAL,
       zona,
       esGLA,
       estado
@@ -272,7 +272,7 @@ export function parseLocalesFile(
         rowNumber,
         status: "ERROR",
         data,
-        errorMessage: `tipo invalido: ${tipoRaw}. Valores permitidos: ${Object.values(TipoLocal).join(", ")}.`
+        errorMessage: `tipo invalido: ${tipoRaw}. Valores permitidos: ${Object.values(UnitType).join(", ")}.`
       };
     }
     if (!allowedEstado.has(data.estado)) {
@@ -280,7 +280,7 @@ export function parseLocalesFile(
         rowNumber,
         status: "ERROR",
         data,
-        errorMessage: `estado invalido: ${estadoRaw}. Valores permitidos: ${Object.values(EstadoMaestro).join(", ")}.`
+        errorMessage: `estado invalido: ${estadoRaw}. Valores permitidos: ${Object.values(MasterStatus).join(", ")}.`
       };
     }
     if (glam2WasProvided && glam2Number === null) {

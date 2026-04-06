@@ -172,6 +172,7 @@ export function EERRClient({
         description="Resultado consolidado del proyecto por periodo."
         projects={projects}
         selectedProjectId={selectedProjectId}
+        showProjectSelector={false}
         preserve={{ desde, hasta }}
         actions={
           <div className="flex items-center gap-3">

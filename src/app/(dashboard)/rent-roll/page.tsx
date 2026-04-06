@@ -1,25 +1,14 @@
-import { TipoTarifaContrato } from "@prisma/client";
+import { ContractRateType } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { KpiCard } from "@/components/dashboard/KpiCard";
-import {
-  RentRollDashboardTable,
-  type RentRollDashboardTableRow
-} from "@/components/rent-roll/RentRollDashboardTable";
+import { RentRollDashboardTable, type RentRollDashboardTableRow } from "@/components/rent-roll/RentRollDashboardTable";
+import { OcupacionTamanoTable } from "@/components/rent-roll/OcupacionTamanoTable";
 import { RentRollSnapshotDatePicker } from "@/components/rent-roll/RentRollSnapshotDatePicker";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
-import { ProjectSelector } from "@/components/ui/ProjectSelector";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
 import { buildOcupacionDetalle, calculateWalt } from "@/lib/kpi";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { getProjectContext } from "@/lib/project";
+import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
 import {
   formatWaltValue,
   getPeriodoFromFecha,
@@ -30,6 +19,7 @@ import { formatDecimal } from "@/lib/utils";
 
 type RentRollPageProps = {
   searchParams: {
+    project?: string;
     proyecto?: string;
     periodo?: string;
     fecha?: string;
@@ -40,8 +30,9 @@ export default async function RentRollPage({
   searchParams
 }: RentRollPageProps): Promise<JSX.Element> {
   const session = await requireSession();
+  const projectParam = resolveProjectIdFromSearchParams(searchParams);
 
-  const { projects, selectedProjectId } = await getProjectContext(searchParams.proyecto);
+  const { selectedProjectId } = await getProjectContext(projectParam);
   if (!selectedProjectId) {
     return (
       <ProjectCreationPanel
@@ -57,18 +48,19 @@ export default async function RentRollPage({
   const periodoVentas = getPeriodoFromFecha(fecha);
 
   if (
-    searchParams.proyecto !== selectedProjectId ||
+    projectParam !== selectedProjectId ||
     searchParams.fecha !== fecha ||
     searchParams.periodo
   ) {
     const params = new URLSearchParams();
+    params.set("project", selectedProjectId);
     params.set("proyecto", selectedProjectId);
     params.set("fecha", fecha);
     redirect(`/rent-roll?${params.toString()}`);
   }
 
   const [contracts, ventaLocales, localesActivos] = await Promise.all([
-    prisma.contrato.findMany({
+    prisma.contract.findMany({
       where: {
         proyectoId: selectedProjectId,
         fechaInicio: { lte: fechaReferencia },
@@ -93,7 +85,7 @@ export default async function RentRollPage({
         },
         tarifas: {
           where: {
-            tipo: { in: [TipoTarifaContrato.FIJO_UF_M2, TipoTarifaContrato.PORCENTAJE] },
+            tipo: { in: [ContractRateType.FIJO_UF_M2, ContractRateType.PORCENTAJE] },
             vigenciaDesde: { lte: fechaReferencia },
             OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: fechaReferencia } }]
           },
@@ -130,7 +122,7 @@ export default async function RentRollPage({
       },
       orderBy: [{ createdAt: "desc" }]
     }),
-    prisma.local.findMany({
+    prisma.unit.findMany({
       where: {
         proyectoId: selectedProjectId,
         estado: "ACTIVO"
@@ -155,10 +147,10 @@ export default async function RentRollPage({
   const rows: RentRollDashboardTableRow[] = contracts.map((contract) => {
     const glam2 = Number(contract.local.glam2);
     const tarifaFija = contract.tarifas.find(
-      (tarifa) => tarifa.tipo === TipoTarifaContrato.FIJO_UF_M2
+      (tarifa) => tarifa.tipo === ContractRateType.FIJO_UF_M2
     );
     const tarifaVariable = contract.tarifas.find(
-      (tarifa) => tarifa.tipo === TipoTarifaContrato.PORCENTAJE
+      (tarifa) => tarifa.tipo === ContractRateType.PORCENTAJE
     );
     const tarifaUfM2 = tarifaFija?.valor ? Number(tarifaFija.valor) : 0;
     const rentaFijaUf = glam2 * tarifaUfM2;
@@ -236,6 +228,21 @@ export default async function RentRollPage({
     { key: "Modulo", label: "Modulo" },
     { key: "Bodega", label: "Bodega" }
   ] as const;
+  const ocupacionRows = tamanoRows.map((row) => {
+    const data = ocupacionDetalle.porTamano[row.key] ?? {
+      gla: 0,
+      glaArrendada: 0,
+      pctVacancia: 0
+    };
+
+    return {
+      tipo: row.label,
+      glaTotal: data.gla,
+      glaArrendada: data.glaArrendada,
+      vacante: Math.max(data.gla - data.glaArrendada, 0),
+      pctVacancia: data.pctVacancia
+    };
+  });
 
   return (
     <main className="space-y-4">
@@ -252,11 +259,6 @@ export default async function RentRollPage({
               Vista operacional snapshot: estado contractual actual y metricas en una fecha exacta.
             </p>
           </div>
-          <ProjectSelector
-            projects={projects}
-            selectedProjectId={selectedProjectId}
-            preserve={{ fecha }}
-          />
         </div>
       </header>
 
@@ -271,21 +273,25 @@ export default async function RentRollPage({
 
       <section className="grid gap-4 md:grid-cols-4">
         <KpiCard
+          metricId="kpi_rent_roll_snapshot_renta_fija_total_uf"
           title="Renta fija total (UF)"
           value={formatDecimal(totals.rentaFijaUf)}
           accent="slate"
         />
         <KpiCard
+          metricId="kpi_rent_roll_snapshot_ggcc_total_uf"
           title="GGCC total (UF)"
           value={formatDecimal(totals.ggccUf)}
           accent="slate"
         />
         <KpiCard
+          metricId="kpi_rent_roll_snapshot_ventas_periodo_uf"
           title="Ventas periodo (UF)"
           value={formatDecimal(totals.ventasUf)}
           accent="slate"
         />
         <KpiCard
+          metricId="kpi_rent_roll_snapshot_walt_global"
           title="WALT global"
           value={formatWaltValue(walt)}
           subtitle={walt > 0 ? `Promedio ponderado al ${fecha}` : "Sin contratos activos"}
@@ -298,66 +304,11 @@ export default async function RentRollPage({
           <div className="border-b border-slate-200 px-4 py-3">
             <h3 className="text-sm font-semibold text-brand-700">Ocupacion por tamano</h3>
           </div>
-          <div className="overflow-x-auto">
-            <Table className="min-w-full divide-y divide-slate-200 text-sm">
-              <TableHeader className="bg-brand-700">
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
-                    Tipo
-                  </TableHead>
-                  <TableHead className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
-                    GLA Total
-                  </TableHead>
-                  <TableHead className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
-                    GLA Arrendada
-                  </TableHead>
-                  <TableHead className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
-                    Vacante
-                  </TableHead>
-                  <TableHead className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
-                    % Vacancia
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="text-slate-800">
-                {tamanoRows.map((row, index) => {
-                  const data = ocupacionDetalle.porTamano[row.key] ?? {
-                    gla: 0,
-                    glaArrendada: 0,
-                    pctVacancia: 0
-                  };
-                  const vacante = Math.max(data.gla - data.glaArrendada, 0);
-
-                  return (
-                    <TableRow
-                      key={row.key}
-                      className={index % 2 === 0 ? "bg-white" : "bg-slate-50/60"}
-                    >
-                      <TableCell className="whitespace-nowrap px-4 py-3 font-medium">
-                        {row.label}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                        {formatDecimal(data.gla)}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                        {formatDecimal(data.glaArrendada)}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                        {formatDecimal(vacante)}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                        {formatDecimal(data.pctVacancia)}%
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+          <OcupacionTamanoTable rows={ocupacionRows} />
         </article>
       </section>
 
-      <RentRollDashboardTable rows={rows} totals={totals} snapshotDate={fecha} />
+      <RentRollDashboardTable rows={rows} snapshotDate={fecha} />
     </main>
   );
 }

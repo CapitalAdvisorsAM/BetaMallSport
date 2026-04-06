@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
 import { formatDecimal } from "@/lib/utils";
 
 export type RentRollCategoryConcentrationDatum = {
@@ -36,15 +37,11 @@ export function RentRollCategoryConcentration({
   data
 }: RentRollCategoryConcentrationProps): JSX.Element {
   return (
-    <article className="overflow-hidden rounded-md bg-white shadow-sm">
-      <div className="border-b border-slate-200 px-4 py-3">
-        <h3 className="text-sm font-semibold text-brand-700">
-          Concentracion de GLA arrendado por categoria
-        </h3>
-        <p className="mt-1 text-xs text-slate-500">
-          Snapshot de contratos activos agrupados por `Local.zona`.
-        </p>
-      </div>
+    <MetricChartCard
+      title="Concentracion de GLA arrendado por categoria"
+      metricId="chart_rent_roll_concentracion_gla_categoria"
+      description="Snapshot de contratos activos agrupados por `Local.zona`."
+    >
 
       {data.length === 0 ? (
         <div className="p-6 text-sm text-slate-500">
@@ -125,6 +122,6 @@ export function RentRollCategoryConcentration({
           </div>
         </div>
       )}
-    </article>
+    </MetricChartCard>
   );
 }

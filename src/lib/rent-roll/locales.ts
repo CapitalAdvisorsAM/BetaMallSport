@@ -1,22 +1,22 @@
-import { EstadoMaestro, type Prisma } from "@prisma/client";
+import { MasterStatus, type Prisma } from "@prisma/client";
 
 export type LocalesFilters = {
   q: string;
-  estado?: EstadoMaestro;
+  estado?: MasterStatus;
 };
 
-const allowedEstados = new Set<EstadoMaestro>(["ACTIVO", "INACTIVO"]);
+const allowedEstados = new Set<MasterStatus>(["ACTIVO", "INACTIVO"]);
 
 /**
  * Parses the locale state filter from query params.
  * @param estado - Raw estado value from query params
- * @returns A valid `EstadoMaestro` value or `undefined`
+ * @returns A valid `MasterStatus` value or `undefined`
  */
-export function parseLocalesEstado(estado?: string): EstadoMaestro | undefined {
+export function parseLocalesEstado(estado?: string): MasterStatus | undefined {
   if (!estado) {
     return undefined;
   }
-  return allowedEstados.has(estado as EstadoMaestro) ? (estado as EstadoMaestro) : undefined;
+  return allowedEstados.has(estado as MasterStatus) ? (estado as MasterStatus) : undefined;
 }
 
 /**
@@ -28,7 +28,7 @@ export function parseLocalesEstado(estado?: string): EstadoMaestro | undefined {
 export function buildLocalesWhere(
   proyectoId: string,
   filters: LocalesFilters
-): Prisma.LocalWhereInput {
+): Prisma.UnitWhereInput {
   const q = filters.q.trim();
 
   return {

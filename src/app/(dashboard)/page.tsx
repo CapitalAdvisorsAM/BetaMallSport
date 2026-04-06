@@ -1,17 +1,10 @@
-import { EstadoContrato, EstadoMaestro, TipoTarifaContrato } from "@prisma/client";
+import { ContractStatus, MasterStatus, ContractRateType } from "@prisma/client";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AlertBar } from "@/components/dashboard/AlertBar";
 import { KpiCard } from "@/components/dashboard/KpiCard";
+import { VencimientosPorAnioTable } from "@/components/dashboard/VencimientosPorAnioTable";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
 import {
   OCCUPANCY_HIGH_THRESHOLD,
   OCCUPANCY_LOW_THRESHOLD,
@@ -33,12 +26,15 @@ import {
 } from "@/lib/kpi";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { getProjectContext } from "@/lib/project";
+import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
+import type { MetricFormulaId } from "@/lib/metric-formulas";
 import { isPeriodoValido } from "@/lib/validators";
-import { cn, formatUf, startOfDay } from "@/lib/utils";
+import { formatUf, startOfDay } from "@/lib/utils";
+import { resolveWidgetConfigs, type ResolvedWidgetConfig } from "@/lib/dashboard/widget-registry";
 
 type DashboardPageProps = {
   searchParams: {
+    project?: string;
     proyecto?: string;
     periodo?: string;
   };
@@ -47,27 +43,32 @@ type DashboardPageProps = {
 type CarteraCardConfig = {
   title: string;
   accent: "green" | "yellow" | "red" | "slate";
+  metricId: MetricFormulaId;
   subtitle?: string;
 };
 
-const CARTERA_CARD_CONFIG: Record<EstadoContrato, CarteraCardConfig> = {
+const CARTERA_CARD_CONFIG: Record<ContractStatus, CarteraCardConfig> = {
   VIGENTE: {
     title: "Vigentes",
-    accent: "green"
+    accent: "green",
+    metricId: "kpi_dashboard_cartera_vigentes"
   },
   GRACIA: {
     title: "En periodo de gracia",
     accent: "yellow",
+    metricId: "kpi_dashboard_cartera_gracia",
     subtitle: "Sin ingreso hasta inicio efectivo"
   },
   TERMINADO_ANTICIPADO: {
     title: "Terminados anticipadamente",
     accent: "red",
+    metricId: "kpi_dashboard_cartera_terminado_anticipado",
     subtitle: "Rescision antes del plazo pactado"
   },
   TERMINADO: {
     title: "Terminados",
-    accent: "slate"
+    accent: "slate",
+    metricId: "kpi_dashboard_cartera_terminado"
   }
 };
 
@@ -93,16 +94,6 @@ function formatShortDate(date: Date): string {
   }).format(date);
 }
 
-function urgencyClassForYear(year: number, currentYear: number): string {
-  if (year === currentYear) {
-    return "text-rose-700";
-  }
-  if (year === currentYear + 1) {
-    return "text-amber-700";
-  }
-  return "text-slate-700";
-}
-
 export default async function DashboardPage({
   searchParams
 }: DashboardPageProps): Promise<JSX.Element> {
@@ -112,7 +103,8 @@ export default async function DashboardPage({
     redirect("/login");
   }
 
-  const { projects, selectedProjectId } = await getProjectContext(searchParams.proyecto);
+  const projectParam = resolveProjectIdFromSearchParams(searchParams);
+  const { projects, selectedProjectId } = await getProjectContext(projectParam);
   if (!selectedProjectId) {
     return (
       <main className="rounded-md bg-white p-6 shadow-sm">
@@ -130,20 +122,21 @@ export default async function DashboardPage({
   const currentPeriodo = formatPeriodo(new Date());
   const periodo = isPeriodoValido(searchParams.periodo ?? "") ? (searchParams.periodo as string) : currentPeriodo;
 
-  if (searchParams.proyecto !== selectedProjectId || searchParams.periodo !== periodo) {
+  if (projectParam !== selectedProjectId || searchParams.periodo !== periodo) {
     const params = new URLSearchParams();
+    params.set("project", selectedProjectId);
     params.set("proyecto", selectedProjectId);
     params.set("periodo", periodo);
     redirect(`/?${params.toString()}`);
   }
 
   const today = startOfDay(new Date());
-  const [activeLocales, activeContractsRaw, groupedStates, latestValorUf, ventasPeriodo, energiaPeriodo] =
+  const [activeLocales, activeContractsRaw, groupedStates, latestValorUf, ventasPeriodo, energiaPeriodo, dashboardConfigRows] =
     await Promise.all([
-      prisma.local.findMany({
+      prisma.unit.findMany({
         where: {
           proyectoId: selectedProjectId,
-          estado: EstadoMaestro.ACTIVO
+          estado: MasterStatus.ACTIVO
         },
         orderBy: { codigo: "asc" },
         select: {
@@ -155,11 +148,11 @@ export default async function DashboardPage({
           zona: true
         }
       }),
-      prisma.contrato.findMany({
+      prisma.contract.findMany({
         where: {
           proyectoId: selectedProjectId,
           estado: {
-            in: [EstadoContrato.VIGENTE, EstadoContrato.GRACIA]
+            in: [ContractStatus.VIGENTE, ContractStatus.GRACIA]
           }
         },
         orderBy: { fechaTermino: "asc" },
@@ -185,9 +178,9 @@ export default async function DashboardPage({
             where: {
               tipo: {
                 in: [
-                  TipoTarifaContrato.FIJO_UF_M2,
-                  TipoTarifaContrato.FIJO_UF,
-                  TipoTarifaContrato.PORCENTAJE
+                  ContractRateType.FIJO_UF_M2,
+                  ContractRateType.FIJO_UF,
+                  ContractRateType.PORCENTAJE
                 ]
               },
               vigenciaDesde: { lte: today },
@@ -212,7 +205,7 @@ export default async function DashboardPage({
           }
         }
       }),
-      prisma.contrato.groupBy({
+      prisma.contract.groupBy({
         by: ["estado"],
         where: { proyectoId: selectedProjectId },
         _count: { _all: true }
@@ -242,17 +235,32 @@ export default async function DashboardPage({
           periodo: true,
           valorUf: true
         }
-      })
+      }),
+      prisma.dashboardConfig.findMany({ orderBy: { position: "asc" } }),
     ]);
+
+  const widgetConfigs = resolveWidgetConfigs(dashboardConfigRows);
+  const configMap = new Map<string, ResolvedWidgetConfig>(widgetConfigs.map((c) => [c.widgetId, c]));
+
+  function isEnabled(widgetId: string): boolean {
+    return configMap.get(widgetId)?.enabled ?? true;
+  }
+  function getVariant(widgetId: string): string {
+    return configMap.get(widgetId)?.formulaVariant ?? "";
+  }
+  function getParam(widgetId: string, key: string, defaultVal: number): number {
+    const val = configMap.get(widgetId)?.parameters[key];
+    return typeof val === "number" ? val : defaultVal;
+  }
 
   const contractsWithState = activeContractsRaw.map((contract) => {
     const tarifaFija =
       contract.tarifas.find(
         (item) =>
-          item.tipo === TipoTarifaContrato.FIJO_UF_M2 || item.tipo === TipoTarifaContrato.FIJO_UF
+          item.tipo === ContractRateType.FIJO_UF_M2 || item.tipo === ContractRateType.FIJO_UF
       ) ?? null;
     const tarifaVariable =
-      contract.tarifas.find((item) => item.tipo === TipoTarifaContrato.PORCENTAJE) ?? null;
+      contract.tarifas.find((item) => item.tipo === ContractRateType.PORCENTAJE) ?? null;
 
     return {
       estado: contract.estado,
@@ -273,10 +281,10 @@ export default async function DashboardPage({
   });
 
   const vigenteContracts = contractsWithState
-    .filter((contract) => contract.estado === EstadoContrato.VIGENTE)
+    .filter((contract) => contract.estado === ContractStatus.VIGENTE)
     .map((contract) => contract.data);
   const graciaContracts = contractsWithState
-    .filter((contract) => contract.estado === EstadoContrato.GRACIA)
+    .filter((contract) => contract.estado === ContractStatus.GRACIA)
     .map((contract) => contract.data);
   const activeContracts = [...vigenteContracts, ...graciaContracts];
 
@@ -289,7 +297,11 @@ export default async function DashboardPage({
   const localesConArrendatario = new Set([...localesConContratoVigente, ...localesEnGracia]);
   const localesVacantes = activeLocales.filter((local) => !localesConArrendatario.has(local.id));
 
-  const ocupacion = buildOcupacionDetalle(activeLocales, activeContracts);
+  // Apply occupancy variant: "solo_vigente" excludes GRACIA from occupied count
+  const ocupacionContracts =
+    getVariant("kpi_ocupacion_pct") === "solo_vigente" ? vigenteContracts : activeContracts;
+
+  const ocupacion = buildOcupacionDetalle(activeLocales, ocupacionContracts);
   const ingresos = buildIngresoDesglosado(
     vigenteContracts,
     activeLocales,
@@ -298,7 +310,8 @@ export default async function DashboardPage({
     periodo
   );
   const ggccUf = calculateEstimatedGgccUf(vigenteContracts);
-  const rentaEnRiesgo = buildRentaEnRiesgo(vigenteContracts, today, 90);
+  const diasRiesgo = getParam("kpi_renta_en_riesgo", "dias", 90);
+  const rentaEnRiesgo = buildRentaEnRiesgo(vigenteContracts, today, diasRiesgo);
   const vencimientosPorAnio = buildVencimientosPorAnio(activeContracts).filter((row) => {
     const currentYear = today.getFullYear();
     return row.anio >= currentYear && row.anio <= currentYear + 5;
@@ -318,10 +331,12 @@ export default async function DashboardPage({
   );
 
   const pctOcupacion = ocupacion.glaTotal > 0 ? (ocupacion.glaArrendada / ocupacion.glaTotal) * 100 : 0;
+  const occupancyUmbralAlto = getParam("kpi_ocupacion_pct", "umbralAlto", OCCUPANCY_HIGH_THRESHOLD);
+  const occupancyUmbralBajo = getParam("kpi_ocupacion_pct", "umbralBajo", OCCUPANCY_LOW_THRESHOLD);
   const occupancyAccent =
-    pctOcupacion >= OCCUPANCY_HIGH_THRESHOLD
+    pctOcupacion >= occupancyUmbralAlto
       ? "green"
-      : pctOcupacion >= OCCUPANCY_LOW_THRESHOLD
+      : pctOcupacion >= occupancyUmbralBajo
         ? "yellow"
         : "red";
 
@@ -382,7 +397,7 @@ export default async function DashboardPage({
             preserve={{ periodo }}
           />
           <Link
-            href={`/rent-roll/dashboard?proyecto=${selectedProjectId}`}
+            href={`/rent-roll/dashboard?project=${selectedProjectId}&proyecto=${selectedProjectId}`}
             className="ml-auto flex items-center gap-1 rounded-full border border-brand-300 px-4 py-1.5 text-sm font-medium text-brand-500 transition-colors hover:text-brand-700"
           >
             Ver Rent Roll -&gt;
@@ -398,36 +413,48 @@ export default async function DashboardPage({
           <h3 className="text-base font-bold uppercase tracking-wide text-brand-700">Ocupacion</h3>
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <KpiCard
-            title="Ocupacion del proyecto"
-            value={formatPercent(pctOcupacion)}
-            subtitle={`${localesConContratoVigente.size} vigentes · ${localesEnGracia.size} en gracia · ${localesVacantes.length} vacantes`}
-            accent={occupancyAccent}
-          />
-          <KpiCard
-            title="GLA arrendada"
-            value={formatSquareMeters(ocupacion.glaArrendada)}
-            subtitle={`GLA vacante: ${formatSquareMeters(ocupacion.glaVacante)}`}
-            subtitleClassName={ocupacion.glaVacante > 0 ? "text-rose-600" : "text-slate-500"}
-            accent="slate"
-          />
-          <KpiCard
-            title="Locales sin arrendatario"
-            value={localesVacantes.length.toString()}
-            subtitle={
-              localesVacantes.length > 0
-                ? `~${formatUf(rentaPotencialVacantes)} UF/mes de ingreso potencial`
-                : "Sin vacantes"
-            }
-            subtitleClassName={localesVacantes.length > 0 ? "text-rose-600" : "text-emerald-600"}
-            accent={localesVacantes.length > 0 ? "red" : "green"}
-          />
-          <KpiCard
-            title="Renta en riesgo (90d)"
-            value={`${formatUf(rentaEnRiesgo.ufEnRiesgo)} UF`}
-            subtitle={`de ${rentaEnRiesgo.count} contratos proximos a vencer`}
-            accent={rentaEnRiesgo.ufEnRiesgo > 0 ? "red" : "green"}
-          />
+          {isEnabled("kpi_ocupacion_pct") && (
+            <KpiCard
+              metricId="kpi_dashboard_ocupacion_pct"
+              title="Ocupacion del proyecto"
+              value={formatPercent(pctOcupacion)}
+              subtitle={`${localesConContratoVigente.size} vigentes · ${localesEnGracia.size} en gracia · ${localesVacantes.length} vacantes`}
+              accent={occupancyAccent}
+            />
+          )}
+          {isEnabled("kpi_gla_arrendada") && (
+            <KpiCard
+              metricId="kpi_dashboard_gla_arrendada_m2"
+              title="GLA arrendada"
+              value={formatSquareMeters(ocupacion.glaArrendada)}
+              subtitle={`GLA vacante: ${formatSquareMeters(ocupacion.glaVacante)}`}
+              subtitleClassName={ocupacion.glaVacante > 0 ? "text-rose-600" : "text-slate-500"}
+              accent="slate"
+            />
+          )}
+          {isEnabled("kpi_locales_sin_arrendatario") && (
+            <KpiCard
+              metricId="kpi_dashboard_locales_sin_arrendatario"
+              title="Locales sin arrendatario"
+              value={localesVacantes.length.toString()}
+              subtitle={
+                localesVacantes.length > 0
+                  ? `~${formatUf(rentaPotencialVacantes)} UF/mes de ingreso potencial`
+                  : "Sin vacantes"
+              }
+              subtitleClassName={localesVacantes.length > 0 ? "text-rose-600" : "text-emerald-600"}
+              accent={localesVacantes.length > 0 ? "red" : "green"}
+            />
+          )}
+          {isEnabled("kpi_renta_en_riesgo") && (
+            <KpiCard
+              metricId="kpi_dashboard_renta_riesgo_90d_uf"
+              title={`Renta en riesgo (${diasRiesgo}d)`}
+              value={`${formatUf(rentaEnRiesgo.ufEnRiesgo)} UF`}
+              subtitle={`de ${rentaEnRiesgo.count} contratos proximos a vencer`}
+              accent={rentaEnRiesgo.ufEnRiesgo > 0 ? "red" : "green"}
+            />
+          )}
         </div>
       </section>
 
@@ -447,63 +474,72 @@ export default async function DashboardPage({
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <KpiCard
-            title="Facturacion total (UF)"
-            value={formatUf(ingresos.totalUf)}
-            subtitle={`${formatUf(ingresos.facturacionUfM2, 3)} UF/m2`}
-            accent="slate"
-          />
-          <KpiCard
-            title="Arriendo fijo (UF)"
-            value={formatUf(ingresos.arriendoFijoUf)}
-            subtitle={`${formatUf(ingresos.arriendoFijoUfM2, 3)} UF/m2`}
-            accent="slate"
-          />
-          <KpiCard
-            title="Ingreso mensual (CLP)"
-            value={latestValorUf ? formatClp(ingresoMensualClp) : "Sin valor UF"}
-            subtitle={
-              latestValorUf
-                ? `UF ${formatUf(Number(latestValorUf.valor), 2)} al ${formatShortDate(latestValorUf.fecha)}`
-                : "No hay valor UF registrado"
-            }
-            accent="slate"
-            detail={
-              isUfStale ? (
-                <p className="text-xs font-semibold text-amber-700">⚠ Valor UF desactualizado</p>
-              ) : null
-            }
-          />
+          {isEnabled("kpi_facturacion_total") && (
+            <KpiCard
+              metricId="kpi_dashboard_facturacion_total_uf"
+              title="Facturacion total (UF)"
+              value={formatUf(ingresos.totalUf)}
+              subtitle={`${formatUf(ingresos.facturacionUfM2, 3)} UF/m2`}
+              accent="slate"
+            />
+          )}
+          {isEnabled("kpi_arriendo_fijo") && (
+            <KpiCard
+              metricId="kpi_dashboard_arriendo_fijo_uf"
+              title="Arriendo fijo (UF)"
+              value={formatUf(ingresos.arriendoFijoUf)}
+              subtitle={`${formatUf(ingresos.arriendoFijoUfM2, 3)} UF/m2`}
+              accent="slate"
+            />
+          )}
+          {isEnabled("kpi_ingreso_clp") && (
+            <KpiCard
+              metricId="kpi_dashboard_ingreso_mensual_clp"
+              title="Ingreso mensual (CLP)"
+              value={latestValorUf ? formatClp(ingresoMensualClp) : "Sin valor UF"}
+              subtitle={
+                latestValorUf
+                  ? `UF ${formatUf(Number(latestValorUf.valor), 2)} al ${formatShortDate(latestValorUf.fecha)}`
+                  : "No hay valor UF registrado"
+              }
+              accent="slate"
+              detail={
+                isUfStale ? (
+                  <p className="text-xs font-semibold text-amber-700">⚠ Valor UF desactualizado</p>
+                ) : null
+              }
+            />
+          )}
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <article className="rounded-md border border-slate-200 bg-slate-50 p-4 shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Renta variable</p>
-            <p className="mt-2 text-2xl font-bold tracking-tight text-brand-700">
-              {formatUf(ingresos.arriendoVariableUf)} UF
-            </p>
-            <p className="mt-1 text-xs font-medium text-slate-600">
-              % sobre ventas de {contratosVariableConVentas} contratos
-            </p>
-          </article>
-          <article className="rounded-md border border-slate-200 bg-slate-50 p-4 shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              Simuladores/Mod.
-            </p>
-            <p className="mt-2 text-2xl font-bold tracking-tight text-brand-700">
-              {formatUf(ingresos.simuladoresModulosUf)} UF
-            </p>
-            <p className="mt-1 text-xs font-medium text-slate-600">{simuladorModuloUnidades} unidades</p>
-          </article>
-          <article className="rounded-md border border-slate-200 bg-slate-50 p-4 shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              Bodega + Espacio
-            </p>
-            <p className="mt-2 text-2xl font-bold tracking-tight text-brand-700">
-              {formatUf(bodegaEspacioUf)} UF
-            </p>
-            <p className="mt-1 text-xs font-medium text-slate-600">{bodegaEspacioSubtitle}</p>
-          </article>
+          {isEnabled("kpi_renta_variable") && (
+            <KpiCard
+              metricId="kpi_dashboard_renta_variable_uf"
+              title="Renta variable"
+              value={`${formatUf(ingresos.arriendoVariableUf)} UF`}
+              subtitle={`% sobre ventas de ${contratosVariableConVentas} contratos`}
+              accent="slate"
+            />
+          )}
+          {isEnabled("kpi_simuladores_modulos") && (
+            <KpiCard
+              metricId="kpi_dashboard_simuladores_modulos_uf"
+              title="Simuladores/Mod."
+              value={`${formatUf(ingresos.simuladoresModulosUf)} UF`}
+              subtitle={`${simuladorModuloUnidades} unidades`}
+              accent="slate"
+            />
+          )}
+          {isEnabled("kpi_bodega_espacio") && (
+            <KpiCard
+              metricId="kpi_dashboard_bodega_espacio_uf"
+              title="Bodega + Espacio"
+              value={`${formatUf(bodegaEspacioUf)} UF`}
+              subtitle={bodegaEspacioSubtitle}
+              accent="slate"
+            />
+          )}
         </div>
       </section>
 
@@ -512,15 +548,18 @@ export default async function DashboardPage({
           <div className="h-5 w-1 rounded-full bg-gold-400" />
           <h3 className="text-base font-bold uppercase tracking-wide text-brand-700">GGCC</h3>
         </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          <KpiCard
-            title="Gasto comun mensual (UF)"
-            value={formatUf(ggccUf)}
-            subtitle={`${contratosConGgcc} contratos con datos · ${contratosSinGgcc} sin datos`}
-            accent="slate"
-            titleAttribute="Gastos comunes de administracion de areas compartidas"
-          />
-        </div>
+        {isEnabled("kpi_ggcc_mensual") && (
+          <div className="grid gap-4 md:grid-cols-3">
+            <KpiCard
+              metricId="kpi_dashboard_ggcc_mensual_uf"
+              title="Gasto comun mensual (UF)"
+              value={formatUf(ggccUf)}
+              subtitle={`${contratosConGgcc} contratos con datos · ${contratosSinGgcc} sin datos`}
+              accent="slate"
+              titleAttribute="Gastos comunes de administracion de areas compartidas"
+            />
+          </div>
+        )}
       </section>
 
       <section className="overflow-hidden rounded-md bg-white shadow-sm">
@@ -528,63 +567,10 @@ export default async function DashboardPage({
           <h3 className="text-base font-semibold text-brand-700">Vencimientos por ano</h3>
           <p className="mt-1 text-sm text-slate-600">Maximo 5 anos hacia adelante desde hoy.</p>
         </div>
-        <div className="overflow-x-auto">
-          <Table className="min-w-full text-sm">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="h-auto px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  Ano
-                </TableHead>
-                <TableHead className="h-auto px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  Contratos
-                </TableHead>
-                <TableHead className="h-auto px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  m2
-                </TableHead>
-                <TableHead className="h-auto px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
-                  % del total
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody className="text-slate-800">
-              {vencimientosPorAnio.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="px-4 py-6 text-center text-slate-500">
-                    No hay vencimientos en el horizonte de 5 anos.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                vencimientosPorAnio.map((row, index) => (
-                  <TableRow
-                    key={row.anio}
-                    className={cn(index % 2 === 0 ? "bg-white" : "bg-slate-50/60")}
-                  >
-                    <TableCell
-                      className={cn(
-                        "whitespace-nowrap px-4 py-3 font-semibold",
-                        urgencyClassForYear(row.anio, today.getFullYear())
-                      )}
-                    >
-                      {row.anio}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                      {row.cantidadContratos}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                      {formatUf(row.m2)}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                      {formatPercent(row.pctTotal)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        <VencimientosPorAnioTable rows={vencimientosPorAnio} currentYear={today.getFullYear()} />
         <div className="border-t border-slate-200 px-4 py-3 text-right text-sm">
           <Link
-            href={`/rent-roll/dashboard?proyecto=${selectedProjectId}`}
+            href={`/rent-roll/dashboard?project=${selectedProjectId}&proyecto=${selectedProjectId}`}
             className="text-brand-500 underline hover:text-brand-700"
           >
             Ver detalle de vencimientos en Rent Roll -&gt;
@@ -600,18 +586,24 @@ export default async function DashboardPage({
           </h3>
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {contractStates.counters.map((counter) => {
-            const config = CARTERA_CARD_CONFIG[counter.estado];
-            return (
-              <KpiCard
-                key={counter.estado}
-                title={config.title}
-                value={counter.cantidad.toString()}
-                subtitle={config.subtitle}
-                accent={config.accent}
-              />
-            );
-          })}
+          {contractStates.counters
+            .filter((counter) => {
+              const widgetId = `kpi_cartera_${counter.estado.toLowerCase()}` as string;
+              return isEnabled(widgetId);
+            })
+            .map((counter) => {
+              const config = CARTERA_CARD_CONFIG[counter.estado];
+              return (
+                <KpiCard
+                  key={counter.estado}
+                  metricId={config.metricId}
+                  title={config.title}
+                  value={counter.cantidad.toString()}
+                  subtitle={config.subtitle}
+                  accent={config.accent}
+                />
+              );
+            })}
         </div>
       </section>
     </main>

@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 import { buildTenantFinanceRows } from "@/lib/finanzas/arrendatarios";
 import { resolveMonthRange } from "@/lib/finanzas/period-range";
@@ -19,7 +22,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     const { desdeDate, hastaDate } = resolveMonthRange(desde, hasta);
 
-    const arrendatarios = await prisma.arrendatario.findMany({
+    const arrendatarios = await prisma.tenant.findMany({
       where: { proyectoId, vigente: true },
       orderBy: { nombreComercial: "asc" },
       select: {

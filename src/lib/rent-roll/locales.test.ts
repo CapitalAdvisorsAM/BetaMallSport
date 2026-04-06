@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLocalesWhere, parseLocalesEstado } from "@/lib/rent-roll/locales";
+import { buildLocalesWhere, parseLocalesEstado } from "@/lib/rent-roll/units";
 
 describe("parseLocalesEstado", () => {
   it("returns undefined for unsupported values", () => {

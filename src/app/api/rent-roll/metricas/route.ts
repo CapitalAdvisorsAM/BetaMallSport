@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { EstadoDiaContrato } from "@prisma/client";
+import { ContractDayStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { requireSession } from "@/lib/permissions";
@@ -10,6 +10,7 @@ import {
 } from "@/lib/rent-roll/metricas";
 import { prisma } from "@/lib/prisma";
 import { isPeriodoValido } from "@/lib/validators";
+import { buildMetricsCacheKey, getOrSetMetricsCache } from "@/lib/metrics-cache";
 import type { RentRollMetricasResponse } from "@/types/metricas";
 
 export const runtime = "nodejs";
@@ -53,30 +54,38 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "periodo debe tener formato YYYY-MM." }, { status: 400 });
     }
 
-    const hoy = new Date();
-    const [metricas, localesActivos] = await Promise.all([
-      getMetricasRentRoll(proyectoId, periodo),
-      prisma.local.findMany({
-        where: { proyectoId, estado: "ACTIVO" },
-        select: {
-          id: true,
-          glam2: true,
-          esGLA: true
-        }
-      })
-    ]);
-
-    const estadoFiltro: EstadoDiaContrato | undefined = estado === "TODOS" ? undefined : estado;
-    const filas = estadoFiltro ? metricas.filter((fila) => fila.estado === estadoFiltro) : metricas;
-    const resumen = buildResumen(filas, localesActivos, hoy);
-
-    const payload: RentRollMetricasResponse = {
+    const cacheKey = buildMetricsCacheKey("rent-roll-metricas", [proyectoId, periodo, estado]);
+    const payload = await getOrSetMetricsCache(
+      cacheKey,
       proyectoId,
-      periodo,
-      filas,
-      resumen,
-      generadoEn: new Date().toISOString()
-    };
+      120_000,
+      async (): Promise<RentRollMetricasResponse> => {
+        const hoy = new Date();
+        const [metricas, localesActivos] = await Promise.all([
+          getMetricasRentRoll(proyectoId, periodo),
+          prisma.unit.findMany({
+            where: { proyectoId, estado: "ACTIVO" },
+            select: {
+              id: true,
+              glam2: true,
+              esGLA: true
+            }
+          })
+        ]);
+
+        const estadoFiltro: ContractDayStatus | undefined = estado === "TODOS" ? undefined : estado;
+        const filas = estadoFiltro ? metricas.filter((fila) => fila.estado === estadoFiltro) : metricas;
+        const resumen = buildResumen(filas, localesActivos, hoy);
+
+        return {
+          proyectoId,
+          periodo,
+          filas,
+          resumen,
+          generadoEn: new Date().toISOString()
+        };
+      }
+    );
 
     return NextResponse.json(payload);
   } catch (error) {

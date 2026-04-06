@@ -2,12 +2,12 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
-import { normalizeRut } from "@/lib/arrendatarios/schema";
 import { extractContractFromImage, type ImageMimeType } from "@/lib/contracts/image-extractor";
 import { extractContractFromPdf } from "@/lib/contracts/pdf-extractor";
 import { MAX_PDF_BYTES } from "@/lib/constants";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { normalizeUploadArrendatarioNombre } from "@/lib/upload/parse-contratos";
 
 export const runtime = "nodejs";
 
@@ -49,25 +49,32 @@ export async function POST(request: Request): Promise<NextResponse> {
       ? await extractContractFromImage(buffer, file.type)
       : await extractContractFromPdf(buffer);
 
-    const normalizedRut = extraction.arrendatarioRut ? normalizeRut(extraction.arrendatarioRut) : null;
-    const [arrendatario, local] = await Promise.all([
-      normalizedRut
-        ? prisma.arrendatario.findFirst({
-            where: { proyectoId, rut: normalizedRut },
-            select: { id: true }
+    const normalizedArrendatarioNombre = extraction.arrendatarioNombre
+      ? normalizeUploadArrendatarioNombre(extraction.arrendatarioNombre)
+      : "";
+    const [arrendatarios, local] = await Promise.all([
+      normalizedArrendatarioNombre
+        ? prisma.tenant.findMany({
+            where: { proyectoId },
+            select: { id: true, nombreComercial: true }
           })
-        : Promise.resolve(null),
+        : Promise.resolve([]),
       extraction.localCodigo
-        ? prisma.local.findFirst({
+        ? prisma.unit.findFirst({
             where: { proyectoId, codigo: extraction.localCodigo },
             select: { id: true }
           })
         : Promise.resolve(null)
     ]);
+    const matchedArrendatarios = arrendatarios.filter(
+      (arrendatario) =>
+        normalizeUploadArrendatarioNombre(arrendatario.nombreComercial) === normalizedArrendatarioNombre
+    );
+    const arrendatarioId = matchedArrendatarios.length === 1 ? matchedArrendatarios[0].id : null;
 
     return NextResponse.json({
       ...extraction,
-      arrendatarioId: arrendatario?.id ?? null,
+      arrendatarioId,
       localId: local?.id ?? null
     });
   } catch (error) {

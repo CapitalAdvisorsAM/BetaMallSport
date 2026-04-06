@@ -29,7 +29,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: fileGuardError }, { status: 400 });
     }
 
-    const proyecto = await prisma.proyecto.findUnique({
+    const proyecto = await prisma.project.findUnique({
       where: { id: proyectoId },
       select: { id: true }
     });
@@ -37,7 +37,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "Proyecto no encontrado." }, { status: 404 });
     }
 
-    const existingLocales = await prisma.local.findMany({
+    const existingLocales = await prisma.unit.findMany({
       where: { proyectoId },
       select: {
         codigo: true,

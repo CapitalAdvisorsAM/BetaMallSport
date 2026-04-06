@@ -17,14 +17,25 @@ export type ArrendatariosContractPeriod = {
  */
 export function buildArrendatariosActiveContractWhere(
   period: ArrendatariosContractPeriod
-): Prisma.ContratoWhereInput {
+): Prisma.ContractWhereInput {
   return {
-    contratosDia: {
-      some: {
-        fecha: { gte: period.start, lt: period.nextMonthStart },
-        estadoDia: { in: ["OCUPADO", "GRACIA"] }
+    OR: [
+      // Primary: pre-computed daily records confirm active status
+      {
+        contratosDia: {
+          some: {
+            fecha: { gte: period.start, lt: period.nextMonthStart },
+            estadoDia: { in: ["OCUPADO", "GRACIA"] }
+          }
+        }
+      },
+      // Fallback: contract date range overlaps current month and estado is active
+      {
+        fechaInicio: { lt: period.nextMonthStart },
+        fechaTermino: { gte: period.start },
+        estado: { in: ["VIGENTE", "GRACIA"] }
       }
-    }
+    ]
   };
 }
 
@@ -54,7 +65,7 @@ export function buildArrendatariosWhere(
   proyectoId: string,
   period: ArrendatariosContractPeriod,
   filters: ArrendatariosFilters
-): Prisma.ArrendatarioWhereInput {
+): Prisma.TenantWhereInput {
   const q = filters.q.trim();
   const activeContractWhere = buildArrendatariosActiveContractWhere(period);
 

@@ -201,11 +201,23 @@ npm run dev
 npm run build
 npm run start
 npm run lint
+npm run check:naming-core
 npm run test
 npm run prisma:generate
 npm run prisma:push
 npm run prisma:migrate
 ```
+
+## Estandar de nombres (desarrollo)
+Para evitar mezcla Spanglish en codigo nuevo del core de Rent Roll:
+
+- Canonico en codigo y rutas internas: ingles (`contracts`, `tenants`, `units`, `projects`).
+- Compatibilidad legacy: se mantienen alias en espanol por ventana de deprecacion.
+- Copy visible al usuario: puede seguir en espanol.
+- Prisma Client del core: nombres en ingles, preservando tablas/columnas existentes via `@map` y `@@map`.
+
+Guardrail:
+- `npm run check:naming-core` valida que en los modulos canonicos del core no se agreguen nuevos identificadores/rutas en espanol.
 
 ## Estructura funcional resumida
 - `src/app`: paginas y rutas API.

@@ -13,6 +13,7 @@ type ModuleHeaderProps = {
   selectedProjectId: string;
   preserve?: Record<string, string | undefined>;
   actions?: ReactNode;
+  showProjectSelector?: boolean;
 };
 
 export function ModuleHeader({
@@ -21,7 +22,8 @@ export function ModuleHeader({
   projects,
   selectedProjectId,
   preserve,
-  actions
+  actions,
+  showProjectSelector = true
 }: ModuleHeaderProps): JSX.Element {
   return (
     <header className="rounded-md bg-white p-5 shadow-sm">
@@ -35,11 +37,13 @@ export function ModuleHeader({
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {actions}
-          <ProjectSelector
-            projects={projects}
-            selectedProjectId={selectedProjectId}
-            preserve={preserve}
-          />
+          {showProjectSelector ? (
+            <ProjectSelector
+              projects={projects}
+              selectedProjectId={selectedProjectId}
+              preserve={preserve}
+            />
+          ) : null}
         </div>
       </div>
     </header>

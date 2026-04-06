@@ -11,6 +11,10 @@ export type PeriodoMetrica = {
   ingresosSimuladorModuloUf: number;
   ingresosBodegaEspacioUf: number;
   contratosQueVencenEsteMes: number;
+  // Variable rent — null when no VentaLocal data exists for the period
+  rentaVariableUf: number | null;
+  ventasTotalUf: number | null;
+  pctRentaVariableContratoPromedio: number | null;
 };
 
 export type TimelineResponse = {

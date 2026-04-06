@@ -2,10 +2,9 @@
 
 import { useMemo } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
-import { formatDecimal } from "@/lib/utils";
 import { DataTable } from "@/components/ui/DataTable";
-import { TableCell, TableRow } from "@/components/ui/table";
 import { useDataTable } from "@/hooks/useDataTable";
+import { formatDecimal } from "@/lib/utils";
 
 export type RentRollDashboardTableRow = {
   id: string;
@@ -23,13 +22,6 @@ export type RentRollDashboardTableRow = {
 
 type RentRollDashboardTableProps = {
   rows: RentRollDashboardTableRow[];
-  totals: {
-    glam2: number;
-    rentaFijaUf: number;
-    ggccUf: number;
-    ventasUf: number;
-    rentaVariableUf: number;
-  };
   snapshotDate: string;
 };
 
@@ -42,7 +34,6 @@ function renderMetric(value: number | null, suffix = ""): string {
 
 export function RentRollDashboardTable({
   rows,
-  totals,
   snapshotDate
 }: RentRollDashboardTableProps): JSX.Element {
   const sortedBaseRows = useMemo(
@@ -72,7 +63,10 @@ export function RentRollDashboardTable({
         accessorKey: "glam2",
         header: "GLA m²",
         enableColumnFilter: false,
-        meta: { align: "right" },
+        meta: {
+          align: "right",
+          summary: { type: "sum", formatter: (value: number) => formatDecimal(value) }
+        },
         cell: ({ row }) => (
           <span className="whitespace-nowrap text-slate-700">{formatDecimal(row.original.glam2)}</span>
         )
@@ -92,7 +86,10 @@ export function RentRollDashboardTable({
         accessorKey: "rentaFijaUf",
         header: "Renta Fija (UF)",
         enableColumnFilter: false,
-        meta: { align: "right" },
+        meta: {
+          align: "right",
+          summary: { type: "sum", formatter: (value: number) => formatDecimal(value) }
+        },
         cell: ({ row }) => (
           <span className="whitespace-nowrap text-slate-700">
             {formatDecimal(row.original.rentaFijaUf)}
@@ -103,7 +100,10 @@ export function RentRollDashboardTable({
         accessorKey: "ggccUf",
         header: "GGCC (UF)",
         enableColumnFilter: false,
-        meta: { align: "right" },
+        meta: {
+          align: "right",
+          summary: { type: "sum", formatter: (value: number) => formatDecimal(value) }
+        },
         cell: ({ row }) => (
           <span className="whitespace-nowrap text-slate-700">{formatDecimal(row.original.ggccUf)}</span>
         )
@@ -114,7 +114,10 @@ export function RentRollDashboardTable({
         header: "Ventas (UF)",
         enableColumnFilter: false,
         sortUndefined: "last",
-        meta: { align: "right" },
+        meta: {
+          align: "right",
+          summary: { type: "sum", formatter: (value: number) => formatDecimal(value) }
+        },
         cell: ({ row }) => (
           <span className="whitespace-nowrap text-slate-700">{renderMetric(row.original.ventasUf)}</span>
         )
@@ -138,7 +141,10 @@ export function RentRollDashboardTable({
         header: "Renta Var. (UF)",
         enableColumnFilter: false,
         sortUndefined: "last",
-        meta: { align: "right" },
+        meta: {
+          align: "right",
+          summary: { type: "sum", formatter: (value: number) => formatDecimal(value) }
+        },
         cell: ({ row }) => (
           <span className="whitespace-nowrap text-slate-700">
             {renderMetric(row.original.rentaVariableUf)}
@@ -163,7 +169,6 @@ export function RentRollDashboardTable({
   );
 
   const { table } = useDataTable(sortedBaseRows, columns);
-  const sortedRows = table.getSortedRowModel().rows.map((row) => row.original);
 
   return (
     <div className="overflow-hidden rounded-md bg-white shadow-sm">
@@ -181,33 +186,7 @@ export function RentRollDashboardTable({
       <DataTable
         table={table}
         emptyMessage={`No hay contratos ocupados o en gracia para el snapshot ${snapshotDate}.`}
-        footerContent={
-          sortedRows.length > 0 ? (
-            <TableRow className="bg-brand-50 font-semibold text-slate-900 hover:bg-brand-50">
-              <TableCell className="px-4 py-3 font-semibold" colSpan={2}>
-                Totales
-              </TableCell>
-              <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                {formatDecimal(totals.glam2)}
-              </TableCell>
-              <TableCell className="px-4 py-3" />
-              <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                {formatDecimal(totals.rentaFijaUf)}
-              </TableCell>
-              <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                {formatDecimal(totals.ggccUf)}
-              </TableCell>
-              <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                {formatDecimal(totals.ventasUf)}
-              </TableCell>
-              <TableCell className="px-4 py-3" />
-              <TableCell className="whitespace-nowrap px-4 py-3 text-right">
-                {formatDecimal(totals.rentaVariableUf)}
-              </TableCell>
-              <TableCell className="px-4 py-3" />
-            </TableRow>
-          ) : null
-        }
+        summaryRow={{ enabled: true, label: "Totales" }}
       />
     </div>
   );

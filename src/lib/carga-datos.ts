@@ -24,7 +24,7 @@ function isUploadRowArray(value: unknown): value is RentRollPreviewPayload["rows
         typeof item.rowNumber === "number" &&
         typeof item.numeroContrato === "string" &&
         typeof item.localCodigo === "string" &&
-        typeof item.arrendatarioRut === "string" &&
+        typeof item.arrendatarioNombre === "string" &&
         typeof item.estado === "string" &&
         typeof item.fechaInicio === "string" &&
         typeof item.fechaTermino === "string" &&
@@ -48,8 +48,6 @@ function isUploadRowArray(value: unknown): value is RentRollPreviewPayload["rows
         (item.ggccTipo === undefined || item.ggccTipo === null || typeof item.ggccTipo === "string") &&
         ((item.ggccValor ?? null) === null || typeof item.ggccValor === "string") &&
         ((item.ggccTarifaBaseUfM2 ?? null) === null || typeof item.ggccTarifaBaseUfM2 === "string") &&
-        (item.ggccVigenciaDesde === null || typeof item.ggccVigenciaDesde === "string") &&
-        (item.ggccVigenciaHasta === null || typeof item.ggccVigenciaHasta === "string") &&
         ((item.ggccMesesReajuste ?? null) === null || typeof item.ggccMesesReajuste === "number") &&
         (item.anexoFecha === null || typeof item.anexoFecha === "string") &&
         (item.anexoDescripcion === null || typeof item.anexoDescripcion === "string")

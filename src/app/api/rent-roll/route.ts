@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { EstadoDiaContrato, Prisma, TipoTarifaContrato } from "@prisma/client";
+import { ContractDayStatus, Prisma, ContractRateType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { parsePaginationParams } from "@/lib/pagination";
@@ -10,7 +10,7 @@ import { isPeriodoValido } from "@/lib/validators";
 
 export const runtime = "nodejs";
 
-const allowedStates = new Set<EstadoDiaContrato>(["OCUPADO", "GRACIA", "VACANTE"]);
+const allowedStates = new Set<ContractDayStatus>(["OCUPADO", "GRACIA", "VACANTE"]);
 
 function toPeriodo(value: Date): string {
   const year = value.getUTCFullYear();
@@ -29,7 +29,7 @@ function getPeriodoBounds(periodo: string): { start: Date; nextMonthStart: Date 
   };
 }
 
-function getEstadoPeriodo(estadosDia: EstadoDiaContrato[]): EstadoDiaContrato {
+function getEstadoPeriodo(estadosDia: ContractDayStatus[]): ContractDayStatus {
   if (estadosDia.includes("OCUPADO")) {
     return "OCUPADO";
   }
@@ -56,12 +56,12 @@ export async function GET(request: Request): Promise<NextResponse> {
     }
 
     const estado =
-      rawState && allowedStates.has(rawState as EstadoDiaContrato)
-        ? (rawState as EstadoDiaContrato)
+      rawState && allowedStates.has(rawState as ContractDayStatus)
+        ? (rawState as ContractDayStatus)
         : undefined;
     const { start, nextMonthStart } = getPeriodoBounds(periodo);
     const today = new Date();
-    const where: Prisma.ContratoWhereInput = {
+    const where: Prisma.ContractWhereInput = {
       proyectoId,
       contratosDia: {
         some: {
@@ -80,12 +80,12 @@ export async function GET(request: Request): Promise<NextResponse> {
           }
         : {})
     };
-    const include: Prisma.ContratoInclude = {
+    const include: Prisma.ContractInclude = {
       local: true,
       arrendatario: true,
       tarifas: {
         where: {
-          tipo: TipoTarifaContrato.FIJO_UF_M2,
+          tipo: ContractRateType.FIJO_UF_M2,
           vigenciaDesde: { lte: today },
           OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: today } }]
         },
@@ -104,7 +104,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     const toResponseItem = (contract: {
       estado: string;
-      contratosDia: Array<{ estadoDia: EstadoDiaContrato }>;
+      contratosDia: Array<{ estadoDia: ContractDayStatus }>;
     }): Record<string, unknown> => {
       const estadoPeriodo = getEstadoPeriodo(contract.contratosDia.map((item) => item.estadoDia));
       return {
@@ -116,7 +116,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     const paginationRequested = searchParams.has("limit") || searchParams.has("cursor");
     if (!paginationRequested) {
-      const contracts = await prisma.contrato.findMany({
+      const contracts = await prisma.contract.findMany({
         where,
         include,
         orderBy: [{ local: { codigo: "asc" } }, { fechaInicio: "desc" }]
@@ -126,7 +126,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     const { limit, cursor } = parsePaginationParams(searchParams);
 
-    const items = await prisma.contrato.findMany({
+    const items = await prisma.contract.findMany({
       where,
       include,
       take: limit + 1,

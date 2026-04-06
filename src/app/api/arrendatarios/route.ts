@@ -1,78 +1,18 @@
 export const dynamic = "force-dynamic";
 
-import { NextResponse } from "next/server";
-import { handleApiError } from "@/lib/api-error";
-import { resolveTenantRut, tenantSchema } from "@/lib/arrendatarios/schema";
-import { parsePaginationParams } from "@/lib/pagination";
-import { requireSession, requireWriteAccess } from "@/lib/permissions";
-import { prisma } from "@/lib/prisma";
+import { GET as tenantsGET, POST as tenantsPOST } from "@/app/api/tenants/route";
+import { withDeprecatedEndpointHeaders } from "@/lib/http/deprecation";
+
+const CANONICAL_ENDPOINT = "/api/tenants";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request): Promise<NextResponse> {
-  try {
-    await requireSession();
-    const { searchParams } = new URL(request.url);
-    const proyectoId = searchParams.get("proyectoId");
-
-    if (!proyectoId) {
-      return NextResponse.json({ message: "proyectoId es obligatorio." }, { status: 400 });
-    }
-
-    const paginationRequested = searchParams.has("limit") || searchParams.has("cursor");
-    if (!paginationRequested) {
-      const arrendatarios = await prisma.arrendatario.findMany({
-        where: { proyectoId },
-        orderBy: { nombreComercial: "asc" }
-      });
-      return NextResponse.json(arrendatarios);
-    }
-
-    const { limit, cursor } = parsePaginationParams(searchParams);
-
-    const items = await prisma.arrendatario.findMany({
-      where: { proyectoId },
-      take: limit + 1,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      orderBy: { id: "asc" }
-    });
-
-    const hasMore = items.length > limit;
-    const data = hasMore ? items.slice(0, limit) : items;
-    const nextCursor = hasMore ? data[data.length - 1]?.id ?? null : null;
-
-    return NextResponse.json({ data, nextCursor, hasMore });
-  } catch (error) {
-    return handleApiError(error);
-  }
+export async function GET(request: Request): Promise<Response> {
+  const response = await tenantsGET(request);
+  return withDeprecatedEndpointHeaders(response, { canonicalPath: CANONICAL_ENDPOINT });
 }
 
-export async function POST(request: Request): Promise<NextResponse> {
-  try {
-    await requireWriteAccess();
-    const result = tenantSchema.safeParse(await request.json());
-    if (!result.success) {
-      return NextResponse.json(
-        { message: "Payload invalido.", issues: result.error.issues },
-        { status: 400 }
-      );
-    }
-
-    const payload = result.data;
-    const created = await prisma.arrendatario.create({
-      data: {
-        proyectoId: payload.proyectoId,
-        rut: resolveTenantRut(payload.rut, payload.razonSocial, payload.nombreComercial),
-        razonSocial: payload.razonSocial,
-        nombreComercial: payload.nombreComercial,
-        vigente: payload.vigente,
-        email: payload.email || null,
-        telefono: payload.telefono || null
-      }
-    });
-
-    return NextResponse.json(created, { status: 201 });
-  } catch (error) {
-    return handleApiError(error);
-  }
+export async function POST(request: Request): Promise<Response> {
+  const response = await tenantsPOST(request);
+  return withDeprecatedEndpointHeaders(response, { canonicalPath: CANONICAL_ENDPOINT });
 }

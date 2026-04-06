@@ -4,6 +4,7 @@ import { TipoCargaDatos } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { resolveTenantRut } from "@/lib/arrendatarios/schema";
+import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 import { requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { normalizeUploadRut } from "@/lib/upload/parse-arrendatarios";
@@ -87,7 +88,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "No fue posible leer el preview para esta carga." }, { status: 422 });
     }
 
-    const arrendatariosConContratosVigentes = await prisma.arrendatario.findMany({
+    const arrendatariosConContratosVigentes = await prisma.tenant.findMany({
       where: {
         proyectoId: carga.proyectoId,
         contratos: {
@@ -143,7 +144,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             continue;
           }
 
-          await tx.arrendatario.upsert({
+          await tx.tenant.upsert({
             where: {
               proyectoId_rut: {
                 proyectoId: carga.proyectoId,
@@ -199,6 +200,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         errorDetalle: JSON.stringify(finalPayload)
       }
     });
+    invalidateMetricsCacheByProject(carga.proyectoId);
 
     return NextResponse.json({ cargaId: carga.id, report });
   } catch (error) {

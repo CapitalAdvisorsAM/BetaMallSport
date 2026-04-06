@@ -1,8 +1,10 @@
 import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
-import { ProjectSelector } from "@/components/ui/ProjectSelector";
 import { canWrite, requireSession } from "@/lib/permissions";
+import { resolveWidgetConfigs } from "@/lib/dashboard/widget-registry";
+import { CustomKpiCard } from "@/components/rent-roll/CustomKpiCard";
+import type { FormulaConfig } from "@/lib/dashboard/custom-widget-engine";
 
 const RentRollChartsSection = dynamic(
   () => import("@/components/rent-roll/RentRollChartsSection").then((m) => m.RentRollChartsSection),
@@ -21,12 +23,13 @@ const RentRollChartsSection = dynamic(
   }
 );
 import { prisma } from "@/lib/prisma";
-import { getProjectContext } from "@/lib/project";
+import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
 import { buildCategoryConcentration } from "@/lib/rent-roll/category-concentration";
 import { getTimelineData } from "@/lib/rent-roll/timeline";
 
 type RentRollDashboardPageProps = {
   searchParams: {
+    project?: string;
     proyecto?: string;
   };
 };
@@ -35,8 +38,9 @@ export default async function RentRollDashboardPage({
   searchParams
 }: RentRollDashboardPageProps): Promise<JSX.Element> {
   const session = await requireSession();
+  const projectParam = resolveProjectIdFromSearchParams(searchParams);
 
-  const { projects, selectedProjectId } = await getProjectContext(searchParams.proyecto);
+  const { selectedProjectId } = await getProjectContext(projectParam);
   if (!selectedProjectId) {
     return (
       <ProjectCreationPanel
@@ -47,15 +51,16 @@ export default async function RentRollDashboardPage({
     );
   }
 
-  if (searchParams.proyecto !== selectedProjectId) {
+  if (projectParam !== selectedProjectId) {
     const params = new URLSearchParams();
+    params.set("project", selectedProjectId);
     params.set("proyecto", selectedProjectId);
     redirect(`/rent-roll/dashboard?${params.toString()}`);
   }
 
-  const [timelineData, activeContracts] = await Promise.all([
+  const [timelineData, activeContracts, dashboardConfigRows, customWidgets] = await Promise.all([
     getTimelineData(selectedProjectId),
-    prisma.contrato.findMany({
+    prisma.contract.findMany({
       where: {
         proyectoId: selectedProjectId,
         estado: { in: ["VIGENTE", "GRACIA"] }
@@ -68,10 +73,32 @@ export default async function RentRollDashboardPage({
           }
         }
       }
-    })
+    }),
+    prisma.dashboardConfig.findMany({ orderBy: { position: "asc" } }),
+    prisma.customWidget.findMany({ where: { enabled: true }, orderBy: { position: "asc" } }),
   ]);
 
+  const widgetConfigs = resolveWidgetConfigs(dashboardConfigRows);
+  const enabledCharts = new Set(
+    widgetConfigs.filter((c) => c.enabled && c.widgetId.startsWith("chart_")).map((c) => c.widgetId)
+  );
+  const waltConfig = widgetConfigs.find((c) => c.widgetId === "chart_ocupacion_walt");
+  const waltVariant = waltConfig?.formulaVariant ?? "con_walt";
+
   const categoryConcentration = buildCategoryConcentration(activeContracts);
+
+  const mappedWidgets = customWidgets.map((w) => ({
+    id: w.id,
+    title: w.title,
+    chartType: w.chartType,
+    enabled: w.enabled,
+    position: w.position,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    formulaConfig: w.formulaConfig as any as FormulaConfig,
+  }));
+
+  const kpiWidgets = mappedWidgets.filter((w) => w.chartType === "kpi");
+  const chartWidgets = mappedWidgets.filter((w) => w.chartType !== "kpi");
 
   return (
     <main className="space-y-4">
@@ -89,13 +116,27 @@ export default async function RentRollDashboardPage({
               tendencias.
             </p>
           </div>
-          <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} />
         </div>
       </header>
+
+      {kpiWidgets.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {kpiWidgets.map((widget) => (
+            <CustomKpiCard
+              key={widget.id}
+              widget={widget}
+              periodos={timelineData.periodos}
+            />
+          ))}
+        </div>
+      )}
 
       <RentRollChartsSection
         periodos={timelineData.periodos}
         categoryConcentration={categoryConcentration}
+        enabledCharts={enabledCharts}
+        waltVariant={waltVariant}
+        customWidgets={chartWidgets}
       />
     </main>
   );

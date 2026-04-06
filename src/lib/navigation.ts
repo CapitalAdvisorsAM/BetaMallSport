@@ -13,13 +13,13 @@ export function isNavItemActive(
   return match === "exact" ? pathname === href : pathname.startsWith(href);
 }
 
-export type RentRollEntity = "locales" | "arrendatarios" | "contratos";
+export type RentRollEntity = "units" | "tenants" | "contracts";
 export type RentRollMode = "ver" | "cargar" | "upload" | "config";
 
 export const RENT_ROLL_ENTITY_ITEMS: Array<{ key: RentRollEntity; label: string; href: string }> = [
-  { key: "locales", label: "Locales", href: "/rent-roll/locales" },
-  { key: "arrendatarios", label: "Arrendatarios", href: "/rent-roll/arrendatarios" },
-  { key: "contratos", label: "Contratos", href: "/rent-roll/contratos" }
+  { key: "units", label: "Locales", href: "/rent-roll/units" },
+  { key: "tenants", label: "Arrendatarios", href: "/rent-roll/tenants" },
+  { key: "contracts", label: "Contratos", href: "/rent-roll/contracts" }
 ];
 
 export const TOP_NAV_ITEMS: NavItem[] = [
@@ -45,6 +45,27 @@ export const TOP_NAV_ITEMS: NavItem[] = [
     label: "Reportes",
     href: "/reportes",
     enabled: false,
+    match: "startsWith"
+  },
+  {
+    label: "Configuración",
+    href: "/configuracion",
+    enabled: true,
+    match: "startsWith"
+  }
+];
+
+export const CONFIGURACION_SUB_NAV_ITEMS: NavItem[] = [
+  {
+    label: "Proyecto",
+    href: "/configuracion/proyecto",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
+    label: "Dashboard",
+    href: "/configuracion/dashboard",
+    enabled: true,
     match: "startsWith"
   }
 ];
@@ -91,7 +112,7 @@ export const FINANZAS_SUB_NAV_ITEMS: NavItem[] = [
 export const RENT_ROLL_SUB_NAV_ITEMS: NavItem[] = [
   {
     label: "Proyectos",
-    href: "/rent-roll/proyectos",
+    href: "/rent-roll/projects",
     enabled: true,
     match: "startsWith"
   },
@@ -109,19 +130,19 @@ export const RENT_ROLL_SUB_NAV_ITEMS: NavItem[] = [
   },
   {
     label: "Locales",
-    href: "/rent-roll/locales",
+    href: "/rent-roll/units",
     enabled: true,
     match: "exact"
   },
   {
     label: "Arrendatarios",
-    href: "/rent-roll/arrendatarios",
+    href: "/rent-roll/tenants",
     enabled: true,
     match: "exact"
   },
   {
     label: "Contratos",
-    href: "/rent-roll/contratos",
+    href: "/rent-roll/contracts",
     enabled: true,
     match: "exact"
   }

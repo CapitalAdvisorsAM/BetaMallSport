@@ -1,4 +1,4 @@
-import type { EstadoContrato, EstadoDiaContrato, UserRole } from "@prisma/client";
+import type { ContractStatus, ContractDayStatus, UserRole } from "@prisma/client";
 export type { ApplyReport, PreviewRow, RowStatus, UploadPreview } from "./upload";
 export type {
   ContractApiBaseRow,
@@ -22,9 +22,9 @@ export type RentRollRow = {
   id: string;
   local: string;
   arrendatario: string;
-  estado: EstadoDiaContrato;
-  fechaInicio: Date;
-  fechaTermino: Date;
+  estado: ContractDayStatus;
+  fechaInicio: string;
+  fechaTermino: string;
   tarifaVigenteUfM2: string;
   m2: string;
 };
@@ -35,8 +35,8 @@ export type RentRollUploadRow = {
   rowNumber: number;
   numeroContrato: string;
   localCodigo: string;
-  arrendatarioRut: string;
-  estado: EstadoContrato;
+  arrendatarioNombre: string;
+  estado: ContractStatus;
   fechaInicio: string;
   fechaTermino: string;
   fechaEntrega: string | null;
@@ -54,8 +54,6 @@ export type RentRollUploadRow = {
   ggccTipo: "FIJO_UF_M2" | "FIJO_UF" | null;
   ggccValor: string | null;
   ggccTarifaBaseUfM2?: string | null;
-  ggccVigenciaDesde: string | null;
-  ggccVigenciaHasta: string | null;
   ggccMesesReajuste: number | null;
   anexoFecha: string | null;
   anexoDescripcion: string | null;
@@ -93,7 +91,8 @@ export type ContractFormPayload = {
   fechaTermino: string;
   fechaEntrega: string | null;
   fechaApertura: string | null;
-  estado: EstadoContrato;
+  diasGracia: number;
+  estado: ContractStatus;
   rentaVariable: Array<{
     pctRentaVariable: string;
     vigenciaDesde: string;
@@ -116,8 +115,6 @@ export type ContractFormPayload = {
     tarifaBaseUfM2: string;
     pctAdministracion: string;
     pctReajuste: string | null;
-    vigenciaDesde: string;
-    vigenciaHasta: string | null;
     proximoReajuste: string | null;
     mesesReajuste: number | null;
   }>;

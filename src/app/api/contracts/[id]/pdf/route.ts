@@ -17,7 +17,7 @@ export async function POST(
     await requireWriteAccess();
     const contractId = context.params.id;
 
-    const contract = await prisma.contrato.findUnique({
+    const contract = await prisma.contract.findUnique({
       where: { id: contractId },
       select: { id: true }
     });
@@ -41,7 +41,7 @@ export async function POST(
     const bytes = await file.arrayBuffer();
     await writeFile(storage.absoluteFilePath, Buffer.from(bytes));
 
-    const updated = await prisma.contrato.update({
+    const updated = await prisma.contract.update({
       where: { id: contractId },
       data: { pdfUrl: storage.publicUrl },
       select: { pdfUrl: true }

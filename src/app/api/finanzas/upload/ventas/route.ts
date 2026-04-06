@@ -21,7 +21,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (filas.length === 0) throw new ApiError(400, "No se encontraron filas con Tipo = 'Real'.");
 
     // Cargar locales y mapeos existentes
-    const locales = await prisma.local.findMany({
+    const locales = await prisma.unit.findMany({
       where: { proyectoId },
       select: { id: true, codigo: true, nombre: true }
     });

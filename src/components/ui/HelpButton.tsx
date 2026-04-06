@@ -15,15 +15,15 @@ function resolveSection(pathname: string): HelpSection {
     return "rent-roll";
   }
 
-  if (pathname.startsWith("/rent-roll/locales")) {
+  if (pathname.startsWith("/rent-roll/units")) {
     return "locales";
   }
 
-  if (pathname.startsWith("/rent-roll/arrendatarios")) {
+  if (pathname.startsWith("/rent-roll/tenants")) {
     return "arrendatarios";
   }
 
-  if (pathname.startsWith("/rent-roll/contratos")) {
+  if (pathname.startsWith("/rent-roll/contracts")) {
     return "contratos";
   }
 

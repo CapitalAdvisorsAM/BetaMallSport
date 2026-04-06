@@ -30,7 +30,7 @@ function buildHref(
 
 export function ModuleSubNav({
   items,
-  preserveQueryKeys = ["proyecto"]
+  preserveQueryKeys = ["project", "proyecto"]
 }: ModuleSubNavProps): JSX.Element {
   const pathname = usePathname();
   const searchParams = useSearchParams();

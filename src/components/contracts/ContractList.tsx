@@ -1,17 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { type ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/ui/DataTable";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
+import { useDataTable } from "@/hooks/useDataTable";
 import type { ContractManagerListItem } from "@/types";
 
 type ContractListProps = {
@@ -60,6 +55,126 @@ export function ContractList({
         .includes(q)
     );
   }, [contracts, search]);
+  const stateOptions = useMemo(
+    () => Array.from(new Set(contracts.map((contract) => contract.estado))).sort(),
+    [contracts]
+  );
+  const columns = useMemo<ColumnDef<ContractManagerListItem, unknown>[]>(
+    () => [
+      {
+        accessorKey: "numeroContrato",
+        header: "Contrato",
+        filterFn: "includesString",
+        cell: ({ row }) => <span className="font-medium text-slate-900">{row.original.numeroContrato}</span>
+      },
+      {
+        id: "locales",
+        accessorFn: (row) =>
+          (row.locales.length > 0 ? row.locales : [row.local]).map((local) => local.codigo).join(", "),
+        header: "Locales",
+        filterFn: "includesString",
+        cell: ({ row }) => (
+          <span className="text-slate-700">
+            {(row.original.locales.length > 0 ? row.original.locales : [row.original.local])
+              .map((local) => local.codigo)
+              .join(", ")}
+          </span>
+        )
+      },
+      {
+        id: "arrendatario",
+        accessorFn: (row) => row.arrendatario.nombreComercial,
+        header: "Arrendatario",
+        filterFn: "includesString",
+        cell: ({ row }) => <span className="text-slate-700">{row.original.arrendatario.nombreComercial}</span>
+      },
+      {
+        accessorKey: "estado",
+        header: "Estado",
+        filterFn: (row, columnId, filterValue) => {
+          if (!Array.isArray(filterValue) || filterValue.length === 0) {
+            return true;
+          }
+          return filterValue.includes(String(row.getValue(columnId)));
+        },
+        meta: { filterType: "enum", filterOptions: stateOptions, align: "center" },
+        cell: ({ row }) => (
+          <Badge variant="outline" className="border-brand-200 bg-brand-100 text-brand-700">
+            {row.original.estado}
+          </Badge>
+        )
+      },
+      {
+        accessorKey: "fechaInicio",
+        header: "Inicio",
+        filterFn: "includesString",
+        cell: ({ row }) => <span className="text-slate-700">{toDateLabel(row.original.fechaInicio)}</span>
+      },
+      {
+        accessorKey: "fechaTermino",
+        header: "Termino",
+        filterFn: "includesString",
+        cell: ({ row }) => <span className="text-slate-700">{toDateLabel(row.original.fechaTermino)}</span>
+      },
+      {
+        id: "pdf",
+        accessorFn: (row) => (row.pdfUrl ? "Disponible" : "Sin PDF"),
+        header: "PDF",
+        filterFn: (row, columnId, filterValue) => {
+          if (!Array.isArray(filterValue) || filterValue.length === 0) {
+            return true;
+          }
+          return filterValue.includes(String(row.getValue(columnId)));
+        },
+        meta: { filterType: "enum", filterOptions: ["Disponible", "Sin PDF"], align: "center" },
+        cell: ({ row }) =>
+          row.original.pdfUrl ? (
+            <a
+              href={row.original.pdfUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-medium text-brand-700 underline"
+            >
+              Ver PDF
+            </a>
+          ) : (
+            <span className="text-xs text-slate-500">Sin PDF</span>
+          )
+      },
+      {
+        id: "acciones",
+        accessorFn: (row) => row.id,
+        header: "Acciones",
+        enableSorting: false,
+        enableColumnFilter: false,
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onEdit(row.original.id)}
+              className="h-auto px-2 py-1 text-xs"
+            >
+              Editar
+            </Button>
+            {canEdit ? (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => onDelete(row.original.id)}
+                disabled={deletingId === row.original.id}
+                className="h-auto px-2 py-1 text-xs"
+              >
+                {deletingId === row.original.id ? "Eliminando..." : "Eliminar"}
+              </Button>
+            ) : null}
+          </div>
+        )
+      }
+    ],
+    [canEdit, deletingId, onDelete, onEdit, stateOptions]
+  );
+  const { table } = useDataTable(visibleContracts, columns);
 
   return (
     <section className="rounded-md bg-white p-4 shadow-sm">
@@ -75,89 +190,14 @@ export function ContractList({
         />
       </div>
 
-      <div className="mt-3 overflow-hidden rounded-md border border-slate-200">
-        <Table className="min-w-full divide-y divide-slate-200 text-sm">
-          <TableHeader className="bg-slate-100 text-slate-700">
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="px-3 py-2 font-semibold text-slate-700">Contrato</TableHead>
-              <TableHead className="px-3 py-2 font-semibold text-slate-700">Locales</TableHead>
-              <TableHead className="px-3 py-2 font-semibold text-slate-700">Arrendatario</TableHead>
-              <TableHead className="px-3 py-2 font-semibold text-slate-700">Estado</TableHead>
-              <TableHead className="px-3 py-2 font-semibold text-slate-700">Inicio</TableHead>
-              <TableHead className="px-3 py-2 font-semibold text-slate-700">Termino</TableHead>
-              <TableHead className="px-3 py-2 font-semibold text-slate-700">PDF</TableHead>
-              <TableHead className="px-3 py-2 font-semibold text-slate-700">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody className="divide-y divide-slate-100">
-            {visibleContracts.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="px-3 py-5 text-center text-slate-500">
-                  No hay contratos para mostrar.
-                </TableCell>
-              </TableRow>
-            ) : (
-              visibleContracts.map((contract) => {
-                const isSelected = selectedId === contract.id;
-                return (
-                  <TableRow key={contract.id} className={isSelected ? "bg-brand-50" : undefined}>
-                    <TableCell className="px-3 py-2 font-medium text-slate-900">{contract.numeroContrato}</TableCell>
-                    <TableCell className="px-3 py-2 text-slate-700">
-                      {(contract.locales.length > 0 ? contract.locales : [contract.local])
-                        .map((local) => local.codigo)
-                        .join(", ")}
-                    </TableCell>
-                    <TableCell className="px-3 py-2 text-slate-700">{contract.arrendatario.nombreComercial}</TableCell>
-                    <TableCell className="px-3 py-2 text-slate-700">
-                      <Badge variant="outline" className="border-brand-200 bg-brand-100 text-brand-700">
-                        {contract.estado}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="px-3 py-2 text-slate-700">{toDateLabel(contract.fechaInicio)}</TableCell>
-                    <TableCell className="px-3 py-2 text-slate-700">{toDateLabel(contract.fechaTermino)}</TableCell>
-                    <TableCell className="px-3 py-2">
-                      {contract.pdfUrl ? (
-                        <a
-                          href={contract.pdfUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs font-medium text-brand-700 underline"
-                        >
-                          Ver PDF
-                        </a>
-                      ) : (
-                        <span className="text-xs text-slate-500">Sin PDF</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => onEdit(contract.id)}
-                          className="h-auto px-2 py-1 text-xs"
-                        >
-                          Editar
-                        </Button>
-                        {canEdit ? (
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            onClick={() => onDelete(contract.id)}
-                            disabled={deletingId === contract.id}
-                            className="h-auto px-2 py-1 text-xs"
-                          >
-                            {deletingId === contract.id ? "Eliminando..." : "Eliminar"}
-                          </Button>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+      <div className="mt-3">
+        <DataTable
+          table={table}
+          emptyMessage="No hay contratos para mostrar."
+          getRowClassName={(row) =>
+            selectedId === row.original.id ? "bg-brand-50 hover:bg-brand-50" : undefined
+          }
+        />
       </div>
 
       {nextCursor ? (

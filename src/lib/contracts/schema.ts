@@ -9,10 +9,6 @@ function toDateOnly(value: Date | string | null): string | null {
   return date.toISOString().slice(0, 10);
 }
 
-function ggccKey(vigenciaDesde: Date | string): string {
-  return toDateOnly(vigenciaDesde) ?? "";
-}
-
 function rentaVariableKey(vigenciaDesde: Date | string): string {
   return toDateOnly(vigenciaDesde) ?? "";
 }
@@ -52,6 +48,7 @@ export const contractPayloadSchema = z
     fechaTermino: dateStringSchema,
     fechaEntrega: nullableDateStringSchema,
     fechaApertura: nullableDateStringSchema,
+    diasGracia: z.number().int().min(0).default(0),
     estado: z.enum(["VIGENTE", "TERMINADO", "TERMINADO_ANTICIPADO", "GRACIA"]),
     rentaVariable: z
       .array(
@@ -82,8 +79,6 @@ export const contractPayloadSchema = z
         tarifaBaseUfM2: decimalStringSchema,
         pctAdministracion: decimalStringSchema,
         pctReajuste: decimalStringSchema.nullable(),
-        vigenciaDesde: dateStringSchema,
-        vigenciaHasta: nullableDateStringSchema,
         proximoReajuste: nullableDateStringSchema,
         mesesReajuste: z.number().int().min(1).nullable()
       })
@@ -118,19 +113,7 @@ export const contractPayloadSchema = z
       keys.add(key);
     }
 
-    const ggccKeys = new Set<string>();
     for (const item of payload.ggcc) {
-      const key = ggccKey(item.vigenciaDesde);
-      if (ggccKeys.has(key)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Hay GGCC duplicados con mismo vigenciaDesde.",
-          path: ["ggcc"]
-        });
-        break;
-      }
-      ggccKeys.add(key);
-
       if (item.mesesReajuste !== null && item.pctReajuste === null) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

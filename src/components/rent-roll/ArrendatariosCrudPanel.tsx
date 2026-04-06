@@ -32,14 +32,14 @@ type ArrendatarioRecord = {
 type ArrendatarioForm = Omit<ArrendatarioRecord, "id">;
 
 type ArrendatariosCrudPanelProps = {
-  proyectoId: string;
+  projectId: string;
   canEdit: boolean;
   initialArrendatarios: ArrendatarioRecord[];
 };
 
-function createEmptyForm(proyectoId: string): ArrendatarioForm {
+function createEmptyForm(projectId: string): ArrendatarioForm {
   return {
-    proyectoId,
+    proyectoId: projectId,
     rut: "",
     razonSocial: "",
     nombreComercial: "",
@@ -63,7 +63,7 @@ function toArrendatarioRecord(value: Partial<ArrendatarioRecord>): ArrendatarioR
 }
 
 export function ArrendatariosCrudPanel({
-  proyectoId,
+  projectId,
   canEdit,
   initialArrendatarios
 }: ArrendatariosCrudPanelProps): JSX.Element {
@@ -72,7 +72,7 @@ export function ArrendatariosCrudPanel({
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [form, setForm] = useState<ArrendatarioForm>(createEmptyForm(proyectoId));
+  const [form, setForm] = useState<ArrendatarioForm>(createEmptyForm(projectId));
 
   const columns = useMemo<ColumnDef<ArrendatarioRecord, unknown>[]>(
     () => [
@@ -157,7 +157,7 @@ export function ArrendatariosCrudPanel({
   function beginCreate(): void {
     setSelectedId(null);
     setFieldErrors({});
-    setForm(createEmptyForm(proyectoId));
+    setForm(createEmptyForm(projectId));
   }
 
   function beginEdit(item: ArrendatarioRecord): void {
@@ -214,9 +214,9 @@ export function ArrendatariosCrudPanel({
     setLoading(true);
     try {
       const isEditing = Boolean(selectedId);
-      const editQuery = `?proyectoId=${encodeURIComponent(form.proyectoId)}`;
+      const editQuery = `?projectId=${encodeURIComponent(form.proyectoId)}&proyectoId=${encodeURIComponent(form.proyectoId)}`;
       const response = await fetch(
-        isEditing ? `/api/arrendatarios/${selectedId}${editQuery}` : "/api/arrendatarios",
+        isEditing ? `/api/tenants/${selectedId}${editQuery}` : "/api/tenants",
         {
           method: isEditing ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
@@ -257,7 +257,7 @@ export function ArrendatariosCrudPanel({
     setLoading(true);
     try {
       const response = await fetch(
-        `/api/arrendatarios/${tenantId}?proyectoId=${encodeURIComponent(proyectoId)}`,
+        `/api/tenants/${tenantId}?projectId=${encodeURIComponent(projectId)}&proyectoId=${encodeURIComponent(projectId)}`,
         { method: "DELETE" }
       );
       if (!response.ok) {

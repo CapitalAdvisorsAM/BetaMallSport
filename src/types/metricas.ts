@@ -1,4 +1,4 @@
-import type { EstadoDiaContrato } from "@prisma/client";
+import type { ContractDayStatus } from "@prisma/client";
 
 /** Una fila de metricas por contrato/local vigente */
 export type RentRollMetricaRow = {
@@ -6,7 +6,7 @@ export type RentRollMetricaRow = {
   localCodigo: string;
   localNombre: string;
   arrendatario: string;
-  estado: EstadoDiaContrato;
+  estado: ContractDayStatus;
   glam2: number;
   tarifaUfM2: number;
   rentaFijaUf: number;
@@ -14,7 +14,7 @@ export type RentRollMetricaRow = {
   ventasUf: number | null;
   rentaVariableUf: number | null;
   ingresoBrutoUf: number;
-  fechaTermino: Date;
+  fechaTermino: string;
   diasVigentes: number;
 };
 

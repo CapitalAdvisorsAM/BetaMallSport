@@ -20,7 +20,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (filas.length === 0) throw new ApiError(400, "No se encontraron filas con Ce.coste = 'Real'.");
 
     // Cargar locales y arrendatarios del proyecto
-    const locales = await prisma.local.findMany({
+    const locales = await prisma.unit.findMany({
       where: { proyectoId },
       select: { id: true, codigo: true, nombre: true }
     });
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     // Obtener arrendatarioId por localId (via contrato vigente)
-    const contratosPorLocal = await prisma.contrato.findMany({
+    const contratosPorLocal = await prisma.contract.findMany({
       where: { proyectoId, estado: { in: ["VIGENTE", "GRACIA"] } },
       select: { localId: true, arrendatarioId: true }
     });

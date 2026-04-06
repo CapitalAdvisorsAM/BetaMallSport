@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ColumnDef, type Row } from "@tanstack/react-table";
 import { ModuleEmptyState } from "@/components/dashboard/ModuleEmptyState";
 import { ModuleHeader } from "@/components/dashboard/ModuleHeader";
 import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
@@ -9,6 +10,7 @@ import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolba
 import { OccupancyBadge } from "@/components/finanzas/OccupancyBadge";
 import type { ArrendatarioPartidaDetalle, ProjectOption, TenantFinanceRow } from "@/types/finanzas";
 import { formatUf } from "@/lib/utils";
+import type { ProjectOption, TenantFinanceRow } from "@/types/finanzas";
 
 type ArrendatariosFinanzasClientProps = {
   projects: ProjectOption[];
@@ -16,6 +18,62 @@ type ArrendatariosFinanzasClientProps = {
   defaultDesde?: string;
   defaultHasta?: string;
 };
+
+const columns: ColumnDef<TenantFinanceRow, unknown>[] = [
+  {
+    accessorKey: "nombreComercial",
+    header: "Arrendatario",
+    meta: { filterType: "string" },
+    cell: ({ row }) => (
+      <button
+        type="button"
+        className="flex w-full cursor-pointer items-start gap-2 text-left"
+        onClick={() => row.toggleExpanded()}
+      >
+        <span className="mt-0.5 shrink-0 text-slate-300">{row.getIsExpanded() ? "▼" : "▶"}</span>
+        <div>
+          <p className="font-medium text-slate-800">{row.original.nombreComercial}</p>
+          <p className="text-xs text-slate-400">{row.original.rut}</p>
+        </div>
+      </button>
+    )
+  },
+  {
+    id: "locales",
+    header: "Locales",
+    enableSorting: false,
+    enableColumnFilter: false,
+    accessorFn: (row) => row.locales.map((l) => l.codigo).join(", "),
+    cell: ({ getValue }) => (
+      <span className="text-slate-500">{getValue<string>()}</span>
+    )
+  },
+  {
+    accessorKey: "totalFacturado",
+    header: "Facturacion Total UF",
+    meta: { align: "right", filterType: "number" },
+    cell: ({ getValue }) => (
+      <span className="font-semibold text-slate-700">{formatUf(getValue<number>())} UF</span>
+    )
+  },
+  {
+    accessorKey: "totalVentas",
+    header: "Ventas UF",
+    meta: { align: "right" },
+    enableColumnFilter: false,
+    cell: ({ getValue }) => {
+      const v = getValue<number>();
+      return <span className="text-slate-600">{v > 0 ? `${formatUf(v)} UF` : "—"}</span>;
+    }
+  },
+  {
+    accessorKey: "costoOcupacion",
+    header: "Costo Ocupacion",
+    meta: { align: "center" },
+    enableColumnFilter: false,
+    cell: ({ getValue }) => <OccupancyBadge pct={getValue<number | null>()} />
+  }
+];
 
 export function ArrendatariosFinanzasClient({
   projects,
@@ -27,7 +85,6 @@ export function ArrendatariosFinanzasClient({
   const [hasta, setHasta] = useState(defaultHasta ?? "");
   const [data, setData] = useState<TenantFinanceRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Detalle por partida: clave "tenantId::periodo"
   const [partidaAbierta, setPartidaAbierta] = useState<string | null>(null);
@@ -91,14 +148,23 @@ export function ArrendatariosFinanzasClient({
         description="Facturacion total versus ventas por arrendatario y costo de ocupacion."
         projects={projects}
         selectedProjectId={selectedProjectId}
+        showProjectSelector={false}
         preserve={{ desde, hasta }}
         actions={
-          <ProjectPeriodToolbar
-            desde={desde}
-            hasta={hasta}
-            onDesdeChange={setDesde}
-            onHastaChange={setHasta}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <ProjectPeriodToolbar
+              desde={desde}
+              hasta={hasta}
+              onDesdeChange={setDesde}
+              onHastaChange={setHasta}
+            />
+            <Button asChild type="button" variant="outline" size="sm">
+              <a href={filteredExportHref}>Descargar filtrado</a>
+            </Button>
+            <Button asChild type="button" size="sm">
+              <a href={allExportHref}>Descargar todo</a>
+            </Button>
+          </div>
         }
       />
 
