@@ -117,6 +117,28 @@ export function ArrendatariosCrudPanel({
       sort: (a, b) => a.nombreComercial.localeCompare(b.nombreComercial, "es", { sensitivity: "base" })
     });
 
+  const beginCreate = useCallback((): void => {
+    setSelectedId(null);
+    setFieldErrors({});
+    setForm(createEmptyForm(projectId));
+    resetStatus();
+  }, [projectId, resetStatus]);
+
+  const beginEdit = useCallback((item: TenantRecord): void => {
+    setSelectedId(item.id);
+    setFieldErrors({});
+    setForm({
+      proyectoId: item.proyectoId,
+      rut: item.rut,
+      razonSocial: item.razonSocial,
+      nombreComercial: item.nombreComercial,
+      vigente: item.vigente,
+      email: item.email,
+      telefono: item.telefono
+    });
+    resetStatus();
+  }, [resetStatus]);
+
   const columns = useMemo<ColumnDef<TenantRecord, unknown>[]>(
     () => [
       {
@@ -177,28 +199,6 @@ export function ArrendatariosCrudPanel({
   );
 
   const { table } = useDataTable(tenants, columns);
-
-  const beginCreate = useCallback((): void => {
-    setSelectedId(null);
-    setFieldErrors({});
-    setForm(createEmptyForm(projectId));
-    resetStatus();
-  }, [projectId, resetStatus]);
-
-  const beginEdit = useCallback((item: TenantRecord): void => {
-    setSelectedId(item.id);
-    setFieldErrors({});
-    setForm({
-      proyectoId: item.proyectoId,
-      rut: item.rut,
-      razonSocial: item.razonSocial,
-      nombreComercial: item.nombreComercial,
-      vigente: item.vigente,
-      email: item.email,
-      telefono: item.telefono
-    });
-    resetStatus();
-  }, [resetStatus]);
 
   function clearFieldError(field: string): void {
     setFieldErrors((previous) => {
