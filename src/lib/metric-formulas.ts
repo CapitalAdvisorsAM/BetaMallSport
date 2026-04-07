@@ -41,6 +41,43 @@ export const METRIC_FORMULAS = {
     formula: "Facturacion total (UF) * valor UF vigente",
     detail: "Convierte el total UF usando el ultimo valor UF registrado."
   },
+  kpi_dashboard_ingresos_uf: {
+    title: "Ingresos (UF)",
+    formula: "SUM(valor UF) donde grupo1 = INGRESOS DE EXPLOTACION",
+    detail: "Total de ingresos operacionales del periodo seleccionado en el dashboard financiero."
+  },
+  kpi_dashboard_ebitda_uf: {
+    title: "EBITDA (UF)",
+    formula:
+      "SUM(valor UF) de secciones sobre EBITDA (excluye DEPRECIACION, EDI, RESULTADO NO OPERACIONAL e IMPUESTOS)",
+    detail: "EBITDA del periodo segun estructura EE.RR."
+  },
+  kpi_dashboard_ytd_ingresos_uf: {
+    title: "YTD Ingresos (UF)",
+    formula: "SUM mensual de ingresos operacionales desde enero hasta el periodo seleccionado",
+    detail: "Compara acumulado anual actual versus acumulado anual del ano previo."
+  },
+  kpi_dashboard_ytd_ebitda_uf: {
+    title: "YTD EBITDA (UF)",
+    formula: "SUM mensual de EBITDA desde enero hasta el periodo seleccionado",
+    detail: "Compara acumulado anual actual versus acumulado anual del ano previo."
+  },
+  kpi_dashboard_uf_por_m2: {
+    title: "UF por m2",
+    formula: "Ingresos del periodo (UF) / GLA total del proyecto (m2)",
+    detail: "Relaciona ingresos operacionales con m2 de GLA total."
+  },
+  kpi_dashboard_vacancia_pct: {
+    title: "Vacancia (%)",
+    formula: "(Locales GLA vacantes / Locales GLA totales) * 100",
+    detail: "Disponible para modo mensual segun contratos activos en el mes."
+  },
+  chart_dashboard_ingresos_ebitda_uf: {
+    title: "Evolucion mensual de ingresos y EBITDA (UF)",
+    formula:
+      "Serie mensual: ingresos actuales, ingresos ano anterior alineados y EBITDA actual",
+    detail: "Permite comparar tendencia y brecha contra el ano anterior."
+  },
   kpi_dashboard_renta_variable_uf: {
     title: "Renta variable",
     formula: "SUM(ventas UF por local * porcentaje variable del contrato)",

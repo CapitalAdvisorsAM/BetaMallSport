@@ -12,11 +12,14 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
 import { ModuleEmptyState } from "@/components/dashboard/ModuleEmptyState";
 import { ModuleHeader } from "@/components/dashboard/ModuleHeader";
 import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
+import { MetricTooltip } from "@/components/ui/MetricTooltip";
 import { formatEerr, BELOW_EBITDA_GROUPS } from "@/lib/finance/eerr";
+import type { MetricFormulaId } from "@/lib/metric-formulas";
 import type { ProjectOption } from "@/types/finance";
 
 type Modo = "mes" | "aÃ±o" | "ltm";
@@ -73,12 +76,14 @@ function deltaPct(actual: number, anterior: number): string {
 }
 
 function KpiCard({
+  metricId,
   label,
   value,
   anterior,
   subLabel,
   suffix = ""
 }: {
+  metricId: MetricFormulaId;
   label: string;
   value: number | null;
   anterior?: number;
@@ -88,7 +93,10 @@ function KpiCard({
   const delta = value !== null && anterior !== undefined ? value - anterior : null;
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
+        <MetricTooltip metricId={metricId} />
+      </div>
       <p className="mt-1 text-2xl font-bold text-slate-800">
         {value !== null ? `${formatEerr(value, 1)}${suffix}` : "â€”"}
       </p>
@@ -207,12 +215,14 @@ export function FinanceDashboardClient({ projects, selectedProjectId }: Props): 
           {/* KPI Cards */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <KpiCard
+              metricId="kpi_dashboard_ingresos_uf"
               label="Ingresos"
               value={data.kpis.ingresos.actual}
               anterior={data.kpis.ingresos.anterior}
               subLabel={getModoLabel(modo, periodo)}
             />
             <KpiCard
+              metricId="kpi_dashboard_ebitda_uf"
               label="EBITDA"
               value={data.kpis.ebitda.actual}
               anterior={data.kpis.ebitda.anterior}
@@ -220,6 +230,7 @@ export function FinanceDashboardClient({ projects, selectedProjectId }: Props): 
             />
             {data.kpis.ytdIngresos && (
               <KpiCard
+                metricId="kpi_dashboard_ytd_ingresos_uf"
                 label="YTD Ingresos"
                 value={data.kpis.ytdIngresos.actual}
                 anterior={data.kpis.ytdIngresos.anterior}
@@ -227,17 +238,20 @@ export function FinanceDashboardClient({ projects, selectedProjectId }: Props): 
             )}
             {data.kpis.ytdEbitda && (
               <KpiCard
+                metricId="kpi_dashboard_ytd_ebitda_uf"
                 label="YTD EBITDA"
                 value={data.kpis.ytdEbitda.actual}
                 anterior={data.kpis.ytdEbitda.anterior}
               />
             )}
             <KpiCard
+              metricId="kpi_dashboard_uf_por_m2"
               label="UF / mÂ²"
               value={data.kpis.ufPorm2}
               subLabel="Ingresos / GLA total"
             />
             <KpiCard
+              metricId="kpi_dashboard_vacancia_pct"
               label="Vacancia"
               value={data.kpis.vacanciaPct}
               suffix="%"
@@ -246,12 +260,11 @@ export function FinanceDashboardClient({ projects, selectedProjectId }: Props): 
           </div>
 
           {/* GrÃ¡fico mensual */}
-          <ModuleSectionCard>
-            <div className="mb-3 px-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                EvoluciÃ³n mensual â€” Ingresos y EBITDA (UF)
-              </p>
-            </div>
+          <MetricChartCard
+            title="Evolucion mensual"
+            metricId="chart_dashboard_ingresos_ebitda_uf"
+            description="Ingresos y EBITDA (UF) con comparativo del ano anterior."
+          >
             <ResponsiveContainer width="100%" height={280}>
               <ComposedChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -280,7 +293,7 @@ export function FinanceDashboardClient({ projects, selectedProjectId }: Props): 
                 />
               </ComposedChart>
             </ResponsiveContainer>
-          </ModuleSectionCard>
+          </MetricChartCard>
 
           {/* Tabla EE.RR resumen */}
           <ModuleSectionCard>
