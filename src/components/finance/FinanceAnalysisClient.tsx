@@ -16,13 +16,13 @@ type OrdenType = "nombre" | "total_desc" | "total_asc";
 const DIMENSION_LABELS: Record<DimensionType, string> = {
   arrendatario: "Arrendatario",
   local: "Local",
-  categoria: "CategorÃ­a (Grupo 3)",
-  seccion: "SecciÃ³n (Grupo 1)",
+  categoria: "Categoría (Grupo 3)",
+  seccion: "Sección (Grupo 1)",
   piso: "Piso"
 };
 
 const ORDEN_LABELS: Record<OrdenType, string> = {
-  nombre: "Nombre Aâ†’Z",
+  nombre: "Nombre A-Z",
   total_desc: "Mayor total",
   total_asc: "Menor total"
 };
@@ -110,8 +110,8 @@ export function FinanceAnalysisClient({
   return (
     <main className="space-y-4">
       <ModuleHeader
-        title="AnÃ¡lisis de FacturaciÃ³n"
-        description="Vista flexible de los registros contables. Elige dimensiÃ³n, tipo de cobro y periodo."
+        title="Análisis de Facturación"
+        description="Vista flexible de los registros contables. Elige dimensión, tipo de cobro y periodo."
         projects={projects}
         selectedProjectId={selectedProjectId}
         preserve={{ desde, hasta }}
@@ -125,7 +125,7 @@ export function FinanceAnalysisClient({
       {/* Toolbar de controles */}
       <ModuleSectionCard>
         <div className="flex flex-wrap items-start gap-4">
-          {/* DimensiÃ³n */}
+          {/* Dimensión */}
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Ver por</label>
             <div className="flex flex-wrap gap-1">
@@ -169,7 +169,7 @@ export function FinanceAnalysisClient({
               {grupo3Seleccionados.size === 0
                 ? "Todos"
                 : `${grupo3Seleccionados.size} seleccionado${grupo3Seleccionados.size > 1 ? "s" : ""}`}
-              <span className="text-slate-400">{filtroAbierto ? "â–²" : "â–¼"}</span>
+              <span className="text-slate-400">{filtroAbierto ? "▲" : "▼"}</span>
             </button>
             {filtroAbierto && (
               <div className="absolute left-0 top-full z-30 mt-1 max-h-64 w-64 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
@@ -198,7 +198,7 @@ export function FinanceAnalysisClient({
       {/* Tabla */}
       <ModuleSectionCard>
         {loading ? (
-          <ModuleLoadingState message="Cargando anÃ¡lisis..." />
+          <ModuleLoadingState message="Cargando análisis..." />
         ) : !data || filas.length === 0 ? (
           <ModuleEmptyState
             message="Sin datos para los filtros seleccionados."
@@ -210,7 +210,7 @@ export function FinanceAnalysisClient({
             <div className="mb-2 flex items-center justify-between px-1">
               <p className="text-xs text-slate-400">
                 {filas.length} {DIMENSION_LABELS[dimension].toLowerCase()}
-                {grupo3Seleccionados.size > 0 && ` Â· Filtrado por ${grupo3Seleccionados.size} tipo(s)`}
+                {grupo3Seleccionados.size > 0 && ` · Filtrado por ${grupo3Seleccionados.size} tipo(s)`}
               </p>
             </div>
             <table className="w-full text-xs">
@@ -233,7 +233,7 @@ export function FinanceAnalysisClient({
                   >
                     <td className="sticky left-0 bg-inherit py-1.5 pl-4 pr-3">
                       <span className="font-medium text-slate-700">{fila.nombre}</span>
-                      {fila.sub && <span className="ml-1.5 text-slate-400">Â· {fila.sub}</span>}
+                      {fila.sub && <span className="ml-1.5 text-slate-400">· {fila.sub}</span>}
                     </td>
                     {periodos.map((p) => (
                       <td key={p} className={`px-2 py-1.5 text-right ${valueCls(fila.porPeriodo[p] ?? 0)}`}>

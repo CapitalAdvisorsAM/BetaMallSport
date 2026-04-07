@@ -46,6 +46,103 @@ type Props = {
   selectedProjectId: string;
 };
 
+type AnyRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): AnyRecord | null {
+  return value !== null && typeof value === "object" ? (value as AnyRecord) : null;
+}
+
+function asNumber(value: unknown, fallback = 0): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function asNullableNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function asNumberArray(value: unknown): number[] {
+  return Array.isArray(value)
+    ? value.map((item) => asNumber(item)).filter((item) => Number.isFinite(item))
+    : [];
+}
+
+function normalizeDashboardData(raw: unknown): DashboardData | null {
+  const root = asRecord(raw);
+  if (!root) return null;
+
+  const kpisRaw = asRecord(root.kpis);
+  const chartRaw = asRecord(root.grafico) ?? asRecord(root.chart);
+  const sectionsRaw = root.seccionesEerr ?? root.sectionsEerr;
+  if (!kpisRaw || !chartRaw) return null;
+
+  const ingresosRaw = asRecord(kpisRaw.ingresos) ?? asRecord(kpisRaw.income);
+  const ebitdaRaw = asRecord(kpisRaw.ebitda);
+  if (!ingresosRaw || !ebitdaRaw) return null;
+
+  const ytdIngresosRaw = asRecord(kpisRaw.ytdIngresos) ?? asRecord(kpisRaw.ytdIncome);
+  const ytdEbitdaRaw = asRecord(kpisRaw.ytdEbitda);
+
+  return {
+    kpis: {
+      ingresos: {
+        actual: asNumber(ingresosRaw.actual ?? ingresosRaw.current),
+        anterior: asNumber(ingresosRaw.anterior ?? ingresosRaw.prior)
+      },
+      ebitda: {
+        actual: asNumber(ebitdaRaw.actual ?? ebitdaRaw.current),
+        anterior: asNumber(ebitdaRaw.anterior ?? ebitdaRaw.prior),
+        margenPct: asNullableNumber(ebitdaRaw.margenPct ?? ebitdaRaw.marginPct)
+      },
+      ytdIngresos: ytdIngresosRaw
+        ? {
+            actual: asNumber(ytdIngresosRaw.actual ?? ytdIngresosRaw.current),
+            anterior: asNumber(ytdIngresosRaw.anterior ?? ytdIngresosRaw.prior)
+          }
+        : null,
+      ytdEbitda: ytdEbitdaRaw
+        ? {
+            actual: asNumber(ytdEbitdaRaw.actual ?? ytdEbitdaRaw.current),
+            anterior: asNumber(ytdEbitdaRaw.anterior ?? ytdEbitdaRaw.prior)
+          }
+        : null,
+      ufPorm2: asNullableNumber(kpisRaw.ufPorm2 ?? kpisRaw.ufPerM2),
+      vacanciaPct: asNullableNumber(kpisRaw.vacanciaPct ?? kpisRaw.vacancyPct),
+      totalLocalesGLA: asNumber(kpisRaw.totalLocalesGLA ?? kpisRaw.totalGlaUnits),
+      localesOcupados: asNumber(kpisRaw.localesOcupados ?? kpisRaw.occupiedUnits)
+    },
+    grafico: {
+      meses: asStringArray(chartRaw.meses ?? chartRaw.months),
+      ingresosActual: asNumberArray(chartRaw.ingresosActual ?? chartRaw.currentIncome),
+      ingresosAnterior: asNumberArray(chartRaw.ingresosAnterior ?? chartRaw.priorIncome),
+      ebitdaActual: asNumberArray(chartRaw.ebitdaActual ?? chartRaw.currentEbitda)
+    },
+    seccionesEerr: Array.isArray(sectionsRaw)
+      ? sectionsRaw
+          .map((item) => {
+            const s = asRecord(item);
+            if (!s) return null;
+            const sectionName =
+              typeof s.grupo1 === "string"
+                ? s.grupo1
+                : typeof s.group1 === "string"
+                  ? s.group1
+                  : null;
+            if (!sectionName) return null;
+            return {
+              grupo1: sectionName,
+              actual: asNumber(s.actual ?? s.current),
+              anterior: asNumber(s.anterior ?? s.prior)
+            };
+          })
+          .filter((item): item is { grupo1: string; actual: number; anterior: number } => item !== null)
+      : []
+  };
+}
+
 // Section ordering for EE.RR summary
 const SECTION_ORDER = [
   "INGRESOS DE EXPLOTACION",
@@ -141,7 +238,9 @@ export function FinanceDashboardClient({ projects, selectedProjectId }: Props): 
     try {
       const params = new URLSearchParams({ proyectoId: selectedProjectId, modo, periodo });
       const res = await fetch(`/api/finance/dashboard?${params}`);
-      setData((await res.json()) as DashboardData);
+      const payload = (await res.json().catch(() => null)) as unknown;
+      const normalized = normalizeDashboardData(payload);
+      setData(res.ok ? normalized : null);
     } finally {
       setLoading(false);
     }
@@ -149,12 +248,13 @@ export function FinanceDashboardClient({ projects, selectedProjectId }: Props): 
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
-  const chartData = data?.grafico.meses.map((m, i) => ({
+  const chartMonths = data?.grafico?.meses ?? [];
+  const chartData = chartMonths.map((m, i) => ({
     mes: m.slice(5), // MM
-    ingresosActual: data.grafico.ingresosActual[i] ?? 0,
-    ingresosAnterior: data.grafico.ingresosAnterior[i] ?? 0,
-    ebitda: data.grafico.ebitdaActual[i] ?? 0
-  })) ?? [];
+    ingresosActual: data?.grafico.ingresosActual[i] ?? 0,
+    ingresosAnterior: data?.grafico.ingresosAnterior[i] ?? 0,
+    ebitda: data?.grafico.ebitdaActual[i] ?? 0
+  }));
 
   const seccionesOrdenadas = data
     ? [...data.seccionesEerr].sort((a, b) => {
