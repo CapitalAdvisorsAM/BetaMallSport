@@ -48,6 +48,7 @@ type NumberFilterColumnOptions<TData> = {
   header: string;
   cell?: (row: TData) => ReactNode;
   align?: "left" | "center" | "right";
+  meta?: any;
 };
 
 export function numberFilterColumn<TData>(
@@ -104,8 +105,8 @@ type LinkColumnOptions<TData> = {
   accessorKey?: keyof TData & string;
   accessorFn?: (row: TData) => string;
   header: string;
-  href: (row: TData) => string;
-  label: (row: TData) => ReactNode;
+  path: string;
+  idKey?: string;
   className?: string;
   filterFn?: "includesString";
 };
@@ -117,13 +118,11 @@ export function linkColumn<TData>(options: LinkColumnOptions<TData>): ColumnDef<
     ...(options.accessorFn ? { accessorFn: options.accessorFn } : {}),
     header: options.header,
     filterFn: options.filterFn ?? "includesString",
-    cell: ({ row }) => (
-      <Link
-        href={options.href(row.original)}
-        className={options.className ?? "font-medium text-brand-700 underline"}
-      >
-        {options.label(row.original)}
-      </Link>
-    )
+    meta: {
+      linkTo: {
+        path: options.path,
+        idKey: options.idKey,
+      },
+    },
   };
 }

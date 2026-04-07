@@ -193,7 +193,7 @@ export function CargaHistorial({
         <p className="mt-2 text-sm text-slate-500">Aun no hay cargas registradas para este tipo.</p>
       ) : (
         <div className="mt-3">
-          <DataTable table={table} getRowClassName={() => "hover:bg-slate-50"} />
+          <DataTable table={table} density="compact" getRowClassName={() => "hover:bg-slate-50"} />
         </div>
       )}
     </section>

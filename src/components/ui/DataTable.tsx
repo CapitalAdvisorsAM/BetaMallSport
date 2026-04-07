@@ -13,6 +13,7 @@ import { ChevronDown, ChevronUp, ChevronsUpDown, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -22,7 +23,12 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
+import { UnifiedTable } from "@/components/ui/UnifiedTable";
+import { mapSortStateToAriaSort } from "@/components/ui/table-a11y";
+import { getStripedRowClass, getTableTheme, type TableDensity } from "@/components/ui/table-theme";
 import { cn } from "@/lib/utils";
+import { RecordDetailModal } from "@/components/ui/RecordDetailModal";
+
 
 type DataTableFilterType = "string" | "enum" | "number";
 type DataTableAlign = "left" | "center" | "right";
@@ -41,7 +47,14 @@ declare module "@tanstack/react-table" {
     align?: DataTableAlign;
     filterOptions?: string[];
     filterType?: DataTableFilterType;
+    isNumeric?: boolean;
+    isCritical?: boolean;
     summary?: DataTableSummaryMeta;
+    linkTo?: {
+      path?: string;
+      idKey?: string;
+      triggerDetail?: boolean;
+    };
   }
 }
 
@@ -50,8 +63,10 @@ interface DataTableProps<TData> {
   emptyMessage?: string;
   footerContent?: React.ReactNode;
   summaryRow?: DataTableSummaryConfig;
+  density?: TableDensity;
   getRowClassName?: (row: Row<TData>, index: number) => string | undefined;
   renderSubRow?: (row: Row<TData>) => React.ReactNode;
+  selectedId?: string;
 }
 
 interface SortableColumnHeaderProps<TData> {
@@ -135,8 +150,9 @@ function SortableColumnHeader<TData>({
       type="button"
       onClick={onSortToggle}
       disabled={!column.getCanSort()}
+      aria-label={`Ordenar por ${column.id}`}
       className={cn(
-        "inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-white/70 transition-colors hover:text-white disabled:pointer-events-none",
+        "inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-white/70 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-1 focus-visible:ring-offset-brand-700 disabled:pointer-events-none",
         align === "right" && "justify-end",
         align === "center" && "justify-center"
       )}
@@ -181,7 +197,7 @@ function ColumnFilterControl<TData>({ column }: { column: Column<TData, unknown>
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-6 w-6 items-center justify-center rounded-sm transition-colors hover:bg-white/10"
+          className="inline-flex h-6 w-6 items-center justify-center rounded-sm transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-1 focus-visible:ring-offset-brand-700"
           aria-label={`Filtrar columna ${column.id}`}
         >
           <Filter className={cn("h-3.5 w-3.5", isActive ? "text-gold-400" : "text-white/40")} />
@@ -282,15 +298,23 @@ export function DataTable<TData>({
   emptyMessage = "No hay filas para mostrar.",
   footerContent,
   summaryRow,
+  density = "default",
   getRowClassName,
-  renderSubRow
+  renderSubRow,
+  selectedId
 }: DataTableProps<TData>): JSX.Element {
+  const router = useRouter();
+  const [selectedRecord, setSelectedRecord] = React.useState<TData | null>(null);
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+
+  const theme = getTableTheme(density);
   const rows = table.getRowModel().rows;
   const totalRows = table.getCoreRowModel().rows.length;
   const filteredRows = table.getFilteredRowModel().rows.length;
   const hasActiveFilters = table.getState().columnFilters.length > 0;
   const visibleColumns = table.getVisibleLeafColumns();
   const columnCount = visibleColumns.length;
+
 
   const summaryEnabled = summaryRow?.enabled ?? false;
   const summaryLabel = summaryRow?.label ?? "Totales";
@@ -328,116 +352,167 @@ export function DataTable<TData>({
       : firstSummaryValue;
 
   return (
-    <div className="overflow-hidden rounded-md border border-slate-200">
-      <div className="overflow-x-auto">
-        <Table className="min-w-full text-sm">
-          <TableHeader className="bg-brand-700 text-white/70">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="hover:bg-transparent">
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    className={cn(
-                      "px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70",
-                      getCellAlignClass(getColumnAlign(header.column))
-                    )}
-                  >
-                    {renderHeader(header)}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {rows.length > 0 ? (
-              rows.map((row, index) => (
-                <React.Fragment key={row.id}>
-                  <TableRow
-                    className={cn(
-                      index % 2 === 0 ? "bg-white" : "bg-slate-50/60",
-                      "hover:bg-brand-50",
-                      getRowClassName?.(row, index)
-                    )}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        className={cn("px-4 py-3 text-slate-700", getCellAlignClass(getColumnAlign(cell.column)))}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext()) ??
-                          String(cell.getValue() ?? "")}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                  {renderSubRow && row.getIsExpanded() ? (
-                    <TableRow className="bg-slate-50/40 hover:bg-slate-50/40">
-                      <TableCell colSpan={columnCount} className="px-4 py-3">
-                        {renderSubRow(row)}
-                      </TableCell>
+    <>
+      <UnifiedTable density={density}>
+        <Table density={density} className={theme.table}>
+          <TableHeader className={theme.head}>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
+                      aria-sort={
+                        header.column.getCanSort()
+                          ? mapSortStateToAriaSort(header.column.getIsSorted())
+                          : undefined
+                      }
+                      className={cn(
+                        theme.headCell,
+                        getCellAlignClass(getColumnAlign(header.column))
+                      )}
+                    >
+                      {renderHeader(header)}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {rows.length > 0 ? (
+                rows.map((row, index) => (
+                  <React.Fragment key={row.id}>
+                    <TableRow
+                      className={cn(
+                        getStripedRowClass(index, density),
+                        theme.rowHover,
+                        getRowClassName?.(row, index),
+                        (row.original as any).id === selectedId && "bg-brand-50 border-l-4 border-brand-500"
+                      )}
+                    >
+                      {row.getVisibleCells().map((cell) => {
+                        const linkTo = cell.column.columnDef.meta?.linkTo;
+                        const value = cell.getValue();
+                        const recordId = linkTo?.idKey
+                          ? (row.original as any)[linkTo.idKey]
+                          : (row.original as any).id;
+
+                        const handleLinkClick = (e: React.MouseEvent) => {
+                          if (!linkTo) return;
+                          e.stopPropagation();
+
+                          if (linkTo.triggerDetail || !linkTo.path) {
+                            setSelectedRecord(row.original);
+                            setIsModalOpen(true);
+                          } else {
+                            router.push(`${linkTo.path}?id=${recordId}`);
+                          }
+                        };
+
+                        return (
+                          <TableCell
+                            key={cell.id}
+                            className={cn(
+                              theme.cell,
+                              getCellAlignClass(getColumnAlign(cell.column)),
+                              cell.column.columnDef.meta?.isNumeric && "tabular-nums text-right",
+                              cell.column.columnDef.meta?.isCritical && "font-mono font-semibold"
+                            )}
+                          >
+                            {linkTo ? (
+                              <span
+                                onClick={handleLinkClick}
+                                className="cursor-pointer text-brand-500 hover:text-brand-700 underline underline-offset-2 font-medium transition-colors"
+                                >
+                                {flexRender(cell.column.columnDef.cell, cell.getContext()) ??
+                                  String(value ?? "")}
+                              </span>
+                            ) : (
+                              <>
+                                {flexRender(cell.column.columnDef.cell, cell.getContext()) ??
+                                  String(value ?? "")}
+                              </>
+                            )}
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
-                  ) : null}
-                </React.Fragment>
-              ))
-            ) : (
-              <TableRow className="bg-white hover:bg-white">
-                <TableCell colSpan={columnCount} className="px-4 py-6 text-center text-sm text-slate-500">
-                  {emptyMessage}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-          {footerContent || hasActiveFilters || showSummaryRow ? (
-            <TableFooter className="bg-white">
-              {footerContent}
-              {hasActiveFilters ? (
-                <TableRow className="border-t border-slate-200 bg-white hover:bg-white">
-                  <TableCell colSpan={columnCount} className="px-4 py-2 text-right text-xs text-slate-500">
-                    {filteredRows} de {totalRows} filas
+                    {renderSubRow && row.getIsExpanded() ? (
+                      <TableRow className="bg-slate-50/40 hover:bg-slate-50/40">
+                        <TableCell colSpan={columnCount} className={theme.cell}>
+                          {renderSubRow(row)}
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+                  </React.Fragment>
+                ))
+              ) : (
+                <TableRow className="bg-white hover:bg-white">
+                  <TableCell
+                    colSpan={columnCount}
+                    className={cn(theme.cell, "py-6 text-center text-sm text-slate-500")}
+                  >
+                    {emptyMessage}
                   </TableCell>
                 </TableRow>
-              ) : null}
-              {showSummaryRow ? (
-                <TableRow className="border-t border-slate-200 bg-brand-50 font-semibold text-slate-900 hover:bg-brand-50">
-                  <TableCell className="px-4 py-3 font-semibold" colSpan={summaryLabelColSpan}>
-                    {firstSummaryColumnIndex === 0 ? (
-                      <div className="flex items-center justify-between gap-2">
-                        <span>{summaryLabel}</span>
-                        <span className="whitespace-nowrap">{renderedFirstSummaryValue}</span>
-                      </div>
-                    ) : (
-                      summaryLabel
-                    )}
-                  </TableCell>
-                  {visibleColumns.slice(summaryCellsStartIndex).map((column) => {
-                    const summaryMeta = getSummaryMeta(column);
-                    if (summaryMeta?.type !== "sum") {
+              )}
+            </TableBody>
+            {footerContent || hasActiveFilters || showSummaryRow ? (
+              <TableFooter className="bg-white">
+                {footerContent}
+                {hasActiveFilters ? (
+                  <TableRow className="border-t border-slate-200 bg-white hover:bg-white">
+                    <TableCell colSpan={columnCount} className={cn(theme.cell, "py-2 text-right text-xs text-slate-500")}>
+                      {filteredRows} de {totalRows} filas
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+                {showSummaryRow ? (
+                  <TableRow className="border-t border-slate-200 bg-brand-50 font-semibold text-slate-900 hover:bg-brand-50">
+                    <TableCell className={cn(theme.cell, "font-semibold")} colSpan={summaryLabelColSpan}>
+                      {firstSummaryColumnIndex === 0 ? (
+                        <div className="flex items-center justify-between gap-2">
+                          <span>{summaryLabel}</span>
+                          <span className="whitespace-nowrap">{renderedFirstSummaryValue}</span>
+                        </div>
+                      ) : (
+                        summaryLabel
+                      )}
+                    </TableCell>
+                    {visibleColumns.slice(summaryCellsStartIndex).map((column) => {
+                      const summaryMeta = getSummaryMeta(column);
+                      if (summaryMeta?.type !== "sum") {
+                        return (
+                          <TableCell
+                            key={`summary-empty-${column.id}`}
+                            className={cn(theme.cell, getCellAlignClass(getColumnAlign(column)))}
+                          />
+                        );
+                      }
+
+                      const value = summaryValues.get(column.id) ?? 0;
                       return (
                         <TableCell
-                          key={`summary-empty-${column.id}`}
-                          className={cn("px-4 py-3", getCellAlignClass(getColumnAlign(column)))}
-                        />
+                          key={`summary-${column.id}`}
+                          className={cn(
+                            `whitespace-nowrap ${theme.cell}`,
+                            getCellAlignClass(getColumnAlign(column))
+                          )}
+                        >
+                          {summaryMeta.formatter ? summaryMeta.formatter(value) : value}
+                        </TableCell>
                       );
-                    }
-
-                    const value = summaryValues.get(column.id) ?? 0;
-                    return (
-                      <TableCell
-                        key={`summary-${column.id}`}
-                        className={cn(
-                          "whitespace-nowrap px-4 py-3",
-                          getCellAlignClass(getColumnAlign(column))
-                        )}
-                      >
-                        {summaryMeta.formatter ? summaryMeta.formatter(value) : value}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ) : null}
-            </TableFooter>
-          ) : null}
-        </Table>
-      </div>
-    </div>
+                    })}
+                  </TableRow>
+                ) : null}
+              </TableFooter>
+            ) : null}
+          </Table>
+        </UnifiedTable>
+        <RecordDetailModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          recordData={selectedRecord as any}
+        />
+    </>
   );
 }

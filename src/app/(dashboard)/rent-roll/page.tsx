@@ -180,6 +180,8 @@ export default async function RentRollPage({
 
     return {
       id: contract.id,
+      localId: contract.localId,
+      tenantId: contract.arrendatarioId,
       local: `${contract.local.codigo} - ${contract.local.nombre}`,
       arrendatario: contract.arrendatario.nombreComercial,
       glam2,

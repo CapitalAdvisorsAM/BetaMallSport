@@ -7,8 +7,11 @@ import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolbar";
 import { OccupancyBadge } from "@/components/finance/OccupancyBadge";
+import { TableDisclosureButton } from "@/components/ui/TableDisclosureButton";
+import { getStripedRowClass, tableTheme } from "@/components/ui/table-theme";
+import { useRouter } from "next/navigation";
 import type { ArrendatarioPartidaDetalle, ProjectOption, TenantFinanceRow } from "@/types/finance";
-import { formatUf } from "@/lib/utils";
+import { formatUf, cn } from "@/lib/utils";
 
 type FinanceTenantsClientProps = {
   projects: ProjectOption[];
@@ -23,6 +26,7 @@ export function FinanceTenantsClient({
   defaultDesde,
   defaultHasta
 }: FinanceTenantsClientProps): JSX.Element {
+  const router = useRouter();
   const [desde, setDesde] = useState(defaultDesde ?? "");
   const [hasta, setHasta] = useState(defaultHasta ?? "");
   const [data, setData] = useState<TenantFinanceRow[]>([]);
@@ -113,43 +117,55 @@ export function FinanceTenantsClient({
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="sticky left-0 bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <table className={tableTheme.table}>
+              <thead className={tableTheme.head}>
+                <tr>
+                  <th className={`${tableTheme.headCell} sticky left-0 bg-brand-700`}>
                     Arrendatario
                   </th>
-                  <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th className={tableTheme.compactHeadCell}>
                     Locales
                   </th>
-                  <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Facturacion Total UF
+                  <th className={`${tableTheme.compactHeadCell} text-right`}>
+                    Facturacion Total (UF)
                   </th>
-                  <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Ventas UF
+                  <th className={`${tableTheme.compactHeadCell} text-right`}>
+                    Ventas (UF)
                   </th>
-                  <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th className={`${tableTheme.compactHeadCell} text-center`}>
                     Costo Ocupacion
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {data.map((tenant) => (
+                {data.map((tenant, index) => (
                   <Fragment key={tenant.id}>
                     {/* Fila principal del arrendatario */}
-                    <tr
-                      className="cursor-pointer hover:bg-slate-50/60"
-                      onClick={() => setExpandedId(expandedId === tenant.id ? null : tenant.id)}
-                    >
-                      <td className="sticky left-0 bg-white px-4 py-3 font-medium text-slate-800">
+                    <tr className={`${getStripedRowClass(index)} ${tableTheme.rowHover}`}>
+                      <td className="sticky left-0 bg-inherit px-4 py-3 font-medium text-slate-800">
                         <div className="flex items-center gap-2">
-                          <span className="text-slate-300">{expandedId === tenant.id ? "â–¼" : "â–¶"}</span>
+                          <TableDisclosureButton
+                            expanded={expandedId === tenant.id}
+                            label={`${expandedId === tenant.id ? "Contraer" : "Expandir"} ${tenant.nombreComercial}`}
+                            onToggle={() => setExpandedId(expandedId === tenant.id ? null : tenant.id)}
+                          />
                           {tenant.nombreComercial}
                         </div>
                         <p className="text-xs text-slate-400">{tenant.rut}</p>
                       </td>
                       <td className="px-3 py-3 text-slate-500">
-                        {tenant.locales.map((local) => local.codigo).join(", ")}
+                        {tenant.locales.map((local, i) => (
+                          <span
+                            key={local.id}
+                            onClick={() => router.push(`/rent-roll/units?proyecto=${selectedProjectId}&detalle=${local.id}`)}
+                            className={cn(
+                              "cursor-pointer text-brand-500 hover:text-brand-700 underline underline-offset-2 font-medium transition-colors",
+                              i > 0 && "ml-1"
+                            )}
+                          >
+                            {local.codigo}
+                          </span>
+                        )) || ""}
                       </td>
                       <td className="px-3 py-3 text-right font-semibold text-slate-700">
                         {formatUf(tenant.totalFacturado)} UF
@@ -166,16 +182,16 @@ export function FinanceTenantsClient({
                     {expandedId === tenant.id && periods.length > 0 ? (
                       <tr key={`${tenant.id}-periodos`} className="bg-slate-50/40">
                         <td colSpan={5} className="px-4 py-3">
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr className="border-b border-slate-100">
-                                <th className="pb-1 text-left font-semibold text-slate-500">Periodo</th>
-                                <th className="pb-1 text-right font-semibold text-slate-500">Facturacion UF</th>
-                                <th className="pb-1 text-right font-semibold text-slate-500">Ventas UF</th>
-                                <th className="pb-1 text-center font-semibold text-slate-500">Costo Ocup.</th>
+                          <table className={`${tableTheme.table} text-xs`}>
+                            <thead className={tableTheme.head}>
+                              <tr>
+                                <th className={tableTheme.compactHeadCell}>Periodo</th>
+                                <th className={`${tableTheme.compactHeadCell} text-right`}>Facturacion (UF)</th>
+                                <th className={`${tableTheme.compactHeadCell} text-right`}>Ventas (UF)</th>
+                                <th className={`${tableTheme.compactHeadCell} text-center`}>Costo Ocup.</th>
                               </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-slate-100">
                               {periods.map((period) => {
                                 const billed = tenant.facturacionPorPeriodo[period] ?? 0;
                                 const sales = tenant.ventasPorPeriodo[period] ?? 0;
@@ -187,25 +203,28 @@ export function FinanceTenantsClient({
 
                                 return (
                                   <Fragment key={period}>
-                                    <tr
-                                      className={`cursor-pointer border-b border-slate-50 ${billed > 0 ? "hover:bg-brand-700/5" : ""}`}
-                                      onClick={() => {
-                                        if (billed > 0) void togglePartida(tenant.id, period);
-                                      }}
-                                    >
+                                    <tr className={billed > 0 ? tableTheme.rowHover : ""}>
                                       <td className="py-1.5 text-slate-600">
-                                        {billed > 0 && (
-                                          <span className="mr-1.5 text-slate-300">
-                                            {isLoading ? "â³" : isOpen ? "â–¼" : "â–¶"}
-                                          </span>
-                                        )}
-                                        {period}
+                                        <div className="flex items-center gap-1.5">
+                                          {billed > 0 ? (
+                                            <TableDisclosureButton
+                                              expanded={isOpen}
+                                              loading={isLoading}
+                                              label={`${isOpen ? "Contraer" : "Expandir"} partidas ${period}`}
+                                              onToggle={() => {
+                                                void togglePartida(tenant.id, period);
+                                              }}
+                                              className="h-5 w-5"
+                                            />
+                                          ) : null}
+                                          <span>{period}</span>
+                                        </div>
                                       </td>
-                                      <td className="py-1.5 text-right font-medium text-slate-700">
-                                        {billed > 0 ? formatUf(billed) : "â€”"}
+                                      <td className="py-1.5 text-right font-medium tabular-nums text-slate-700">
+                                        {billed > 0 ? formatUf(billed) : "—"}
                                       </td>
-                                      <td className="py-1.5 text-right text-slate-600">
-                                        {sales > 0 ? formatUf(sales) : "â€”"}
+                                      <td className="py-1.5 text-right tabular-nums text-slate-600">
+                                        {sales > 0 ? formatUf(sales) : "—"}
                                       </td>
                                       <td className="py-1.5 text-center">
                                         <OccupancyBadge pct={occupancy} />
@@ -216,16 +235,16 @@ export function FinanceTenantsClient({
                                     {isOpen && partidas && partidas.length > 0 && (
                                       <tr>
                                         <td colSpan={4} className="pb-2 pt-0">
-                                          <table className="w-full border-l-2 border-brand-700/20 bg-white text-xs">
-                                            <thead>
-                                              <tr className="border-b border-slate-100 bg-slate-50/60">
-                                                <th className="px-3 py-1 text-left font-medium text-slate-400">Grupo</th>
-                                                <th className="px-3 py-1 text-left font-medium text-slate-400">Partida</th>
-                                                <th className="px-3 py-1 text-left font-medium text-slate-400">DenominaciÃ³n</th>
-                                                <th className="px-3 py-1 text-right font-medium text-slate-400">UF</th>
+                                          <table className={`${tableTheme.table} border-l-2 border-brand-700/20 bg-white text-xs`}>
+                                            <thead className={tableTheme.head}>
+                                              <tr>
+                                                <th className={tableTheme.compactHeadCell}>Grupo</th>
+                                                <th className={tableTheme.compactHeadCell}>Partida</th>
+                                                <th className={tableTheme.compactHeadCell}>DenominaciÃ³n</th>
+                                                <th className={`${tableTheme.compactHeadCell} text-right`}>UF</th>
                                               </tr>
                                             </thead>
-                                            <tbody>
+                                            <tbody className="divide-y divide-slate-100">
                                               {partidas.map((p, i) => (
                                                 <tr key={i} className="border-b border-slate-50">
                                                   <td className="px-3 py-1 text-slate-400">{p.grupo1}</td>

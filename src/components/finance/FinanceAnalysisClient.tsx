@@ -6,6 +6,8 @@ import { ModuleHeader } from "@/components/dashboard/ModuleHeader";
 import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolbar";
+import { UnifiedTable } from "@/components/ui/UnifiedTable";
+import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
 import { formatEerr } from "@/lib/finance/eerr";
 import type { AnalisisFila, AnalisisResponse } from "@/app/api/finance/analysis/route";
 import type { ProjectOption } from "@/types/finance";
@@ -26,6 +28,7 @@ const ORDEN_LABELS: Record<OrdenType, string> = {
   total_desc: "Mayor total",
   total_asc: "Menor total"
 };
+const compactTableTheme = getTableTheme("compact");
 
 type Props = {
   projects: ProjectOption[];
@@ -206,30 +209,32 @@ export function FinanceAnalysisClient({
             actionLabel="Cargar datos contables"
           />
         ) : (
-          <div className="overflow-x-auto">
-            <div className="mb-2 flex items-center justify-between px-1">
+          <UnifiedTable
+            density="compact"
+            toolbar={
               <p className="text-xs text-slate-400">
                 {filas.length} {DIMENSION_LABELS[dimension].toLowerCase()}
                 {grupo3Seleccionados.size > 0 && ` · Filtrado por ${grupo3Seleccionados.size} tipo(s)`}
               </p>
-            </div>
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b-2 border-slate-700 bg-slate-800 text-white">
-                  <th className="sticky left-0 bg-slate-800 py-2 pl-4 pr-3 text-left text-xs font-semibold uppercase tracking-wide">
+            }
+          >
+            <table className={`${compactTableTheme.table} text-xs`}>
+              <thead className={compactTableTheme.head}>
+                <tr>
+                  <th className={`${compactTableTheme.headCell} sticky left-0 bg-brand-700 pl-4 pr-3`}>
                     {DIMENSION_LABELS[dimension]}
                   </th>
                   {periodos.map((p) => (
-                    <th key={p} className="min-w-[80px] px-2 py-2 text-right text-xs font-semibold">{p}</th>
+                    <th key={p} className={`${compactTableTheme.compactHeadCell} min-w-[80px] text-right`}>{p}</th>
                   ))}
-                  <th className="px-2 py-2 text-right text-xs font-bold text-slate-300">Total</th>
+                  <th className={`${compactTableTheme.compactHeadCell} text-right`}>Total</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100">
                 {filas.map((fila: AnalisisFila, idx) => (
                   <tr
                     key={fila.id}
-                    className={`border-b border-slate-100 ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"} hover:bg-brand-50/30`}
+                    className={`${getStripedRowClass(idx, "compact")} ${compactTableTheme.rowHover}`}
                   >
                     <td className="sticky left-0 bg-inherit py-1.5 pl-4 pr-3">
                       <span className="font-medium text-slate-700">{fila.nombre}</span>
@@ -246,8 +251,8 @@ export function FinanceAnalysisClient({
                   </tr>
                 ))}
                 {/* Fila totales */}
-                <tr className="border-t-2 border-slate-700 bg-slate-800 text-white">
-                  <td className="sticky left-0 bg-slate-800 py-2 pl-4 pr-3 text-xs font-bold uppercase tracking-wide">
+                <tr className="border-t-2 border-brand-600 bg-brand-700 text-white hover:bg-brand-700">
+                  <td className="sticky left-0 bg-brand-700 py-2 pl-4 pr-3 text-xs font-bold uppercase tracking-wide">
                     Total
                   </td>
                   {periodos.map((p) => {
@@ -264,7 +269,7 @@ export function FinanceAnalysisClient({
                 </tr>
               </tbody>
             </table>
-          </div>
+          </UnifiedTable>
         )}
       </ModuleSectionCard>
     </main>

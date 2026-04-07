@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
+import { TableDisclosureButton } from "@/components/ui/TableDisclosureButton";
 import { formatUf } from "@/lib/utils";
 import type { EerrData } from "@/types/finance";
 
@@ -53,13 +54,14 @@ export function EerrTable({ data, expandedSections, onToggleSection }: EERRTable
             {data.secciones.map((section) => (
               <Fragment key={section.grupo1}>
                 {/* Section header â€” collapsible */}
-                <TableRow
-                  className="cursor-pointer bg-slate-50/80 hover:bg-slate-100"
-                  onClick={() => onToggleSection(section.grupo1)}
-                >
+                <TableRow className="bg-slate-50/80 hover:bg-slate-100">
                   <TableCell className="sticky left-0 bg-inherit px-4 py-2.5 font-semibold text-slate-800">
                     <span className="mr-2 text-slate-400">
-                      {expandedSections.has(section.grupo1) ? "â–¼" : "â–¶"}
+                      <TableDisclosureButton
+                        expanded={expandedSections.has(section.grupo1)}
+                        label={`${expandedSections.has(section.grupo1) ? "Contraer" : "Expandir"} sección ${section.grupo1}`}
+                        onToggle={() => onToggleSection(section.grupo1)}
+                      />
                     </span>
                     {section.grupo1}
                   </TableCell>

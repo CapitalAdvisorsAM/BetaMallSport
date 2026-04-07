@@ -9,6 +9,8 @@ import { UploadSection } from "@/components/upload/UploadSection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
+import { UnifiedTable } from "@/components/ui/UnifiedTable";
+import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
 import type { RentRollMode } from "@/lib/navigation";
 import { buildExportExcelUrl } from "@/lib/export/shared";
 import { canWrite, requireSession } from "@/lib/permissions";
@@ -85,6 +87,7 @@ const contractQueryArgs = {
 } satisfies Prisma.ContractDefaultArgs;
 
 type ContractRow = Prisma.ContractGetPayload<typeof contractQueryArgs>;
+const compactTableTheme = getTableTheme("compact");
 
 function getDecemberMultiplier(contract: ContractRow): string | null {
   const value = (contract as Record<string, unknown>)["multiplicadorDiciembre"];
@@ -142,13 +145,17 @@ export default async function ContractsPage({
       select: { id: true, nombreComercial: true }
     }),
     prisma.contract.findMany({
-      where: { proyectoId: selectedProjectId },
+      where: {
+        proyectoId: selectedProjectId,
+        ...(detalleId ? { id: detalleId } : {}),
+      },
       ...contractQueryArgs,
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       take: 50,
       cursor: cursor ? { id: cursor } : undefined,
       skip: cursor ? 1 : 0
     }) as Promise<ContractRow[]>
+
   ]);
   const nextCursor = contracts.length === 50 ? contracts[contracts.length - 1]?.id : undefined;
 
@@ -334,86 +341,92 @@ export default async function ContractsPage({
                 {selectedContract.tarifas.length > 0 ? (
                   <div>
                     <p className="mb-1.5 font-semibold text-slate-700">Tarifas</p>
-                    <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
-                      <table className="min-w-full text-xs">
-                        <thead className="bg-slate-100 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                    <UnifiedTable density="compact">
+                      <table className={`${compactTableTheme.table} text-xs`}>
+                        <thead className={compactTableTheme.head}>
                           <tr>
-                            <th className="px-3 py-2">Tipo</th>
-                            <th className="px-3 py-2 text-right">Valor UF/m2</th>
-                            <th className="px-3 py-2">Vigencia desde</th>
-                            <th className="px-3 py-2">Vigencia hasta</th>
-                            <th className="px-3 py-2 text-center">Es Diciembre</th>
+                            <th className={compactTableTheme.compactHeadCell}>Tipo</th>
+                            <th className={`${compactTableTheme.compactHeadCell} text-right`}>Valor UF/m2</th>
+                            <th className={compactTableTheme.compactHeadCell}>Vigencia desde</th>
+                            <th className={compactTableTheme.compactHeadCell}>Vigencia hasta</th>
+                            <th className={`${compactTableTheme.compactHeadCell} text-center`}>Es Diciembre</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {selectedContract.tarifas.map((tarifa, index) => (
-                            <tr key={`${tarifa.tipo}-${tarifa.vigenciaDesde.toISOString()}-${index}`}>
-                              <td className="px-3 py-2 font-medium text-slate-800">{tarifa.tipo}</td>
-                              <td className="px-3 py-2 text-right text-slate-700">
+                            <tr
+                              key={`${tarifa.tipo}-${tarifa.vigenciaDesde.toISOString()}-${index}`}
+                              className={`${getStripedRowClass(index, "compact")} ${compactTableTheme.rowHover}`}
+                            >
+                              <td className={`${compactTableTheme.compactCell} font-medium text-slate-800`}>{tarifa.tipo}</td>
+                              <td className={`${compactTableTheme.compactCell} text-right`}>
                                 {tarifa.valor.toString()}
                               </td>
-                              <td className="px-3 py-2 text-slate-700">
+                              <td className={compactTableTheme.compactCell}>
                                 {formatDate(tarifa.vigenciaDesde)}
                               </td>
-                              <td className="px-3 py-2 text-slate-700">
+                              <td className={compactTableTheme.compactCell}>
                                 {tarifa.vigenciaHasta ? formatDate(tarifa.vigenciaHasta) : "-"}
                               </td>
-                              <td className="px-3 py-2 text-center text-slate-700">
+                              <td className={`${compactTableTheme.compactCell} text-center`}>
                                 {tarifa.esDiciembre ? "Si" : "No"}
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
-                    </div>
+                    </UnifiedTable>
                   </div>
                 ) : null}
 
                 {selectedContract.ggcc.length > 0 ? (
                   <div>
                     <p className="mb-1.5 font-semibold text-slate-700">Gastos comunes (GGCC)</p>
-                    <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
-                      <table className="min-w-full text-xs">
-                        <thead className="bg-slate-100 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                    <UnifiedTable density="compact">
+                      <table className={`${compactTableTheme.table} text-xs`}>
+                        <thead className={compactTableTheme.head}>
                           <tr>
-                            <th className="px-3 py-2 text-right">Tarifa base UF/m2</th>
-                            <th className="px-3 py-2 text-right">% Administracion</th>
-                            <th className="px-3 py-2 text-right">% Reajuste</th>
-                            <th className="px-3 py-2">Vigencia desde</th>
-                            <th className="px-3 py-2">Vigencia hasta</th>
-                            <th className="px-3 py-2">Proximo reajuste</th>
-                            <th className="px-3 py-2 text-center">Meses reajuste</th>
+                            <th className={`${compactTableTheme.compactHeadCell} text-right`}>Tarifa base UF/m2</th>
+                            <th className={`${compactTableTheme.compactHeadCell} text-right`}>% Administracion</th>
+                            <th className={`${compactTableTheme.compactHeadCell} text-right`}>% Reajuste</th>
+                            <th className={compactTableTheme.compactHeadCell}>Vigencia desde</th>
+                            <th className={compactTableTheme.compactHeadCell}>Vigencia hasta</th>
+                            <th className={compactTableTheme.compactHeadCell}>Proximo reajuste</th>
+                            <th className={`${compactTableTheme.compactHeadCell} text-center`}>Meses reajuste</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {selectedContract.ggcc.map((item, index) => (
-                            <tr key={`${item.vigenciaDesde.toISOString()}-${index}`}>
-                              <td className="px-3 py-2 text-right text-slate-700">
+                            <tr
+                              key={`${item.vigenciaDesde.toISOString()}-${index}`}
+                              className={`${getStripedRowClass(index, "compact")} ${compactTableTheme.rowHover}`}
+                            >
+                              <td className={`${compactTableTheme.compactCell} text-right`}>
                                 {item.tarifaBaseUfM2.toString()}
                               </td>
-                              <td className="px-3 py-2 text-right text-slate-700">
+                              <td className={`${compactTableTheme.compactCell} text-right`}>
                                 {item.pctAdministracion.toString()}%
                               </td>
-                              <td className="px-3 py-2 text-right text-slate-700">
+                              <td className={`${compactTableTheme.compactCell} text-right`}>
                                 {item.pctReajuste ? `${item.pctReajuste.toString()}%` : "-"}
                               </td>
-                              <td className="px-3 py-2 text-slate-700">
+                              <td className={compactTableTheme.compactCell}>
                                 {formatDate(item.vigenciaDesde)}
                               </td>
-                              <td className="px-3 py-2 text-slate-700">
+                              <td className={compactTableTheme.compactCell}>
                                 {item.vigenciaHasta ? formatDate(item.vigenciaHasta) : "-"}
                               </td>
-                              <td className="px-3 py-2 text-slate-700">
+                              <td className={compactTableTheme.compactCell}>
                                 {item.proximoReajuste ? formatDate(item.proximoReajuste) : "-"}
                               </td>
-                              <td className="px-3 py-2 text-center text-slate-700">
+                              <td className={`${compactTableTheme.compactCell} text-center`}>
                                 {item.mesesReajuste ?? "-"}
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
-                    </div>
+                    </UnifiedTable>
                   </div>
                 ) : null}
               </div>

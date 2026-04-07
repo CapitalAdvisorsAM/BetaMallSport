@@ -522,6 +522,7 @@ export function UploadSection({
           <div className="overflow-x-auto">
             <DataTable
               table={previewTable}
+              density="compact"
               getRowClassName={(row) => `${statusMeta[row.original.status].rowClass} hover:bg-inherit`}
             />
           </div>
