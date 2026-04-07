@@ -109,6 +109,11 @@ export default async function TenantsPage({
     { q, vigente }
   );
 
+  if (detalleId) {
+    tenantsWhere.id = detalleId;
+  }
+
+
   let tenantsList: Array<{
     id: string;
     rut: string;
@@ -367,6 +372,7 @@ export default async function TenantsPage({
                 };
               })}
               detailBaseHref={buildDetailHref(null)}
+              selectedDetailId={detalleId}
             />
             <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
               <span>

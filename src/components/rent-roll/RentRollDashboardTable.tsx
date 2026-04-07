@@ -7,7 +7,9 @@ import { useDataTable } from "@/hooks/useDataTable";
 import { formatDecimal } from "@/lib/utils";
 
 export type RentRollDashboardTableRow = {
-  id: string;
+  id: string; // Contract ID
+  localId: string; // Unit ID
+  tenantId: string; // Tenant ID
   local: string;
   arrendatario: string;
   glam2: number;
@@ -47,6 +49,12 @@ export function RentRollDashboardTable({
         accessorKey: "local",
         header: "Local",
         filterFn: "includesString",
+        meta: {
+          linkTo: {
+            path: "/rent-roll/units",
+            idKey: "localId",
+          },
+        },
         cell: ({ row }) => (
           <span className="whitespace-nowrap font-medium text-slate-900">{row.original.local}</span>
         )
@@ -55,13 +63,35 @@ export function RentRollDashboardTable({
         accessorKey: "arrendatario",
         header: "Arrendatario",
         filterFn: "includesString",
+        meta: {
+          linkTo: {
+            path: "/rent-roll/tenants",
+            idKey: "tenantId",
+          },
+        },
         cell: ({ row }) => (
           <span className="whitespace-nowrap text-slate-700">{row.original.arrendatario}</span>
         )
       },
       {
+        id: "contractId",
+        header: "Contrato",
+        accessorFn: (row) => row.id,
+        meta: {
+          linkTo: {
+            path: "/rent-roll/contracts",
+            idKey: "id",
+          },
+        },
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap font-mono text-xs text-slate-500">
+            {row.original.id.slice(0, 8)}...
+          </span>
+        )
+      },
+      {
         accessorKey: "glam2",
-        header: "GLA m²",
+        header: "GLA (m²)",
         enableColumnFilter: false,
         meta: {
           align: "right",
@@ -73,7 +103,7 @@ export function RentRollDashboardTable({
       },
       {
         accessorKey: "tarifaUfM2",
-        header: "Tarifa UF/m²",
+        header: "Tarifa (UF/m²)",
         enableColumnFilter: false,
         meta: { align: "right" },
         cell: ({ row }) => (
@@ -125,13 +155,13 @@ export function RentRollDashboardTable({
       {
         accessorFn: (row) => row.pctRentaVariable ?? undefined,
         id: "pctRentaVariable",
-        header: "% Renta Var.",
+        header: "Renta Var. (%)",
         enableColumnFilter: false,
         sortUndefined: "last",
         meta: { align: "right" },
         cell: ({ row }) => (
           <span className="whitespace-nowrap text-slate-700">
-            {renderMetric(row.original.pctRentaVariable, "%")}
+            {renderMetric(row.original.pctRentaVariable, "")}
           </span>
         )
       },
@@ -154,13 +184,13 @@ export function RentRollDashboardTable({
       {
         accessorFn: (row) => row.pctFondoPromocion ?? undefined,
         id: "pctFondoPromocion",
-        header: "Fondo Prom. %",
+        header: "Fondo Prom. (%)",
         enableColumnFilter: false,
         sortUndefined: "last",
         meta: { align: "right" },
         cell: ({ row }) => (
           <span className="whitespace-nowrap text-slate-700">
-            {renderMetric(row.original.pctFondoPromocion, "%")}
+            {renderMetric(row.original.pctFondoPromocion, "")}
           </span>
         )
       }

@@ -43,17 +43,11 @@ export function ContractsViewTable({
         accessorKey: "numeroContrato",
         header: "N contrato",
         filterFn: "includesString",
-        cell: ({ row }) => {
-          const href =
-            selectedDetailId === row.original.id
-              ? detailBaseHref
-              : `${detailBaseHref}&detalle=${row.original.id}`;
-          return (
-            <Link href={href} className="font-medium text-brand-700 underline">
-              {row.original.numeroContrato}
-            </Link>
-          );
-        }
+        meta: {
+          linkTo: {
+            triggerDetail: true,
+          },
+        },
       },
       {
         accessorKey: "locales",

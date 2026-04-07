@@ -18,6 +18,8 @@ import { ModuleHeader } from "@/components/dashboard/ModuleHeader";
 import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { MetricTooltip } from "@/components/ui/MetricTooltip";
+import { UnifiedTable } from "@/components/ui/UnifiedTable";
+import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
 import { formatEerr, BELOW_EBITDA_GROUPS } from "@/lib/finance/eerr";
 import type { MetricFormulaId } from "@/lib/metric-formulas";
 import type { ProjectOption } from "@/types/finance";
@@ -47,6 +49,7 @@ type Props = {
 };
 
 type AnyRecord = Record<string, unknown>;
+const compactTableTheme = getTableTheme("compact");
 
 function asRecord(value: unknown): AnyRecord | null {
   return value !== null && typeof value === "object" ? (value as AnyRecord) : null;
@@ -397,28 +400,30 @@ export function FinanceDashboardClient({ projects, selectedProjectId }: Props): 
 
           {/* Tabla EE.RR resumen */}
           <ModuleSectionCard>
-            <div className="mb-3 px-1">
+            <UnifiedTable
+              density="compact"
+              toolbar={
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 EE.RR Resumen â€” actual vs aÃ±o anterior (UF)
               </p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b-2 border-slate-700 bg-slate-800 text-white">
-                    <th className="py-2 pl-4 pr-3 text-left font-semibold uppercase tracking-wide">SecciÃ³n</th>
-                    <th className="px-3 py-2 text-right font-semibold">Actual</th>
-                    <th className="px-3 py-2 text-right font-semibold">AÃ±o anterior</th>
-                    <th className="px-3 py-2 text-right font-semibold">Î” UF</th>
-                    <th className="px-3 py-2 text-right font-semibold">Î” %</th>
+              }
+            >
+              <table className={`${compactTableTheme.table} text-xs`}>
+                <thead className={compactTableTheme.head}>
+                  <tr>
+                    <th className={compactTableTheme.compactHeadCell}>SecciÃ³n</th>
+                    <th className={`${compactTableTheme.compactHeadCell} text-right`}>Actual</th>
+                    <th className={`${compactTableTheme.compactHeadCell} text-right`}>AÃ±o anterior</th>
+                    <th className={`${compactTableTheme.compactHeadCell} text-right`}>Î” UF</th>
+                    <th className={`${compactTableTheme.compactHeadCell} text-right`}>Î” %</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100">
                   {seccionesOrdenadas.map((s, i) => {
                     const isBelowEbitda = BELOW_EBITDA_GROUPS.has(s.grupo1);
                     const delta = s.actual - s.anterior;
                     return (
-                      <tr key={s.grupo1} className={`border-b border-slate-100 ${i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}`}>
+                      <tr key={s.grupo1} className={`${getStripedRowClass(i, "compact")} ${compactTableTheme.rowHover}`}>
                         <td className={`py-2 pl-4 pr-3 font-medium ${isBelowEbitda ? "text-slate-400" : "text-slate-700"}`}>
                           {s.grupo1}
                         </td>
@@ -431,7 +436,7 @@ export function FinanceDashboardClient({ projects, selectedProjectId }: Props): 
                   })}
                 </tbody>
               </table>
-            </div>
+            </UnifiedTable>
           </ModuleSectionCard>
         </>
       )}

@@ -26,6 +26,7 @@ type LocalesViewRow = {
 type LocalesViewTableProps = {
   rows: LocalesViewRow[];
   detailBaseHref: string;
+  selectedDetailId?: string;
 };
 
 const SI_NO_OPTIONS = ["Si", "No"];
@@ -36,19 +37,23 @@ function toNumber(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export function LocalesViewTable({ rows, detailBaseHref }: LocalesViewTableProps): JSX.Element {
+export function LocalesViewTable({ rows, detailBaseHref, selectedDetailId }: LocalesViewTableProps): JSX.Element {
   const tipoOptions = useMemo(
     () => Array.from(new Set(rows.map((row) => row.tipo))).sort(),
     [rows]
   );
   const columns = useMemo<ColumnDef<LocalesViewRow, unknown>[]>(
     () => [
-      linkColumn<LocalesViewRow>({
+      {
         accessorKey: "codigo",
         header: "Codigo",
-        href: (row) => `${detailBaseHref}&detalle=${row.id}`,
-        label: (row) => row.codigo
-      }),
+        filterFn: "includesString",
+        meta: {
+          linkTo: {
+            triggerDetail: true,
+          },
+        },
+      },
       enumFilterColumn<LocalesViewRow>({
         accessorKey: "tipo",
         header: "Tipo",
@@ -70,8 +75,9 @@ export function LocalesViewTable({ rows, detailBaseHref }: LocalesViewTableProps
       numberFilterColumn<LocalesViewRow>({
         id: "glam2",
         accessorFn: (row) => toNumber(row.glam2),
-        header: "GLA m2",
-        cell: (row) => <span className="whitespace-nowrap">{formatDecimal(row.glam2)}</span>
+        header: "GLA (m²)",
+        cell: (row) => <span className="whitespace-nowrap">{formatDecimal(row.glam2)}</span>,
+        meta: { isNumeric: true },
       }),
       statusBadgeColumn<LocalesViewRow>({
         id: "esGLA",
@@ -100,5 +106,5 @@ export function LocalesViewTable({ rows, detailBaseHref }: LocalesViewTableProps
 
   const { table } = useDataTable(rows, columns);
 
-  return <DataTable table={table} emptyMessage="No se encontraron locales para los filtros aplicados." />;
+  return <DataTable table={table} emptyMessage="No se encontraron locales para los filtros aplicados." selectedId={selectedDetailId} />;
 }

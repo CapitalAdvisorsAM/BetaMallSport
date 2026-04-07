@@ -9,6 +9,8 @@ import { UploadSection } from "@/components/upload/UploadSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
+import { UnifiedTable } from "@/components/ui/UnifiedTable";
+import { getStripedRowClass, tableTheme } from "@/components/ui/table-theme";
 import {
   Select,
   SelectContent,
@@ -102,6 +104,11 @@ export default async function UnitsPage({
   const currentPage = parsePage(searchParams.page);
   const canEdit = canWrite(session.user.role);
   const unitsWhere = buildUnitsWhere(selectedProjectId, { q, estado });
+
+  if (detalleId) {
+    unitsWhere.id = detalleId;
+  }
+
 
   let units: Array<{
     id: string;
@@ -351,6 +358,7 @@ export default async function UnitsPage({
                 estado: unit.estado
               }))}
               detailBaseHref={buildDetailHref(null)}
+              selectedDetailId={detalleId}
             />
             <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
               <span>
@@ -421,23 +429,27 @@ export default async function UnitsPage({
           <CargaHistorial items={uploadHistory} />
         </>
       ) : mode === "config" ? (
-        <section className="overflow-hidden rounded-md bg-white shadow-sm">
-          <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
-            <h3 className="text-sm font-semibold text-slate-900">Tabla de tamaño por local</h3>
-            <p className="mt-0.5 text-xs text-slate-600">
-              Bodega, Módulo y Espacio respetan el tipo del local. El resto se calcula por metros cuadrados.
-            </p>
-          </div>
-          <table className="min-w-full text-sm">
-            <thead className="bg-white">
-              <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-[0.2em] text-slate-500">
-                <th className="px-5 py-3 font-semibold">Categoría</th>
-                <th className="px-5 py-3 font-semibold">Regla aplicada</th>
+        <UnifiedTable
+          className="shadow-sm"
+          toolbar={
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900">Tabla de tamaño por local</h3>
+              <p className="mt-0.5 text-xs text-slate-600">
+                Bodega, Módulo y Espacio respetan el tipo del local. El resto se calcula por metros cuadrados.
+              </p>
+            </div>
+          }
+        >
+          <table className={tableTheme.table}>
+            <thead className={tableTheme.head}>
+              <tr className="text-left">
+                <th className="px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">Categoría</th>
+                <th className="px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/70">Regla aplicada</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100">
               {DEFAULT_COMMERCIAL_SIZE_RULES.map((rule, index) => (
-                <tr key={rule.key} className={index % 2 === 0 ? "bg-white" : "bg-slate-50/70"}>
+                <tr key={rule.key} className={`${getStripedRowClass(index)} ${tableTheme.rowHover}`}>
                   <td className="px-5 py-3 font-medium text-slate-800">{rule.label}</td>
                   <td className="px-5 py-3 text-slate-600">
                     {rule.max === null
@@ -453,7 +465,7 @@ export default async function UnitsPage({
               ].map((item, index) => (
                 <tr
                   key={item.label}
-                  className={(DEFAULT_COMMERCIAL_SIZE_RULES.length + index) % 2 === 0 ? "bg-white" : "bg-slate-50/70"}
+                  className={`${getStripedRowClass(DEFAULT_COMMERCIAL_SIZE_RULES.length + index)} ${tableTheme.rowHover}`}
                 >
                   <td className="px-5 py-3 font-medium text-slate-800">{item.label}</td>
                   <td className="px-5 py-3 text-brand-700">{item.description}</td>
@@ -461,11 +473,12 @@ export default async function UnitsPage({
               ))}
             </tbody>
           </table>
-        </section>
+        </UnifiedTable>
       ) : null}
     </main>
   );
 }
+
 
 
 

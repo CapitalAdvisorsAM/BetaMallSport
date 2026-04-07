@@ -6,6 +6,8 @@ import { ModuleHeader } from "@/components/dashboard/ModuleHeader";
 import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolbar";
+import { TableDisclosureButton } from "@/components/ui/TableDisclosureButton";
+import { tableTheme } from "@/components/ui/table-theme";
 import { BELOW_EBITDA_GROUPS, calculateEbitdaMargin, formatEerr } from "@/lib/finance/eerr";
 import type { EerrData, EerrDetalleResponse, ProjectOption } from "@/types/finance";
 
@@ -55,14 +57,6 @@ function numCls(bold = false): string {
 }
 
 const CREDIT_LINES = new Set(["RECUPERACION GASTOS COMUNES", "FONDO DE PROMOCION"]);
-
-const TriangleIcon = ({ open }: { open: boolean }) => (
-  <span className={`inline-block w-0 h-0 border-y-[4px] border-y-transparent border-l-[6px] border-l-slate-400 transition-transform shrink-0 ${open ? "rotate-90" : ""}`} />
-);
-
-const Spinner = () => (
-  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-200 border-t-slate-500 shrink-0" />
-);
 
 export function EerrClient({
   projects,
@@ -229,20 +223,20 @@ export function EerrClient({
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse font-sans text-[11px]">
+            <table className={`${tableTheme.table} border-collapse font-sans text-[11px]`}>
 
               {/* Header */}
-              <thead className="sticky top-0 z-20">
-                <tr className="border-b-2 border-slate-400 bg-slate-50">
-                  <th className="sticky left-0 bg-slate-50 w-72 py-2.5 pl-4 pr-3 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+              <thead className={`${tableTheme.head} sticky top-0 z-20`}>
+                <tr className="border-b border-slate-200 bg-brand-700">
+                  <th className="sticky left-0 w-72 bg-brand-700 py-2.5 pl-4 pr-3 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
                     En UF
                   </th>
                   {data.periodos.map((p) => (
-                    <th key={p} className="min-w-[90px] px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                    <th key={p} className="min-w-[90px] px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
                       {formatPeriodo(p)}
                     </th>
                   ))}
-                  <th className="px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-wide text-slate-700">
+                  <th className="px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
                     Total
                   </th>
                 </tr>
@@ -258,13 +252,14 @@ export function EerrClient({
                       {sIdx > 0 && <tr><td colSpan={data.periodos.length + 2} className="h-1 bg-slate-50" /></tr>}
 
                       {/* Grupo1 header row */}
-                      <tr
-                        className="cursor-pointer border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors"
-                        onClick={() => toggleSection(section.grupo1)}
-                      >
+                      <tr className="border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors">
                         <td className="sticky left-0 bg-white py-2.5 pl-4 pr-3">
                           <div className="flex items-center gap-2">
-                            <TriangleIcon open={isExpanded} />
+                            <TableDisclosureButton
+                              expanded={isExpanded}
+                              label={`${isExpanded ? "Contraer" : "Expandir"} sección ${section.grupo1}`}
+                              onToggle={() => toggleSection(section.grupo1)}
+                            />
                             <span className="font-bold text-slate-900 uppercase tracking-wide text-[11px]">
                               {section.grupo1}
                             </span>
@@ -290,13 +285,18 @@ export function EerrClient({
 
                         return (
                           <Fragment key={lineKey}>
-                            <tr
-                              className="cursor-pointer border-b border-slate-100 bg-white hover:bg-slate-50/60 transition-colors"
-                              onClick={() => void toggleLine(section.grupo1, line.grupo3)}
-                            >
+                            <tr className="border-b border-slate-100 bg-white hover:bg-slate-50/60 transition-colors">
                               <td className="sticky left-0 bg-white py-1.5 pl-9 pr-3">
                                 <div className="flex items-center gap-2">
-                                  {isLineLoading ? <Spinner /> : <TriangleIcon open={isLineExpanded} />}
+                                  <TableDisclosureButton
+                                    expanded={isLineExpanded}
+                                    loading={isLineLoading}
+                                    label={`${isLineExpanded ? "Contraer" : "Expandir"} línea ${line.grupo3}`}
+                                    onToggle={() => {
+                                      void toggleLine(section.grupo1, line.grupo3);
+                                    }}
+                                    className="h-5 w-5"
+                                  />
                                   <span className={isCredit ? "italic text-emerald-700" : "text-slate-600"}>
                                     {line.grupo3}
                                   </span>
@@ -318,13 +318,15 @@ export function EerrClient({
                               const isCatExpanded = expandedCats.has(catKey);
                               return (
                                 <Fragment key={catKey}>
-                                  <tr
-                                    className="cursor-pointer border-b border-slate-50 bg-slate-50/30 hover:bg-slate-50 transition-colors"
-                                    onClick={() => toggleCat(section.grupo1, line.grupo3, cat.categoriaTipo)}
-                                  >
+                                  <tr className="border-b border-slate-50 bg-slate-50/30 hover:bg-slate-50 transition-colors">
                                     <td className="sticky left-0 bg-inherit py-1 pl-14 pr-3">
                                       <div className="flex items-center gap-2">
-                                        <TriangleIcon open={isCatExpanded} />
+                                        <TableDisclosureButton
+                                          expanded={isCatExpanded}
+                                          label={`${isCatExpanded ? "Contraer" : "Expandir"} categoría ${cat.categoriaTipo}`}
+                                          onToggle={() => toggleCat(section.grupo1, line.grupo3, cat.categoriaTipo)}
+                                          className="h-5 w-5"
+                                        />
                                         <span className="text-slate-500 text-[10px]">{cat.categoriaTipo}</span>
                                       </div>
                                     </td>
@@ -344,24 +346,31 @@ export function EerrClient({
                                     return (
                                       <tr
                                         key={loc.localId}
-                                        className={`border-b border-slate-50/60 transition-colors ${isActive ? "bg-brand-50/60" : "bg-white hover:bg-brand-50/20"} cursor-pointer`}
-                                        onClick={() => {
-                                          if (loc.arrendatarioId) {
-                                            void openArrendatarioPanel({
-                                              arrendatarioId: loc.arrendatarioId,
-                                              nombre: loc.arrendatarioNombre ?? loc.localNombre,
-                                              localCodigo: loc.localCodigo
-                                            });
-                                          }
-                                        }}
+                                        className={`border-b border-slate-50/60 transition-colors ${isActive ? "bg-brand-50/60" : "bg-white hover:bg-brand-50/20"}`}
                                       >
                                         <td className="sticky left-0 bg-inherit py-1 pl-[72px] pr-3">
                                           <span className="font-mono text-[10px] text-slate-300">[{loc.localCodigo}]</span>
-                                          <span className={`ml-2 text-[10px] ${isActive ? "font-semibold text-brand-700" : "text-slate-400"}`}>
-                                            {loc.arrendatarioNombre ?? loc.localNombre}
-                                          </span>
-                                          {loc.arrendatarioId && (
-                                            <span className="ml-1.5 text-[9px] text-brand-400 opacity-0 group-hover:opacity-100">{"\u2197"}</span>
+                                          {loc.arrendatarioId ? (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                void openArrendatarioPanel({
+                                                  arrendatarioId: loc.arrendatarioId!,
+                                                  nombre: loc.arrendatarioNombre ?? loc.localNombre,
+                                                  localCodigo: loc.localCodigo
+                                                });
+                                              }}
+                                              className={`ml-2 inline-flex items-center gap-1 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:ring-offset-1 ${
+                                                isActive ? "font-semibold text-brand-700" : "text-slate-400 hover:text-brand-700"
+                                              }`}
+                                            >
+                                              {loc.arrendatarioNombre ?? loc.localNombre}
+                                              <span className="text-[9px] text-brand-400">{"\u2197"}</span>
+                                            </button>
+                                          ) : (
+                                            <span className="ml-2 text-[10px] text-slate-400">
+                                              {loc.arrendatarioNombre ?? loc.localNombre}
+                                            </span>
                                           )}
                                         </td>
                                         {data.periodos.map((p) => (
@@ -428,13 +437,14 @@ export function EerrClient({
                   return (
                     <Fragment key={section.grupo1}>
                       <tr><td colSpan={data.periodos.length + 2} className="h-1 bg-slate-50" /></tr>
-                      <tr
-                        className="cursor-pointer border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors"
-                        onClick={() => toggleSection(section.grupo1)}
-                      >
+                      <tr className="border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors">
                         <td className="sticky left-0 bg-white py-2.5 pl-4 pr-3">
                           <div className="flex items-center gap-2">
-                            <TriangleIcon open={isExpanded} />
+                            <TableDisclosureButton
+                              expanded={isExpanded}
+                              label={`${isExpanded ? "Contraer" : "Expandir"} sección ${section.grupo1}`}
+                              onToggle={() => toggleSection(section.grupo1)}
+                            />
                             <span className="font-bold text-slate-700 uppercase tracking-wide text-[11px]">
                               {section.grupo1}
                             </span>
@@ -526,18 +536,18 @@ export function EerrClient({
             ) : !billingData || billingData.lineas.length === 0 ? (
               <div className="flex items-center justify-center py-20 text-slate-400 text-sm">Sin registros para el periodo.</div>
             ) : (
-              <table className="w-full border-collapse text-[11px]">
-                <thead className="sticky top-0 z-10">
-                  <tr className="border-b-2 border-slate-300 bg-slate-50">
-                    <th className="py-2.5 pl-4 pr-3 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              <table className={`${tableTheme.table} border-collapse text-[11px]`}>
+                <thead className={`${tableTheme.head} sticky top-0 z-10`}>
+                  <tr className="border-b border-slate-200 bg-brand-700">
+                    <th className="py-2.5 pl-4 pr-3 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
                       Partida
                     </th>
                     {billingData.periodos.map((p) => (
-                      <th key={p} className="min-w-[72px] px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                      <th key={p} className="min-w-[72px] px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
                         {formatPeriodo(p)}
                       </th>
                     ))}
-                    <th className="px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-wide text-slate-700 border-l border-slate-200">
+                    <th className="border-l border-white/10 px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
                       Total
                     </th>
                   </tr>

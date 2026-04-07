@@ -19,22 +19,28 @@ type ArrendatariosViewRow = {
 type ArrendatariosViewTableProps = {
   rows: ArrendatariosViewRow[];
   detailBaseHref: string;
+  selectedDetailId?: string;
 };
 
 const VIGENTE_OPTIONS = ["Si", "No"];
 
 export function ArrendatariosViewTable({
   rows,
-  detailBaseHref
+  detailBaseHref,
+  selectedDetailId
 }: ArrendatariosViewTableProps): JSX.Element {
   const columns = useMemo<ColumnDef<ArrendatariosViewRow, unknown>[]>(
     () => [
-      linkColumn<ArrendatariosViewRow>({
+      {
         accessorKey: "nombreComercial",
         header: "Arrendatario",
-        href: (row) => `${detailBaseHref}&detalle=${row.id}`,
-        label: (row) => row.nombreComercial
-      }),
+        filterFn: "includesString",
+        meta: {
+          linkTo: {
+            triggerDetail: true,
+          },
+        },
+      },
       {
         accessorKey: "rut",
         header: "RUT",
@@ -55,12 +61,14 @@ export function ArrendatariosViewTable({
       numberFilterColumn<ArrendatariosViewRow>({
         accessorKey: "contratosAsociados",
         header: "Contratos asociados",
-        cell: (row) => <span className="whitespace-nowrap">{row.contratosAsociados}</span>
+        cell: (row) => <span className="whitespace-nowrap">{row.contratosAsociados}</span>,
+        meta: { isNumeric: true },
       }),
       numberFilterColumn<ArrendatariosViewRow>({
         accessorKey: "contratosVigentes",
-        header: "Contratos vigentes (periodo)",
-        cell: (row) => <span className="whitespace-nowrap">{row.contratosVigentes}</span>
+        header: "Contratos vigentes",
+        cell: (row) => <span className="whitespace-nowrap">{row.contratosVigentes}</span>,
+        meta: { isNumeric: true },
       }),
       {
         accessorKey: "contratosVigentesNumeros",
@@ -79,6 +87,7 @@ export function ArrendatariosViewTable({
     <DataTable
       table={table}
       emptyMessage="No se encontraron arrendatarios con contratos activos para los filtros aplicados."
+      selectedId={selectedDetailId}
     />
   );
 }
