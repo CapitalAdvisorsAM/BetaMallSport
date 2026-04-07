@@ -141,6 +141,30 @@ export function LocalesCrudPanel({
       sort: (a, b) => a.codigo.localeCompare(b.codigo, "es", { sensitivity: "base" })
     });
 
+  const beginCreate = useCallback((): void => {
+    setSelectedId(null);
+    setFieldErrors({});
+    setForm(createEmptyForm(projectId));
+    resetStatus();
+  }, [projectId, resetStatus]);
+
+  const beginEdit = useCallback((local: LocalRecord): void => {
+    setSelectedId(local.id);
+    setFieldErrors({});
+    setForm({
+      proyectoId: local.proyectoId,
+      codigo: local.codigo,
+      nombre: local.nombre,
+      glam2: local.glam2,
+      piso: local.piso,
+      tipo: local.tipo,
+      zona: local.zona,
+      esGLA: local.esGLA,
+      estado: local.estado
+    });
+    resetStatus();
+  }, [resetStatus]);
+
   const columns = useMemo<ColumnDef<LocalRecord, unknown>[]>(
     () => [
       {
@@ -225,30 +249,6 @@ export function LocalesCrudPanel({
   );
 
   const { table } = useDataTable(locales, columns);
-
-  const beginCreate = useCallback((): void => {
-    setSelectedId(null);
-    setFieldErrors({});
-    setForm(createEmptyForm(projectId));
-    resetStatus();
-  }, [projectId, resetStatus]);
-
-  const beginEdit = useCallback((local: LocalRecord): void => {
-    setSelectedId(local.id);
-    setFieldErrors({});
-    setForm({
-      proyectoId: local.proyectoId,
-      codigo: local.codigo,
-      nombre: local.nombre,
-      glam2: local.glam2,
-      piso: local.piso,
-      tipo: local.tipo,
-      zona: local.zona,
-      esGLA: local.esGLA,
-      estado: local.estado
-    });
-    resetStatus();
-  }, [resetStatus]);
 
   function clearFieldError(field: string): void {
     setFieldErrors((previous) => {
