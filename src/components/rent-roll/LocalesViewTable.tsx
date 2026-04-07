@@ -5,7 +5,6 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/DataTable";
 import {
   enumFilterColumn,
-  linkColumn,
   numberFilterColumn,
   statusBadgeColumn
 } from "@/components/ui/data-table-columns";
@@ -25,7 +24,6 @@ type LocalesViewRow = {
 
 type LocalesViewTableProps = {
   rows: LocalesViewRow[];
-  detailBaseHref: string;
   selectedDetailId?: string;
 };
 
@@ -37,7 +35,7 @@ function toNumber(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export function LocalesViewTable({ rows, detailBaseHref, selectedDetailId }: LocalesViewTableProps): JSX.Element {
+export function LocalesViewTable({ rows, selectedDetailId }: LocalesViewTableProps): JSX.Element {
   const tipoOptions = useMemo(
     () => Array.from(new Set(rows.map((row) => row.tipo))).sort(),
     [rows]
@@ -101,7 +99,7 @@ export function LocalesViewTable({ rows, detailBaseHref, selectedDetailId }: Loc
             : "rounded-full border-slate-300 bg-slate-200 text-slate-700"
       })
     ],
-    [detailBaseHref, tipoOptions]
+    []
   );
 
   const { table } = useDataTable(rows, columns);

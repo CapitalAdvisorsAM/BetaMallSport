@@ -386,15 +386,15 @@ export function DataTable<TData>({
                         getStripedRowClass(index, density),
                         theme.rowHover,
                         getRowClassName?.(row, index),
-                        (row.original as any).id === selectedId && "bg-brand-50 border-l-4 border-brand-500"
+                        (row.original as { id: string }).id === selectedId && "bg-brand-50 border-l-4 border-brand-500"
                       )}
                     >
                       {row.getVisibleCells().map((cell) => {
                         const linkTo = cell.column.columnDef.meta?.linkTo;
                         const value = cell.getValue();
                         const recordId = linkTo?.idKey
-                          ? (row.original as any)[linkTo.idKey]
-                          : (row.original as any).id;
+                          ? (row.original as Record<string, unknown>)[linkTo.idKey]
+                          : (row.original as Record<string, unknown>).id;
 
                         const handleLinkClick = (e: React.MouseEvent) => {
                           if (!linkTo) return;
@@ -511,7 +511,7 @@ export function DataTable<TData>({
         <RecordDetailModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          recordData={selectedRecord as any}
+          recordData={selectedRecord as Record<string, unknown>}
         />
     </>
   );

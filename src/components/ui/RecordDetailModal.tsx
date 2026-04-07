@@ -9,12 +9,11 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 type RecordDetailModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  recordData: Record<string, any> | null;
+  recordData: Record<string, unknown> | null;
   title?: string;
 };
 

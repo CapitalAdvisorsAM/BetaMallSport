@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
@@ -48,7 +47,7 @@ type NumberFilterColumnOptions<TData> = {
   header: string;
   cell?: (row: TData) => ReactNode;
   align?: "left" | "center" | "right";
-  meta?: any;
+  meta?: Record<string, unknown>;
 };
 
 export function numberFilterColumn<TData>(

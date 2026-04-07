@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/DataTable";
-import { linkColumn, numberFilterColumn, statusBadgeColumn } from "@/components/ui/data-table-columns";
+import { numberFilterColumn, statusBadgeColumn } from "@/components/ui/data-table-columns";
 import { useDataTable } from "@/hooks/useDataTable";
 
 type ArrendatariosViewRow = {
@@ -26,7 +26,6 @@ const VIGENTE_OPTIONS = ["Si", "No"];
 
 export function ArrendatariosViewTable({
   rows,
-  detailBaseHref,
   selectedDetailId
 }: ArrendatariosViewTableProps): JSX.Element {
   const columns = useMemo<ColumnDef<ArrendatariosViewRow, unknown>[]>(
@@ -78,7 +77,7 @@ export function ArrendatariosViewTable({
         cell: ({ row }) => <span>{row.original.contratosVigentesNumeros || "-"}</span>
       }
     ],
-    [detailBaseHref]
+    []
   );
 
   const { table } = useDataTable(rows, columns);
