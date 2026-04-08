@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
@@ -21,15 +20,14 @@ type ContractsViewRow = {
 
 type ContractsViewTableProps = {
   rows: ContractsViewRow[];
-  detailBaseHref: string;
   selectedDetailId?: string;
+  detailBaseHref?: string;
 };
 
 const PDF_OPTIONS = ["Disponible", "Sin PDF"];
 
 export function ContractsViewTable({
   rows,
-  detailBaseHref,
   selectedDetailId
 }: ContractsViewTableProps): JSX.Element {
   const stateOptions = useMemo(
@@ -106,7 +104,7 @@ export function ContractsViewTable({
         cell: ({ row }) => <span>{row.original.pdfUrl ? "Disponible" : "Sin PDF"}</span>
       }
     ],
-    [detailBaseHref, selectedDetailId, stateOptions]
+    [stateOptions]
   );
 
   const { table } = useDataTable(rows, columns);
