@@ -25,6 +25,7 @@ type LocalesViewRow = {
 type LocalesViewTableProps = {
   rows: LocalesViewRow[];
   selectedDetailId?: string;
+  detailBaseHref?: string;
 };
 
 const SI_NO_OPTIONS = ["Si", "No"];
@@ -99,7 +100,7 @@ export function LocalesViewTable({ rows, selectedDetailId }: LocalesViewTablePro
             : "rounded-full border-slate-300 bg-slate-200 text-slate-700"
       })
     ],
-    []
+    [tipoOptions]
   );
 
   const { table } = useDataTable(rows, columns);

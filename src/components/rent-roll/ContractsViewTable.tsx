@@ -21,6 +21,7 @@ type ContractsViewRow = {
 type ContractsViewTableProps = {
   rows: ContractsViewRow[];
   selectedDetailId?: string;
+  detailBaseHref?: string;
 };
 
 const PDF_OPTIONS = ["Disponible", "Sin PDF"];
@@ -103,7 +104,7 @@ export function ContractsViewTable({
         cell: ({ row }) => <span>{row.original.pdfUrl ? "Disponible" : "Sin PDF"}</span>
       }
     ],
-    []
+    [stateOptions]
   );
 
   const { table } = useDataTable(rows, columns);
