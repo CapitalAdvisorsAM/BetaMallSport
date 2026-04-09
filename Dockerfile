@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1
 
 FROM node:20-alpine AS deps
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
 RUN apk add --no-cache openssl
 WORKDIR /app
 COPY package.json ./
