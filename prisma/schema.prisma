@@ -44,6 +44,18 @@ enum ContractRateType {
   @@map("TipoTarifaContrato")
 }
 
+enum TenantCategory {
+  ENTERTAINMENT
+  LIFESTYLE
+  SERVICES
+  POWERSPORTS
+  OUTDOOR
+  ACCESSORIES
+  MULTISPORT
+  BICYCLES
+  GYM
+}
+
 enum BillingAlertSeverity {
   WARNING
   CRITICAL
@@ -219,10 +231,11 @@ model Tenant {
   rut             String
   razonSocial     String
   nombreComercial String
-  vigente         Boolean  @default(true)
+  vigente         Boolean          @default(true)
   email           String?
   telefono        String?
-  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  category        TenantCategory?
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
 
   proyecto           Project           @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   contratos          Contract[]

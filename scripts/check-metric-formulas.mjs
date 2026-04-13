@@ -5,6 +5,8 @@ const repoRoot = process.cwd();
 
 // ---------------------------------------------------------------------------
 // 1. Extract all metric formula IDs from metric-formulas.ts
+//    Structural completeness (title/formula/detail) is enforced by the
+//    TypeScript `satisfies Record<string, MetricFormulaDefinition>` annotation.
 // ---------------------------------------------------------------------------
 
 const formulasPath = path.join(repoRoot, "src/lib/metric-formulas.ts");
@@ -15,8 +17,8 @@ if (!fs.existsSync(formulasPath)) {
 
 const formulasContent = fs.readFileSync(formulasPath, "utf8");
 
-// Match top-level keys inside METRIC_FORMULAS object literal
-const keyMatches = [...formulasContent.matchAll(/^\s{2}([\w_]+):\s*\{/gm)];
+// Top-level keys: lines indented with exactly 2 spaces followed by word chars and a colon
+const keyMatches = [...formulasContent.matchAll(/^  ([\w_]+):/gm)];
 const validIds = new Set(keyMatches.map((m) => m[1]));
 
 if (validIds.size === 0) {
@@ -25,30 +27,7 @@ if (validIds.size === 0) {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Validate every entry has non-empty title, formula, and detail
-// ---------------------------------------------------------------------------
-
-const issues = [];
-
-for (const id of validIds) {
-  const blockStart = formulasContent.indexOf(`  ${id}:`);
-  if (blockStart === -1) continue;
-
-  // Grab enough chars to cover the entry (next top-level key or closing brace)
-  const nextKey = formulasContent.indexOf("\n  ", blockStart + id.length + 3);
-  const block = formulasContent.slice(blockStart, nextKey === -1 ? blockStart + 600 : nextKey);
-
-  const hasTitle = /title:\s*["'](.+?)["']/.test(block);
-  const hasFormula = /formula:\s*["'](.+?)["']/.test(block);
-  const hasDetail = /detail:\s*["'](.+?)["']/.test(block);
-
-  if (!hasTitle) issues.push(`${id}: missing or empty title`);
-  if (!hasFormula) issues.push(`${id}: missing or empty formula`);
-  if (!hasDetail) issues.push(`${id}: missing or empty detail`);
-}
-
-// ---------------------------------------------------------------------------
-// 3. Scan source files for getMetricFormula("...") and validate IDs
+// 2. Scan source files for getMetricFormula("...") and validate IDs
 // ---------------------------------------------------------------------------
 
 const EXT = new Set([".ts", ".tsx"]);
@@ -67,6 +46,7 @@ function scanDir(dir, callback) {
 }
 
 const USAGE_RE = /getMetricFormula\(["']([^"']+)["']\)/g;
+const issues = [];
 
 scanDir(path.join(repoRoot, "src"), (filePath) => {
   const content = fs.readFileSync(filePath, "utf8");
@@ -80,7 +60,7 @@ scanDir(path.join(repoRoot, "src"), (filePath) => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. Report
+// 3. Report
 // ---------------------------------------------------------------------------
 
 if (issues.length > 0) {

@@ -50,7 +50,8 @@ export async function POST(request: Request): Promise<NextResponse> {
           nombreComercial: true,
           vigente: true,
           email: true,
-          telefono: true
+          telefono: true,
+          category: true
         }
       }),
       prisma.tenant.findMany({

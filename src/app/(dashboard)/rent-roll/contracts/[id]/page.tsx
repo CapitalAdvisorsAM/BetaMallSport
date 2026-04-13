@@ -96,7 +96,7 @@ export default async function ContractDetailPage({
 
   if (!contract) notFound();
 
-  const locales = getAssociatedLocales(contract);
+  const units = getAssociatedLocales(contract);
   const diasRestantes = getDiasRestantes(contract.fechaTermino);
 
   return (
@@ -234,23 +234,23 @@ export default async function ContractDetailPage({
         {/* Locales */}
         <div>
           <h4 className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">Locales</h4>
-          {locales.length === 1 ? (
+          {units.length === 1 ? (
             <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
               <div>
                 <p className="text-slate-400">Codigo</p>
-                <p className="font-medium text-slate-700">{locales[0].codigo}</p>
+                <p className="font-medium text-slate-700">{units[0].codigo}</p>
               </div>
               <div>
                 <p className="text-slate-400">Nombre</p>
-                <p className="font-medium text-slate-700">{locales[0].nombre}</p>
+                <p className="font-medium text-slate-700">{units[0].nombre}</p>
               </div>
               <div>
                 <p className="text-slate-400">Superficie</p>
-                <p className="font-medium tabular-nums text-slate-700">{Number(locales[0].glam2).toFixed(2)} m{"\u00b2"}</p>
+                <p className="font-medium tabular-nums text-slate-700">{Number(units[0].glam2).toFixed(2)} m{"\u00b2"}</p>
               </div>
               <div>
                 <p className="text-slate-400">Piso</p>
-                <p className="font-medium text-slate-700">{locales[0].piso}</p>
+                <p className="font-medium text-slate-700">{units[0].piso}</p>
               </div>
             </div>
           ) : (
@@ -266,7 +266,7 @@ export default async function ContractDetailPage({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {locales.map((loc, index) => (
+                  {units.map((loc, index) => (
                     <tr
                       key={loc.id}
                       className={`${getStripedRowClass(index, "compact")} ${compactTableTheme.rowHover}`}

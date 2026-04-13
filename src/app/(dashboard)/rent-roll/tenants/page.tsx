@@ -136,6 +136,7 @@ export default async function TenantsPage({
     vigente: boolean;
     email: string | null;
     telefono: string | null;
+    category: import("@prisma/client").TenantCategory | null;
   }> = [];
 
   if (mode === "ver") {
@@ -413,7 +414,8 @@ export default async function TenantsPage({
             nombreComercial: tenant.nombreComercial,
             vigente: tenant.vigente,
             email: tenant.email,
-            telefono: tenant.telefono
+            telefono: tenant.telefono,
+            category: tenant.category
           }))}
         />
       ) : (
