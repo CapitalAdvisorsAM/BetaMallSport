@@ -1,6 +1,8 @@
 import { read, utils } from "xlsx";
 import { MAX_ROWS, normalizeHeaders } from "@/lib/upload/parse-utils";
+import { TENANT_CATEGORY_LABELS } from "@/lib/tenants/schema";
 import type { PreviewRow, UploadPreview } from "@/types/upload";
+import type { TenantCategory } from "@prisma/client";
 
 type RawRow = Record<string, unknown>;
 
@@ -15,6 +17,7 @@ export type TenantUploadRow = {
   vigente: boolean;
   email: string | null;
   telefono: string | null;
+  category: TenantCategory | null;
 };
 
 export type ExistingTenantForDiff = {
@@ -24,6 +27,7 @@ export type ExistingTenantForDiff = {
   vigente: boolean;
   email: string | null;
   telefono: string | null;
+  category: TenantCategory | null;
 };
 
 function asString(value: unknown): string {
@@ -93,6 +97,19 @@ function parseBoolean(value: unknown, defaultValue: boolean): boolean {
   return defaultValue;
 }
 
+const categoryByLabel = new Map<string, TenantCategory>(
+  (Object.entries(TENANT_CATEGORY_LABELS) as [TenantCategory, string][]).map(([key, label]) => [
+    label.toLowerCase(),
+    key
+  ])
+);
+
+function parseCategory(value: unknown): TenantCategory | null {
+  const raw = asString(value).toLowerCase().trim();
+  if (!raw) return null;
+  return categoryByLabel.get(raw) ?? null;
+}
+
 function emptyRow(): TenantUploadRow {
   return {
     rut: "",
@@ -100,7 +117,8 @@ function emptyRow(): TenantUploadRow {
     nombreComercial: "",
     vigente: true,
     email: null,
-    telefono: null
+    telefono: null,
+    category: null
   };
 }
 
@@ -148,6 +166,9 @@ function compareWithExisting(
   }
   if ((existing.telefono ?? null) !== row.telefono) {
     changed.push("telefono");
+  }
+  if ((existing.category ?? null) !== row.category) {
+    changed.push("category");
   }
   return changed;
 }
@@ -214,6 +235,7 @@ export function parseTenantsFile(
     const vigente = parseBoolean(rawRow.vigente, true);
     const email = normalizeNullable(rawRow.email);
     const telefono = normalizeNullable(rawRow.telefono);
+    const category = parseCategory(rawRow.categoria ?? rawRow.category);
 
     const data: TenantUploadRow = {
       rut: rutNormalized,
@@ -221,7 +243,8 @@ export function parseTenantsFile(
       nombreComercial,
       vigente,
       email,
-      telefono
+      telefono,
+      category
     };
 
     if (!razonSocial || !nombreComercial) {

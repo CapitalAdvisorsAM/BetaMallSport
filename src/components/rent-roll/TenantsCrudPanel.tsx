@@ -16,7 +16,9 @@ import { useCrudResource } from "@/hooks/useCrudResource";
 import { useDataTable } from "@/hooks/useDataTable";
 import { extractApiErrorMessage } from "@/lib/http/client-errors";
 import { buildProjectIdQueryString } from "@/lib/project-query";
+import { TENANT_CATEGORY_LABELS } from "@/lib/tenants/schema";
 import { cn } from "@/lib/utils";
+import type { TenantCategory } from "@prisma/client";
 
 type TenantRecord = {
   id: string;
@@ -27,6 +29,7 @@ type TenantRecord = {
   vigente: boolean;
   email: string | null;
   telefono: string | null;
+  category: TenantCategory | null;
 };
 
 type TenantForm = Omit<TenantRecord, "id">;
@@ -45,7 +48,8 @@ function createEmptyForm(projectId: string): TenantForm {
     nombreComercial: "",
     vigente: true,
     email: null,
-    telefono: null
+    telefono: null,
+    category: null
   };
 }
 
@@ -58,7 +62,8 @@ function toTenantRecord(value: Partial<TenantRecord>): TenantRecord {
     nombreComercial: value.nombreComercial ?? "",
     vigente: Boolean(value.vigente),
     email: value.email ?? null,
-    telefono: value.telefono ?? null
+    telefono: value.telefono ?? null,
+    category: value.category ?? null
   };
 }
 
@@ -134,7 +139,8 @@ export function TenantsCrudPanel({
       nombreComercial: item.nombreComercial,
       vigente: item.vigente,
       email: item.email,
-      telefono: item.telefono
+      telefono: item.telefono,
+      category: item.category
     });
     resetStatus();
   }, [resetStatus]);
@@ -179,6 +185,17 @@ export function TenantsCrudPanel({
         enableColumnFilter: false,
         cell: ({ row }) => <span className="whitespace-nowrap">{row.original.telefono ?? "-"}</span>
       },
+      enumFilterColumn<TenantRecord>({
+        id: "category",
+        accessorFn: (row) => (row.category ? (TENANT_CATEGORY_LABELS[row.category] ?? row.category) : "-"),
+        header: "Categoria",
+        options: Object.values(TENANT_CATEGORY_LABELS),
+        cell: (row) => (
+          <span className="whitespace-nowrap">
+            {row.category ? (TENANT_CATEGORY_LABELS[row.category] ?? row.category) : "-"}
+          </span>
+        )
+      }),
       {
         id: "acciones",
         accessorFn: (row) => row.id,
@@ -381,6 +398,31 @@ export function TenantsCrudPanel({
                   <SelectContent>
                     <SelectItem value="ACTIVO">ACTIVO</SelectItem>
                     <SelectItem value="INACTIVO">INACTIVO</SelectItem>
+                  </SelectContent>
+                </Select>
+              </label>
+              <label className="text-sm">
+                <span className="mb-1 block text-slate-700">
+                  Categoria <span className="text-xs text-slate-400">(opcional)</span>
+                </span>
+                <Select
+                  value={form.category ?? "NONE"}
+                  onValueChange={(value) =>
+                    setForm({ ...form, category: value === "NONE" ? null : (value as TenantCategory) })
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sin categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NONE">Sin categoria</SelectItem>
+                    {(Object.entries(TENANT_CATEGORY_LABELS) as [TenantCategory, string][]).map(
+                      ([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      )
+                    )}
                   </SelectContent>
                 </Select>
               </label>

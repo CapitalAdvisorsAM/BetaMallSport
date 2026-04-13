@@ -1,5 +1,18 @@
 import { createHash } from "crypto";
 import { z } from "zod";
+import { TenantCategory } from "@prisma/client";
+
+export const TENANT_CATEGORY_LABELS: Record<TenantCategory, string> = {
+  ENTERTAINMENT: "Entretención",
+  LIFESTYLE: "Lifestyle",
+  SERVICES: "Servicios",
+  POWERSPORTS: "Powersports",
+  OUTDOOR: "Outdoor",
+  ACCESSORIES: "Accesorios",
+  MULTISPORT: "Multideporte",
+  BICYCLES: "Bicicletas",
+  GYM: "Gimnasio"
+};
 
 export const tenantSchema = z.object({
   proyectoId: z.string().min(1),
@@ -8,7 +21,8 @@ export const tenantSchema = z.object({
   nombreComercial: z.string().trim().min(1, "Nombre comercial es obligatorio."),
   vigente: z.boolean(),
   email: z.string().trim().email("Email invalido.").nullable(),
-  telefono: z.string().trim().nullable()
+  telefono: z.string().trim().nullable(),
+  category: z.nativeEnum(TenantCategory).nullable().optional()
 });
 
 export function normalizeRut(value: string | null | undefined): string {
