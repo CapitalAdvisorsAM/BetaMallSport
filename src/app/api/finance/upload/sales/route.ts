@@ -22,88 +22,88 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     if (rows.length === 0) throw new ApiError(400, "No se encontraron filas con Tipo = 'Real'.");
 
-    const units = await prisma.unit.findMany({
-      where: { proyectoId: projectId },
-      select: { id: true, codigo: true, nombre: true }
-    });
-    const existingMappings = await prisma.salesUnitMapping.findMany({
-      where: { projectId },
-      select: { salesAccountId: true, unitId: true }
-    });
-    const unitBySalesAccountId = new Map(existingMappings.map((mapping) => [mapping.salesAccountId, mapping.unitId]));
+    const [tenants, existingMappings] = await Promise.all([
+      prisma.tenant.findMany({
+        where: { proyectoId: projectId },
+        select: { id: true, rut: true, nombreComercial: true },
+      }),
+      prisma.salesTenantMapping.findMany({
+        where: { projectId },
+        select: { salesAccountId: true, tenantId: true },
+      }),
+    ]);
+    const tenantBySalesAccountId = new Map(existingMappings.map((mapping) => [mapping.salesAccountId, mapping.tenantId]));
 
     const uniqueSalesAccountIds = [...new Set(rows.map((row) => row.idCa))];
     const unmapped: Array<{
       idCa: number;
       tienda: string;
-      sugerencias: Array<{ codigo: string; nombre: string; score: number }>;
+      sugerencias: Array<{ nombre: string; rut: string; score: number }>;
     }> = [];
     const newMappings: Array<{
       projectId: string;
       salesAccountId: number;
       storeName: string;
-      unitId: string;
+      tenantId: string;
       createdBy: string;
     }> = [];
 
     for (const salesAccountId of uniqueSalesAccountIds) {
-      if (unitBySalesAccountId.has(salesAccountId)) continue;
+      if (tenantBySalesAccountId.has(salesAccountId)) continue;
 
       const store = rows.find((row) => row.idCa === salesAccountId)?.tienda ?? "";
-      const scored = units
-        .map((unit) => ({
-          ...unit,
-          score: Math.max(similarity(store, unit.nombre), similarity(store, unit.codigo))
+      const scored = tenants
+        .map((tenant) => ({
+          ...tenant,
+          score: similarity(store, tenant.nombreComercial)
         }))
         .sort((a, b) => b.score - a.score);
 
       if (scored[0] && scored[0].score >= 0.7) {
-        unitBySalesAccountId.set(salesAccountId, scored[0].id);
+        tenantBySalesAccountId.set(salesAccountId, scored[0].id);
         newMappings.push({
           projectId,
           salesAccountId,
           storeName: store,
-          unitId: scored[0].id,
+          tenantId: scored[0].id,
           createdBy: session.user.id
         });
       } else {
         unmapped.push({
           idCa: salesAccountId,
           tienda: store,
-          sugerencias: scored.slice(0, 3).map((unit) => ({
-            codigo: unit.codigo,
-            nombre: unit.nombre,
-            score: unit.score
+          sugerencias: scored.slice(0, 3).map((tenant) => ({
+            nombre: tenant.nombreComercial,
+            rut: tenant.rut,
+            score: tenant.score
           }))
         });
       }
     }
 
     if (newMappings.length > 0) {
-      await prisma.salesUnitMapping.createMany({ data: newMappings, skipDuplicates: true });
+      await prisma.salesTenantMapping.createMany({ data: newMappings, skipDuplicates: true });
     }
 
     const periods = [...new Set(rows.map((row) => row.mes.toISOString().slice(0, 7)))];
-    let upserted = 0;
 
-    for (const row of rows) {
-      const unitId = unitBySalesAccountId.get(row.idCa);
-      if (!unitId) continue;
-
-      const period = row.mes.toISOString().slice(0, 7);
-
-      await prisma.unitSale.upsert({
-        where: { unitId_period: { unitId, period } },
-        update: { salesUf: row.ventasUf, updatedAt: new Date() },
-        create: {
-          projectId,
-          unitId,
-          period,
-          salesUf: row.ventasUf
-        }
+    const BATCH_SIZE = 100;
+    const upsertOps = rows
+      .filter((row) => tenantBySalesAccountId.has(row.idCa))
+      .map((row) => {
+        const tenantId = tenantBySalesAccountId.get(row.idCa)!;
+        const period = new Date(Date.UTC(row.mes.getFullYear(), row.mes.getMonth(), 1));
+        return prisma.tenantSale.upsert({
+          where: { tenantId_period: { tenantId, period } },
+          update: { salesUf: row.ventasUf, updatedAt: new Date() },
+          create: { projectId, tenantId, period, salesUf: row.ventasUf },
+        });
       });
-      upserted += 1;
+
+    for (let i = 0; i < upsertOps.length; i += BATCH_SIZE) {
+      await prisma.$transaction(upsertOps.slice(i, i + BATCH_SIZE));
     }
+    const upserted = upsertOps.length;
 
     await prisma.dataUpload.create({
       data: {

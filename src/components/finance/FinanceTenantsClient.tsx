@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { ModuleEmptyState } from "@/components/dashboard/ModuleEmptyState";
 import { ModuleHeader } from "@/components/dashboard/ModuleHeader";
 import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
@@ -9,9 +10,18 @@ import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolba
 import { OccupancyBadge } from "@/components/finance/OccupancyBadge";
 import { TableDisclosureButton } from "@/components/ui/TableDisclosureButton";
 import { getStripedRowClass, tableTheme } from "@/components/ui/table-theme";
+import { getGapSeverity } from "@/lib/shared/gap-utils";
 import { useRouter } from "next/navigation";
 import type { ArrendatarioPartidaDetalle, ProjectOption, TenantFinanceRow } from "@/types/finance";
 import { formatUf, cn } from "@/lib/utils";
+
+type GapFilter = "all" | "over5" | "over10" | "overbilled";
+
+const gapTextColor: Record<ReturnType<typeof getGapSeverity>, string> = {
+  ok: "text-emerald-700",
+  warning: "text-amber-700",
+  danger: "text-rose-700 font-semibold"
+};
 
 type FinanceTenantsClientProps = {
   projects: ProjectOption[];
@@ -32,6 +42,7 @@ export function FinanceTenantsClient({
   const [data, setData] = useState<TenantFinanceRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [gapFilter, setGapFilter] = useState<GapFilter>("all");
 
   // Detalle por partida: clave "tenantId::periodo"
   const [partidaAbierta, setPartidaAbierta] = useState<string | null>(null);
@@ -41,7 +52,7 @@ export function FinanceTenantsClient({
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ proyectoId: selectedProjectId });
+      const params = new URLSearchParams({ projectId: selectedProjectId });
       if (desde) params.set("from", desde);
       if (hasta) params.set("to", hasta);
       const response = await fetch(`/api/finance/tenants?${params.toString()}`);
@@ -64,6 +75,21 @@ export function FinanceTenantsClient({
     [data]
   );
 
+  const hasGapData = data.some((t) => t.totalEsperado !== null);
+
+  const filteredData = useMemo(() => {
+    if (gapFilter === "all") return data;
+    return data.filter((t) => {
+      if (t.brechaPct === null) return false;
+      switch (gapFilter) {
+        case "over5": return Math.abs(t.brechaPct) >= 5;
+        case "over10": return Math.abs(t.brechaPct) >= 10;
+        case "overbilled": return t.brechaUf !== null && t.brechaUf < 0;
+        default: return true;
+      }
+    });
+  }, [data, gapFilter]);
+
   async function togglePartida(tenantId: string, periodo: string): Promise<void> {
     const key = `${tenantId}::${periodo}`;
     if (partidaAbierta === key) {
@@ -75,7 +101,7 @@ export function FinanceTenantsClient({
 
     setLoadingPartida((prev) => new Set(prev).add(key));
     try {
-      const params = new URLSearchParams({ proyectoId: selectedProjectId, arrendatarioId: tenantId, periodo });
+      const params = new URLSearchParams({ projectId: selectedProjectId, arrendatarioId: tenantId, periodo });
       const res = await fetch(`/api/finance/tenants/detail?${params.toString()}`);
       const payload = (await res.json()) as { partidas: ArrendatarioPartidaDetalle[] };
       setPartidaCache((prev) => new Map(prev).set(key, payload.partidas ?? []));
@@ -97,12 +123,26 @@ export function FinanceTenantsClient({
         selectedProjectId={selectedProjectId}
         preserve={{ desde, hasta }}
         actions={
-          <ProjectPeriodToolbar
-            desde={desde}
-            hasta={hasta}
-            onDesdeChange={setDesde}
-            onHastaChange={setHasta}
-          />
+          <div className="flex flex-wrap items-end gap-3">
+            <ProjectPeriodToolbar
+              desde={desde}
+              hasta={hasta}
+              onDesdeChange={setDesde}
+              onHastaChange={setHasta}
+            />
+            {hasGapData && (
+              <select
+                value={gapFilter}
+                onChange={(e) => setGapFilter(e.target.value as GapFilter)}
+                className="rounded-md border border-slate-300 px-2 py-1 text-sm text-slate-700"
+              >
+                <option value="all">Todas las brechas</option>
+                <option value="over5">Brecha &gt;5%</option>
+                <option value="over10">Brecha &gt;10%</option>
+                <option value="overbilled">Sobre-facturado</option>
+              </select>
+            )}
+          </div>
         }
       />
 
@@ -135,10 +175,23 @@ export function FinanceTenantsClient({
                   <th className={`${tableTheme.compactHeadCell} text-center`}>
                     Costo Ocupacion
                   </th>
+                  {hasGapData && (
+                    <>
+                      <th className={`${tableTheme.compactHeadCell} text-right`}>
+                        Esperado (UF)
+                      </th>
+                      <th className={`${tableTheme.compactHeadCell} text-right`}>
+                        Brecha (UF)
+                      </th>
+                      <th className={`${tableTheme.compactHeadCell} text-right`}>
+                        Brecha %
+                      </th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {data.map((tenant, index) => (
+                {filteredData.map((tenant, index) => (
                   <Fragment key={tenant.id}>
                     {/* Fila principal del arrendatario */}
                     <tr className={`${getStripedRowClass(index)} ${tableTheme.rowHover}`}>
@@ -149,7 +202,12 @@ export function FinanceTenantsClient({
                             label={`${expandedId === tenant.id ? "Contraer" : "Expandir"} ${tenant.nombreComercial}`}
                             onToggle={() => setExpandedId(expandedId === tenant.id ? null : tenant.id)}
                           />
-                          {tenant.nombreComercial}
+                          <Link
+                            href={`/tenants/${tenant.id}?project=${selectedProjectId}`}
+                            className="text-brand-500 underline underline-offset-2 transition-colors hover:text-brand-700"
+                          >
+                            {tenant.nombreComercial}
+                          </Link>
                         </div>
                         <p className="text-xs text-slate-400">{tenant.rut}</p>
                       </td>
@@ -157,7 +215,7 @@ export function FinanceTenantsClient({
                         {tenant.locales.map((local, i) => (
                           <span
                             key={local.id}
-                            onClick={() => router.push(`/rent-roll/units?proyecto=${selectedProjectId}&detalle=${local.id}`)}
+                            onClick={() => router.push(`/rent-roll/units?project=${selectedProjectId}&detalle=${local.id}`)}
                             className={cn(
                               "cursor-pointer text-brand-500 hover:text-brand-700 underline underline-offset-2 font-medium transition-colors",
                               i > 0 && "ml-1"
@@ -176,12 +234,31 @@ export function FinanceTenantsClient({
                       <td className="px-3 py-3 text-center">
                         <OccupancyBadge pct={tenant.costoOcupacion} />
                       </td>
+                      {hasGapData && (
+                        <>
+                          <td className="px-3 py-3 text-right tabular-nums text-slate-600">
+                            {tenant.totalEsperado !== null ? `${formatUf(tenant.totalEsperado)} UF` : "–"}
+                          </td>
+                          <td className={cn(
+                            "px-3 py-3 text-right tabular-nums",
+                            tenant.brechaPct !== null ? gapTextColor[getGapSeverity(tenant.brechaPct)] : "text-slate-400"
+                          )}>
+                            {tenant.brechaUf !== null ? `${formatUf(tenant.brechaUf)} UF` : "–"}
+                          </td>
+                          <td className={cn(
+                            "px-3 py-3 text-right tabular-nums",
+                            tenant.brechaPct !== null ? gapTextColor[getGapSeverity(tenant.brechaPct)] : "text-slate-400"
+                          )}>
+                            {tenant.brechaPct !== null ? `${formatUf(tenant.brechaPct, 1)}%` : "–"}
+                          </td>
+                        </>
+                      )}
                     </tr>
 
-                    {/* ExpansiÃ³n: tabla de perÃ­odos */}
+                    {/* Expansión: tabla de períodos */}
                     {expandedId === tenant.id && periods.length > 0 ? (
                       <tr key={`${tenant.id}-periodos`} className="bg-slate-50/40">
-                        <td colSpan={5} className="px-4 py-3">
+                        <td colSpan={hasGapData ? 8 : 5} className="px-4 py-3">
                           <table className={`${tableTheme.table} text-xs`}>
                             <thead className={tableTheme.head}>
                               <tr>
@@ -231,7 +308,7 @@ export function FinanceTenantsClient({
                                       </td>
                                     </tr>
 
-                                    {/* Detalle de partidas del perÃ­odo */}
+                                    {/* Detalle de partidas del período */}
                                     {isOpen && partidas && partidas.length > 0 && (
                                       <tr>
                                         <td colSpan={4} className="pb-2 pt-0">
@@ -240,7 +317,7 @@ export function FinanceTenantsClient({
                                               <tr>
                                                 <th className={tableTheme.compactHeadCell}>Grupo</th>
                                                 <th className={tableTheme.compactHeadCell}>Partida</th>
-                                                <th className={tableTheme.compactHeadCell}>DenominaciÃ³n</th>
+                                                <th className={tableTheme.compactHeadCell}>Denominación</th>
                                                 <th className={`${tableTheme.compactHeadCell} text-right`}>UF</th>
                                               </tr>
                                             </thead>

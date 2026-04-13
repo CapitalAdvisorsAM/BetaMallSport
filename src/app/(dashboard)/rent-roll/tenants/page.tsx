@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { TenantsCrudPanel } from "@/components/rent-roll/TenantsCrudPanel";
 import { TenantsViewTable } from "@/components/rent-roll/TenantsViewTable";
 import { RentRollEntityModeNav } from "@/components/rent-roll/RentRollEntityModeNav";
-import { CargaHistorial } from "@/components/upload/CargaHistorial";
+import { UploadHistory } from "@/components/upload/UploadHistory";
 import { UploadSection } from "@/components/upload/UploadSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,6 @@ import { appendProjectQuery, buildProjectQueryString } from "@/lib/project-query
 type TenantsPageProps = {
   searchParams: {
     project?: string;
-    proyecto?: string;
     q?: string;
     vigente?: string;
     seccion?: string;
@@ -224,7 +223,7 @@ export default async function TenantsPage({
   const filteredExportHref = buildExportExcelUrl({
     dataset: "arrendatarios",
     scope: "filtered",
-    proyectoId: selectedProjectId,
+    projectId: selectedProjectId,
     q: q || undefined,
     vigente: searchParams.vigente === "vigente" || searchParams.vigente === "no-vigente"
       ? searchParams.vigente
@@ -233,7 +232,7 @@ export default async function TenantsPage({
   const allExportHref = buildExportExcelUrl({
     dataset: "arrendatarios",
     scope: "all",
-    proyectoId: selectedProjectId
+    projectId: selectedProjectId
   });
 
   return (
@@ -373,6 +372,7 @@ export default async function TenantsPage({
               })}
               detailBaseHref={buildDetailHref(null)}
               selectedDetailId={detalleId}
+              proyectoId={selectedProjectId}
             />
             <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
               <span>
@@ -426,9 +426,9 @@ export default async function TenantsPage({
             tipo="ARRENDATARIOS"
             proyectoId={selectedProjectId}
             canEdit={canEdit}
-            previewEndpoint="/api/rent-roll/upload/arrendatarios/preview"
-            applyEndpoint="/api/rent-roll/upload/arrendatarios/apply"
-            templateEndpoint="/api/rent-roll/upload/arrendatarios/template"
+            previewEndpoint="/api/rent-roll/upload/tenants/preview"
+            applyEndpoint="/api/rent-roll/upload/tenants/apply"
+            templateEndpoint="/api/rent-roll/upload/tenants/template"
             columns={[
               { key: "rut", label: "RUT" },
               { key: "razonSocial", label: "Razon social" },
@@ -438,7 +438,7 @@ export default async function TenantsPage({
               { key: "telefono", label: "Telefono" }
             ]}
           />
-          <CargaHistorial items={uploadHistory} />
+          <UploadHistory items={uploadHistory} />
         </>
       )}
     </main>

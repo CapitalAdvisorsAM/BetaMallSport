@@ -392,7 +392,7 @@ export function UploadSection({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-base font-semibold text-brand-700">Carga {tipo.toLowerCase()}</h3>
         <a
-          href={`${templateEndpoint}?proyectoId=${encodeURIComponent(proyectoId)}`}
+          href={`${templateEndpoint}?projectId=${encodeURIComponent(proyectoId)}`}
           className="text-sm font-medium text-brand-700 underline"
         >
           Descargar plantilla

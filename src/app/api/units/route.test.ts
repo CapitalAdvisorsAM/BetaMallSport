@@ -61,7 +61,7 @@ describe("POST /api/units", () => {
       glam2: "90",
       piso: "1",
       tipo: "LOCAL_COMERCIAL",
-      zona: null,
+      zonaId: null,
       esGLA: true,
       estado: "ACTIVO"
     });
@@ -92,7 +92,7 @@ describe("POST /api/units", () => {
           glam2: "90",
           piso: "1",
           tipo: "LOCAL_COMERCIAL",
-          zona: null,
+          zonaId: null,
           esGLA: true,
           estado: "ACTIVO"
         })

@@ -1,11 +1,13 @@
 export const dynamic = "force-dynamic";
 
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { SLUG_MAX_ATTEMPTS } from "@/lib/constants";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { ACTIVE_PROJECTS_TAG } from "@/lib/project";
 import { slugify } from "@/lib/utils";
 
 export const runtime = "nodejs";
@@ -96,6 +98,7 @@ export async function PUT(
       select: { id: true, nombre: true, slug: true, color: true, activo: true }
     });
 
+    revalidateTag(ACTIVE_PROJECTS_TAG);
     return NextResponse.json(updated);
   } catch (error) {
     return handleApiError(error);
@@ -151,6 +154,7 @@ export async function DELETE(
       where: { id: projectId }
     });
 
+    revalidateTag(ACTIVE_PROJECTS_TAG);
     return new Response(null, { status: 204 });
   } catch (error) {
     return handleApiError(error);

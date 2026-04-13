@@ -1,58 +1,36 @@
-export type ProjectQueryCompatibleParams = {
+export type ProjectQueryParams = {
   project?: string;
-  proyecto?: string;
 };
 
 export function resolveProjectIdFromQuery(
-  params: ProjectQueryCompatibleParams
+  params: ProjectQueryParams
 ): string | undefined {
-  const canonical = params.project?.trim();
-  if (canonical) {
-    return canonical;
-  }
-
-  const legacy = params.proyecto?.trim();
-  return legacy || undefined;
+  const value = params.project?.trim();
+  return value || undefined;
 }
 
 export function appendProjectQuery(
   params: URLSearchParams,
-  projectId: string,
-  options?: { includeLegacy?: boolean }
+  projectId: string
 ): URLSearchParams {
-  const includeLegacy = options?.includeLegacy ?? true;
   params.set("project", projectId);
-  if (includeLegacy) {
-    params.set("proyecto", projectId);
-  }
   return params;
 }
 
-export function buildProjectQueryString(
-  projectId: string,
-  options?: { includeLegacy?: boolean }
-): string {
-  const params = appendProjectQuery(new URLSearchParams(), projectId, options);
+export function buildProjectQueryString(projectId: string): string {
+  const params = appendProjectQuery(new URLSearchParams(), projectId);
   return params.toString();
 }
 
 export function appendProjectIdQuery(
   params: URLSearchParams,
-  projectId: string,
-  options?: { includeLegacy?: boolean }
+  projectId: string
 ): URLSearchParams {
-  const includeLegacy = options?.includeLegacy ?? true;
   params.set("projectId", projectId);
-  if (includeLegacy) {
-    params.set("proyectoId", projectId);
-  }
   return params;
 }
 
-export function buildProjectIdQueryString(
-  projectId: string,
-  options?: { includeLegacy?: boolean }
-): string {
-  const params = appendProjectIdQuery(new URLSearchParams(), projectId, options);
+export function buildProjectIdQueryString(projectId: string): string {
+  const params = appendProjectIdQuery(new URLSearchParams(), projectId);
   return params.toString();
 }

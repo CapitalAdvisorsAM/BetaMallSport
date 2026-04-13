@@ -12,11 +12,55 @@ export type {
   ContractWriteApiResponse
 } from "./contracts";
 export type {
-  RentRollMetricaRow,
-  RentRollResumen,
-  RentRollMetricasResponse
-} from "@/types/metricas";
+  RentRollMetricRow,
+  RentRollSummary,
+  RentRollMetricsResponse
+} from "@/types/metrics";
 export type { PeriodoMetrica, TimelineResponse } from "@/types/timeline";
+export type {
+  OccupancyDimensionRow,
+  OccupancyPeriodSnapshot,
+  OccupancyTimeSeriesResponse
+} from "./occupancy";
+export type {
+  FacturacionDimensionSeries,
+  FacturacionResponse,
+  FacturacionSeriesPoint
+} from "./facturacion";
+export type {
+  VentasAnalyticsResponse,
+  VentasDimensionSeries,
+  VentasSeriesPoint
+} from "./ventas-analytics";
+export type {
+  CostoOcupacionResponse,
+  CostoOcupacionRow
+} from "./costo-ocupacion";
+export type {
+  GgccCostBreakdown,
+  GgccDeficitByDimension,
+  GgccDeficitPeriodRow,
+  GgccDeficitResponse
+} from "./ggcc-deficit";
+export type {
+  Tenant360Data,
+  Tenant360Profile,
+  Tenant360QuickStats,
+  Tenant360Kpis,
+  Tenant360MonthlyPoint,
+  Tenant360Contract,
+  Tenant360Rate,
+  Tenant360Ggcc,
+  Tenant360Amendment,
+  Tenant360SalesPoint,
+  Tenant360Projection,
+  ExpiringContract,
+  GapAnalysisRow,
+  BillingCategory,
+  OccupancyDayEntry,
+  PeerComparison,
+  PeerComparisonRow
+} from "./tenant-360";
 
 export type RentRollRow = {
   id: string;
@@ -92,9 +136,9 @@ export type ContractFormPayload = {
   fechaEntrega: string | null;
   fechaApertura: string | null;
   diasGracia: number;
-  estado: ContractStatus;
   rentaVariable: Array<{
     pctRentaVariable: string;
+    umbralVentasUf: string;
     vigenciaDesde: string;
     vigenciaHasta: string | null;
   }>;

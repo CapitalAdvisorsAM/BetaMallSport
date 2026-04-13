@@ -1,4 +1,4 @@
-import { POST as contratosPreviewPost } from "@/app/api/rent-roll/upload/contratos/preview/route";
+import { POST as contratosPreviewPost } from "@/app/api/rent-roll/upload/contracts/preview/route";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

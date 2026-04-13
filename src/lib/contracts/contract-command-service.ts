@@ -2,6 +2,7 @@ import { Prisma, ContractRateType } from "@prisma/client";
 import { ApiError } from "@/lib/api-error";
 import { generateNumeroContrato, normalizedLocalIds, toDate, toDecimal } from "@/lib/contracts/persistence";
 import { prisma } from "@/lib/prisma";
+import { computeEstadoContrato, startOfDay } from "@/lib/utils";
 import type { ContractFormPayload } from "@/types";
 
 export async function createContractCommand(input: {
@@ -46,7 +47,13 @@ export async function createContractCommand(input: {
         fechaEntrega: toDate(payload.fechaEntrega),
         fechaApertura: toDate(payload.fechaApertura),
         diasGracia: payload.diasGracia,
-        estado: payload.estado,
+        estado: computeEstadoContrato(
+          new Date(payload.fechaInicio),
+          new Date(payload.fechaTermino),
+          payload.diasGracia,
+          "VIGENTE",
+          startOfDay(new Date())
+        ),
         pctFondoPromocion: toDecimal(payload.pctFondoPromocion),
         pctAdministracionGgcc: toDecimal(payload.pctAdministracionGgcc),
         multiplicadorDiciembre: toDecimal(payload.multiplicadorDiciembre),
@@ -65,10 +72,18 @@ export async function createContractCommand(input: {
     });
 
     const tarifasPayload = [
-      ...payload.tarifas,
+      ...payload.tarifas.map((item) => ({
+        tipo: item.tipo as "FIJO_UF_M2" | "FIJO_UF" | "PORCENTAJE",
+        valor: item.valor,
+        umbralVentasUf: null as string | null,
+        vigenciaDesde: item.vigenciaDesde,
+        vigenciaHasta: item.vigenciaHasta,
+        esDiciembre: item.esDiciembre
+      })),
       ...payload.rentaVariable.map((item) => ({
         tipo: "PORCENTAJE" as const,
         valor: item.pctRentaVariable,
+        umbralVentasUf: item.umbralVentasUf as string | null,
         vigenciaDesde: item.vigenciaDesde,
         vigenciaHasta: item.vigenciaHasta,
         esDiciembre: false
@@ -76,7 +91,10 @@ export async function createContractCommand(input: {
     ];
     const tarifasByKey = new Map<string, (typeof tarifasPayload)[number]>();
     for (const tarifa of tarifasPayload) {
-      tarifasByKey.set(`${tarifa.tipo}|${tarifa.vigenciaDesde}`, tarifa);
+      const key = tarifa.tipo === "PORCENTAJE" && tarifa.umbralVentasUf
+        ? `${tarifa.tipo}|${tarifa.vigenciaDesde}|${tarifa.umbralVentasUf}`
+        : `${tarifa.tipo}|${tarifa.vigenciaDesde}`;
+      tarifasByKey.set(key, tarifa);
     }
 
     if (tarifasByKey.size > 0) {
@@ -85,6 +103,7 @@ export async function createContractCommand(input: {
           contratoId: created.id,
           tipo: t.tipo as ContractRateType,
           valor: new Prisma.Decimal(t.valor),
+          umbralVentasUf: t.umbralVentasUf ? new Prisma.Decimal(t.umbralVentasUf) : null,
           vigenciaDesde: new Date(t.vigenciaDesde),
           vigenciaHasta: toDate(t.vigenciaHasta),
           esDiciembre: t.esDiciembre

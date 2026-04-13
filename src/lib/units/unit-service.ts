@@ -66,7 +66,7 @@ export async function createUnit(input: { payload: UnitPayload }) {
       glam2: new Prisma.Decimal(input.payload.glam2),
       piso: input.payload.piso,
       tipo: input.payload.tipo,
-      zona: input.payload.zona || null,
+      zonaId: input.payload.zonaId || null,
       esGLA: input.payload.esGLA,
       estado: input.payload.estado
     }
@@ -96,7 +96,7 @@ export async function updateUnit(input: { unitId: string; payload: UnitPayload }
       glam2: new Prisma.Decimal(input.payload.glam2),
       piso: input.payload.piso,
       tipo: input.payload.tipo,
-      zona: input.payload.zona || null,
+      zonaId: input.payload.zonaId || null,
       esGLA: input.payload.esGLA,
       estado: input.payload.estado
     }

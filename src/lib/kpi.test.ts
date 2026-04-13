@@ -233,6 +233,7 @@ describe("cdg mall sport KPIs", () => {
         id: "variable",
         localId: "loc-var",
         localGlam2: "80",
+        arrendatarioId: "tenant-var",
         tarifa: null,
         tarifaVariablePct: "8"
       }),
@@ -267,7 +268,7 @@ describe("cdg mall sport KPIs", () => {
     const ingresos = buildIngresoDesglosado(
       contratos,
       locales,
-      [{ localId: "loc-var", periodo: "2026-03", ventasUf: "1000" }],
+      [{ arrendatarioId: "tenant-var", periodo: "2026-03", ventasUf: "1000" }],
       [{ periodo: "2026-03", valorUf: "9" }],
       "2026-03"
     );

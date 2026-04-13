@@ -39,12 +39,7 @@ export function parseRequiredPaginationParams(searchParams: URLSearchParams): {
 
 export function getProjectIdSearchParam(searchParams: URLSearchParams): string | null {
   const projectId = searchParams.get("projectId")?.trim() ?? "";
-  if (projectId.length > 0) {
-    return projectId;
-  }
-
-  const legacyProjectId = searchParams.get("proyectoId")?.trim() ?? "";
-  return legacyProjectId.length > 0 ? legacyProjectId : null;
+  return projectId.length > 0 ? projectId : null;
 }
 
 export function getRequiredProjectIdSearchParam(searchParams: URLSearchParams): string {

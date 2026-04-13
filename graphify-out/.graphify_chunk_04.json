@@ -1,0 +1,1145 @@
+{
+  "nodes": [
+    {
+      "id": "financetenantsClient_FinanceTenantsClient",
+      "label": "FinanceTenantsClient",
+      "file_type": "code",
+      "source_file": "src/components/finance/FinanceTenantsClient.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "reconciliationClient_ReconciliationClient",
+      "label": "ReconciliationClient",
+      "file_type": "code",
+      "source_file": "src/components/finance/ReconciliationClient.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "arrendatariosViewTable_ArrendatariosViewTable",
+      "label": "ArrendatariosViewTable",
+      "file_type": "code",
+      "source_file": "src/components/rent-roll/ArrendatariosViewTable.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "contractsViewTable_ContractsViewTable",
+      "label": "ContractsViewTable",
+      "file_type": "code",
+      "source_file": "src/components/rent-roll/ContractsViewTable.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "projectCrudPanel_ProjectCrudPanel",
+      "label": "ProjectCrudPanel",
+      "file_type": "code",
+      "source_file": "src/components/rent-roll/ProjectCrudPanel.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "rentRollDashboardTable_RentRollDashboardTable",
+      "label": "RentRollDashboardTable",
+      "file_type": "code",
+      "source_file": "src/components/rent-roll/RentRollDashboardTable.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "rentRollSnapshotDatePicker_RentRollSnapshotDatePicker",
+      "label": "RentRollSnapshotDatePicker",
+      "file_type": "code",
+      "source_file": "src/components/rent-roll/RentRollSnapshotDatePicker.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "billingBreakdownSection_BillingBreakdownSection",
+      "label": "BillingBreakdownSection",
+      "file_type": "code",
+      "source_file": "src/components/tenant-360/BillingBreakdownSection.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "contractDetailsSection_ContractDetailsSection",
+      "label": "ContractDetailsSection",
+      "file_type": "code",
+      "source_file": "src/components/tenant-360/ContractDetailsSection.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "financialTimelineChart_FinancialTimelineChart",
+      "label": "FinancialTimelineChart",
+      "file_type": "code",
+      "source_file": "src/components/tenant-360/FinancialTimelineChart.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "occupancyTimeline_OccupancyTimeline",
+      "label": "OccupancyTimeline",
+      "file_type": "code",
+      "source_file": "src/components/tenant-360/OccupancyTimeline.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "projectionsSection_ProjectionsSection",
+      "label": "ProjectionsSection",
+      "file_type": "code",
+      "source_file": "src/components/tenant-360/ProjectionsSection.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "salesPerformanceSection_SalesPerformanceSection",
+      "label": "SalesPerformanceSection",
+      "file_type": "code",
+      "source_file": "src/components/tenant-360/SalesPerformanceSection.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tenant360Client_Tenant360Client",
+      "label": "Tenant360Client",
+      "file_type": "code",
+      "source_file": "src/components/tenant-360/Tenant360Client.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tenantKpiRow_TenantKpiRow",
+      "label": "TenantKpiRow",
+      "file_type": "code",
+      "source_file": "src/components/tenant-360/TenantKpiRow.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tenantProfileHeader_TenantProfileHeader",
+      "label": "TenantProfileHeader",
+      "file_type": "code",
+      "source_file": "src/components/tenant-360/TenantProfileHeader.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "projectCreationPanel_ProjectCreationPanel",
+      "label": "ProjectCreationPanel",
+      "file_type": "code",
+      "source_file": "src/components/ui/ProjectCreationPanel.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "types_finance_TenantFinanceRow",
+      "label": "TenantFinanceRow Type",
+      "file_type": "code",
+      "source_file": "src/types/finance.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "types_finance_ArrendatarioPartidaDetalle",
+      "label": "ArrendatarioPartidaDetalle Type",
+      "file_type": "code",
+      "source_file": "src/types/finance.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "types_finance_ProjectOption",
+      "label": "ProjectOption Type",
+      "file_type": "code",
+      "source_file": "src/types/finance.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "types_tenant360_Tenant360Data",
+      "label": "Tenant360Data Type",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "types_tenant360_Tenant360Contract",
+      "label": "Tenant360Contract Type",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "types_tenant360_BillingCategory",
+      "label": "BillingCategory Type",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "types_tenant360_Tenant360MonthlyPoint",
+      "label": "Tenant360MonthlyPoint Type",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "types_tenant360_OccupancyDayEntry",
+      "label": "OccupancyDayEntry Type",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "types_tenant360_Tenant360Projection",
+      "label": "Tenant360Projection Type",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "types_tenant360_GapAnalysisRow",
+      "label": "GapAnalysisRow Type",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "types_tenant360_Tenant360Kpis",
+      "label": "Tenant360Kpis Type",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "types_tenant360_Tenant360Profile",
+      "label": "Tenant360Profile Type",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "types_tenant360_Tenant360QuickStats",
+      "label": "Tenant360QuickStats Type",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "types_tenant360_Tenant360SalesPoint",
+      "label": "Tenant360SalesPoint Type",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "lib_shared_gapUtils_getGapSeverity",
+      "label": "getGapSeverity Utility",
+      "file_type": "code",
+      "source_file": "src/lib/shared/gap-utils.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "api_finance_tenants_route",
+      "label": "GET /api/finance/tenants",
+      "file_type": "code",
+      "source_file": "src/app/api/finance/tenants/route.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "api_finance_tenants_detail",
+      "label": "GET /api/finance/tenants/detail",
+      "file_type": "code",
+      "source_file": "src/app/api/finance/tenants/[id]/route.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "api_finance_reconciliation_route",
+      "label": "GET /api/finance/reconciliation",
+      "file_type": "code",
+      "source_file": "src/app/api/finance/reconciliation/route.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "api_projects_route",
+      "label": "POST /api/projects",
+      "file_type": "code",
+      "source_file": "src/app/api/projects/route.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "api_projects_id_route",
+      "label": "PUT/DELETE /api/projects/[id]",
+      "file_type": "code",
+      "source_file": "src/app/api/projects/[id]/route.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "hooks_useCrudResource",
+      "label": "useCrudResource Hook",
+      "file_type": "code",
+      "source_file": "src/hooks/useCrudResource.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "hooks_useDataTable",
+      "label": "useDataTable Hook",
+      "file_type": "code",
+      "source_file": "src/hooks/useDataTable.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "components_ui_DataTable",
+      "label": "DataTable Component",
+      "file_type": "code",
+      "source_file": "src/components/ui/DataTable.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "lib_rentRoll_snapshotDate",
+      "label": "Snapshot Date Utilities",
+      "file_type": "code",
+      "source_file": "src/lib/rent-roll/snapshot-date.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "components_dashboard_KpiCard",
+      "label": "KpiCard Component",
+      "file_type": "code",
+      "source_file": "src/components/dashboard/KpiCard.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "components_dashboard_MetricChartCard",
+      "label": "MetricChartCard Component",
+      "file_type": "code",
+      "source_file": "src/components/dashboard/MetricChartCard.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "components_finance_OccupancyBadge",
+      "label": "OccupancyBadge Component",
+      "file_type": "code",
+      "source_file": "src/components/finance/OccupancyBadge.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "components_crud_EntityCrudShell",
+      "label": "EntityCrudShell Component",
+      "file_type": "code",
+      "source_file": "src/components/crud/EntityCrudShell.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "lib_http_clientErrors_extractApiErrorMessage",
+      "label": "extractApiErrorMessage Utility",
+      "file_type": "code",
+      "source_file": "src/lib/http/client-errors.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "financetenantsClient_FinanceTenantsClient",
+      "target": "api_finance_tenants_route",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/finance/FinanceTenantsClient.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "financetenantsClient_FinanceTenantsClient",
+      "target": "api_finance_tenants_detail",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/finance/FinanceTenantsClient.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "financetenantsClient_FinanceTenantsClient",
+      "target": "types_finance_TenantFinanceRow",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/finance/FinanceTenantsClient.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "financetenantsClient_FinanceTenantsClient",
+      "target": "types_finance_ArrendatarioPartidaDetalle",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/finance/FinanceTenantsClient.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "financetenantsClient_FinanceTenantsClient",
+      "target": "types_finance_ProjectOption",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/finance/FinanceTenantsClient.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "financetenantsClient_FinanceTenantsClient",
+      "target": "lib_shared_gapUtils_getGapSeverity",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/finance/FinanceTenantsClient.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "financetenantsClient_FinanceTenantsClient",
+      "target": "components_finance_OccupancyBadge",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/finance/FinanceTenantsClient.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "reconciliationClient_ReconciliationClient",
+      "target": "api_finance_reconciliation_route",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/finance/ReconciliationClient.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "reconciliationClient_ReconciliationClient",
+      "target": "lib_shared_gapUtils_getGapSeverity",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/finance/ReconciliationClient.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "reconciliationClient_ReconciliationClient",
+      "target": "types_finance_ProjectOption",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/finance/ReconciliationClient.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "reconciliationClient_ReconciliationClient",
+      "target": "components_dashboard_KpiCard",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/finance/ReconciliationClient.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "arrendatariosViewTable_ArrendatariosViewTable",
+      "target": "hooks_useDataTable",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/rent-roll/ArrendatariosViewTable.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "arrendatariosViewTable_ArrendatariosViewTable",
+      "target": "components_ui_DataTable",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/rent-roll/ArrendatariosViewTable.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "contractsViewTable_ContractsViewTable",
+      "target": "hooks_useDataTable",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/rent-roll/ContractsViewTable.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "contractsViewTable_ContractsViewTable",
+      "target": "components_ui_DataTable",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/rent-roll/ContractsViewTable.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "projectCrudPanel_ProjectCrudPanel",
+      "target": "hooks_useCrudResource",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/rent-roll/ProjectCrudPanel.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "projectCrudPanel_ProjectCrudPanel",
+      "target": "hooks_useDataTable",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/rent-roll/ProjectCrudPanel.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "projectCrudPanel_ProjectCrudPanel",
+      "target": "components_ui_DataTable",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/rent-roll/ProjectCrudPanel.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "projectCrudPanel_ProjectCrudPanel",
+      "target": "components_crud_EntityCrudShell",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/rent-roll/ProjectCrudPanel.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "projectCrudPanel_ProjectCrudPanel",
+      "target": "api_projects_route",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/rent-roll/ProjectCrudPanel.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "projectCrudPanel_ProjectCrudPanel",
+      "target": "api_projects_id_route",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/rent-roll/ProjectCrudPanel.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "projectCrudPanel_ProjectCrudPanel",
+      "target": "lib_http_clientErrors_extractApiErrorMessage",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/rent-roll/ProjectCrudPanel.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "rentRollDashboardTable_RentRollDashboardTable",
+      "target": "hooks_useDataTable",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/rent-roll/RentRollDashboardTable.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "rentRollDashboardTable_RentRollDashboardTable",
+      "target": "components_ui_DataTable",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/rent-roll/RentRollDashboardTable.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "rentRollDashboardTable_RentRollDashboardTable",
+      "target": "lib_shared_gapUtils_getGapSeverity",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/rent-roll/RentRollDashboardTable.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "rentRollSnapshotDatePicker_RentRollSnapshotDatePicker",
+      "target": "lib_rentRoll_snapshotDate",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/rent-roll/RentRollSnapshotDatePicker.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "billingBreakdownSection_BillingBreakdownSection",
+      "target": "types_tenant360_BillingCategory",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/BillingBreakdownSection.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "contractDetailsSection_ContractDetailsSection",
+      "target": "types_tenant360_Tenant360Contract",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/ContractDetailsSection.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "financialTimelineChart_FinancialTimelineChart",
+      "target": "types_tenant360_Tenant360MonthlyPoint",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/FinancialTimelineChart.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "financialTimelineChart_FinancialTimelineChart",
+      "target": "components_dashboard_MetricChartCard",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/FinancialTimelineChart.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "occupancyTimeline_OccupancyTimeline",
+      "target": "types_tenant360_OccupancyDayEntry",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/OccupancyTimeline.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "projectionsSection_ProjectionsSection",
+      "target": "types_tenant360_Tenant360Projection",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/ProjectionsSection.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "projectionsSection_ProjectionsSection",
+      "target": "types_tenant360_GapAnalysisRow",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/ProjectionsSection.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "projectionsSection_ProjectionsSection",
+      "target": "components_dashboard_KpiCard",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/ProjectionsSection.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "salesPerformanceSection_SalesPerformanceSection",
+      "target": "types_tenant360_Tenant360SalesPoint",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/SalesPerformanceSection.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "salesPerformanceSection_SalesPerformanceSection",
+      "target": "components_dashboard_MetricChartCard",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/SalesPerformanceSection.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360Client_Tenant360Client",
+      "target": "tenantProfileHeader_TenantProfileHeader",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/Tenant360Client.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360Client_Tenant360Client",
+      "target": "tenantKpiRow_TenantKpiRow",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/Tenant360Client.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360Client_Tenant360Client",
+      "target": "financialTimelineChart_FinancialTimelineChart",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/Tenant360Client.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360Client_Tenant360Client",
+      "target": "contractDetailsSection_ContractDetailsSection",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/Tenant360Client.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360Client_Tenant360Client",
+      "target": "billingBreakdownSection_BillingBreakdownSection",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/Tenant360Client.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360Client_Tenant360Client",
+      "target": "salesPerformanceSection_SalesPerformanceSection",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/Tenant360Client.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360Client_Tenant360Client",
+      "target": "occupancyTimeline_OccupancyTimeline",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/Tenant360Client.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360Client_Tenant360Client",
+      "target": "projectionsSection_ProjectionsSection",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/Tenant360Client.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360Client_Tenant360Client",
+      "target": "types_tenant360_Tenant360Data",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/Tenant360Client.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360Client_Tenant360Client",
+      "target": "api_finance_tenants_detail",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/Tenant360Client.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "tenantKpiRow_TenantKpiRow",
+      "target": "types_tenant360_Tenant360Kpis",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/TenantKpiRow.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "tenantKpiRow_TenantKpiRow",
+      "target": "components_dashboard_KpiCard",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/TenantKpiRow.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "tenantProfileHeader_TenantProfileHeader",
+      "target": "types_tenant360_Tenant360Profile",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/TenantProfileHeader.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "tenantProfileHeader_TenantProfileHeader",
+      "target": "types_tenant360_Tenant360QuickStats",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/TenantProfileHeader.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "projectCreationPanel_ProjectCreationPanel",
+      "target": "api_projects_route",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/ui/ProjectCreationPanel.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "financetenantsClient_FinanceTenantsClient",
+      "target": "reconciliationClient_ReconciliationClient",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "src/components/finance/FinanceTenantsClient.tsx",
+      "source_location": null,
+      "weight": 0.85
+    },
+    {
+      "source": "projectCrudPanel_ProjectCrudPanel",
+      "target": "projectCreationPanel_ProjectCreationPanel",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/components/rent-roll/ProjectCrudPanel.tsx",
+      "source_location": null,
+      "weight": 0.8
+    },
+    {
+      "source": "arrendatariosViewTable_ArrendatariosViewTable",
+      "target": "contractsViewTable_ContractsViewTable",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.82,
+      "source_file": "src/components/rent-roll/ArrendatariosViewTable.tsx",
+      "source_location": null,
+      "weight": 0.82
+    },
+    {
+      "source": "financialTimelineChart_FinancialTimelineChart",
+      "target": "salesPerformanceSection_SalesPerformanceSection",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.78,
+      "source_file": "src/components/tenant-360/FinancialTimelineChart.tsx",
+      "source_location": null,
+      "weight": 0.78
+    },
+    {
+      "source": "rentRollDashboardTable_RentRollDashboardTable",
+      "target": "reconciliationClient_ReconciliationClient",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.72,
+      "source_file": "src/components/rent-roll/RentRollDashboardTable.tsx",
+      "source_location": null,
+      "weight": 0.72
+    },
+    {
+      "source": "financetenantsClient_FinanceTenantsClient",
+      "target": "tenant360Client_Tenant360Client",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/components/finance/FinanceTenantsClient.tsx",
+      "source_location": null,
+      "weight": 0.8
+    },
+    {
+      "source": "projectionsSection_ProjectionsSection",
+      "target": "reconciliationClient_ReconciliationClient",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "src/components/tenant-360/ProjectionsSection.tsx",
+      "source_location": null,
+      "weight": 0.75
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "tenant_360_view_composition",
+      "label": "Tenant 360 View — Composed Client Sections",
+      "nodes": [
+        "tenant360Client_Tenant360Client",
+        "tenantProfileHeader_TenantProfileHeader",
+        "tenantKpiRow_TenantKpiRow",
+        "financialTimelineChart_FinancialTimelineChart",
+        "contractDetailsSection_ContractDetailsSection",
+        "billingBreakdownSection_BillingBreakdownSection",
+        "salesPerformanceSection_SalesPerformanceSection",
+        "occupancyTimeline_OccupancyTimeline",
+        "projectionsSection_ProjectionsSection"
+      ],
+      "relation": "implement",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/tenant-360/Tenant360Client.tsx"
+    },
+    {
+      "id": "gap_analysis_shared_utility",
+      "label": "Gap Severity Analysis — Shared Utility Pattern",
+      "nodes": [
+        "lib_shared_gapUtils_getGapSeverity",
+        "financetenantsClient_FinanceTenantsClient",
+        "reconciliationClient_ReconciliationClient",
+        "rentRollDashboardTable_RentRollDashboardTable"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/shared/gap-utils.ts"
+    },
+    {
+      "id": "datatable_pattern_rent_roll",
+      "label": "DataTable Pattern — Rent-Roll Tables",
+      "nodes": [
+        "hooks_useDataTable",
+        "components_ui_DataTable",
+        "arrendatariosViewTable_ArrendatariosViewTable",
+        "contractsViewTable_ContractsViewTable",
+        "projectCrudPanel_ProjectCrudPanel",
+        "rentRollDashboardTable_RentRollDashboardTable"
+      ],
+      "relation": "implement",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.97,
+      "source_file": "src/components/rent-roll/ArrendatariosViewTable.tsx"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

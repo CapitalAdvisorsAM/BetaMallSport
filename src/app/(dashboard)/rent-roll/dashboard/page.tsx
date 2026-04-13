@@ -25,12 +25,17 @@ const RentRollChartsSection = dynamic(
 import { prisma } from "@/lib/prisma";
 import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
 import { buildCategoryConcentration } from "@/lib/rent-roll/category-concentration";
+import { buildVencimientosPorAnio } from "@/lib/kpi";
 import { getTimelineData } from "@/lib/rent-roll/timeline";
+
+const ExpirationProfileChart = dynamic(
+  () => import("@/components/rent-roll/ExpirationProfileChart").then((m) => m.ExpirationProfileChart),
+  { ssr: false, loading: () => <div className="h-72 animate-pulse rounded-md bg-slate-100" /> }
+);
 
 type RentRollDashboardPageProps = {
   searchParams: {
     project?: string;
-    proyecto?: string;
   };
 };
 
@@ -54,7 +59,6 @@ export default async function RentRollDashboardPage({
   if (projectParam !== selectedProjectId) {
     const params = new URLSearchParams();
     params.set("project", selectedProjectId);
-    params.set("proyecto", selectedProjectId);
     redirect(`/rent-roll/dashboard?${params.toString()}`);
   }
 
@@ -66,10 +70,11 @@ export default async function RentRollDashboardPage({
         estado: { in: ["VIGENTE", "GRACIA"] }
       },
       select: {
+        fechaTermino: true,
         local: {
           select: {
             glam2: true,
-            zona: true
+            zona: { select: { nombre: true } }
           }
         }
       }
@@ -85,7 +90,20 @@ export default async function RentRollDashboardPage({
   const waltConfig = widgetConfigs.find((c) => c.widgetId === "chart_ocupacion_walt");
   const waltVariant = waltConfig?.formulaVariant ?? "con_walt";
 
-  const categoryConcentration = buildCategoryConcentration(activeContracts);
+  const categoryConcentration = buildCategoryConcentration(
+    activeContracts.map((c) => ({ ...c, local: { ...c.local, zona: c.local.zona?.nombre ?? null } }))
+  );
+
+  const currentYear = new Date().getFullYear();
+  const vencimientosPorAnio = buildVencimientosPorAnio(
+    activeContracts.map((c) => ({
+      localId: "",
+      localGlam2: c.local.glam2,
+      tarifa: null,
+      tarifaVariablePct: null,
+      fechaTermino: c.fechaTermino
+    }))
+  ).filter((row) => row.anio >= currentYear && row.anio <= currentYear + 5);
 
   const mappedWidgets = customWidgets.map((w) => ({
     id: w.id,
@@ -138,6 +156,18 @@ export default async function RentRollDashboardPage({
         waltVariant={waltVariant}
         customWidgets={chartWidgets}
       />
+
+      {vencimientosPorAnio.length > 0 && (
+        <section className="overflow-hidden rounded-md bg-white shadow-sm">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <h3 className="text-sm font-semibold text-brand-700">Perfil de vencimientos por ano</h3>
+            <p className="mt-0.5 text-xs text-slate-500">
+              GLA (m²) de contratos vigentes que vencen cada ano en los proximos 5 anos.
+            </p>
+          </div>
+          <ExpirationProfileChart data={vencimientosPorAnio} />
+        </section>
+      )}
     </main>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { ContractStatus } from "@prisma/client";
 import type { Dispatch, SetStateAction } from "react";
 import { ContractAttachmentZone } from "@/components/contracts/ContractAttachmentZone";
 import { GgccListEditor } from "@/components/contracts/GgccListEditor";
@@ -148,19 +147,6 @@ function ContractStatusAndLocalsSection({
           <span className="mt-1 block text-xs text-slate-500">
             Dias desde entrega del local hasta inicio del arriendo.
           </span>
-        </label>
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <Checkbox
-            checked={payload.estado === ContractStatus.TERMINADO_ANTICIPADO}
-            onCheckedChange={(checked) =>
-              setPayload((previous) => ({
-                ...previous,
-                estado: checked ? ContractStatus.TERMINADO_ANTICIPADO : ContractStatus.VIGENTE
-              }))
-            }
-            disabled={!canEdit}
-          />
-          <span className="text-slate-700">Terminado anticipadamente</span>
         </label>
       </div>
 

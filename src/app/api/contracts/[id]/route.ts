@@ -23,6 +23,7 @@ import { contractPayloadSchema } from "@/lib/contracts/schema";
 import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { computeEstadoContrato, startOfDay } from "@/lib/utils";
 
 export const runtime = "nodejs";
 
@@ -82,6 +83,7 @@ function normalizedTarifas(
   tarifas: Array<{
     tipo: string;
     valor: Prisma.Decimal | string;
+    umbralVentasUf?: Prisma.Decimal | string | null;
     vigenciaDesde: Date | string;
     vigenciaHasta: Date | string | null;
     esDiciembre: boolean;
@@ -90,7 +92,7 @@ function normalizedTarifas(
   return JSON.stringify(
     tarifas
       .map((item) => ({
-        key: tarifaKey(item.tipo, item.vigenciaDesde),
+        key: tarifaKey(item.tipo, item.vigenciaDesde, item.umbralVentasUf),
         tipo: item.tipo,
         valor: toDecimalString(item.valor),
         vigenciaDesde: toDateOnly(item.vigenciaDesde),
@@ -105,6 +107,7 @@ function normalizedRentaVariable(
   rows: Array<{
     tipo: string;
     valor: Prisma.Decimal | string;
+    umbralVentasUf?: Prisma.Decimal | string | null;
     vigenciaDesde: Date | string;
     vigenciaHasta: Date | string | null;
   }>
@@ -113,8 +116,9 @@ function normalizedRentaVariable(
     rows
       .filter((item) => item.tipo === ContractRateType.PORCENTAJE)
       .map((item) => ({
-        key: toDateOnly(item.vigenciaDesde) ?? "",
+        key: `${toDateOnly(item.vigenciaDesde) ?? ""}|${toDecimalString(item.umbralVentasUf ?? null) ?? "0"}`,
         pctRentaVariable: toDecimalString(item.valor),
+        umbralVentasUf: toDecimalString(item.umbralVentasUf ?? null) ?? "0",
         vigenciaDesde: toDateOnly(item.vigenciaDesde),
         vigenciaHasta: toDateOnly(item.vigenciaHasta)
       }))
@@ -165,7 +169,6 @@ function computeCamposModificados(
     ["fechaTermino", toDateOnly(existing.fechaTermino), toDateOnly(payload.fechaTermino)],
     ["fechaEntrega", toDateOnly(existing.fechaEntrega), toDateOnly(payload.fechaEntrega)],
     ["fechaApertura", toDateOnly(existing.fechaApertura), toDateOnly(payload.fechaApertura)],
-    ["estado", existing.estado, payload.estado],
     [
       "pctFondoPromocion",
       toDecimalString(existing.pctFondoPromocion),
@@ -243,7 +246,13 @@ function buildContratoPayload(
     fechaEntrega: toDate(parsed.fechaEntrega),
     fechaApertura: toDate(parsed.fechaApertura),
     diasGracia: parsed.diasGracia,
-    estado: parsed.estado,
+    estado: computeEstadoContrato(
+      new Date(parsed.fechaInicio),
+      new Date(parsed.fechaTermino),
+      parsed.diasGracia,
+      "VIGENTE",
+      startOfDay(new Date())
+    ),
     pctFondoPromocion: toDecimal(parsed.pctFondoPromocion),
     pctAdministracionGgcc: toDecimal(parsed.pctAdministracionGgcc),
     multiplicadorDiciembre: toDecimal(parsed.multiplicadorDiciembre),

@@ -1,12 +1,12 @@
-import { buildErrorCsv, parseContratosFile } from "@/lib/upload/parse-contratos";
+import { buildErrorCsv, parseContractsFile } from "@/lib/upload/parse-contracts";
 
 export { buildErrorCsv };
 
 type ParseRentRollLegacyOptions = {
-  existingContratos?: Parameters<typeof parseContratosFile>[1]["existingContratos"];
-  existingLocalData?: Parameters<typeof parseContratosFile>[1]["existingLocalData"];
+  existingContratos?: Parameters<typeof parseContractsFile>[1]["existingContratos"];
+  existingLocalData?: Parameters<typeof parseContractsFile>[1]["existingLocalData"];
   existingLocalCodes?: Set<string>;
-  existingArrendatarioNombres?: Parameters<typeof parseContratosFile>[1]["existingArrendatarioNombres"];
+  existingArrendatarioNombres?: Parameters<typeof parseContractsFile>[1]["existingArrendatarioNombres"];
 };
 
 function toArrayBuffer(buffer: Buffer): ArrayBuffer {
@@ -15,7 +15,7 @@ function toArrayBuffer(buffer: Buffer): ArrayBuffer {
   return arrayBuffer;
 }
 
-// @deprecated Usa parseContratosFile desde "@/lib/upload/parse-contratos".
+// @deprecated Usa parseContractsFile desde "@/lib/upload/parse-contratos".
 export function parseRentRollFile(
   fileName: string,
   buffer: Buffer,
@@ -27,7 +27,7 @@ export function parseRentRollFile(
       Array.from(options?.existingLocalCodes ?? new Set<string>()).map((codigo) => [codigo, { glam2: "1" }])
     );
 
-  return parseContratosFile(toArrayBuffer(buffer), {
+  return parseContractsFile(toArrayBuffer(buffer), {
     fileName,
     existingContratos: options?.existingContratos ?? new Map(),
     existingLocalData,

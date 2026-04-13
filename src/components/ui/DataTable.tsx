@@ -9,9 +9,7 @@ import {
   type RowData,
   type Table as TanStackTable
 } from "@tanstack/react-table";
-import { ChevronDown, ChevronUp, ChevronsUpDown, Filter } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useRouter } from "next/navigation";
 import {
@@ -23,14 +21,16 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
-import { UnifiedTable } from "@/components/ui/UnifiedTable";
 import { mapSortStateToAriaSort } from "@/components/ui/table-a11y";
 import { getStripedRowClass, getTableTheme, type TableDensity } from "@/components/ui/table-theme";
 import { cn } from "@/lib/utils";
 import { RecordDetailModal } from "@/components/ui/RecordDetailModal";
 
 
-type DataTableFilterType = "string" | "enum" | "number";
+// "string" | "enum" → checklist UI (enum = predefined options, string = auto from data)
+// "text" → free text input (substring search, uses filterFn: "includesString")
+// "number" → min/max range
+type DataTableFilterType = "string" | "enum" | "number" | "text";
 type DataTableAlign = "left" | "center" | "right";
 type DataTableSummaryMeta = {
   type: "sum";
@@ -46,7 +46,7 @@ declare module "@tanstack/react-table" {
     _types?: [TData, TValue];
     align?: DataTableAlign;
     filterOptions?: string[];
-    filterType?: DataTableFilterType;
+    filterType?: DataTableFilterType; // "text" = free search; "string"/"enum" = checklist; "number" = range
     isNumeric?: boolean;
     isCritical?: boolean;
     summary?: DataTableSummaryMeta;
@@ -69,33 +69,30 @@ interface DataTableProps<TData> {
   selectedId?: string;
 }
 
-interface SortableColumnHeaderProps<TData> {
-  column: Column<TData, unknown>;
-  title: React.ReactNode;
-}
-
 function getColumnAlign<TData>(column: Column<TData, unknown>): DataTableAlign {
   return column.columnDef.meta?.align ?? "left";
 }
 
 function getCellAlignClass(align: DataTableAlign): string {
-  if (align === "right") {
-    return "text-right";
-  }
-  if (align === "center") {
-    return "text-center";
-  }
+  if (align === "right") return "text-right";
+  if (align === "center") return "text-center";
   return "text-left";
 }
 
 function getFilterType<TData>(column: Column<TData, unknown>): DataTableFilterType {
-  if (column.columnDef.meta?.filterType) {
-    return column.columnDef.meta.filterType;
+  if (column.columnDef.meta?.filterType) return column.columnDef.meta.filterType;
+  if (column.columnDef.meta?.filterOptions?.length) return "enum";
+  // Columns with explicit substring filterFns keep text-input UI (no migration needed).
+  const fn = column.columnDef.filterFn;
+  if (fn === "includesString" || fn === "includesStringSensitive" || fn === "weakEquals") {
+    return "text";
   }
-  if (column.columnDef.meta?.filterOptions?.length) {
-    return "enum";
-  }
+  // Default: checklist auto-populated from faceted unique values.
   return "string";
+}
+
+function isChecklistType(filterType: DataTableFilterType): boolean {
+  return filterType === "string" || filterType === "enum";
 }
 
 function getSummaryMeta<TData>(column: Column<TData, unknown>): DataTableSummaryMeta | undefined {
@@ -103,70 +100,57 @@ function getSummaryMeta<TData>(column: Column<TData, unknown>): DataTableSummary
 }
 
 function hasActiveFilter<TData>(column: Column<TData, unknown>): boolean {
-  const filterType = getFilterType(column);
   const filterValue = column.getFilterValue();
-
-  if (filterType === "enum") {
-    return Array.isArray(filterValue) && filterValue.length > 0;
-  }
-
+  const filterType = getFilterType(column);
+  if (isChecklistType(filterType)) return Array.isArray(filterValue) && filterValue.length > 0;
   if (filterType === "number") {
-    if (!Array.isArray(filterValue)) {
-      return false;
-    }
+    if (!Array.isArray(filterValue)) return false;
     const [min, max] = filterValue as [number | undefined, number | undefined];
     return min !== undefined || max !== undefined;
   }
-
+  // "text"
   return typeof filterValue === "string" && filterValue.trim().length > 0;
 }
 
-function SortableColumnHeader<TData>({
-  column,
-  title
-}: SortableColumnHeaderProps<TData>): JSX.Element {
-  const sortState = column.getIsSorted();
-  const align = getColumnAlign(column);
-  const isActiveSort = sortState !== false;
-  const Icon = sortState === "asc" ? ChevronUp : sortState === "desc" ? ChevronDown : ChevronsUpDown;
-
-  const onSortToggle = (): void => {
-    if (!column.getCanSort()) {
-      return;
-    }
-    if (sortState === "asc") {
-      column.toggleSorting(true);
-      return;
-    }
-    if (sortState === "desc") {
-      column.clearSorting();
-      return;
-    }
-    column.toggleSorting(false);
-  };
-
+function IndeterminateCheckbox({
+  checked,
+  indeterminate,
+  onChange,
+}: {
+  checked: boolean;
+  indeterminate: boolean;
+  onChange: (checked: boolean) => void;
+}): JSX.Element {
+  const ref = React.useCallback(
+    (el: HTMLInputElement | null) => {
+      if (el) el.indeterminate = indeterminate;
+    },
+    [indeterminate]
+  );
   return (
-    <button
-      type="button"
-      onClick={onSortToggle}
-      disabled={!column.getCanSort()}
-      aria-label={`Ordenar por ${column.id}`}
-      className={cn(
-        "inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-white/70 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-1 focus-visible:ring-offset-brand-700 disabled:pointer-events-none",
-        align === "right" && "justify-end",
-        align === "center" && "justify-center"
-      )}
-    >
-      <span>{title}</span>
-      <Icon className={cn("h-3.5 w-3.5", isActiveSort ? "text-gold-400" : "text-white/40")} />
-    </button>
+    <input
+      type="checkbox"
+      ref={ref}
+      checked={checked}
+      onChange={(e) => onChange(e.target.checked)}
+      className="h-4 w-4 rounded border-slate-300 text-brand-500 focus:ring-brand-500 focus:ring-offset-0 cursor-pointer"
+    />
   );
 }
 
-function ColumnFilterControl<TData>({ column }: { column: Column<TData, unknown> }): JSX.Element {
+function ExcelColumnHeader<TData>({ header }: { header: Header<TData, unknown> }): JSX.Element {
+  const column = header.column;
+  const align = getColumnAlign(column);
   const filterType = getFilterType(column);
-  const isActive = hasActiveFilter(column);
-  const options = column.columnDef.meta?.filterOptions ?? [];
+  const canSort = column.getCanSort();
+  const canFilter = column.getCanFilter();
+  const sortState = column.getIsSorted();
+  const isActiveSort = sortState !== false;
+  const isActiveFilter = hasActiveFilter(column);
+  const isActive = isActiveSort || isActiveFilter;
+
+  const [search, setSearch] = React.useState("");
+  const [open, setOpen] = React.useState(false);
 
   const filterValue = column.getFilterValue();
   const textValue = typeof filterValue === "string" ? filterValue : "";
@@ -175,122 +159,257 @@ function ColumnFilterControl<TData>({ column }: { column: Column<TData, unknown>
     ? (filterValue as [number | undefined, number | undefined])
     : [undefined, undefined];
 
-  const clearFilter = (): void => {
-    column.setFilterValue(undefined);
-  };
+  // Dynamic unique values from faceted model, or predefined options
+  const predefinedOptions = column.columnDef.meta?.filterOptions ?? [];
+  let facetedMap: Map<unknown, number> | undefined;
+  try {
+    facetedMap = column.getFacetedUniqueValues?.();
+  } catch {
+    // getFacetedUniqueValues not ready or table not fully initialized
+  }
+  const dynamicOptions = facetedMap
+    ? [...facetedMap.keys()].filter((v) => v != null && v !== "").map(String).sort()
+    : [];
+  const allOptions = predefinedOptions.length > 0 ? predefinedOptions : dynamicOptions;
+  const filteredOptions = search.trim()
+    ? allOptions.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+    : allOptions;
+
+  const allSelected = allOptions.length > 0 && allOptions.every((o) => enumValues.includes(o));
+  const someSelected = enumValues.length > 0 && !allSelected;
+
+  const renderedTitle = header.isPlaceholder
+    ? null
+    : (flexRender(column.columnDef.header, header.getContext()) ?? column.id);
 
   const updateEnumFilter = (value: string, checked: boolean): void => {
-    const nextValues = checked ? [...enumValues, value] : enumValues.filter((item) => item !== value);
-    column.setFilterValue(nextValues.length > 0 ? nextValues : undefined);
+    const next = checked ? [...enumValues, value] : enumValues.filter((v) => v !== value);
+    column.setFilterValue(next.length > 0 ? next : undefined);
+  };
+
+  const toggleAll = (checked: boolean): void => {
+    column.setFilterValue(checked ? allOptions : undefined);
   };
 
   const updateNumberFilter = (position: 0 | 1, value: string): void => {
-    const parsed = value.trim().length === 0 ? undefined : Number(value);
-    const safeValue = Number.isFinite(parsed) ? parsed : undefined;
-    const nextRange: [number | undefined, number | undefined] = [...numberRange];
-    nextRange[position] = safeValue;
-    column.setFilterValue(nextRange[0] !== undefined || nextRange[1] !== undefined ? nextRange : undefined);
+    const parsed = value.trim() === "" ? undefined : Number(value);
+    const safe = Number.isFinite(parsed) ? parsed : undefined;
+    const next: [number | undefined, number | undefined] = [...numberRange];
+    next[position] = safe;
+    column.setFilterValue(next[0] !== undefined || next[1] !== undefined ? next : undefined);
   };
 
+  const clearAll = (): void => {
+    column.setFilterValue(undefined);
+    column.clearSorting();
+    setSearch("");
+    setOpen(false);
+  };
+
+  if (!canSort && !canFilter) {
+    return (
+      <span
+        className={cn(
+          "text-[10px] font-bold uppercase tracking-widest text-white/70",
+          align === "right" && "block text-right",
+          align === "center" && "block text-center"
+        )}
+      >
+        {renderedTitle}
+      </span>
+    );
+  }
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-6 w-6 items-center justify-center rounded-sm transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-1 focus-visible:ring-offset-brand-700"
-          aria-label={`Filtrar columna ${column.id}`}
+          className={cn(
+            "group -mx-2 -my-1 flex w-[calc(100%+1rem)] items-center gap-1 rounded-sm px-2 py-1 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40",
+            align === "right" && "flex-row-reverse",
+            align === "center" && "justify-center"
+          )}
         >
-          <Filter className={cn("h-3.5 w-3.5", isActive ? "text-gold-400" : "text-white/40")} />
+          <span
+            className={cn(
+              "flex-1 truncate text-[10px] font-bold uppercase tracking-widest transition-colors",
+              isActive ? "text-white" : "text-white/70 group-hover:text-white/90",
+              align === "right" && "text-right",
+              align === "center" && "text-center"
+            )}
+          >
+            {renderedTitle}
+          </span>
+          <span className="flex shrink-0 items-center gap-0.5">
+            {sortState === "asc" && <ChevronUp className="h-3 w-3 text-gold-400" />}
+            {sortState === "desc" && <ChevronDown className="h-3 w-3 text-gold-400" />}
+            {isActiveFilter && (
+              <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-gold-400 text-[9px] font-bold leading-none text-brand-900">
+                {filterType === "enum" ? enumValues.length : "•"}
+              </span>
+            )}
+            {!isActive && (
+              <ChevronDown className="h-3 w-3 text-white/30 transition-colors group-hover:text-white/60" />
+            )}
+          </span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 space-y-3 p-3">
-        {filterType === "enum" ? (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Filtrar valores
-            </p>
-            <div className="max-h-44 space-y-2 overflow-y-auto">
-              {options.map((option) => (
-                <label key={option} className="flex items-center gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={enumValues.includes(option)}
-                    onChange={(event) => updateEnumFilter(option, event.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-brand-500 focus:ring-brand-500"
+      <PopoverContent align="start" sideOffset={4} className="w-60 overflow-hidden p-0 shadow-lg">
+        {/* Sort section */}
+        {canSort && (
+          <div className="border-b border-slate-100 p-1">
+            <button
+              type="button"
+              onClick={() => { column.toggleSorting(false); setOpen(false); }}
+              className={cn(
+                "flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-slate-50",
+                sortState === "asc" && "bg-brand-50 font-medium text-brand-700"
+              )}
+            >
+              <ChevronUp className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+              <span>Ordenar A → Z</span>
+              {sortState === "asc" && <span className="ml-auto text-xs text-brand-500">✓</span>}
+            </button>
+            <button
+              type="button"
+              onClick={() => { column.toggleSorting(true); setOpen(false); }}
+              className={cn(
+                "flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-slate-50",
+                sortState === "desc" && "bg-brand-50 font-medium text-brand-700"
+              )}
+            >
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+              <span>Ordenar Z → A</span>
+              {sortState === "desc" && <span className="ml-auto text-xs text-brand-500">✓</span>}
+            </button>
+          </div>
+        )}
+
+        {/* Filter section — checklist (string auto-from-data + enum predefined) */}
+        {canFilter && isChecklistType(filterType) && (
+          <div className="p-2 space-y-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar..."
+                className="w-full rounded border border-slate-200 bg-white py-1.5 pl-7 pr-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+            {allOptions.length > 0 ? (
+              <div>
+                <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm hover:bg-slate-50">
+                  <IndeterminateCheckbox
+                    checked={allSelected}
+                    indeterminate={someSelected}
+                    onChange={toggleAll}
                   />
-                  {option}
+                  <span className="font-medium text-slate-700">(Seleccionar todo)</span>
                 </label>
-              ))}
+                <div className="my-1 border-t border-slate-100" />
+                <div className="max-h-40 overflow-y-auto space-y-0.5">
+                  {filteredOptions.map((option) => (
+                    <label key={option} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm hover:bg-slate-50">
+                      <input
+                        type="checkbox"
+                        checked={enumValues.includes(option)}
+                        onChange={(e) => updateEnumFilter(option, e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-brand-500 focus:ring-brand-500 focus:ring-offset-0 cursor-pointer"
+                      />
+                      <span className="truncate text-slate-700">{option}</span>
+                    </label>
+                  ))}
+                  {filteredOptions.length === 0 && (
+                    <p className="py-3 text-center text-xs text-slate-400">Sin resultados</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="py-2 text-center text-xs text-slate-400">Sin opciones disponibles</p>
+            )}
+          </div>
+        )}
+
+        {/* Filter section — free text search (filterType: "text") */}
+        {canFilter && filterType === "text" && (
+          <div className="p-2 space-y-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                value={textValue}
+                onChange={(e) => column.setFilterValue(e.target.value || undefined)}
+                placeholder="Buscar texto..."
+                autoFocus
+                className="w-full rounded border border-slate-200 bg-white py-1.5 pl-7 pr-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+              />
+              {textValue && (
+                <button
+                  type="button"
+                  onClick={() => column.setFilterValue(undefined)}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
             </div>
           </div>
-        ) : null}
+        )}
 
-        {filterType === "number" ? (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Rango</p>
+        {/* Filter section — number range */}
+        {canFilter && filterType === "number" && (
+          <div className="p-2 space-y-2">
+            <p className="text-xs font-medium text-slate-500">Rango de valores</p>
             <div className="grid grid-cols-2 gap-2">
-              <Input
+              <input
                 type="number"
                 value={numberRange[0] ?? ""}
-                onChange={(event) => updateNumberFilter(0, event.target.value)}
+                onChange={(e) => updateNumberFilter(0, e.target.value)}
                 placeholder="Min"
-                className="h-9"
+                className="w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
               />
-              <Input
+              <input
                 type="number"
                 value={numberRange[1] ?? ""}
-                onChange={(event) => updateNumberFilter(1, event.target.value)}
+                onChange={(e) => updateNumberFilter(1, e.target.value)}
                 placeholder="Max"
-                className="h-9"
+                className="w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
               />
             </div>
           </div>
-        ) : null}
+        )}
 
-        {filterType === "string" ? (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Buscar texto
-            </p>
-            <Input
-              value={textValue}
-              onChange={(event) => column.setFilterValue(event.target.value || undefined)}
-              placeholder="Escribe para filtrar..."
-              className="h-9"
-            />
+        {/* Footer: clear all */}
+        {(isActive) && (
+          <div className="border-t border-slate-100 p-1.5">
+            <button
+              type="button"
+              onClick={clearAll}
+              className="flex w-full items-center justify-center gap-1.5 rounded px-2 py-1.5 text-xs font-medium text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600"
+            >
+              <X className="h-3 w-3" />
+              Limpiar filtros y orden
+            </button>
           </div>
-        ) : null}
-
-        <div className="flex justify-end">
-          <Button type="button" variant="outline" size="sm" onClick={clearFilter}>
-            Limpiar
-          </Button>
-        </div>
+        )}
       </PopoverContent>
     </Popover>
   );
 }
 
 function renderHeader<TData>(header: Header<TData, unknown>): React.ReactNode {
-  if (header.isPlaceholder) {
-    return null;
-  }
-
-  const align = getColumnAlign(header.column);
-  const renderedTitle = flexRender(header.column.columnDef.header, header.getContext()) ?? header.column.id;
-
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-1",
-        align === "right" && "justify-end",
-        align === "center" && "justify-center"
-      )}
-    >
-      <SortableColumnHeader column={header.column} title={renderedTitle} />
-      {header.column.getCanFilter() ? <ColumnFilterControl column={header.column} /> : null}
-    </div>
-  );
+  if (header.isPlaceholder) return null;
+  return <ExcelColumnHeader header={header} />;
 }
 
 export function DataTable<TData>({
@@ -353,7 +472,7 @@ export function DataTable<TData>({
 
   return (
     <>
-      <UnifiedTable density={density}>
+      <div className={cn(theme.surface)}>
         <Table density={density} className={theme.table}>
           <TableHeader className={theme.head}>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -507,7 +626,7 @@ export function DataTable<TData>({
               </TableFooter>
             ) : null}
           </Table>
-        </UnifiedTable>
+      </div>
         <RecordDetailModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}

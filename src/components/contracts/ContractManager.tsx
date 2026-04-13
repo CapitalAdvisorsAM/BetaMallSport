@@ -164,7 +164,7 @@ export function ContractManager({
           const formData = new FormData();
           formData.set("file", file);
           const response = await fetch(
-            `/api/contracts/extract?proyectoId=${encodeURIComponent(proyectoId)}`,
+            `/api/contracts/extract?projectId=${encodeURIComponent(proyectoId)}`,
             { method: "POST", body: formData }
           );
           const data = (await response.json()) as ExtractionApiResponse;
@@ -355,6 +355,7 @@ export function ContractManager({
         nextCursor={nextCursor}
         onLoadMore={handleLoadMore}
         deletingId={deletingId}
+        proyectoId={proyectoId}
       />
 
       <ConfirmModal

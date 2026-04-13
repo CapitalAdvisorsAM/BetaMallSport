@@ -199,7 +199,7 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
           <EntityActionsCell
             canEdit={canEdit}
             loading={isLoading}
-            configureHref={`/configuracion/proyecto?proyecto=${row.original.id}`}
+            configureHref={`/configuracion/proyecto?project=${row.original.id}`}
             onDelete={() => setPendingDeleteId(row.original.id)}
           />
         )

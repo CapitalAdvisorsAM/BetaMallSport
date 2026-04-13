@@ -11,7 +11,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { isPeriodoValido } from "@/lib/validators";
 import { buildMetricsCacheKey, getOrSetMetricsCache } from "@/lib/metrics-cache";
-import type { RentRollMetricasResponse } from "@/types/metricas";
+import type { RentRollMetricsResponse } from "@/types/metrics";
 
 export const runtime = "nodejs";
 
@@ -37,12 +37,12 @@ export async function GET(request: Request): Promise<NextResponse> {
     await requireSession();
 
     const { searchParams } = new URL(request.url);
-    const proyectoId = searchParams.get("proyectoId");
+    const proyectoId = searchParams.get("projectId");
     const periodo = searchParams.get("periodo") ?? toPeriodo(new Date());
     const estado = parseEstado(searchParams.get("estado"));
 
     if (!proyectoId) {
-      return NextResponse.json({ message: "proyectoId es obligatorio." }, { status: 400 });
+      return NextResponse.json({ message: "projectId es obligatorio." }, { status: 400 });
     }
     if (!estado) {
       return NextResponse.json(
@@ -59,7 +59,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       cacheKey,
       proyectoId,
       120_000,
-      async (): Promise<RentRollMetricasResponse> => {
+      async (): Promise<RentRollMetricsResponse> => {
         const hoy = new Date();
         const [metricas, localesActivos] = await Promise.all([
           getMetricasRentRoll(proyectoId, periodo),

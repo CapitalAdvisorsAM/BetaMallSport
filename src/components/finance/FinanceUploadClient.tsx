@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { ModuleHeader } from "@/components/dashboard/ModuleHeader";
-import { CargaHistorial } from "@/components/upload/CargaHistorial";
+import { UploadHistory } from "@/components/upload/UploadHistory";
 import { ProcessingUploadCard } from "@/components/upload/ProcessingUploadCard";
 import type { ProjectOption } from "@/types/finance";
 import type { UploadHistoryItem } from "@/lib/upload/history";
@@ -11,13 +11,15 @@ type FinanceUploadClientProps = {
   selectedProjectId: string;
   accountingHistory: UploadHistoryItem[];
   salesHistory: UploadHistoryItem[];
+  budgetedSalesHistory: UploadHistoryItem[];
 };
 
 export function FinanceUploadClient({
   projects,
   selectedProjectId,
   accountingHistory,
-  salesHistory
+  salesHistory,
+  budgetedSalesHistory
 }: FinanceUploadClientProps): JSX.Element {
   return (
     <main className="space-y-4">
@@ -29,7 +31,7 @@ export function FinanceUploadClient({
         showProjectSelector={false}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="space-y-4">
           <ProcessingUploadCard
             title="Datos Contables"
@@ -39,7 +41,7 @@ export function FinanceUploadClient({
             projectId={selectedProjectId}
             variant="contable"
           />
-          <CargaHistorial
+          <UploadHistory
             items={accountingHistory}
             title="Ultimas cargas contables"
             errorDownloadBasePath={null}
@@ -56,9 +58,26 @@ export function FinanceUploadClient({
             projectId={selectedProjectId}
             variant="ventas"
           />
-          <CargaHistorial
+          <UploadHistory
             items={salesHistory}
             title="Ultimas cargas de ventas"
+            errorDownloadBasePath={null}
+            countLabels={{ created: "Creados", updated: "Registros", rejected: "Errores" }}
+          />
+        </div>
+
+        <div className="space-y-4">
+          <ProcessingUploadCard
+            title="Ventas Presupuestadas"
+            description="Sube ventas presupuestadas por local y periodo para el calculo de renta variable esperada."
+            instruction=".xlsx -> hoja 'Data Presupuesto' o 'Presupuesto Ventas'"
+            endpoint="/api/finance/upload/budgeted-sales"
+            projectId={selectedProjectId}
+            variant="ventas"
+          />
+          <UploadHistory
+            items={budgetedSalesHistory}
+            title="Ultimas cargas de presupuesto"
             errorDownloadBasePath={null}
             countLabels={{ created: "Creados", updated: "Registros", rejected: "Errores" }}
           />

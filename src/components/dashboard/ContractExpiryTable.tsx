@@ -57,7 +57,7 @@ export function ContractExpiryTable({ rows, proyectoId }: ContractExpiryTablePro
   const visibleRows = rowsSorted.slice(0, CONTRACT_EXPIRY_EXECUTIVE_LIMIT);
   const totalCount = rowsSorted.length;
   const urgentCount = Math.min(totalCount, CONTRACT_EXPIRY_EXECUTIVE_LIMIT);
-  const href = `/rent-roll/dashboard?project=${proyectoId}&proyecto=${proyectoId}`;
+  const href = `/rent-roll/dashboard?project=${proyectoId}`;
   const columns = useMemo<ColumnDef<ContractExpiryRow, unknown>[]>(
     () => [
       {

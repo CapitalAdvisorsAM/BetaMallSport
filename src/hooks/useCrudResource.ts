@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CrudStatus, UseCrudResourceOptions } from "@/lib/crud/types";
 
 export type CrudResourceState<TRecord> = {
@@ -66,29 +66,34 @@ export function useCrudResource<TRecord, TCreate, TUpdate>(
   ) => Promise<TRecord | null>;
   deleteOne: (id: string, fallbackErrorMessage: string) => Promise<boolean>;
 } {
+  // Keep a ref to options so callbacks are always stable (no re-creation on every render)
+  // and the useEffect only depends on the stable initialData reference.
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
   const [state, setState] = useState<CrudResourceState<TRecord>>({
     data: sortCrudRecords(options.initialData, options.sort),
     status: "idle",
     error: null
   });
 
+  // Sync when the initialData prop changes (e.g. server refresh).
+  // We deliberately exclude options.sort from deps — it's always current via optionsRef.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setState((previous) => ({
       ...previous,
-      data: sortCrudRecords(options.initialData, options.sort)
+      data: sortCrudRecords(optionsRef.current.initialData, optionsRef.current.sort)
     }));
-  }, [options.initialData, options.sort]);
+  }, [options.initialData]);
 
-  const setData = useCallback(
-    (records: TRecord[]) => {
-      setState({
-        data: sortCrudRecords(records, options.sort),
-        status: "idle",
-        error: null
-      });
-    },
-    [options.sort]
-  );
+  const setData = useCallback((records: TRecord[]) => {
+    setState({
+      data: sortCrudRecords(records, optionsRef.current.sort),
+      status: "idle",
+      error: null
+    });
+  }, []);
 
   const resetStatus = useCallback(() => {
     setState((previous) => ({
@@ -102,11 +107,11 @@ export function useCrudResource<TRecord, TCreate, TUpdate>(
     async (payload: TCreate, fallbackErrorMessage: string): Promise<TRecord | null> => {
       setState((previous) => ({ ...previous, status: "loading", error: null }));
       try {
-        const created = await options.create(payload);
+        const created = await optionsRef.current.create(payload);
         setState((previous) => ({
           data: sortCrudRecords(
-            upsertCrudRecord(previous.data, created, options.getId),
-            options.sort
+            upsertCrudRecord(previous.data, created, optionsRef.current.getId),
+            optionsRef.current.sort
           ),
           status: "success",
           error: null
@@ -121,18 +126,18 @@ export function useCrudResource<TRecord, TCreate, TUpdate>(
         return null;
       }
     },
-    [options]
+    []
   );
 
   const updateOne = useCallback(
     async (id: string, payload: TUpdate, fallbackErrorMessage: string): Promise<TRecord | null> => {
       setState((previous) => ({ ...previous, status: "loading", error: null }));
       try {
-        const updated = await options.update(id, payload);
+        const updated = await optionsRef.current.update(id, payload);
         setState((previous) => ({
           data: sortCrudRecords(
-            upsertCrudRecord(previous.data, updated, options.getId),
-            options.sort
+            upsertCrudRecord(previous.data, updated, optionsRef.current.getId),
+            optionsRef.current.sort
           ),
           status: "success",
           error: null
@@ -147,16 +152,16 @@ export function useCrudResource<TRecord, TCreate, TUpdate>(
         return null;
       }
     },
-    [options]
+    []
   );
 
   const deleteOne = useCallback(
     async (id: string, fallbackErrorMessage: string): Promise<boolean> => {
       setState((previous) => ({ ...previous, status: "loading", error: null }));
       try {
-        await options.remove(id);
+        await optionsRef.current.remove(id);
         setState((previous) => ({
-          data: removeCrudRecord(previous.data, id, options.getId),
+          data: removeCrudRecord(previous.data, id, optionsRef.current.getId),
           status: "success",
           error: null
         }));
@@ -170,7 +175,7 @@ export function useCrudResource<TRecord, TCreate, TUpdate>(
         return false;
       }
     },
-    [options]
+    []
   );
 
   return useMemo(

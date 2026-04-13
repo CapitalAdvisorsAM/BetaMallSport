@@ -83,13 +83,24 @@ export function previewRowToUploadDraft(
         esDiciembre: false
       }));
 
-  const rentaVariableItem = rentaVariablePctValue
-    ? { _key: createDraftKey(), pctRentaVariable: rentaVariablePctValue, vigenciaDesde: asString(row.data.fechaInicio).trim(), vigenciaHasta: asNullableString(row.data.fechaTermino) }
-    : isOnlyRentaVariable
-    ? { _key: createDraftKey(), pctRentaVariable: tarifaValor, vigenciaDesde: asString(row.data.fechaInicio).trim(), vigenciaHasta: asNullableString(row.data.fechaTermino) }
-    : null;
+  const basePct = rentaVariablePctValue ?? (isOnlyRentaVariable ? tarifaValor : null);
+  const fechaInicioStr = asString(row.data.fechaInicio).trim();
+  const fechaTerminoStr = asNullableString(row.data.fechaTermino);
 
-  const rentaVariable = rentaVariableItem ? [rentaVariableItem] : [];
+  const rentaVariable: ContractDraftPayload["rentaVariable"] = [];
+  if (basePct) {
+    rentaVariable.push({ _key: createDraftKey(), pctRentaVariable: basePct, umbralVentasUf: "0", vigenciaDesde: fechaInicioStr, vigenciaHasta: fechaTerminoStr });
+    const rv2Umbral = asNullableString(row.data.rentaVariable2UmbralUf);
+    const rv2Pct = asNullableString(row.data.rentaVariable2Pct);
+    if (rv2Umbral && rv2Pct) {
+      rentaVariable.push({ _key: createDraftKey(), pctRentaVariable: rv2Pct, umbralVentasUf: rv2Umbral, vigenciaDesde: fechaInicioStr, vigenciaHasta: fechaTerminoStr });
+    }
+    const rv3Umbral = asNullableString(row.data.rentaVariable3UmbralUf);
+    const rv3Pct = asNullableString(row.data.rentaVariable3Pct);
+    if (rv3Umbral && rv3Pct) {
+      rentaVariable.push({ _key: createDraftKey(), pctRentaVariable: rv3Pct, umbralVentasUf: rv3Umbral, vigenciaDesde: fechaInicioStr, vigenciaHasta: fechaTerminoStr });
+    }
+  }
 
   const hasAnyGgcc = [
     asNullableString(row.data.ggccValor),
@@ -121,7 +132,6 @@ export function previewRowToUploadDraft(
       fechaTermino: asString(row.data.fechaTermino).trim(),
       fechaEntrega: asNullableString(row.data.fechaEntrega),
       fechaApertura: asNullableString(row.data.fechaApertura),
-      estado: (asString(row.data.estado).trim().toUpperCase() || "VIGENTE") as ContractDraftPayload["estado"],
       rentaVariable,
       pctFondoPromocion: asNullableString(row.data.pctFondoPromocion),
       pctAdministracionGgcc: ggccPctAdministracion,
@@ -185,7 +195,6 @@ export function uploadDraftToPreviewData(
     numeroContrato: extras.numeroContrato.trim(),
     localCodigo,
     arrendatarioNombre,
-    estado: draft.estado,
     fechaInicio: draft.fechaInicio,
     fechaTermino: draft.fechaTermino,
     fechaEntrega: draft.fechaEntrega,
@@ -199,6 +208,10 @@ export function uploadDraftToPreviewData(
     ...buildTramo(3, "tarifa4"),
     ...buildTramo(4, "tarifa5"),
     rentaVariablePct: hasMixedTarifas ? (rentaVariable?.pctRentaVariable ?? null) : null,
+    rentaVariable2UmbralUf: hasMixedTarifas ? (draft.rentaVariable[1]?.umbralVentasUf ?? null) : null,
+    rentaVariable2Pct: hasMixedTarifas ? (draft.rentaVariable[1]?.pctRentaVariable ?? null) : null,
+    rentaVariable3UmbralUf: hasMixedTarifas ? (draft.rentaVariable[2]?.umbralVentasUf ?? null) : null,
+    rentaVariable3Pct: hasMixedTarifas ? (draft.rentaVariable[2]?.pctRentaVariable ?? null) : null,
     pctFondoPromocion: draft.pctFondoPromocion,
     multiplicadorDiciembre: draft.multiplicadorDiciembre,
     codigoCC: draft.codigoCC,

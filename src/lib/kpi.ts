@@ -35,10 +35,12 @@ export type KpiContractInput = {
   localCodigo: string;
   localEsGLA: boolean;
   localGlam2: DecimalLike;
+  arrendatarioId?: string;
   arrendatarioNombre: string;
   numeroContrato: string;
   fechaTermino: Date;
   tarifaVariablePct?: DecimalLike | null;
+  variableRentTiers?: Array<{ umbralVentasUf: number; pct: number }>;
   tarifa: KpiTarifaInput | null;
   ggcc: KpiGgccInput | null;
 };
@@ -57,6 +59,7 @@ export type ContractStateCounter = {
 export type ContractExpiryRow = {
   id: string;
   local: string;
+  arrendatarioId?: string;
   arrendatario: string;
   numeroContrato: string;
   fechaTermino: Date;
@@ -412,6 +415,7 @@ export function buildContractExpiryRows(
       return {
         id: contract.id,
         local: contract.localCodigo,
+        arrendatarioId: contract.arrendatarioId,
         arrendatario: contract.arrendatarioNombre,
         numeroContrato: contract.numeroContrato,
         fechaTermino: contract.fechaTermino,
@@ -444,6 +448,7 @@ export type AlertCounts = {
   enGracia: number;
   vacantes: number;
   proyectoId: string;
+  brechaFacturacion?: number;
 };
 
 type AlertContractInput = Pick<KpiContractInput, "fechaTermino"> & {
@@ -569,7 +574,7 @@ export type IngresoDesglosado = {
 
 type IngresoContratoInput = Pick<
   KpiContractInput,
-  "localId" | "localGlam2" | "tarifa" | "fechaTermino" | "tarifaVariablePct"
+  "localId" | "localGlam2" | "tarifa" | "fechaTermino" | "tarifaVariablePct" | "variableRentTiers" | "arrendatarioId"
 >;
 
 type IngresoLocalInput = {
@@ -581,7 +586,7 @@ type IngresoLocalInput = {
 };
 
 type VentaLocalPeriodoInput = {
-  localId: string;
+  arrendatarioId: string;
   periodo: string;
   ventasUf: DecimalLike;
 };
@@ -617,7 +622,7 @@ export type OcupacionDetalle = {
   glaArrendada: number;
   glaVacante: number;
   pctVacancia: number;
-  porCategoria: Record<string, { gla: number; pct: number }>;
+  porCategoria: Record<string, { gla: number; glaArrendada: number; pct: number; pctVacancia: number }>;
   porTamano: Record<string, { gla: number; glaArrendada: number; pctVacancia: number }>;
 };
 
@@ -707,14 +712,14 @@ export function buildIngresoDesglosado(
   periodo: string
 ): IngresoDesglosado {
   const localById = new Map(locales.map((local) => [local.id, local]));
-  const ventasByLocal = new Map<string, number>();
+  const ventasByTenant = new Map<string, number>();
   for (const venta of ventasLocales) {
     if (venta.periodo !== periodo) {
       continue;
     }
-    ventasByLocal.set(
-      venta.localId,
-      (ventasByLocal.get(venta.localId) ?? 0) + toFiniteNumber(venta.ventasUf)
+    ventasByTenant.set(
+      venta.arrendatarioId,
+      (ventasByTenant.get(venta.arrendatarioId) ?? 0) + toFiniteNumber(venta.ventasUf)
     );
   }
 
@@ -741,11 +746,19 @@ export function buildIngresoDesglosado(
       arriendoFijoUf += fixedAmount;
     }
 
-    const porcentajeVariable = toFiniteNumber(contrato.tarifaVariablePct);
-
-    if (porcentajeVariable > 0) {
-      const ventasUf = ventasByLocal.get(contrato.localId) ?? 0;
-      arriendoVariableUf += ventasUf * (porcentajeVariable / 100);
+    if (contrato.variableRentTiers && contrato.variableRentTiers.length > 0 && contrato.arrendatarioId) {
+      const ventasUf = ventasByTenant.get(contrato.arrendatarioId) ?? 0;
+      const sorted = [...contrato.variableRentTiers].sort((a, b) => b.umbralVentasUf - a.umbralVentasUf);
+      const tier = sorted.find((t) => ventasUf >= t.umbralVentasUf);
+      if (tier) {
+        arriendoVariableUf += ventasUf * (tier.pct / 100);
+      }
+    } else {
+      const porcentajeVariable = toFiniteNumber(contrato.tarifaVariablePct);
+      if (porcentajeVariable > 0 && contrato.arrendatarioId) {
+        const ventasUf = ventasByTenant.get(contrato.arrendatarioId) ?? 0;
+        arriendoVariableUf += ventasUf * (porcentajeVariable / 100);
+      }
     }
   }
 
@@ -800,13 +813,12 @@ export function buildOcupacionDetalle(
   }, 0);
   const glaVacante = Math.max(glaTotal - glaArrendada, 0);
 
-  const porCategoria = CATEGORIAS_OCUPACION.reduce<Record<string, { gla: number; pct: number }>>(
-    (acc, categoria) => {
-      acc[categoria] = { gla: 0, pct: 0 };
-      return acc;
-    },
-    {}
-  );
+  const porCategoria = CATEGORIAS_OCUPACION.reduce<
+    Record<string, { gla: number; glaArrendada: number; pct: number; pctVacancia: number }>
+  >((acc, categoria) => {
+    acc[categoria] = { gla: 0, glaArrendada: 0, pct: 0, pctVacancia: 0 };
+    return acc;
+  }, {});
 
   for (const local of locales) {
     if (!local.esGLA) {
@@ -816,12 +828,18 @@ export function buildOcupacionDetalle(
     if (!categoria) {
       continue;
     }
-    porCategoria[categoria].gla += toFiniteNumber(local.glam2);
+    const gla = toFiniteNumber(local.glam2);
+    porCategoria[categoria].gla += gla;
+    if (localesArrendados.has(local.id)) {
+      porCategoria[categoria].glaArrendada += gla;
+    }
   }
 
   for (const categoria of CATEGORIAS_OCUPACION) {
-    const glaCategoria = porCategoria[categoria].gla;
-    porCategoria[categoria].pct = glaTotal > 0 ? (glaCategoria / glaTotal) * 100 : 0;
+    const row = porCategoria[categoria];
+    row.pct = glaTotal > 0 ? (row.gla / glaTotal) * 100 : 0;
+    const vacante = Math.max(row.gla - row.glaArrendada, 0);
+    row.pctVacancia = row.gla > 0 ? (vacante / row.gla) * 100 : 0;
   }
 
   const porTamano = TAMANOS_OCUPACION.reduce<

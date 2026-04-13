@@ -1,0 +1,315 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import {
+  Bar,
+  CartesianGrid,
+  ComposedChart,
+  Legend,
+  Line,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from "recharts";
+import { ModuleEmptyState } from "@/components/dashboard/ModuleEmptyState";
+import { ModuleHeader } from "@/components/dashboard/ModuleHeader";
+import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
+import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
+import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolbar";
+import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
+import { UnifiedTable } from "@/components/ui/UnifiedTable";
+import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
+import { cn } from "@/lib/utils";
+import type { ProjectOption } from "@/types/finance";
+import type {
+  OccupancyDimensionRow,
+  OccupancyTimeSeriesResponse
+} from "@/types/occupancy";
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+type DimensionTab = "tipo" | "tamano" | "piso";
+
+const DIMENSION_LABELS: Record<DimensionTab, string> = {
+  tipo: "Categoría (Tipo)",
+  tamano: "Categoría (Tamaño)",
+  piso: "Piso"
+};
+
+const BAR_COLORS = [
+  "#1e40af", "#059669", "#d97706", "#7c3aed",
+  "#dc2626", "#0891b2", "#84cc16", "#f97316",
+  "#6366f1", "#ec4899"
+];
+
+const compactTheme = getTableTheme("compact");
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function fmtNum(v: number, decimals = 2): string {
+  return v.toLocaleString("es-CL", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  });
+}
+
+function fmtPct(v: number): string {
+  return `${fmtNum(v, 1)}%`;
+}
+
+function vacancyColorCls(pct: number): string {
+  if (pct <= 5) return "text-emerald-700";
+  if (pct <= 15) return "text-amber-700";
+  return "text-red-700";
+}
+
+function getRowsForDimension(
+  snapshot: { byType: OccupancyDimensionRow[]; bySize: OccupancyDimensionRow[]; byFloor: OccupancyDimensionRow[] },
+  dim: DimensionTab
+): OccupancyDimensionRow[] {
+  if (dim === "tipo") return snapshot.byType;
+  if (dim === "tamano") return snapshot.bySize;
+  return snapshot.byFloor;
+}
+
+// ---------------------------------------------------------------------------
+// Props
+// ---------------------------------------------------------------------------
+
+type Props = {
+  projects: ProjectOption[];
+  selectedProjectId: string;
+  defaultDesde?: string;
+  defaultHasta?: string;
+};
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+export function OccupancyClient({
+  projects,
+  selectedProjectId,
+  defaultDesde,
+  defaultHasta
+}: Props): JSX.Element {
+  const [desde, setDesde] = useState(defaultDesde ?? "");
+  const [hasta, setHasta] = useState(defaultHasta ?? "");
+  const [dimension, setDimension] = useState<DimensionTab>("tamano");
+
+  const [data, setData] = useState<OccupancyTimeSeriesResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ projectId: selectedProjectId });
+      if (desde) params.set("from", desde);
+      if (hasta) params.set("to", hasta);
+      const res = await fetch(`/api/finance/occupancy?${params}`);
+      if (res.ok) {
+        setData((await res.json()) as OccupancyTimeSeriesResponse);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedProjectId, desde, hasta]);
+
+  useEffect(() => { void fetchData(); }, [fetchData]);
+
+  // Derive current snapshot (last period) and dimension labels for chart
+  const snapshots = data?.snapshots ?? [];
+  const lastSnapshot = snapshots[snapshots.length - 1] ?? null;
+  const currentRows = lastSnapshot ? getRowsForDimension(lastSnapshot, dimension) : [];
+  const totals = lastSnapshot?.totals ?? null;
+
+  // Collect all unique dimension values across all snapshots for chart series
+  const allDimensions = new Set<string>();
+  for (const snap of snapshots) {
+    for (const row of getRowsForDimension(snap, dimension)) {
+      allDimensions.add(row.dimension);
+    }
+  }
+  const dimensionKeys = [...allDimensions];
+
+  // Build chart data
+  const chartData = snapshots.map((snap) => {
+    const rows = getRowsForDimension(snap, dimension);
+    const entry: Record<string, string | number> = { mes: snap.period.slice(5) };
+    for (const key of dimensionKeys) {
+      const row = rows.find((r) => r.dimension === key);
+      entry[key] = row ? row.glaOcupada : 0;
+    }
+    entry["Vacancia %"] = snap.totals.pctVacancia;
+    return entry;
+  });
+
+  return (
+    <main className="space-y-4">
+      <ModuleHeader
+        title="Ocupación Mensual"
+        description="Evolución de la ocupación por tipo, tamaño y piso. Replica la hoja 'Ocupación' del CDG."
+        projects={projects}
+        selectedProjectId={selectedProjectId}
+        preserve={{ desde, hasta }}
+        actions={
+          <ProjectPeriodToolbar
+            desde={desde}
+            hasta={hasta}
+            onDesdeChange={setDesde}
+            onHastaChange={setHasta}
+          />
+        }
+      />
+
+      {/* Dimension tabs */}
+      <ModuleSectionCard>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-slate-500">Ver por</span>
+          {(Object.keys(DIMENSION_LABELS) as DimensionTab[]).map((d) => (
+            <button
+              key={d}
+              onClick={() => setDimension(d)}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                dimension === d
+                  ? "bg-brand-700 text-white"
+                  : "border border-slate-200 text-slate-600 hover:border-brand-300 hover:text-brand-700"
+              )}
+            >
+              {DIMENSION_LABELS[d]}
+            </button>
+          ))}
+        </div>
+      </ModuleSectionCard>
+
+      {/* Content */}
+      {loading ? (
+        <ModuleLoadingState message="Cargando ocupación..." />
+      ) : !data || snapshots.length === 0 ? (
+        <ModuleEmptyState
+          message="Sin datos de ocupación para el rango seleccionado."
+          actionHref={`/rent-roll/contracts?project=${selectedProjectId}`}
+          actionLabel="Gestionar contratos"
+        />
+      ) : (
+        <>
+          {/* Chart */}
+          <MetricChartCard
+            title={`Ocupación por ${DIMENSION_LABELS[dimension]}`}
+            metricId="chart_finance_occupancy"
+            description="Barras: GLA ocupada por dimensión (m²). Línea: vacancia total (%)."
+          >
+            <ResponsiveContainer width="100%" height={300}>
+              <ComposedChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="left" tick={{ fontSize: 11 }} tickFormatter={(v: number) => v.toLocaleString("es-CL")} />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(v: number) => `${v.toFixed(1)}%`}
+                  domain={[0, "auto"]}
+                />
+                <Tooltip
+                  formatter={(value, name) => {
+                    const v = typeof value === "number" ? value : Number(value ?? 0);
+                    const label = String(name ?? "");
+                    return [
+                      label === "Vacancia %"
+                        ? `${v.toFixed(1)}%`
+                        : v.toLocaleString("es-CL", { maximumFractionDigits: 0 }),
+                      label
+                    ];
+                  }}
+                  labelFormatter={(l) => `Mes: ${String(l)}`}
+                />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                {dimensionKeys.map((key, i) => (
+                  <Bar
+                    key={key}
+                    yAxisId="left"
+                    dataKey={key}
+                    name={key}
+                    stackId="gla"
+                    fill={BAR_COLORS[i % BAR_COLORS.length]}
+                  />
+                ))}
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="Vacancia %"
+                  name="Vacancia %"
+                  stroke="#dc2626"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </MetricChartCard>
+
+          {/* Current snapshot table */}
+          <ModuleSectionCard>
+            <UnifiedTable
+              density="compact"
+              toolbar={
+                <p className="text-xs text-slate-400">
+                  Periodo: {lastSnapshot?.period ?? "–"} · {currentRows.length} dimensiones
+                </p>
+              }
+            >
+              <table className={`${compactTheme.table} text-xs`}>
+                <thead className={compactTheme.head}>
+                  <tr>
+                    <th className={`${compactTheme.headCell} sticky left-0 bg-brand-700 pl-4 pr-3`}>
+                      {DIMENSION_LABELS[dimension]}
+                    </th>
+                    <th className={`${compactTheme.compactHeadCell} text-right`}>GLA Total (m²)</th>
+                    <th className={`${compactTheme.compactHeadCell} text-right`}>GLA Ocupada (m²)</th>
+                    <th className={`${compactTheme.compactHeadCell} text-right`}>GLA Vacante (m²)</th>
+                    <th className={`${compactTheme.compactHeadCell} text-right`}>Vacancia (%)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {currentRows.map((row, idx) => (
+                    <tr
+                      key={row.dimension}
+                      className={`${getStripedRowClass(idx, "compact")} ${compactTheme.rowHover}`}
+                    >
+                      <td className="sticky left-0 bg-inherit py-1.5 pl-4 pr-3 font-medium text-slate-700">
+                        {row.dimension}
+                      </td>
+                      <td className="px-2 py-1.5 text-right text-slate-600">{fmtNum(row.glaTotal)}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-600">{fmtNum(row.glaOcupada)}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-600">{fmtNum(row.glaVacante)}</td>
+                      <td className={cn("px-2 py-1.5 text-right font-semibold", vacancyColorCls(row.pctVacancia))}>
+                        {fmtPct(row.pctVacancia)}
+                      </td>
+                    </tr>
+                  ))}
+                  {totals ? (
+                    <tr className="border-t-2 border-brand-600 bg-brand-700 text-white hover:bg-brand-700">
+                      <td className="sticky left-0 bg-brand-700 py-2 pl-4 pr-3 text-xs font-bold uppercase tracking-wide">
+                        Total
+                      </td>
+                      <td className="px-2 py-2 text-right text-xs font-bold">{fmtNum(totals.glaTotal)}</td>
+                      <td className="px-2 py-2 text-right text-xs font-bold">{fmtNum(totals.glaOcupada)}</td>
+                      <td className="px-2 py-2 text-right text-xs font-bold">{fmtNum(totals.glaVacante)}</td>
+                      <td className="px-2 py-2 text-right text-xs font-bold">{fmtPct(totals.pctVacancia)}</td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </UnifiedTable>
+          </ModuleSectionCard>
+        </>
+      )}
+    </main>
+  );
+}

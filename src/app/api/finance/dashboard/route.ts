@@ -79,7 +79,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const mode: Mode =
       rawMode === "ltm"
         ? "ltm"
-        : rawMode === "year" || rawMode === "año" || rawMode === "anio" || rawMode === "aÃ±o"
+        : rawMode === "year" || rawMode === "año" || rawMode === "anio" || rawMode === "año"
           ? "year"
           : "month";
     const period = getFinancePeriod(searchParams);

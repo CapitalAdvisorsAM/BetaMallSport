@@ -45,11 +45,11 @@ export async function GET(request: Request): Promise<NextResponse> {
     const { searchParams } = new URL(request.url);
     const q = searchParams.get("q")?.trim() ?? "";
     const rawState = searchParams.get("estado");
-    const proyectoId = searchParams.get("proyecto");
+    const proyectoId = searchParams.get("projectId");
     const periodo = searchParams.get("periodo") ?? toPeriodo(new Date());
 
     if (!proyectoId) {
-      return NextResponse.json({ message: "proyecto es obligatorio." }, { status: 400 });
+      return NextResponse.json({ message: "projectId es obligatorio." }, { status: 400 });
     }
     if (!isPeriodoValido(periodo)) {
       return NextResponse.json({ message: "periodo debe tener formato YYYY-MM." }, { status: 400 });

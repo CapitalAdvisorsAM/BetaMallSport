@@ -1,6 +1,6 @@
 import { DataUploadType, ContractRateType } from "@prisma/client";
 import { ApiError } from "@/lib/api-error";
-import { parseRentRollPreviewPayload } from "@/lib/carga-datos";
+import { parseRentRollPreviewPayload } from "@/lib/upload/data-payload";
 import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 import { prisma } from "@/lib/prisma";
 import {
@@ -13,7 +13,7 @@ import {
   type LocalMap,
   type StoredContratoPreview
 } from "@/lib/rent-roll/contracts-apply-service";
-import { normalizeUploadArrendatarioNombre } from "@/lib/upload/parse-contratos";
+import { normalizeUploadTenantName } from "@/lib/upload/parse-contracts";
 import { parseStoredUploadPayload } from "@/lib/upload/payload";
 import type { ApplyReport, PreviewRow, UploadIssue } from "@/types/upload";
 
@@ -93,7 +93,7 @@ export async function runContratosApplyJob(input: {
     );
     const arrendatariosMap: ArrendatarioMap = new Map<string, string[]>();
     for (const item of arrendatarios) {
-      const normalizedName = normalizeUploadArrendatarioNombre(item.nombreComercial);
+      const normalizedName = normalizeUploadTenantName(item.nombreComercial);
       if (!normalizedName) {
         continue;
       }

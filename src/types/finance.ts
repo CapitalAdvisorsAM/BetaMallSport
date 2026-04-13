@@ -22,6 +22,9 @@ export type TenantFinanceRow = {
   totalFacturado: number;
   totalVentas: number;
   costoOcupacion: number | null;
+  totalEsperado: number | null;
+  brechaUf: number | null;
+  brechaPct: number | null;
 };
 
 export type EerrLocalDetalle = {
@@ -106,4 +109,75 @@ export type VentasUploadResult = {
   registrosUpserted: number;
   matchesAutomaticos: number;
   sinMapeo: VentasUnmapped[];
+};
+
+export type BudgetVsActualMonthly = {
+  period: string;
+  budgetUf: number;
+  actualUf: number;
+  varianceUf: number;
+  variancePct: number;
+  achievementPct: number;
+};
+
+export type BudgetVsActualTenantRow = {
+  tenantId: string;
+  rut: string;
+  nombreComercial: string;
+  locales: { codigo: string; nombre: string }[];
+  glam2: number;
+  budgetUf: number;
+  actualUf: number;
+  varianceUf: number;
+  variancePct: number;
+  achievementPct: number;
+};
+
+export type BudgetVsActualSummary = {
+  totalBudgetUf: number;
+  totalActualUf: number;
+  totalVarianceUf: number;
+  totalVariancePct: number;
+  totalAchievementPct: number;
+  tenantsOverBudget: number;
+  tenantsUnderBudget: number;
+  tenantCount: number;
+};
+
+export type BudgetVsActualResponse = {
+  periods: string[];
+  monthly: BudgetVsActualMonthly[];
+  rows: BudgetVsActualTenantRow[];
+  summary: BudgetVsActualSummary;
+};
+
+export type WaterfallMode = "mom" | "yoy";
+
+export type WaterfallCategory =
+  | "starting"
+  | "new_contracts"
+  | "lost_contracts"
+  | "rate_changes"
+  | "variable_rent"
+  | "ggcc_changes"
+  | "other"
+  | "ending";
+
+export type WaterfallBar = {
+  category: WaterfallCategory;
+  label: string;
+  value: number;
+  cumulative: number;
+  isTotal: boolean;
+};
+
+export type WaterfallResponse = {
+  mode: WaterfallMode;
+  currentPeriod: string;
+  previousPeriod: string;
+  bars: WaterfallBar[];
+  currentTotal: number;
+  previousTotal: number;
+  netChange: number;
+  netChangePct: number;
 };

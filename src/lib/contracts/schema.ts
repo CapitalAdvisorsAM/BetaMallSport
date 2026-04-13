@@ -49,11 +49,11 @@ export const contractPayloadSchema = z
     fechaEntrega: nullableDateStringSchema,
     fechaApertura: nullableDateStringSchema,
     diasGracia: z.number().int().min(0).default(0),
-    estado: z.enum(["VIGENTE", "TERMINADO", "TERMINADO_ANTICIPADO", "GRACIA"]),
     rentaVariable: z
       .array(
         z.object({
           pctRentaVariable: decimalStringSchema,
+          umbralVentasUf: decimalStringSchema,
           vigenciaDesde: dateStringSchema,
           vigenciaHasta: nullableDateStringSchema
         })
@@ -126,16 +126,33 @@ export const contractPayloadSchema = z
 
     const rentaVariableKeys = new Set<string>();
     for (const item of payload.rentaVariable) {
-      const key = rentaVariableKey(item.vigenciaDesde);
+      const key = `${rentaVariableKey(item.vigenciaDesde)}|${item.umbralVentasUf}`;
       if (rentaVariableKeys.has(key)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Hay renta variable duplicada con mismo vigenciaDesde.",
+          message: "Hay tramos de renta variable duplicados con mismo umbral y vigenciaDesde.",
           path: ["rentaVariable"]
         });
         break;
       }
       rentaVariableKeys.add(key);
+    }
+
+    if (payload.rentaVariable.length > 0) {
+      const hasBaseTier = payload.rentaVariable.some((item) => {
+        try {
+          return new Prisma.Decimal(item.umbralVentasUf).isZero();
+        } catch {
+          return false;
+        }
+      });
+      if (!hasBaseTier) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Debe existir un tramo base con umbral 0.",
+          path: ["rentaVariable"]
+        });
+      }
     }
 
     const localIds = payload.localIds.length > 0 ? payload.localIds : [payload.localId];

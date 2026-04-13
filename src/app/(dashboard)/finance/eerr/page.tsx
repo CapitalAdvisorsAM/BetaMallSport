@@ -6,7 +6,7 @@ import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/proje
 export default async function FinanceEerrPage({
   searchParams
 }: {
-  searchParams: { project?: string; proyecto?: string; from?: string; to?: string; desde?: string; hasta?: string };
+  searchParams: { project?: string; from?: string; to?: string; desde?: string; hasta?: string };
 }): Promise<JSX.Element> {
   const session = await requireSession();
   const projectParam = resolveProjectIdFromSearchParams(searchParams);

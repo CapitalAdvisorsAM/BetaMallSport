@@ -8,7 +8,7 @@ import { getUploadHistory } from "@/lib/upload/history";
 export default async function FinanceUploadPage({
   searchParams
 }: {
-  searchParams: { project?: string; proyecto?: string };
+  searchParams: { project?: string };
 }): Promise<JSX.Element> {
   const session = await requireSession();
   const projectParam = resolveProjectIdFromSearchParams(searchParams);
@@ -24,9 +24,10 @@ export default async function FinanceUploadPage({
     );
   }
 
-  const [accountingHistory, salesHistory] = await Promise.all([
+  const [accountingHistory, salesHistory, budgetedSalesHistory] = await Promise.all([
     getUploadHistory(selectedProjectId, DataUploadType.ACCOUNTING, "created"),
-    getUploadHistory(selectedProjectId, DataUploadType.SALES, "updated")
+    getUploadHistory(selectedProjectId, DataUploadType.SALES, "updated"),
+    getUploadHistory(selectedProjectId, DataUploadType.BUDGETED_SALES, "updated")
   ]);
 
   return (
@@ -35,6 +36,7 @@ export default async function FinanceUploadPage({
       selectedProjectId={selectedProjectId}
       accountingHistory={accountingHistory}
       salesHistory={salesHistory}
+      budgetedSalesHistory={budgetedSalesHistory}
     />
   );
 }

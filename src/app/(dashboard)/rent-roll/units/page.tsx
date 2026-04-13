@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { UnitsViewTable } from "@/components/rent-roll/UnitsViewTable";
 import { RentRollEntityModeNav } from "@/components/rent-roll/RentRollEntityModeNav";
 import { UnitsCrudPanel } from "@/components/rent-roll/UnitsCrudPanel";
-import { CargaHistorial } from "@/components/upload/CargaHistorial";
+import { ZonesConfigPanel } from "@/components/rent-roll/ZonesConfigPanel";
+import { UploadHistory } from "@/components/upload/UploadHistory";
 import { UploadSection } from "@/components/upload/UploadSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,13 +28,12 @@ import { getUploadHistory } from "@/lib/rent-roll/upload-history";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
 import { appendProjectQuery, buildProjectQueryString } from "@/lib/project-query";
-import { DEFAULT_COMMERCIAL_SIZE_RULES } from "@/lib/locales/size";
+import { DEFAULT_COMMERCIAL_SIZE_RULES } from "@/lib/units/size";
 import { formatDecimal } from "@/lib/utils";
 
 type UnitsPageProps = {
   searchParams: {
     project?: string;
-    proyecto?: string;
     q?: string;
     estado?: string;
     seccion?: string;
@@ -52,7 +52,7 @@ type UnitsCrudRow = {
   glam2: import("@prisma/client").Prisma.Decimal;
   piso: string;
   tipo: import("@prisma/client").UnitType;
-  zona: string | null;
+  zonaId: string | null;
   esGLA: boolean;
   estado: import("@prisma/client").MasterStatus;
 };
@@ -116,13 +116,19 @@ export default async function UnitsPage({
     nombre: string;
     tipo: import("@prisma/client").UnitType;
     piso: string;
-    zona: string | null;
+    zonaId: string | null;
     glam2: import("@prisma/client").Prisma.Decimal;
     esGLA: boolean;
     estado: import("@prisma/client").MasterStatus;
   }> = [];
   let totalUnits = 0;
   let unitsCrud: UnitsCrudRow[] = [];
+
+  const zones = await prisma.zone.findMany({
+    where: { proyectoId: selectedProjectId },
+    orderBy: { nombre: "asc" },
+    select: { id: true, nombre: true }
+  });
 
   if (mode === "ver") {
     [units, totalUnits] = await Promise.all([
@@ -137,7 +143,7 @@ export default async function UnitsPage({
           nombre: true,
           tipo: true,
           piso: true,
-          zona: true,
+          zonaId: true,
           glam2: true,
           esGLA: true,
           estado: true
@@ -157,7 +163,7 @@ export default async function UnitsPage({
         glam2: true,
         piso: true,
         tipo: true,
-        zona: true,
+        zonaId: true,
         esGLA: true,
         estado: true
       }
@@ -209,7 +215,7 @@ export default async function UnitsPage({
             nombre: true,
             tipo: true,
             piso: true,
-            zona: true,
+            zonaId: true,
             glam2: true,
             esGLA: true,
             estado: true
@@ -220,14 +226,14 @@ export default async function UnitsPage({
   const filteredExportHref = buildExportExcelUrl({
     dataset: "locales",
     scope: "filtered",
-    proyectoId: selectedProjectId,
+    projectId: selectedProjectId,
     q: q || undefined,
     estado: estado ?? undefined
   });
   const allExportHref = buildExportExcelUrl({
     dataset: "locales",
     scope: "all",
-    proyectoId: selectedProjectId
+    projectId: selectedProjectId
   });
 
   return (
@@ -295,7 +301,8 @@ export default async function UnitsPage({
                   <span className="font-semibold text-slate-700">Piso:</span> {selectedUnit.piso}
                 </p>
                 <p>
-                  <span className="font-semibold text-slate-700">Zona:</span> {selectedUnit.zona ?? "-"}
+                  <span className="font-semibold text-slate-700">Zona:</span>{" "}
+                  {zones.find((z) => z.id === selectedUnit.zonaId)?.nombre ?? "-"}
                 </p>
                 <p>
                   <span className="font-semibold text-slate-700">GLA m2:</span>{" "}
@@ -352,7 +359,7 @@ export default async function UnitsPage({
                 codigo: unit.codigo,
                 tipo: unit.tipo,
                 piso: unit.piso,
-                zona: unit.zona,
+                zona: zones.find((z) => z.id === unit.zonaId)?.nombre ?? null,
                 glam2: unit.glam2.toString(),
                 esGLA: unit.esGLA,
                 estado: unit.estado
@@ -391,6 +398,7 @@ export default async function UnitsPage({
         <UnitsCrudPanel
           projectId={selectedProjectId}
           canEdit={canEdit}
+          zones={zones}
           initialLocales={unitsCrud.map((unit) => ({
             id: unit.id,
             proyectoId: unit.proyectoId,
@@ -399,7 +407,7 @@ export default async function UnitsPage({
             glam2: unit.glam2.toString(),
             piso: unit.piso,
             tipo: unit.tipo,
-            zona: unit.zona,
+            zonaId: unit.zonaId,
             esGLA: unit.esGLA,
             estado: unit.estado
           }))}
@@ -414,9 +422,9 @@ export default async function UnitsPage({
             tipo="LOCALES"
             proyectoId={selectedProjectId}
             canEdit={canEdit}
-            previewEndpoint="/api/rent-roll/upload/locales/preview"
-            applyEndpoint="/api/rent-roll/upload/locales/apply"
-            templateEndpoint="/api/rent-roll/upload/locales/template"
+            previewEndpoint="/api/rent-roll/upload/units/preview"
+            applyEndpoint="/api/rent-roll/upload/units/apply"
+            templateEndpoint="/api/rent-roll/upload/units/template"
             columns={[
               { key: "codigo", label: "Codigo" },
               { key: "nombre", label: "Nombre" },
@@ -426,9 +434,15 @@ export default async function UnitsPage({
               { key: "estado", label: "Estado" }
             ]}
           />
-          <CargaHistorial items={uploadHistory} />
+          <UploadHistory items={uploadHistory} />
         </>
       ) : mode === "config" ? (
+        <>
+        <ZonesConfigPanel
+          projectId={selectedProjectId}
+          canEdit={canEdit}
+          initialZones={zones.map((z) => ({ id: z.id, proyectoId: selectedProjectId, nombre: z.nombre }))}
+        />
         <UnifiedTable
           className="shadow-sm"
           toolbar={
@@ -474,6 +488,7 @@ export default async function UnitsPage({
             </tbody>
           </table>
         </UnifiedTable>
+        </>
       ) : null}
     </main>
   );

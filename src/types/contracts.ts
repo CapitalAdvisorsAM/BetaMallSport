@@ -28,6 +28,7 @@ export type ContractTarifaApiRow = {
   contratoId: string;
   tipo: ContractRateType;
   valor: string;
+  umbralVentasUf: string | null;
   vigenciaDesde: string;
   vigenciaHasta: string | null;
   esDiciembre: boolean;
@@ -78,6 +79,7 @@ export type ContractManagerListItem = {
   tarifas: Array<{
     tipo: "FIJO_UF_M2" | "FIJO_UF" | "PORCENTAJE";
     valor: string;
+    umbralVentasUf: string | null;
     vigenciaDesde: string;
     vigenciaHasta: string | null;
     esDiciembre: boolean;

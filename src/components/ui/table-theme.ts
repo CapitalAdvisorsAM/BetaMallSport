@@ -43,8 +43,8 @@ const DENSITY_THEME_TOKENS: Record<TableDensity, DensityThemeTokens> = {
     compactHeadCell: "px-2.5 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-white/70"
   },
   comfortable: {
-    headCell: "px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-white/70",
-    cell: "px-4 py-3 text-slate-700",
+    headCell: "px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-white/70",
+    cell: "px-5 py-3 text-slate-700",
     compactCell: "px-3 py-2 text-slate-700",
     compactHeadCell: "px-3 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-white/70"
   }

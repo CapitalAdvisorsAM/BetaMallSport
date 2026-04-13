@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
+import { useTransition } from "react";
 import type { NavItem } from "@/lib/navigation";
 import { isNavItemActive } from "@/lib/navigation";
+import { cn } from "@/lib/utils";
 
 type ModuleSubNavProps = {
   items: NavItem[];
@@ -34,6 +36,8 @@ export function ModuleSubNav({
 }: ModuleSubNavProps): JSX.Element {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
   return (
     <nav className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
@@ -45,16 +49,26 @@ export function ModuleSubNav({
           <Link
             key={item.href}
             href={href}
-            className={
+            className={cn(
+              "rounded-md px-3 py-1.5 text-sm",
               active
-                ? "rounded-md bg-brand-500 px-3 py-1.5 text-sm font-semibold text-white"
-                : "rounded-md bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200"
-            }
+                ? "bg-brand-500 font-semibold text-white"
+                : "bg-slate-100 font-medium text-slate-700 hover:bg-slate-200",
+              isPending && !active && "pointer-events-none opacity-60"
+            )}
+            onClick={(e) => {
+              if (active) return;
+              e.preventDefault();
+              startTransition(() => router.push(href));
+            }}
           >
             {item.label}
           </Link>
         );
       })}
+      {isPending && (
+        <div className="ml-1 h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-brand-500" />
+      )}
     </nav>
   );
 }

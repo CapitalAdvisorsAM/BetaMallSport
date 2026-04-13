@@ -1,10 +1,10 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { parseRentRollPreviewPayload } from "@/lib/carga-datos";
+import { parseRentRollPreviewPayload } from "@/lib/upload/data-payload";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { buildErrorCsv } from "@/lib/upload/parse-contratos";
+import { buildErrorCsv } from "@/lib/upload/parse-contracts";
 import { parseStoredUploadPayload } from "@/lib/upload/payload";
 
 export const runtime = "nodejs";
