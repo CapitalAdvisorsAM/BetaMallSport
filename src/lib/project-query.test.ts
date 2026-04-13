@@ -6,25 +6,25 @@ import {
 } from "@/lib/project-query";
 
 describe("project-query helpers", () => {
-  it("prefers canonical project query param", () => {
-    const result = resolveProjectIdFromQuery({ project: "p1", proyecto: "legacy" });
+  it("resolves project query param", () => {
+    const result = resolveProjectIdFromQuery({ project: "p1" });
     expect(result).toBe("p1");
   });
 
-  it("falls back to legacy project query param", () => {
-    const result = resolveProjectIdFromQuery({ proyecto: "legacy" });
-    expect(result).toBe("legacy");
+  it("returns undefined when project is missing", () => {
+    const result = resolveProjectIdFromQuery({});
+    expect(result).toBeUndefined();
   });
 
-  it("appends canonical and legacy dashboard params", () => {
+  it("appends project param only", () => {
     const params = appendProjectQuery(new URLSearchParams(), "p1");
     expect(params.get("project")).toBe("p1");
-    expect(params.get("proyecto")).toBe("p1");
+    expect(params.get("proyecto")).toBeNull();
   });
 
-  it("appends canonical and legacy api params", () => {
+  it("appends projectId param only", () => {
     const params = appendProjectIdQuery(new URLSearchParams(), "p1");
     expect(params.get("projectId")).toBe("p1");
-    expect(params.get("proyectoId")).toBe("p1");
+    expect(params.get("proyectoId")).toBeNull();
   });
 });

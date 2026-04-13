@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AlertBar } from "@/components/dashboard/AlertBar";
 import { KpiCard } from "@/components/dashboard/KpiCard";
-import { VencimientosPorAnioTable } from "@/components/dashboard/VencimientosPorAnioTable";
+import { ExpirationsByYearTable } from "@/components/dashboard/ExpirationsByYearTable";
 import { ProjectSelector } from "@/components/ui/ProjectSelector";
 import {
   OCCUPANCY_HIGH_THRESHOLD,
@@ -25,6 +25,7 @@ import {
   type KpiContractInput
 } from "@/lib/kpi";
 import { requireSession } from "@/lib/permissions";
+import { buildActualBillingByUnit } from "@/lib/shared/gap-utils";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
 import type { MetricFormulaId } from "@/lib/metric-formulas";
@@ -35,7 +36,6 @@ import { resolveWidgetConfigs, type ResolvedWidgetConfig } from "@/lib/dashboard
 type DashboardPageProps = {
   searchParams: {
     project?: string;
-    proyecto?: string;
     periodo?: string;
   };
 };
@@ -125,13 +125,12 @@ export default async function DashboardPage({
   if (projectParam !== selectedProjectId || searchParams.periodo !== periodo) {
     const params = new URLSearchParams();
     params.set("project", selectedProjectId);
-    params.set("proyecto", selectedProjectId);
     params.set("periodo", periodo);
     redirect(`/?${params.toString()}`);
   }
 
   const today = startOfDay(new Date());
-  const [activeLocales, activeContractsRaw, groupedStates, latestValorUf, ventasPeriodoRaw, energiaPeriodo, dashboardConfigRows] =
+  const [activeLocales, activeContractsRaw, groupedStates, latestValorUf, ventasPeriodoRaw, energiaPeriodoRaw, dashboardConfigRows, accountingPeriodoRaw, billingAlerts] =
     await Promise.all([
       prisma.unit.findMany({
         where: {
@@ -145,7 +144,7 @@ export default async function DashboardPage({
           esGLA: true,
           glam2: true,
           tipo: true,
-          zona: true
+          zona: { select: { nombre: true } }
         }
       }),
       prisma.contract.findMany({
@@ -169,8 +168,10 @@ export default async function DashboardPage({
               glam2: true
             }
           },
+          arrendatarioId: true,
           arrendatario: {
             select: {
+              id: true,
               nombreComercial: true
             }
           },
@@ -189,7 +190,8 @@ export default async function DashboardPage({
             orderBy: { vigenciaDesde: "desc" },
             select: {
               tipo: true,
-              valor: true
+              valor: true,
+              umbralVentasUf: true
             }
           },
           ggcc: {
@@ -214,13 +216,13 @@ export default async function DashboardPage({
         orderBy: { fecha: "desc" },
         select: { fecha: true, valor: true }
       }),
-      prisma.unitSale.findMany({
+      prisma.tenantSale.findMany({
         where: {
           projectId: selectedProjectId,
-          period: periodo
+          period: new Date(`${periodo}-01`)
         },
         select: {
-          unitId: true,
+          tenantId: true,
           period: true,
           salesUf: true
         }
@@ -228,7 +230,7 @@ export default async function DashboardPage({
       prisma.ingresoEnergia.findMany({
         where: {
           proyectoId: selectedProjectId,
-          periodo
+          periodo: new Date(`${periodo}-01`)
         },
         select: {
           localId: true,
@@ -237,12 +239,48 @@ export default async function DashboardPage({
         }
       }),
       prisma.dashboardConfig.findMany({ orderBy: { position: "asc" } }),
+      prisma.accountingRecord.findMany({
+        where: {
+          projectId: selectedProjectId,
+          period: new Date(`${periodo}-01`),
+          group1: "INGRESOS DE EXPLOTACION"
+        },
+        select: {
+          unitId: true,
+          valueUf: true
+        }
+      }),
+      prisma.billingAlert.findMany({
+        where: {
+          proyectoId: selectedProjectId,
+          resolvedAt: null
+        },
+        orderBy: [{ severity: "desc" }, { avgGapPct: "desc" }],
+        select: {
+          id: true,
+          severity: true,
+          consecutiveMonths: true,
+          avgGapPct: true,
+          latestPeriod: true,
+          arrendatario: {
+            select: {
+              id: true,
+              nombreComercial: true
+            }
+          }
+        }
+      }),
     ]);
 
   const ventasPeriodo = ventasPeriodoRaw.map((sale) => ({
-    localId: sale.unitId,
-    periodo: sale.period,
+    arrendatarioId: sale.tenantId,
+    periodo: sale.period.toISOString().slice(0, 7),
     ventasUf: sale.salesUf
+  }));
+  const energiaPeriodo = energiaPeriodoRaw.map((energy) => ({
+    localId: energy.localId,
+    periodo: energy.periodo.toISOString().slice(0, 7),
+    valorUf: energy.valorUf
   }));
 
   const widgetConfigs = resolveWidgetConfigs(dashboardConfigRows);
@@ -265,8 +303,11 @@ export default async function DashboardPage({
         (item) =>
           item.tipo === ContractRateType.FIJO_UF_M2 || item.tipo === ContractRateType.FIJO_UF
       ) ?? null;
-    const tarifaVariable =
-      contract.tarifas.find((item) => item.tipo === ContractRateType.PORCENTAJE) ?? null;
+    const tarifasVariable = contract.tarifas.filter((item) => item.tipo === ContractRateType.PORCENTAJE);
+    const variableRentTiers = tarifasVariable.map((t) => ({
+      umbralVentasUf: Number(t.umbralVentasUf?.toString() ?? "0"),
+      pct: Number(t.valor.toString()),
+    }));
 
     return {
       estado: contract.estado,
@@ -276,10 +317,12 @@ export default async function DashboardPage({
         localCodigo: contract.local.codigo,
         localEsGLA: contract.local.esGLA,
         localGlam2: contract.local.glam2,
+        arrendatarioId: contract.arrendatarioId,
         arrendatarioNombre: contract.arrendatario.nombreComercial,
         numeroContrato: contract.numeroContrato,
         fechaTermino: contract.fechaTermino,
-        tarifaVariablePct: tarifaVariable?.valor ?? null,
+        tarifaVariablePct: tarifasVariable[0]?.valor ?? null,
+        variableRentTiers,
         tarifa: tarifaFija,
         ggcc: contract.ggcc[0] ?? null
       } satisfies KpiContractInput
@@ -307,10 +350,11 @@ export default async function DashboardPage({
   const ocupacionContracts =
     getVariant("kpi_ocupacion_pct") === "solo_vigente" ? vigenteContracts : activeContracts;
 
-  const ocupacion = buildOcupacionDetalle(activeLocales, ocupacionContracts);
+  const activeLocalesMapped = activeLocales.map((l) => ({ ...l, zona: l.zona?.nombre ?? null }));
+  const ocupacion = buildOcupacionDetalle(activeLocalesMapped, ocupacionContracts);
   const ingresos = buildIngresoDesglosado(
     vigenteContracts,
-    activeLocales,
+    activeLocalesMapped,
     ventasPeriodo,
     energiaPeriodo,
     periodo
@@ -336,6 +380,34 @@ export default async function DashboardPage({
     selectedProjectId
   );
 
+  // Compute billing gap alert count
+  const actualBillingByUnit = buildActualBillingByUnit(
+    accountingPeriodoRaw.map((r) => ({
+      unitId: r.unitId,
+      valueUf: Number(r.valueUf),
+      group1: "INGRESOS DE EXPLOTACION"
+    }))
+  );
+  let localesConBrechaGrande = 0;
+  if (accountingPeriodoRaw.length > 0) {
+    for (const contract of vigenteContracts) {
+      const glam2 = Number(contract.localGlam2.toString());
+      const rentaFija = contract.tarifa
+        ? glam2 * Number(contract.tarifa.valor.toString())
+        : 0;
+      const ggccUfLocal = contract.ggcc
+        ? Number(contract.ggcc.tarifaBaseUfM2.toString()) * glam2 * (1 + Number(contract.ggcc.pctAdministracion.toString()) / 100)
+        : 0;
+      const expectedUf = rentaFija + ggccUfLocal;
+      const actualUf = actualBillingByUnit.get(contract.localId) ?? 0;
+      if (expectedUf > 0) {
+        const gapPct = ((expectedUf - actualUf) / expectedUf) * 100;
+        if (Math.abs(gapPct) >= 10) localesConBrechaGrande++;
+      }
+    }
+  }
+  const alertCountsWithGap = { ...alertCounts, brechaFacturacion: localesConBrechaGrande };
+
   const pctOcupacion = ocupacion.glaTotal > 0 ? (ocupacion.glaArrendada / ocupacion.glaTotal) * 100 : 0;
   const occupancyUmbralAlto = getParam("kpi_ocupacion_pct", "umbralAlto", OCCUPANCY_HIGH_THRESHOLD);
   const occupancyUmbralBajo = getParam("kpi_ocupacion_pct", "umbralBajo", OCCUPANCY_LOW_THRESHOLD);
@@ -355,9 +427,9 @@ export default async function DashboardPage({
   const contratosConGgcc = vigenteContracts.filter((contract) => contract.ggcc !== null).length;
   const contratosSinGgcc = vigenteContracts.length - contratosConGgcc;
 
-  const salesByLocal = new Map(ventasPeriodo.map((venta) => [venta.localId, Number(venta.ventasUf)]));
+  const salesByTenant = new Map(ventasPeriodo.map((venta) => [venta.arrendatarioId, Number(venta.ventasUf)]));
   const contratosVariableConVentas = vigenteContracts.filter(
-    (contract) => Number(contract.tarifaVariablePct?.toString() ?? "0") > 0 && salesByLocal.has(contract.localId)
+    (contract) => Number(contract.tarifaVariablePct?.toString() ?? "0") > 0 && contract.arrendatarioId && salesByTenant.has(contract.arrendatarioId)
   ).length;
   const localById = new Map(activeLocales.map((local) => [local.id, local]));
   const simuladorModuloUnidades = new Set(
@@ -403,7 +475,7 @@ export default async function DashboardPage({
             preserve={{ periodo }}
           />
           <Link
-            href={`/rent-roll/dashboard?project=${selectedProjectId}&proyecto=${selectedProjectId}`}
+            href={`/rent-roll/dashboard?project=${selectedProjectId}`}
             className="ml-auto flex items-center gap-1 rounded-full border border-brand-300 px-4 py-1.5 text-sm font-medium text-brand-500 transition-colors hover:text-brand-700"
           >
             Ver Rent Roll -&gt;
@@ -411,7 +483,7 @@ export default async function DashboardPage({
         </div>
       </header>
 
-      <AlertBar {...alertCounts} />
+      <AlertBar {...alertCountsWithGap} />
 
       <section className="space-y-3">
         <div className="mb-1 flex items-center gap-2">
@@ -573,16 +645,80 @@ export default async function DashboardPage({
           <h3 className="text-base font-semibold text-brand-700">Vencimientos por ano</h3>
           <p className="mt-1 text-sm text-slate-600">Maximo 5 anos hacia adelante desde hoy.</p>
         </div>
-        <VencimientosPorAnioTable rows={vencimientosPorAnio} currentYear={today.getFullYear()} />
+        <ExpirationsByYearTable rows={vencimientosPorAnio} currentYear={today.getFullYear()} />
         <div className="border-t border-slate-200 px-4 py-3 text-right text-sm">
           <Link
-            href={`/rent-roll/dashboard?project=${selectedProjectId}&proyecto=${selectedProjectId}`}
+            href={`/rent-roll/dashboard?project=${selectedProjectId}`}
             className="text-brand-500 underline hover:text-brand-700"
           >
             Ver detalle de vencimientos en Rent Roll -&gt;
           </Link>
         </div>
       </section>
+
+      {billingAlerts.length > 0 && (
+        <section className="overflow-hidden rounded-md bg-white shadow-sm">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <h3 className="text-base font-semibold text-brand-700">Alertas de Facturacion</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              Arrendatarios con sub-facturacion persistente (brecha &gt;5% por 3+ meses consecutivos).
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-brand-700 text-xs uppercase text-white">
+                <tr>
+                  <th className="px-4 py-2">Arrendatario</th>
+                  <th className="px-3 py-2 text-center">Severidad</th>
+                  <th className="px-3 py-2 text-right">Meses</th>
+                  <th className="px-3 py-2 text-right">Brecha Prom.</th>
+                  <th className="px-3 py-2">Ultimo Periodo</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {billingAlerts.map((alert) => (
+                  <tr key={alert.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-2 font-medium text-slate-800">
+                      <Link
+                        href={`/tenants/${alert.arrendatario.id}?project=${selectedProjectId}`}
+                        className="text-brand-500 underline underline-offset-2 hover:text-brand-700"
+                      >
+                        {alert.arrendatario.nombreComercial}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                        alert.severity === "CRITICAL"
+                          ? "border border-rose-200 bg-rose-50 text-rose-700"
+                          : "border border-amber-200 bg-amber-50 text-amber-700"
+                      }`}>
+                        {alert.severity === "CRITICAL" ? "Critico" : "Alerta"}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-600">
+                      {alert.consecutiveMonths}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-rose-600">
+                      {Number(alert.avgGapPct).toFixed(1)}%
+                    </td>
+                    <td className="px-3 py-2 tabular-nums text-slate-600">
+                      {alert.latestPeriod}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="border-t border-slate-200 px-4 py-3 text-right text-sm">
+            <Link
+              href={`/finance/reconciliation?project=${selectedProjectId}`}
+              className="text-brand-500 underline hover:text-brand-700"
+            >
+              Ver reconciliacion completa -&gt;
+            </Link>
+          </div>
+        </section>
+      )}
 
       <section className="space-y-3">
         <div className="mb-1 flex items-center gap-2">

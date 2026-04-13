@@ -14,7 +14,7 @@ function serialToDate(serial: number): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
 }
 
-/** Convierte nombre de mes en espaÃ±ol + aÃ±o â†’ Date (primer dÃ­a del mes) */
+/** Convierte nombre de mes en español + año â†’ Date (primer día del mes) */
 function mesAnioToDate(mes: string, anio: number): Date | null {
   const meses: Record<string, number> = {
     enero: 0, febrero: 1, marzo: 2, abril: 3, mayo: 4, junio: 5,
@@ -74,9 +74,9 @@ export function parseVentas(buffer: Buffer): FilaVenta[] {
     }
 
     if (!mes) {
-      // Fallback: construir desde Mes + AÃ±o
+      // Fallback: construir desde Mes + Año
       const mesNombre = str(row["Mes"]);
-      const anio = parseInt(String(row["AÃ±o"] ?? ""), 10);
+      const anio = parseInt(String(row["Año"] ?? ""), 10);
       if (mesNombre && !isNaN(anio)) {
         mes = mesAnioToDate(mesNombre, anio);
       }
@@ -85,7 +85,7 @@ export function parseVentas(buffer: Buffer): FilaVenta[] {
 
     const ventasUf = num(row["Valor UF"]);
     const tienda = str(row["Tienda"]);
-    const categoriaTamano = str(row["CategorÃ­a (TamaÃ±o)"] ?? row["Categoria (Tamano)"] ?? "");
+    const categoriaTamano = str(row["Categoría (Tamaño)"] ?? row["Categoria (Tamano)"] ?? "");
 
     const key: Key = `${idCa}__${mes.toISOString().slice(0, 7)}`;
     const existing = acum.get(key);

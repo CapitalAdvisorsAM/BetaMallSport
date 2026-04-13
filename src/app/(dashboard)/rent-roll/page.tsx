@@ -2,9 +2,12 @@ import { ContractRateType } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { RentRollDashboardTable, type RentRollDashboardTableRow } from "@/components/rent-roll/RentRollDashboardTable";
-import { OcupacionTamanoTable } from "@/components/rent-roll/OcupacionTamanoTable";
+import { OccupancyBySizeTable } from "@/components/rent-roll/OccupancyBySizeTable";
+import { OcupacionTipoTable } from "@/components/rent-roll/OcupacionTipoTable";
 import { RentRollSnapshotDatePicker } from "@/components/rent-roll/RentRollSnapshotDatePicker";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
+import { VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
+import { shiftPeriod, calcTieredVariableRent } from "@/lib/finance/billing-utils";
 import { buildOcupacionDetalle, calculateWalt } from "@/lib/kpi";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -15,12 +18,12 @@ import {
   parseDateParam,
   resolveSnapshotDate
 } from "@/lib/rent-roll/snapshot-date";
+import { buildActualBillingByUnit } from "@/lib/shared/gap-utils";
 import { formatDecimal } from "@/lib/utils";
 
 type RentRollPageProps = {
   searchParams: {
     project?: string;
-    proyecto?: string;
     periodo?: string;
     fecha?: string;
   };
@@ -54,12 +57,13 @@ export default async function RentRollPage({
   ) {
     const params = new URLSearchParams();
     params.set("project", selectedProjectId);
-    params.set("proyecto", selectedProjectId);
     params.set("fecha", fecha);
     redirect(`/rent-roll?${params.toString()}`);
   }
 
-  const [contracts, unitSalesRaw, localesActivos] = await Promise.all([
+  const periodoVentasVariable = shiftPeriod(periodoVentas, -VARIABLE_RENT_LAG_MONTHS);
+
+  const [contracts, unitSalesRaw, budgetedSalesRaw, localesActivos, accountingRaw] = await Promise.all([
     prisma.contract.findMany({
       where: {
         proyectoId: selectedProjectId,
@@ -75,7 +79,7 @@ export default async function RentRollPage({
             glam2: true,
             esGLA: true,
             tipo: true,
-            zona: true
+            zona: { select: { nombre: true } }
           }
         },
         arrendatario: {
@@ -92,7 +96,8 @@ export default async function RentRollPage({
           orderBy: [{ vigenciaDesde: "desc" }],
           select: {
             tipo: true,
-            valor: true
+            valor: true,
+            umbralVentasUf: true
           }
         },
         ggcc: {
@@ -110,17 +115,27 @@ export default async function RentRollPage({
       },
       orderBy: [{ local: { codigo: "asc" } }]
     }),
-    prisma.unitSale.findMany({
+    prisma.tenantSale.findMany({
       where: {
         projectId: selectedProjectId,
-        period: periodoVentas
+        period: new Date(`${periodoVentas}-01`)
       },
       select: {
-        unitId: true,
+        tenantId: true,
         salesUf: true,
         createdAt: true
       },
       orderBy: [{ createdAt: "desc" }]
+    }),
+    prisma.tenantBudgetedSale.findMany({
+      where: {
+        projectId: selectedProjectId,
+        period: new Date(`${periodoVentasVariable}-01`)
+      },
+      select: {
+        tenantId: true,
+        salesUf: true
+      }
     }),
     prisma.unit.findMany({
       where: {
@@ -132,35 +147,60 @@ export default async function RentRollPage({
         tipo: true,
         esGLA: true,
         glam2: true,
-        zona: true
+        zona: { select: { nombre: true } }
+      }
+    }),
+    prisma.accountingRecord.findMany({
+      where: {
+        projectId: selectedProjectId,
+        period: new Date(`${periodoVentas}-01`),
+        group1: "INGRESOS DE EXPLOTACION"
+      },
+      select: {
+        unitId: true,
+        valueUf: true,
+        group1: true
       }
     })
   ]);
 
-  const ventaLocales = unitSalesRaw.map((sale) => ({
-    localId: sale.unitId,
-    ventasUf: sale.salesUf,
-    createdAt: sale.createdAt
-  }));
-
-  const ventasByLocalId = new Map<string, number>();
-  for (const venta of ventaLocales) {
-    if (!ventasByLocalId.has(venta.localId)) {
-      ventasByLocalId.set(venta.localId, Number(venta.ventasUf));
+  const ventasByTenantId = new Map<string, number>();
+  for (const sale of unitSalesRaw) {
+    if (!ventasByTenantId.has(sale.tenantId)) {
+      ventasByTenantId.set(sale.tenantId, Number(sale.salesUf));
     }
   }
+
+  const budgetedByTenantId = new Map<string, number>();
+  for (const row of budgetedSalesRaw) {
+    if (!budgetedByTenantId.has(row.tenantId)) {
+      budgetedByTenantId.set(row.tenantId, Number(row.salesUf));
+    }
+  }
+
+  const actualBillingByUnit = buildActualBillingByUnit(
+    accountingRaw.map((r) => ({
+      unitId: r.unitId,
+      valueUf: Number(r.valueUf),
+      group1: r.group1
+    }))
+  );
+  const hasAccountingData = accountingRaw.length > 0;
 
   const rows: RentRollDashboardTableRow[] = contracts.map((contract) => {
     const glam2 = Number(contract.local.glam2);
     const tarifaFija = contract.tarifas.find(
       (tarifa) => tarifa.tipo === ContractRateType.FIJO_UF_M2
     );
-    const tarifaVariable = contract.tarifas.find(
+    const tarifasVariable = contract.tarifas.filter(
       (tarifa) => tarifa.tipo === ContractRateType.PORCENTAJE
     );
+    const tiers = tarifasVariable.map((t) => ({
+      umbralVentasUf: Number(t.umbralVentasUf?.toString() ?? "0"),
+      pct: Number(t.valor),
+    }));
     const tarifaUfM2 = tarifaFija?.valor ? Number(tarifaFija.valor) : 0;
     const rentaFijaUf = glam2 * tarifaUfM2;
-    const pctRentaVariable = tarifaVariable?.valor ? Number(tarifaVariable.valor) : null;
 
     const ggccActual = contract.ggcc[0];
     const ggccUf = ggccActual
@@ -169,13 +209,24 @@ export default async function RentRollPage({
         (1 + Number(ggccActual.pctAdministracion) / 100)
       : 0;
 
-    const ventasUf = ventasByLocalId.has(contract.localId)
-      ? (ventasByLocalId.get(contract.localId) ?? null)
+    const ventasUf = ventasByTenantId.has(contract.arrendatarioId)
+      ? (ventasByTenantId.get(contract.arrendatarioId) ?? null)
       : null;
+    const ventasPresupuestadasUf = budgetedByTenantId.get(contract.arrendatarioId) ?? null;
     const rentaVariableUf =
-      ventasUf !== null && pctRentaVariable !== null ? ventasUf * (pctRentaVariable / 100) : null;
+      ventasPresupuestadasUf !== null && tiers.length > 0
+        ? calcTieredVariableRent(ventasPresupuestadasUf, tiers, rentaFijaUf)
+        : null;
+    const pctRentaVariable = tiers.length > 0 ? tiers[0].pct : null;
     const pctFondoPromocion = contract.pctFondoPromocion
       ? Number(contract.pctFondoPromocion)
+      : null;
+
+    const expectedUf = rentaFijaUf + ggccUf + (rentaVariableUf ?? 0);
+    const facturadoRealUf = actualBillingByUnit.get(contract.localId) ?? null;
+    const brechaUf = facturadoRealUf !== null ? expectedUf - facturadoRealUf : null;
+    const brechaPct = facturadoRealUf !== null && expectedUf > 0
+      ? (brechaUf! / expectedUf) * 100
       : null;
 
     return {
@@ -189,9 +240,13 @@ export default async function RentRollPage({
       rentaFijaUf,
       ggccUf,
       ventasUf,
+      ventasPresupuestadasUf,
       pctRentaVariable,
       rentaVariableUf,
-      pctFondoPromocion
+      pctFondoPromocion,
+      facturadoRealUf,
+      brechaUf,
+      brechaPct
     };
   });
 
@@ -206,13 +261,24 @@ export default async function RentRollPage({
       if (row.rentaVariableUf != null) {
         acc.rentaVariableUf += row.rentaVariableUf;
       }
+      if (row.facturadoRealUf != null) {
+        acc.facturadoRealUf += row.facturadoRealUf;
+      }
+      if (row.brechaUf != null) {
+        acc.brechaUf += row.brechaUf;
+      }
       return acc;
     },
-    { glam2: 0, rentaFijaUf: 0, ggccUf: 0, ventasUf: 0, rentaVariableUf: 0 }
+    { glam2: 0, rentaFijaUf: 0, ggccUf: 0, ventasUf: 0, rentaVariableUf: 0, facturadoRealUf: 0, brechaUf: 0 }
   );
 
+  const totalEsperado = totals.rentaFijaUf + totals.ggccUf + totals.rentaVariableUf;
+  const totalBrechaPct = hasAccountingData && totalEsperado > 0
+    ? (totals.brechaUf / totalEsperado) * 100
+    : null;
+
   const ocupacionDetalle = buildOcupacionDetalle(
-    localesActivos,
+    localesActivos.map((l) => ({ ...l, zona: l.zona?.nombre ?? null })),
     contracts.map((contract) => ({
       localId: contract.localId,
       localGlam2: contract.local.glam2,
@@ -252,6 +318,17 @@ export default async function RentRollPage({
     };
   });
 
+  const categoriaRows = Object.entries(ocupacionDetalle.porCategoria)
+    .filter(([, data]) => data.gla > 0)
+    .map(([categoria, data]) => ({
+      categoria,
+      glaTotal: data.gla,
+      glaArrendada: data.glaArrendada,
+      vacante: Math.max(data.gla - data.glaArrendada, 0),
+      pctDelTotal: data.pct,
+      pctVacancia: data.pctVacancia
+    }));
+
   return (
     <main className="space-y-4">
       <header className="rounded-md bg-white p-5 shadow-sm">
@@ -274,12 +351,13 @@ export default async function RentRollPage({
         <div className="flex flex-wrap items-end justify-between gap-4">
           <RentRollSnapshotDatePicker projectId={selectedProjectId} selectedDate={fecha} />
           <div className="rounded-md border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
-            <span className="font-semibold">Periodo de ventas asociado:</span> {periodoVentas}
+            <div><span className="font-semibold">Ventas reales:</span> {periodoVentas}</div>
+            <div><span className="font-semibold">Presupuesto (renta variable):</span> {periodoVentasVariable}</div>
           </div>
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-4 lg:grid-cols-6">
         <KpiCard
           metricId="kpi_rent_roll_snapshot_renta_fija_total_uf"
           title="Renta fija total (UF)"
@@ -305,18 +383,42 @@ export default async function RentRollPage({
           subtitle={walt > 0 ? `Promedio ponderado al ${fecha}` : "Sin contratos activos"}
           accent="yellow"
         />
+        {hasAccountingData && (
+          <>
+            <KpiCard
+              metricId="kpi_rent_roll_snapshot_facturacion_esperada_vs_real"
+              title="Esperado vs Real (UF)"
+              value={`${formatDecimal(totalEsperado)} / ${formatDecimal(totals.facturadoRealUf)}`}
+              subtitle={`Periodo contable: ${periodoVentas}`}
+              accent={totalBrechaPct !== null && Math.abs(totalBrechaPct) >= 10 ? "red" : "green"}
+            />
+            <KpiCard
+              metricId="kpi_rent_roll_snapshot_brecha_total"
+              title="Brecha total"
+              value={`${formatDecimal(totals.brechaUf)} UF`}
+              subtitle={totalBrechaPct !== null ? `${formatDecimal(totalBrechaPct)}% del esperado` : undefined}
+              accent={totalBrechaPct !== null && Math.abs(totalBrechaPct) >= 10 ? "red" : totalBrechaPct !== null && Math.abs(totalBrechaPct) >= 2 ? "yellow" : "green"}
+            />
+          </>
+        )}
       </section>
 
-      <section>
+      <section className="grid gap-4 lg:grid-cols-2">
         <article className="overflow-hidden rounded-md bg-white shadow-sm">
           <div className="border-b border-slate-200 px-4 py-3">
             <h3 className="text-sm font-semibold text-brand-700">Ocupacion por tamano</h3>
           </div>
-          <OcupacionTamanoTable rows={ocupacionRows} />
+          <OccupancyBySizeTable rows={ocupacionRows} />
+        </article>
+        <article className="overflow-hidden rounded-md bg-white shadow-sm">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <h3 className="text-sm font-semibold text-brand-700">Ocupacion por categoria</h3>
+          </div>
+          <OcupacionTipoTable rows={categoriaRows} />
         </article>
       </section>
 
-      <RentRollDashboardTable rows={rows} snapshotDate={fecha} />
+      <RentRollDashboardTable rows={rows} snapshotDate={fecha} proyectoId={selectedProjectId} hasAccountingData={hasAccountingData} />
     </main>
   );
 }

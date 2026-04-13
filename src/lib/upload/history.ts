@@ -1,5 +1,5 @@
 import type { Prisma, DataUploadType } from "@prisma/client";
-import { parseRentRollPreviewPayload } from "@/lib/carga-datos";
+import { parseRentRollPreviewPayload } from "@/lib/upload/data-payload";
 import { prisma } from "@/lib/prisma";
 import { parseStoredUploadPayload } from "@/lib/upload/payload";
 

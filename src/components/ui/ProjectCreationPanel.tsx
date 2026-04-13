@@ -49,7 +49,7 @@ export function ProjectCreationPanel({
       }
 
       const projectId = encodeURIComponent(data.id);
-      const targetUrl = `${pathname}?project=${projectId}&proyecto=${projectId}`;
+      const targetUrl = `${pathname}?project=${projectId}`;
       router.push(targetUrl);
       router.refresh();
     } catch (error) {

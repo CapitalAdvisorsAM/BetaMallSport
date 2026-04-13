@@ -13,7 +13,7 @@ export function useContractApi(): {
 } {
   async function saveContract(draft: ContractDraft, existingId?: string): Promise<ContractRow> {
     const isEditing = Boolean(existingId);
-    const editQuery = `?proyectoId=${encodeURIComponent(draft.proyectoId)}`;
+    const editQuery = `?projectId=${encodeURIComponent(draft.proyectoId)}`;
     const response = await fetch(
       isEditing ? `/api/contracts/${existingId}${editQuery}` : "/api/contracts",
       {
@@ -31,7 +31,7 @@ export function useContractApi(): {
   }
 
   async function deleteContract(id: string, proyectoId: string): Promise<void> {
-    const response = await fetch(`/api/contracts/${id}?proyectoId=${encodeURIComponent(proyectoId)}`, {
+    const response = await fetch(`/api/contracts/${id}?projectId=${encodeURIComponent(proyectoId)}`, {
       method: "DELETE"
     });
 

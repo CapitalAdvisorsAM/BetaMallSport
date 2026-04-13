@@ -29,18 +29,18 @@ function normalizeBody(record: Record<string, unknown>) {
       : typeof record.tiendaNombre === "string"
         ? record.tiendaNombre
         : "";
-  const unitId =
-    typeof record.unitId === "string"
-      ? record.unitId
-      : typeof record.localId === "string"
-        ? record.localId
+  const tenantId =
+    typeof record.tenantId === "string"
+      ? record.tenantId
+      : typeof record.arrendatarioId === "string"
+        ? record.arrendatarioId
         : "";
 
   return {
     projectId,
     salesAccountId,
     storeName,
-    unitId
+    tenantId
   };
 }
 
@@ -91,7 +91,7 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
       throw new ApiError(400, "id requerido.");
     }
 
-    await prisma.salesUnitMapping.delete({ where: { id } });
+    await prisma.salesTenantMapping.delete({ where: { id } });
     return NextResponse.json({ message: "Eliminado." });
   } catch (error) {
     return handleApiError(error);

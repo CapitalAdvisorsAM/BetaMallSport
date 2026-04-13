@@ -14,17 +14,17 @@ export type FilaContable = {
   piso: string;
 };
 
-/** Convierte nÃºmero serial de Excel a Date (primer dÃ­a del mes) */
+/** Convierte número serial de Excel a Date (primer día del mes) */
 function serialToDate(serial: number): Date {
   const d = new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
 }
 
-/** Extrae cÃ³digo numÃ©rico de strings tipo "[L102]  MOUNTAIN HARDWEAR" â†’ "102" */
+/** Extrae código numérico de strings tipo "[L102]  MOUNTAIN HARDWEAR" â†’ "102" */
 function extractLocalCodigo(raw: string): string {
   const match = /\[L(\d+)\]/i.exec(raw);
   if (match) return match[1];
-  // Fallback: si es solo nÃºmero
+  // Fallback: si es solo número
   const numMatch = /^(\d+)$/.exec(raw.trim());
   return numMatch ? numMatch[1] : raw.trim();
 }
@@ -45,12 +45,12 @@ export function parseContable(buffer: Buffer): FilaContable[] {
   const ws = wb.Sheets[sheetName];
 
   // Detectar fila de headers: buscar la fila que contenga "Mes" o "GRUPO 1"
-  // Para "Data Contable" del CDG, headers estÃ¡n en fila 4 (Ã­ndice 3)
+  // Para "Data Contable" del CDG, headers están en fila 4 (índice 3)
   // Para "Maestro" de archivos mensuales, headers en fila 4
   const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, {
     defval: null,
     raw: true,
-    // Para el CDG, los headers estÃ¡n en fila 4 (offset 3)
+    // Para el CDG, los headers están en fila 4 (offset 3)
   });
 
   const filas: FilaContable[] = [];
@@ -66,7 +66,7 @@ export function parseContable(buffer: Buffer): FilaContable[] {
     const mes = typeof mesRaw === "number" ? serialToDate(mesRaw) : new Date(String(mesRaw));
     if (isNaN(mes.getTime())) continue;
 
-    const localRaw = str(row["Local"] ?? row["DenominaciÃ³n objeto"] ?? "");
+    const localRaw = str(row["Local"] ?? row["Denominación objeto"] ?? "");
     const localCodigo = extractLocalCodigo(localRaw);
     if (!localCodigo) continue;
 
@@ -83,10 +83,10 @@ export function parseContable(buffer: Buffer): FilaContable[] {
       arrendatarioNombre: str(row["Arrendatario"]),
       grupo1,
       grupo3,
-      denominacion: str(row["DenominaciÃ³n objeto"] ?? row["Denominacion objeto"] ?? ""),
+      denominacion: str(row["Denominación objeto"] ?? row["Denominacion objeto"] ?? ""),
       valorUf,
-      categoriaTamano: str(row["CategorÃ­a (TamaÃ±o)"] ?? row["Categoria (Tamano)"] ?? ""),
-      categoriaTipo: str(row["CategorÃ­a (Tipo)"] ?? row["Categoria (Tipo)"] ?? ""),
+      categoriaTamano: str(row["Categoría (Tamaño)"] ?? row["Categoria (Tamano)"] ?? ""),
+      categoriaTipo: str(row["Categoría (Tipo)"] ?? row["Categoria (Tipo)"] ?? ""),
       piso: str(row["Piso"] ?? "")
     });
   }

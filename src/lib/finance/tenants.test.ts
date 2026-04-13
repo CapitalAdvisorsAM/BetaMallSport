@@ -41,17 +41,17 @@ describe("buildTenantFinanceRows", () => {
       ],
       [
         {
-          localId: "local-1",
+          tenantId: "tenant-1",
           periodo: "2026-01",
           ventasUf: 1000
         },
         {
-          localId: "local-2",
+          tenantId: "tenant-1",
           periodo: "2026-01",
           ventasUf: 500
         },
         {
-          localId: "local-1",
+          tenantId: "tenant-1",
           periodo: "2026-02",
           ventasUf: 200
         }

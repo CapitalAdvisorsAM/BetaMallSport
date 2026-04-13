@@ -2,6 +2,13 @@
 
 > Masterclass reference for every session. Claude must follow these patterns exactly when reading or writing code in this repo.
 
+## Context Navigation 
+1. ALWAYS query the knowledge
+graph first
+2. Only read raw files if I explicitly say so
+3. Use graphify-out/wiki/index.md
+
+
 ## Project Overview
 
 - **Stack**: Next.js 14 App Router · Prisma ORM · PostgreSQL · NextAuth · Zod · Tailwind CSS

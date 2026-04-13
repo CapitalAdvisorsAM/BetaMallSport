@@ -12,6 +12,7 @@ export type ContractsPayloadShape = {
   }>;
   rentaVariable: Array<{
     pctRentaVariable: string;
+    umbralVentasUf: string;
     vigenciaDesde: string;
     vigenciaHasta: string | null;
   }>;
@@ -69,13 +70,22 @@ function toDateOnly(value: Date | string | null): string | null {
   return date.toISOString().slice(0, 10);
 }
 
-export function tarifaKey(tipo: string, vigenciaDesde: Date | string): string {
-  return `${tipo}|${toDateOnly(vigenciaDesde)}`;
+export function tarifaKey(
+  tipo: string,
+  vigenciaDesde: Date | string,
+  umbralVentasUf?: string | { toString(): string } | null
+): string {
+  const base = `${tipo}|${toDateOnly(vigenciaDesde)}`;
+  if (tipo === "PORCENTAJE" && umbralVentasUf !== undefined && umbralVentasUf !== null) {
+    return `${base}|${umbralVentasUf.toString()}`;
+  }
+  return base;
 }
 
 export function payloadTarifas(payload: ContractsPayloadShape): Array<{
   tipo: "FIJO_UF_M2" | "FIJO_UF" | "PORCENTAJE";
   valor: string;
+  umbralVentasUf: string | null;
   vigenciaDesde: string;
   vigenciaHasta: string | null;
   esDiciembre: boolean;
@@ -84,6 +94,7 @@ export function payloadTarifas(payload: ContractsPayloadShape): Array<{
     ...payload.tarifas.map((item) => ({
       tipo: item.tipo as "FIJO_UF_M2" | "FIJO_UF" | "PORCENTAJE",
       valor: item.valor,
+      umbralVentasUf: null as string | null,
       vigenciaDesde: item.vigenciaDesde,
       vigenciaHasta: item.vigenciaHasta,
       esDiciembre: item.esDiciembre
@@ -91,6 +102,7 @@ export function payloadTarifas(payload: ContractsPayloadShape): Array<{
     ...payload.rentaVariable.map((item) => ({
       tipo: ContractRateType.PORCENTAJE,
       valor: item.pctRentaVariable,
+      umbralVentasUf: item.umbralVentasUf as string | null,
       vigenciaDesde: item.vigenciaDesde,
       vigenciaHasta: item.vigenciaHasta,
       esDiciembre: false
@@ -99,7 +111,7 @@ export function payloadTarifas(payload: ContractsPayloadShape): Array<{
 
   const byKey = new Map<string, (typeof merged)[number]>();
   for (const item of merged) {
-    byKey.set(tarifaKey(item.tipo, item.vigenciaDesde), item);
+    byKey.set(tarifaKey(item.tipo, item.vigenciaDesde, item.umbralVentasUf), item);
   }
   return Array.from(byKey.values());
 }
@@ -113,14 +125,14 @@ export async function persistTarifas(
     where: { contratoId }
   });
   const existingTarifasByKey = new Map(
-    existingTarifas.map((item) => [tarifaKey(item.tipo, item.vigenciaDesde), item])
+    existingTarifas.map((item) => [tarifaKey(item.tipo, item.vigenciaDesde, item.umbralVentasUf), item])
   );
   const payloadTarifasByKey = new Map(
-    tarifas.map((item) => [tarifaKey(item.tipo, item.vigenciaDesde), item] as const)
+    tarifas.map((item) => [tarifaKey(item.tipo, item.vigenciaDesde, item.umbralVentasUf), item] as const)
   );
 
   const tarifasToDelete = existingTarifas
-    .filter((item) => !payloadTarifasByKey.has(tarifaKey(item.tipo, item.vigenciaDesde)))
+    .filter((item) => !payloadTarifasByKey.has(tarifaKey(item.tipo, item.vigenciaDesde, item.umbralVentasUf)))
     .map((item) => item.id);
 
   if (tarifasToDelete.length > 0) {
@@ -132,7 +144,7 @@ export async function persistTarifas(
   const tarifasToUpdate: Array<{ id: string; payloadItem: ReturnType<typeof payloadTarifas>[number] }> = [];
   const tarifasToCreate: Array<ReturnType<typeof payloadTarifas>[number]> = [];
   for (const item of tarifas) {
-    const found = existingTarifasByKey.get(tarifaKey(item.tipo, item.vigenciaDesde));
+    const found = existingTarifasByKey.get(tarifaKey(item.tipo, item.vigenciaDesde, item.umbralVentasUf));
     if (found) {
       tarifasToUpdate.push({ id: found.id, payloadItem: item });
     } else {
@@ -146,6 +158,7 @@ export async function persistTarifas(
         where: { id: item.id },
         data: {
           valor: new Prisma.Decimal(item.payloadItem.valor),
+          umbralVentasUf: item.payloadItem.umbralVentasUf ? new Prisma.Decimal(item.payloadItem.umbralVentasUf) : null,
           vigenciaHasta: toDate(item.payloadItem.vigenciaHasta),
           esDiciembre: item.payloadItem.esDiciembre
         }
@@ -159,6 +172,7 @@ export async function persistTarifas(
         contratoId,
         tipo: item.tipo as ContractRateType,
         valor: new Prisma.Decimal(item.valor),
+        umbralVentasUf: item.umbralVentasUf ? new Prisma.Decimal(item.umbralVentasUf) : null,
         vigenciaDesde: new Date(item.vigenciaDesde),
         vigenciaHasta: toDate(item.vigenciaHasta),
         esDiciembre: item.esDiciembre

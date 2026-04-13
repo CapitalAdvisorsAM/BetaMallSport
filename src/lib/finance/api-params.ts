@@ -9,7 +9,7 @@
 }
 
 export function getFinanceProjectId(searchParams: URLSearchParams): string | null {
-  return getFirst(searchParams, ["projectId", "proyectoId", "project", "proyecto"]);
+  return getFirst(searchParams, ["projectId", "project"]);
 }
 
 export function getFinanceFrom(searchParams: URLSearchParams): string | null {

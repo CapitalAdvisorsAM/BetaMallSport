@@ -6,7 +6,7 @@ import { ApiError, handleApiError } from "@/lib/api-error";
 import { MAX_PDF_BYTES } from "@/lib/constants";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { normalizeUploadArrendatarioNombre } from "@/lib/upload/parse-contratos";
+import { normalizeUploadTenantName } from "@/lib/upload/parse-contracts";
 import { normalizeHeaders, parseDate } from "@/lib/upload/parse-utils";
 
 export const runtime = "nodejs";
@@ -40,7 +40,6 @@ type GgccRow = {
 type ContractGroup = {
   localCodigo: string;
   arrendatarioNombre: string;
-  estado: string;
   fechaInicio: string;
   fechaTermino: string;
   fechaEntrega: string | null;
@@ -51,7 +50,7 @@ type ContractGroup = {
   pctAdministracionGgcc: string | null;
   notas: string | null;
   tarifas: TarifaRow[];
-  rentaVariable: Array<{ pctRentaVariable: string }>;
+  rentaVariable: Array<{ pctRentaVariable: string; umbralVentasUf: string }>;
   ggcc: GgccRow[];
   anexoFecha: string | null;
   anexoDescripcion: string | null;
@@ -108,7 +107,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
     const arrendatarioMap = new Map<string, string[]>();
     for (const arrendatario of arrendatarios) {
-      const normalizedName = normalizeUploadArrendatarioNombre(arrendatario.nombreComercial);
+      const normalizedName = normalizeUploadTenantName(arrendatario.nombreComercial);
       if (!normalizedName) {
         continue;
       }
@@ -123,7 +122,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     for (const row of rows) {
       const localCodigo = asString(row.localcodigo).toUpperCase();
       const arrendatarioNombre = asString(row.arrendatarionombre);
-      const arrendatarioNombreLookup = normalizeUploadArrendatarioNombre(arrendatarioNombre);
+      const arrendatarioNombreLookup = normalizeUploadTenantName(arrendatarioNombre);
       const fechaInicio = parseDate(row.fechainicio);
       const fechaTermino = parseDate(row.fechatermino);
 
@@ -138,7 +137,6 @@ export async function POST(request: Request): Promise<NextResponse> {
         contractMap.set(key, {
           localCodigo,
           arrendatarioNombre,
-          estado: asString(row.estado).toUpperCase() || "VIGENTE",
           fechaInicio,
           fechaTermino,
           fechaEntrega: parseDate(row.fechaentrega),
@@ -160,14 +158,24 @@ export async function POST(request: Request): Promise<NextResponse> {
 
       // Tarifas
       const rentaVariablePct = nullableStr(row.rentavariablepct);
+      const rv2Umbral = nullableStr(row.rentavariable2umbraluf);
+      const rv2Pct = nullableStr(row.rentavariable2pct);
+      const rv3Umbral = nullableStr(row.rentavariable3umbraluf);
+      const rv3Pct = nullableStr(row.rentavariable3pct);
       const tarifaTipo = asString(row.tarifatipo).toUpperCase();
       const tarifaValor = asString(row.tarifavalor).replace(",", ".");
       const tarifaVigenciaDesde = parseDate(row.tarifavigenciadesde);
       const tarifaVigenciaHasta = parseDate(row.tarifavigenciahasta);
 
       if (rentaVariablePct) {
-        if (!group.rentaVariable.some((r) => r.pctRentaVariable === rentaVariablePct)) {
-          group.rentaVariable.push({ pctRentaVariable: rentaVariablePct });
+        if (!group.rentaVariable.some((r) => r.umbralVentasUf === "0")) {
+          group.rentaVariable.push({ pctRentaVariable: rentaVariablePct, umbralVentasUf: "0" });
+        }
+        if (rv2Umbral && rv2Pct && !group.rentaVariable.some((r) => r.umbralVentasUf === rv2Umbral)) {
+          group.rentaVariable.push({ pctRentaVariable: rv2Pct, umbralVentasUf: rv2Umbral });
+        }
+        if (rv3Umbral && rv3Pct && !group.rentaVariable.some((r) => r.umbralVentasUf === rv3Umbral)) {
+          group.rentaVariable.push({ pctRentaVariable: rv3Pct, umbralVentasUf: rv3Umbral });
         }
       } else if (tarifaTipo && tarifaValor && tarifaVigenciaDesde) {
         const tarifaKey = `${tarifaTipo}-${tarifaVigenciaDesde}`;
@@ -208,7 +216,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       const localData = localMap.get(group.localCodigo);
       const localId = localData?.id ?? "";
       const arrendatarioMatches =
-        arrendatarioMap.get(normalizeUploadArrendatarioNombre(group.arrendatarioNombre)) ?? [];
+        arrendatarioMap.get(normalizeUploadTenantName(group.arrendatarioNombre)) ?? [];
       const arrendatarioId = arrendatarioMatches.length === 1 ? arrendatarioMatches[0] : "";
       const localIds = localId ? [localId] : [];
       const glam2 = localData?.glam2 ? Number.parseFloat(localData.glam2) : null;
@@ -234,17 +242,13 @@ export async function POST(request: Request): Promise<NextResponse> {
               }
             ];
 
-      const rentaVariable =
-        group.rentaVariable.length > 0
-          ? [
-              {
-                pctRentaVariable: group.rentaVariable[0].pctRentaVariable,
-                vigenciaDesde: group.fechaInicio,
-                vigenciaHasta: group.fechaTermino,
-                _key: crypto.randomUUID()
-              }
-            ]
-          : [];
+      const rentaVariable = group.rentaVariable.map((rv) => ({
+        pctRentaVariable: rv.pctRentaVariable,
+        umbralVentasUf: rv.umbralVentasUf,
+        vigenciaDesde: group.fechaInicio,
+        vigenciaHasta: group.fechaTermino,
+        _key: crypto.randomUUID()
+      }));
 
       const ggcc = group.ggcc.map((g) => {
         let tarifaBaseUfM2 = g.valor;
@@ -270,7 +274,6 @@ export async function POST(request: Request): Promise<NextResponse> {
         fechaTermino: group.fechaTermino,
         fechaEntrega: group.fechaEntrega,
         fechaApertura: group.fechaApertura,
-        estado: group.estado,
         pctFondoPromocion: group.pctFondoPromocion,
         multiplicadorDiciembre: group.multiplicadorDiciembre,
         codigoCC: group.codigoCC,

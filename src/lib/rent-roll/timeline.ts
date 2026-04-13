@@ -58,44 +58,53 @@ type VariableRentData = {
 
 async function buildVariableRentData(proyectoId: string): Promise<VariableRentData> {
   const [ventas, contractsRaw] = await Promise.all([
-    prisma.unitSale.findMany({
+    prisma.tenantSale.findMany({
       where: { projectId: proyectoId },
-      select: { unitId: true, period: true, salesUf: true },
+      select: { tenantId: true, period: true, salesUf: true },
     }),
     prisma.contract.findMany({
       where: { proyectoId },
       select: {
         localId: true,
+        arrendatarioId: true,
         fechaInicio: true,
         fechaTermino: true,
         tarifas: {
           where: { tipo: ContractRateType.PORCENTAJE },
-          select: { valor: true, vigenciaDesde: true, vigenciaHasta: true },
+          select: { valor: true, umbralVentasUf: true, vigenciaDesde: true, vigenciaHasta: true },
         },
       },
     }),
   ]);
 
   const contractsWithPct = contractsRaw.filter((c) => c.tarifas.length > 0);
-  const contractByLocalId = new Map(contractsWithPct.map((c) => [c.localId, c]));
+  const contractByTenantId = new Map(contractsWithPct.map((c) => [c.arrendatarioId, c]));
 
   const ventaMap = new Map<string, { rentaVariableUf: number; ventasTotalUf: number }>();
 
   for (const venta of ventas) {
-    const contract = contractByLocalId.get(venta.unitId);
+    const contract = contractByTenantId.get(venta.tenantId);
     if (!contract) continue;
 
-    // Find the PORCENTAJE rate active at the mid-point of the period
-    const midMonth = new Date(`${venta.period}-15`);
-    const rate = contract.tarifas.find(
+    // Find the PORCENTAJE tiers active at the mid-point of the period
+    const periodKey = venta.period.toISOString().slice(0, 7);
+    const midMonth = new Date(`${periodKey}-15`);
+    const activeTarifas = contract.tarifas.filter(
       (t) => t.vigenciaDesde <= midMonth && (t.vigenciaHasta === null || t.vigenciaHasta >= midMonth)
     );
-    if (!rate) continue;
+    if (activeTarifas.length === 0) continue;
 
     const ventasUf = venta.salesUf.toNumber();
-    const rentaVar = round2(ventasUf * (rate.valor.toNumber() / 100));
-    const existing = ventaMap.get(venta.period) ?? { rentaVariableUf: 0, ventasTotalUf: 0 };
-    ventaMap.set(venta.period, {
+    const tiers = activeTarifas.map((t) => ({
+      umbralVentasUf: t.umbralVentasUf?.toNumber() ?? 0,
+      pct: t.valor.toNumber(),
+    }));
+    const sorted = [...tiers].sort((a, b) => b.umbralVentasUf - a.umbralVentasUf);
+    const selectedTier = sorted.find((t) => ventasUf >= t.umbralVentasUf);
+    if (!selectedTier) continue;
+    const rentaVar = round2(ventasUf * (selectedTier.pct / 100));
+    const existing = ventaMap.get(periodKey) ?? { rentaVariableUf: 0, ventasTotalUf: 0 };
+    ventaMap.set(periodKey, {
       rentaVariableUf: round2(existing.rentaVariableUf + rentaVar),
       ventasTotalUf: round2(existing.ventasTotalUf + ventasUf),
     });
@@ -132,9 +141,15 @@ async function buildHistoricalPeriodos(
   currentPeriodo: string,
   variableRentData: VariableRentData
 ): Promise<PeriodoMetrica[]> {
-  // Fetch all ContratoDia records for the project
+  // Fetch ContratoDia records limited to the last 36 months for performance
+  const HISTORY_MONTHS = 36;
+  const cutoffDate = new Date();
+  cutoffDate.setUTCMonth(cutoffDate.getUTCMonth() - HISTORY_MONTHS);
+  cutoffDate.setUTCDate(1);
+  cutoffDate.setUTCHours(0, 0, 0, 0);
+
   const allDias = await prisma.contractDay.findMany({
-    where: { proyectoId },
+    where: { proyectoId, fecha: { gte: cutoffDate } },
     select: {
       fecha: true,
       localId: true,

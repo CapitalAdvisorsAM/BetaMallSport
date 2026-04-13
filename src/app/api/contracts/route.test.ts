@@ -32,7 +32,7 @@ describe("GET /api/contracts", () => {
   it("returns 400 when limit is missing", async () => {
     const { GET } = await import("./route");
     const response = await GET(
-      new Request("http://localhost/api/contracts?proyectoId=p1")
+      new Request("http://localhost/api/contracts?projectId=p1")
     );
 
     expect(response.status).toBe(400);

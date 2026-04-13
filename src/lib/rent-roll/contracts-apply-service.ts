@@ -1,5 +1,6 @@
 import { Contract, ContractStatus, Prisma, ContractRateType } from "@prisma/client";
-import { normalizeUploadArrendatarioNombre } from "@/lib/upload/parse-contratos";
+import { computeEstadoContrato, startOfDay } from "@/lib/utils";
+import { normalizeUploadTenantName } from "@/lib/upload/parse-contracts";
 import { parseDate } from "@/lib/upload/parse-utils";
 import type { PreviewRow, UploadIssue } from "@/types/upload";
 
@@ -13,7 +14,6 @@ export type ContratoApplyRow = {
   numeroContrato: string;
   localCodigo: string;
   arrendatarioNombre: string;
-  estado: ContractStatus;
   fechaInicio: string;
   fechaTermino: string;
   fechaEntrega: string | null;
@@ -85,7 +85,6 @@ type GgccApplyInput = Pick<
   | "ggccMesesReajuste"
 >;
 
-const allowedEstadoContrato = new Set(Object.values(ContractStatus));
 const allowedTipoTarifa = new Set(Object.values(ContractRateType));
 const allowedGgccTipo = new Set<GgccTipoInput>(["FIJO_UF_M2", "FIJO_UF"]);
 
@@ -205,8 +204,7 @@ export function normalizeContratoRow(
   const numeroContrato = asString(data.numeroContrato);
   const localCodigo = asString(data.localCodigo).toUpperCase();
   const arrendatarioNombre = asString(data.arrendatarioNombre);
-  const arrendatarioNombreLookup = normalizeUploadArrendatarioNombre(arrendatarioNombre);
-  const estado = asString(data.estado).toUpperCase();
+  const arrendatarioNombreLookup = normalizeUploadTenantName(arrendatarioNombre);
   const fechaInicio = parseDate(data.fechaInicio);
   const fechaTermino = parseDate(data.fechaTermino);
   const fechaEntrega = parseDate(data.fechaEntrega);
@@ -254,9 +252,6 @@ export function normalizeContratoRow(
     !fechaTermino ||
     !tarifaVigenciaDesdeFinal
   ) {
-    return null;
-  }
-  if (!allowedEstadoContrato.has(estado as ContractStatus)) {
     return null;
   }
   if (!allowedTipoTarifa.has(tarifaTipo as ContractRateType)) {
@@ -310,7 +305,6 @@ export function normalizeContratoRow(
     numeroContrato,
     localCodigo,
     arrendatarioNombre,
-    estado: estado as ContractStatus,
     fechaInicio,
     fechaTermino,
     fechaEntrega,
@@ -355,7 +349,7 @@ export async function applyContrato(
 ): Promise<ApplyContratoResult> {
   const localData = localMap.get(row.localCodigo.toUpperCase());
   const arrendatarioMatches = arrendatarioMap.get(
-    normalizeUploadArrendatarioNombre(row.arrendatarioNombre)
+    normalizeUploadTenantName(row.arrendatarioNombre)
   );
   const arrendatarioId = arrendatarioMatches?.length === 1 ? arrendatarioMatches[0] : null;
 
@@ -410,7 +404,13 @@ export async function applyContrato(
           fechaTermino: new Date(row.fechaTermino),
           fechaEntrega: dateOrNull(row.fechaEntrega),
           fechaApertura: dateOrNull(row.fechaApertura),
-          estado: row.estado,
+          estado: computeEstadoContrato(
+            new Date(row.fechaInicio),
+            new Date(row.fechaTermino),
+            0,
+            ContractStatus.VIGENTE,
+            startOfDay(new Date())
+          ),
           pctFondoPromocion: decimalOrNull(row.pctFondoPromocion),
           multiplicadorDiciembre: decimalOrNull(row.multiplicadorDiciembre),
           codigoCC: row.codigoCC,
@@ -427,7 +427,13 @@ export async function applyContrato(
           fechaTermino: new Date(row.fechaTermino),
           fechaEntrega: dateOrNull(row.fechaEntrega),
           fechaApertura: dateOrNull(row.fechaApertura),
-          estado: row.estado,
+          estado: computeEstadoContrato(
+            new Date(row.fechaInicio),
+            new Date(row.fechaTermino),
+            0,
+            ContractStatus.VIGENTE,
+            startOfDay(new Date())
+          ),
           pctFondoPromocion: decimalOrNull(row.pctFondoPromocion),
           multiplicadorDiciembre: decimalOrNull(row.multiplicadorDiciembre),
           codigoCC: row.codigoCC,

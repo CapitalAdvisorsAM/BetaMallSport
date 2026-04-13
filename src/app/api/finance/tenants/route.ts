@@ -39,8 +39,24 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
               select: {
                 id: true,
                 codigo: true,
-                nombre: true
+                nombre: true,
+                glam2: true
               }
+            },
+            tarifas: {
+              where: {
+                tipo: { in: ["FIJO_UF_M2", "PORCENTAJE"] },
+                vigenciaDesde: { lte: hastaDate },
+                OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: desdeDate } }]
+              },
+              orderBy: { vigenciaDesde: "desc" },
+              select: { tipo: true, valor: true }
+            },
+            ggcc: {
+              where: { vigenciaDesde: { lte: hastaDate } },
+              orderBy: { vigenciaDesde: "desc" },
+              take: 1,
+              select: { tarifaBaseUfM2: true, pctAdministracion: true }
             }
           }
         }
@@ -66,14 +82,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           valueUf: true
         }
       }),
-      prisma.unitSale.findMany({
+      prisma.tenantSale.findMany({
         where: {
           projectId,
-          unitId: { in: unitIds },
-          period: { gte: from ?? "2024-01", lte: to ?? "9999-12" }
+          tenantId: { in: tenants.map((t) => t.id) },
+          period: { gte: desdeDate, lte: hastaDate }
         },
         select: {
-          unitId: true,
+          tenantId: true,
           period: true,
           salesUf: true
         }
@@ -86,8 +102,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       valorUf: record.valueUf
     }));
     const legacySales = sales.map((sale) => ({
-      localId: sale.unitId,
-      periodo: sale.period,
+      tenantId: sale.tenantId,
+      periodo: sale.period.toISOString().slice(0, 7),
       ventasUf: sale.salesUf
     }));
 

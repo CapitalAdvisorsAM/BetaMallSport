@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/DataTable";
@@ -12,6 +13,7 @@ type ContractsViewRow = {
   numeroContrato: string;
   locales: string;
   arrendatario: string;
+  arrendatarioId: string;
   estado: string;
   fechaInicio: string;
   fechaTermino: string;
@@ -20,15 +22,14 @@ type ContractsViewRow = {
 
 type ContractsViewTableProps = {
   rows: ContractsViewRow[];
-  selectedDetailId?: string;
-  detailBaseHref?: string;
+  proyectoId: string;
 };
 
 const PDF_OPTIONS = ["Disponible", "Sin PDF"];
 
 export function ContractsViewTable({
   rows,
-  selectedDetailId
+  proyectoId
 }: ContractsViewTableProps): JSX.Element {
   const stateOptions = useMemo(
     () => Array.from(new Set(rows.map((row) => row.estado))).sort(),
@@ -41,11 +42,14 @@ export function ContractsViewTable({
         accessorKey: "numeroContrato",
         header: "N contrato",
         filterFn: "includesString",
-        meta: {
-          linkTo: {
-            triggerDetail: true,
-          },
-        },
+        cell: ({ row }) => (
+          <Link
+            href={`/rent-roll/contracts/${row.original.id}?project=${proyectoId}`}
+            className="whitespace-nowrap font-medium text-brand-500 underline underline-offset-2 transition-colors hover:text-brand-700"
+          >
+            {row.original.numeroContrato}
+          </Link>
+        ),
       },
       {
         accessorKey: "locales",
@@ -57,7 +61,14 @@ export function ContractsViewTable({
         accessorKey: "arrendatario",
         header: "Arrendatario",
         filterFn: "includesString",
-        cell: ({ row }) => <span className="whitespace-nowrap">{row.original.arrendatario}</span>
+        cell: ({ row }) => (
+          <Link
+            href={`/tenants/${row.original.arrendatarioId}?project=${proyectoId}`}
+            className="whitespace-nowrap text-brand-500 underline underline-offset-2 font-medium transition-colors hover:text-brand-700"
+          >
+            {row.original.arrendatario}
+          </Link>
+        )
       },
       {
         accessorKey: "estado",
@@ -104,7 +115,7 @@ export function ContractsViewTable({
         cell: ({ row }) => <span>{row.original.pdfUrl ? "Disponible" : "Sin PDF"}</span>
       }
     ],
-    [stateOptions]
+    [stateOptions, proyectoId]
   );
 
   const { table } = useDataTable(rows, columns);
@@ -113,9 +124,6 @@ export function ContractsViewTable({
     <DataTable
       table={table}
       emptyMessage="Aun no hay contratos en este proyecto."
-      getRowClassName={(row) =>
-        selectedDetailId === row.original.id ? "bg-brand-50 hover:bg-brand-50" : undefined
-      }
     />
   );
 }

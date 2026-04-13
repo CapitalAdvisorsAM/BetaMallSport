@@ -1,4 +1,3 @@
-import { ContractStatus } from "@prisma/client";
 import { createEmptyTarifaItem, type TarifaListItem } from "@/components/contracts/TarifaListEditor";
 import type { GgccListItem } from "@/components/contracts/GgccListEditor";
 import type { RentaVariableListItem } from "@/components/contracts/RentaVariableListEditor";
@@ -25,11 +24,10 @@ function toDraftRentaVariable(
   return { ...item, _key: crypto.randomUUID() };
 }
 
-function toSingleRentaVariableItem(
+function toAllRentaVariableItems(
   items: ContractFormPayload["rentaVariable"]
 ): RentaVariableListItem[] {
-  const firstItem = items[0];
-  return firstItem ? [toDraftRentaVariable(firstItem)] : [];
+  return items.map(toDraftRentaVariable);
 }
 
 export function isBlank(value: string | null | undefined): boolean {
@@ -39,21 +37,18 @@ export function isBlank(value: string | null | undefined): boolean {
 export function toApiPayload(payload: ContractDraftPayload): ContractFormPayload {
   const localIds = Array.from(new Set(payload.localIds.filter(Boolean)));
   const localId = localIds[0] ?? payload.localId;
-  const rentaVariableItem = payload.rentaVariable.find((item) => !isBlank(item.pctRentaVariable));
+  const validTiers = payload.rentaVariable.filter((item) => !isBlank(item.pctRentaVariable));
 
   return {
     ...payload,
     localId,
     localIds,
-    rentaVariable: rentaVariableItem
-      ? [
-          {
-            pctRentaVariable: rentaVariableItem.pctRentaVariable,
-            vigenciaDesde: payload.fechaInicio,
-            vigenciaHasta: payload.fechaTermino
-          }
-        ]
-      : [],
+    rentaVariable: validTiers.map((item) => ({
+      pctRentaVariable: item.pctRentaVariable,
+      umbralVentasUf: item.umbralVentasUf || "0",
+      vigenciaDesde: payload.fechaInicio,
+      vigenciaHasta: payload.fechaTermino
+    })),
     tarifas: payload.tarifas.map((tarifa) => ({
       tipo: tarifa.tipo,
       valor: tarifa.valor,
@@ -87,7 +82,6 @@ export function createEmptyPayload(
     fechaEntrega: null,
     fechaApertura: null,
     diasGracia: 0,
-    estado: ContractStatus.VIGENTE,
     rentaVariable: [],
     pctFondoPromocion: null,
     pctAdministracionGgcc: null,
@@ -117,12 +111,12 @@ export function fromContract(
     fechaEntrega: null,
     fechaApertura: null,
     diasGracia: contract.diasGracia,
-    estado: contract.estado,
-    rentaVariable: toSingleRentaVariableItem(
+    rentaVariable: toAllRentaVariableItems(
       contract.tarifas
         .filter((tarifa) => tarifa.tipo === "PORCENTAJE")
         .map((tarifa) => ({
           pctRentaVariable: tarifa.valor,
+          umbralVentasUf: tarifa.umbralVentasUf ?? "0",
           vigenciaDesde: tarifa.vigenciaDesde,
           vigenciaHasta: tarifa.vigenciaHasta
         }))
@@ -184,6 +178,7 @@ function toDraftRentaVariableFromExtraction(
   return {
     _key: crypto.randomUUID(),
     pctRentaVariable: item.valor,
+    umbralVentasUf: "0",
     vigenciaDesde: "",
     vigenciaHasta: null
   };

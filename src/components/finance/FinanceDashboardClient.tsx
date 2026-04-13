@@ -24,7 +24,7 @@ import { formatEerr, BELOW_EBITDA_GROUPS } from "@/lib/finance/eerr";
 import type { MetricFormulaId } from "@/lib/metric-formulas";
 import type { ProjectOption } from "@/types/finance";
 
-type Modo = "mes" | "aÃ±o" | "ltm";
+type Modo = "mes" | "año" | "ltm";
 
 type Kpis = {
   ingresos: { actual: number; anterior: number };
@@ -203,7 +203,7 @@ function KpiCard({
       {subLabel && <p className="mt-0.5 text-xs text-slate-400">{subLabel}</p>}
       {delta !== null && anterior !== undefined && (
         <p className={`mt-1 text-xs font-medium ${deltaCls(delta)}`}>
-          {deltaSign(delta)} ({deltaPct(value!, anterior)}) vs aÃ±o anterior
+          {deltaSign(delta)} ({deltaPct(value!, anterior)}) vs año anterior
         </p>
       )}
     </div>
@@ -212,13 +212,13 @@ function KpiCard({
 
 function getModoLabel(modo: Modo, periodo: string): string {
   if (modo === "mes") return `Mes: ${periodo}`;
-  if (modo === "aÃ±o") return `AÃ±o: ${periodo}`;
-  return `LTM: Ãºltimos 12 meses hasta ${periodo}`;
+  if (modo === "año") return `Año: ${periodo}`;
+  return `LTM: últimos 12 meses hasta ${periodo}`;
 }
 
 function currentPeriodDefault(modo: Modo): string {
   const now = new Date();
-  if (modo === "aÃ±o") return String(now.getFullYear());
+  if (modo === "año") return String(now.getFullYear());
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, "0");
   return `${y}-${m}`;
@@ -239,7 +239,7 @@ export function FinanceDashboardClient({ projects, selectedProjectId }: Props): 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ proyectoId: selectedProjectId, modo, periodo });
+      const params = new URLSearchParams({ projectId: selectedProjectId, modo, periodo });
       const res = await fetch(`/api/finance/dashboard?${params}`);
       const payload = (await res.json().catch(() => null)) as unknown;
       const normalized = normalizeDashboardData(payload);
@@ -278,22 +278,22 @@ export function FinanceDashboardClient({ projects, selectedProjectId }: Props): 
           <div className="flex items-center gap-3">
             {/* Modo */}
             <div className="flex overflow-hidden rounded border border-slate-200 text-xs font-medium">
-              {(["mes", "aÃ±o", "ltm"] as Modo[]).map((m) => (
+              {(["mes", "año", "ltm"] as Modo[]).map((m) => (
                 <button
                   key={m}
                   onClick={() => handleModoChange(m)}
                   className={`px-3 py-1.5 uppercase ${modo === m ? "bg-brand-700 text-white" : "text-slate-600 hover:bg-slate-50"}`}
                 >
-                  {m === "ltm" ? "LTM" : m === "aÃ±o" ? "AÃ±o" : "Mes"}
+                  {m === "ltm" ? "LTM" : m === "año" ? "Año" : "Mes"}
                 </button>
               ))}
             </div>
             {/* Periodo input */}
             <input
-              type={modo === "aÃ±o" ? "number" : "month"}
+              type={modo === "año" ? "number" : "month"}
               value={periodo}
-              min={modo === "aÃ±o" ? "2020" : undefined}
-              max={modo === "aÃ±o" ? String(new Date().getFullYear()) : undefined}
+              min={modo === "año" ? "2020" : undefined}
+              max={modo === "año" ? String(new Date().getFullYear()) : undefined}
               onChange={(e) => setPeriodo(e.target.value)}
               className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
@@ -362,7 +362,7 @@ export function FinanceDashboardClient({ projects, selectedProjectId }: Props): 
             />
           </div>
 
-          {/* GrÃ¡fico mensual */}
+          {/* Gráfico mensual */}
           <MetricChartCard
             title="Evolucion mensual"
             metricId="chart_dashboard_ingresos_ebitda_uf"
@@ -383,12 +383,12 @@ export function FinanceDashboardClient({ projects, selectedProjectId }: Props): 
                   labelFormatter={(l) => `Mes: ${String(l)}`}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="ingresosActual" name="Ingresos aÃ±o actual" fill="#1e40af" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="ebitda" name="EBITDA aÃ±o actual" fill="#059669" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="ingresosActual" name="Ingresos año actual" fill="#1e40af" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="ebitda" name="EBITDA año actual" fill="#059669" radius={[2, 2, 0, 0]} />
                 <Line
                   type="monotone"
                   dataKey="ingresosAnterior"
-                  name="Ingresos aÃ±o anterior"
+                  name="Ingresos año anterior"
                   stroke="#94a3b8"
                   strokeDasharray="4 2"
                   dot={false}
@@ -404,16 +404,16 @@ export function FinanceDashboardClient({ projects, selectedProjectId }: Props): 
               density="compact"
               toolbar={
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                EE.RR Resumen â€” actual vs aÃ±o anterior (UF)
+                EE.RR Resumen â€” actual vs año anterior (UF)
               </p>
               }
             >
               <table className={`${compactTableTheme.table} text-xs`}>
                 <thead className={compactTableTheme.head}>
                   <tr>
-                    <th className={compactTableTheme.compactHeadCell}>SecciÃ³n</th>
+                    <th className={compactTableTheme.compactHeadCell}>Sección</th>
                     <th className={`${compactTableTheme.compactHeadCell} text-right`}>Actual</th>
-                    <th className={`${compactTableTheme.compactHeadCell} text-right`}>AÃ±o anterior</th>
+                    <th className={`${compactTableTheme.compactHeadCell} text-right`}>Año anterior</th>
                     <th className={`${compactTableTheme.compactHeadCell} text-right`}>Î” UF</th>
                     <th className={`${compactTableTheme.compactHeadCell} text-right`}>Î” %</th>
                   </tr>

@@ -61,7 +61,7 @@ export function FinanceAnalysisClient({
 
   // First load: get available grupo3 options
   const fetchOpciones = useCallback(async () => {
-    const params = new URLSearchParams({ proyectoId: selectedProjectId });
+    const params = new URLSearchParams({ projectId: selectedProjectId });
     if (desde) params.set("from", desde);
     if (hasta) params.set("to", hasta);
     params.set("dimension", "seccion");
@@ -76,7 +76,7 @@ export function FinanceAnalysisClient({
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ proyectoId: selectedProjectId, dimension, orden });
+      const params = new URLSearchParams({ projectId: selectedProjectId, dimension, orden });
       if (desde) params.set("from", desde);
       if (hasta) params.set("to", hasta);
       if (grupo3Seleccionados.size > 0) {

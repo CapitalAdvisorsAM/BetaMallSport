@@ -7,7 +7,7 @@ import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/proje
 export default async function FinanceMappingsPage({
   searchParams
 }: {
-  searchParams: { project?: string; proyecto?: string; tab?: string };
+  searchParams: { project?: string; tab?: string };
 }): Promise<JSX.Element> {
   const session = await requireSession();
   const projectParam = resolveProjectIdFromSearchParams(searchParams);

@@ -48,14 +48,14 @@ export const TOP_NAV_ITEMS: NavItem[] = [
     match: "startsWith"
   },
   {
-    label: "ConfiguraciÃ³n",
+    label: "Configuración",
     href: "/configuracion",
     enabled: true,
     match: "startsWith"
   }
 ];
 
-export const CONFIGURACION_SUB_NAV_ITEMS: NavItem[] = [
+export const SETTINGS_SUB_NAV_ITEMS: NavItem[] = [
   {
     label: "Proyecto",
     href: "/configuracion/proyecto",
@@ -67,8 +67,17 @@ export const CONFIGURACION_SUB_NAV_ITEMS: NavItem[] = [
     href: "/configuracion/dashboard",
     enabled: true,
     match: "startsWith"
+  },
+  {
+    label: "Sistema",
+    href: "/configuracion/sistema",
+    enabled: true,
+    match: "startsWith"
   }
 ];
+
+/** @deprecated Use SETTINGS_SUB_NAV_ITEMS */
+export const CONFIGURACION_SUB_NAV_ITEMS = SETTINGS_SUB_NAV_ITEMS;
 
 export const FINANZAS_SUB_NAV_ITEMS: NavItem[] = [
   {
@@ -84,7 +93,7 @@ export const FINANZAS_SUB_NAV_ITEMS: NavItem[] = [
     match: "startsWith"
   },
   {
-    label: "AnÃ¡lisis",
+    label: "Análisis",
     href: "/finance/analysis",
     enabled: true,
     match: "startsWith"
@@ -92,6 +101,54 @@ export const FINANZAS_SUB_NAV_ITEMS: NavItem[] = [
   {
     label: "Arrendatarios",
     href: "/finance/tenants",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
+    label: "Reconciliacion",
+    href: "/finance/reconciliation",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
+    label: "Presupuesto vs Real",
+    href: "/finance/budget",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
+    label: "Waterfall",
+    href: "/finance/waterfall",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
+    label: "Ocupación",
+    href: "/finance/occupancy",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
+    label: "Facturación",
+    href: "/finance/facturacion",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
+    label: "Ventas",
+    href: "/finance/ventas",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
+    label: "Costo Ocupación",
+    href: "/finance/costo-ocupacion",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
+    label: "GG.CC.",
+    href: "/finance/ggcc",
     enabled: true,
     match: "startsWith"
   },
@@ -147,6 +204,12 @@ export const RENT_ROLL_SUB_NAV_ITEMS: NavItem[] = [
     href: "/rent-roll/contracts",
     enabled: true,
     match: "exact"
+  },
+  {
+    label: "Configuración",
+    href: "/configuracion/dashboard",
+    enabled: true,
+    match: "startsWith"
   }
 ];
 

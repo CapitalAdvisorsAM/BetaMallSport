@@ -138,6 +138,16 @@ export const METRIC_FORMULAS = {
     formula: "SUM(meses restantes * glam2) / SUM(glam2)",
     detail: "Promedio ponderado de plazo remanente de contratos activos."
   },
+  kpi_rent_roll_snapshot_facturacion_esperada_vs_real: {
+    title: "Rent Roll Snapshot - Facturacion esperada vs real",
+    formula: "SUM(ingreso esperado por contrato) / SUM(registros contables INGRESOS DE EXPLOTACION)",
+    detail: "Compara la renta contractual esperada contra la facturacion real del periodo contable."
+  },
+  kpi_rent_roll_snapshot_brecha_total: {
+    title: "Rent Roll Snapshot - Brecha total",
+    formula: "SUM(ingreso esperado) - SUM(facturado real)",
+    detail: "Diferencia entre lo que deberia cobrarse segun contrato y lo facturado realmente."
+  },
   kpi_rent_roll_header_gla_total_m2: {
     title: "Rent Roll Header - GLA total (m2)",
     formula: "SUM(glam2 de todos los locales del proyecto)",
@@ -198,6 +208,121 @@ export const METRIC_FORMULAS = {
     title: "Widget personalizado",
     formula: "Formula configurable definida en Configuracion de dashboard.",
     detail: "Evalua la expresion seleccionada por el usuario sobre la serie historica mensual."
+  },
+  kpi_tenant360_costo_ocupacion_pct: {
+    title: "Costo de ocupacion (%)",
+    formula: "SUM(facturacion UF) / SUM(ventas UF) * 100",
+    detail: "Ratio entre facturacion total y ventas totales del arrendatario en el periodo."
+  },
+  kpi_tenant360_renta_fija_uf: {
+    title: "Renta fija mensual (UF)",
+    formula: "SUM(renta fija por contrato activo del arrendatario)",
+    detail: "Para UF/m2 usa valor*GLA; para UF fija usa valor directo. Solo contratos VIGENTE/GRACIA."
+  },
+  kpi_tenant360_renta_fija_clp: {
+    title: "Renta fija mensual (CLP)",
+    formula: "Renta fija UF * valor UF vigente",
+    detail: "Convierte renta fija UF del arrendatario usando el ultimo valor UF registrado."
+  },
+  kpi_tenant360_ggcc_estimado_uf: {
+    title: "GGCC estimado (UF)",
+    formula: "SUM(tarifaBaseUfM2 * glam2 * (1 + pctAdministracion/100)) por contrato activo",
+    detail: "Gasto comun estimado mensual para todos los contratos activos del arrendatario."
+  },
+  kpi_tenant360_ventas_promedio_uf: {
+    title: "Ventas promedio mensual (UF)",
+    formula: "SUM(ventas UF) / COUNT(periodos con ventas)",
+    detail: "Promedio mensual de ventas del arrendatario en el rango seleccionado."
+  },
+  kpi_tenant360_walt_meses: {
+    title: "WALT (meses)",
+    formula: "SUM(meses restantes * glam2) / SUM(glam2)",
+    detail: "Plazo promedio ponderado remanente de los contratos activos del arrendatario."
+  },
+  kpi_tenant360_renta_riesgo_uf: {
+    title: "Renta en riesgo (UF)",
+    formula: "SUM(renta fija UF de contratos que vencen en los proximos 90 dias)",
+    detail: "Renta fija mensual que se perderia si no se renuevan contratos proximos a vencer."
+  },
+  kpi_tenant360_gap_analysis: {
+    title: "Brecha facturacion",
+    formula: "Facturacion esperada (segun contrato) - Facturacion real (segun registros contables)",
+    detail: "Positivo = subfacturado, negativo = sobrefacturado. Incluye arriendo fijo, GGCC, fondo promocion y renta variable."
+  },
+  kpi_tenant360_facturacion_uf_m2: {
+    title: "Facturacion (UF/m\u00b2)",
+    formula: "Promedio mensual facturacion UF / GLA arrendada m\u00b2",
+    detail: "Facturacion promedio mensual normalizada por metro cuadrado arrendado. Permite comparar tenants de distinto tamano."
+  },
+  kpi_tenant360_ventas_uf_m2: {
+    title: "Ventas (UF/m\u00b2)",
+    formula: "Promedio mensual ventas UF / GLA arrendada m\u00b2",
+    detail: "Ventas promedio mensual por metro cuadrado arrendado. Indicador clave de productividad del tenant."
+  },
+  kpi_bva_presupuesto_uf: {
+    title: "Presupuesto total (UF)",
+    formula: "SUM(ingreso esperado por contrato usando ventas presupuestadas)",
+    detail: "Ingreso contractual esperado calculado con ventas presupuestadas para renta variable."
+  },
+  kpi_bva_facturado_real_uf: {
+    title: "Facturado real (UF)",
+    formula: "SUM(registros contables INGRESOS DE EXPLOTACION)",
+    detail: "Total facturado real segun registros contables del periodo."
+  },
+  kpi_bva_varianza_uf: {
+    title: "Varianza (UF)",
+    formula: "Presupuesto UF - Facturado real UF",
+    detail: "Diferencia entre presupuesto y facturacion real. Positivo = subfacturado."
+  },
+  kpi_bva_cumplimiento_pct: {
+    title: "Cumplimiento (%)",
+    formula: "Facturado real UF / Presupuesto UF * 100",
+    detail: "Porcentaje de cumplimiento del presupuesto. 100% = exacto, >100% = sobre-cumplimiento."
+  },
+  chart_bva_mensual: {
+    title: "Presupuesto vs Real mensual",
+    formula: "Serie mensual: presupuesto UF, facturado real UF, cumplimiento %",
+    detail: "Compara presupuesto contractual contra facturacion real por mes."
+  },
+  kpi_finance_waterfall_prev: {
+    title: "Ingreso del periodo anterior",
+    formula: "SUM(valor UF) donde grupo1 = INGRESOS DE EXPLOTACION para el periodo anterior",
+    detail: "Ingreso total del periodo base para la comparacion waterfall."
+  },
+  kpi_finance_waterfall_current: {
+    title: "Ingreso del periodo actual",
+    formula: "SUM(valor UF) donde grupo1 = INGRESOS DE EXPLOTACION para el periodo actual",
+    detail: "Ingreso total del periodo actual en la comparacion waterfall."
+  },
+  chart_finance_waterfall: {
+    title: "Analisis de variacion de ingresos por categoria",
+    formula: "Waterfall: ingreso anterior + nuevos contratos + contratos perdidos + cambios tarifa + renta variable + GGCC + otros = ingreso actual",
+    detail: "Descompone la variacion de ingresos entre dos periodos en categorias de cambio."
+  },
+  chart_finance_occupancy: {
+    title: "Ocupacion por dimension",
+    formula: "GLA vacante = GLA total - GLA arrendada; Vacancia % = GLA vacante / GLA total * 100",
+    detail: "Muestra la evolucion mensual de la ocupacion segmentada por tipo de local, tamano o piso."
+  },
+  chart_finance_facturacion: {
+    title: "Facturacion UF/m2 por dimension",
+    formula: "UF/m2 = SUM(valueUf donde group1=INGRESOS DE EXPLOTACION) / GLA ocupada",
+    detail: "Intensidad de facturacion mensual segmentada por tamano, tipo o piso."
+  },
+  chart_finance_ventas: {
+    title: "Ventas UF/m2 por dimension",
+    formula: "UF/m2 = SUM(salesUf) / GLA ocupada por dimension",
+    detail: "Ventas mensuales distribuidas proporcionalmente por GLA de locales activos."
+  },
+  chart_finance_costo_ocupacion: {
+    title: "Costo de ocupacion por arrendatario",
+    formula: "Costo Ocupacion % = (Facturacion UF / Ventas UF) * 100",
+    detail: "Porcentaje de ventas que el arrendatario destina al pago de arriendo y cargos comunes."
+  },
+  chart_finance_ggcc: {
+    title: "Deficit de gastos comunes",
+    formula: "Deficit = Recuperacion GGCC - Costos operacionales; Deficit % = Deficit / Recuperacion * 100",
+    detail: "Compara la recuperacion de gastos comunes vs costos reales de operacion."
   }
 } as const satisfies Record<string, MetricFormulaDefinition>;
 

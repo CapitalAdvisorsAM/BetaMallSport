@@ -41,7 +41,7 @@ function aggregateByYear(data: EerrData): EerrData {
 
   return {
     periodos: years,
-    secciones: data.secciones.map((s) => ({
+    secciones: (data.secciones ?? []).map((s) => ({
       ...s,
       porPeriodo: agg(s.porPeriodo),
       lineas: s.lineas.map((l) => ({ ...l, porPeriodo: agg(l.porPeriodo) }))
@@ -68,11 +68,10 @@ export function EerrClient({
   const [hasta, setHasta] = useState(defaultHasta ?? "");
   const [modo, setModo] = useState<ModoVista>("mensual");
   const [rawData, setRawData] = useState<EerrData | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [expandedLines, setExpandedLines] = useState<Set<string>>(new Set());
-  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
   const [detalleCache, setDetalleCache] = useState<Map<string, EerrDetalleResponse>>(new Map());
   const [loadingLines, setLoadingLines] = useState<Set<string>>(new Set());
 
@@ -86,7 +85,7 @@ export function EerrClient({
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ proyectoId: selectedProjectId });
+      const params = new URLSearchParams({ projectId: selectedProjectId });
       if (desde) params.set("from", desde);
       if (hasta) params.set("to", hasta);
       const res = await fetch(`/api/finance/eerr?${params}`);
@@ -94,7 +93,6 @@ export function EerrClient({
       setRawData(payload);
       setExpandedSections(new Set(payload.secciones?.map((s) => s.grupo1) ?? []));
       setExpandedLines(new Set());
-      setExpandedCats(new Set());
       setDetalleCache(new Map());
     } finally {
       setLoading(false);
@@ -129,28 +127,15 @@ export function EerrClient({
     if (detalleCache.has(key)) return;
     setLoadingLines((p) => new Set(p).add(key));
     try {
-      const params = new URLSearchParams({ proyectoId: selectedProjectId, grupo1: g1, grupo3: g3 });
+      const params = new URLSearchParams({ projectId: selectedProjectId, grupo1: g1, grupo3: g3 });
       if (desde) params.set("from", desde);
       if (hasta) params.set("to", hasta);
-      const res = await fetch(`/api/finance/eerr/detalle?${params}`);
+      const res = await fetch(`/api/finance/eerr/detail?${params}`);
       const d = (await res.json()) as EerrDetalleResponse;
       setDetalleCache((p) => new Map(p).set(key, d));
     } finally {
       setLoadingLines((p) => { const n = new Set(p); n.delete(key); return n; });
     }
-  }
-
-  function toggleCat(g1: string, g3: string, cat: string) {
-    const key = `${g1}::${g3}::${cat}`;
-    setExpandedCats((previous) => {
-      const next = new Set(previous);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
   }
 
   async function openArrendatarioPanel(panel: ArrendatarioPanel) {
@@ -163,7 +148,7 @@ export function EerrClient({
     setLoadingBilling(true);
     setBillingData(null);
     try {
-      const params = new URLSearchParams({ proyectoId: selectedProjectId, arrendatarioId: panel.arrendatarioId });
+      const params = new URLSearchParams({ projectId: selectedProjectId, arrendatarioId: panel.arrendatarioId });
       if (desde) params.set("from", desde);
       if (hasta) params.set("to", hasta);
       const res = await fetch(`/api/finance/tenants/detail?${params}`);
@@ -175,11 +160,9 @@ export function EerrClient({
     }
   }
 
-  if (!data && !loading) return <></>;
-
-  const ingresos = data?.secciones.find((s) => s.grupo1 === "INGRESOS DE EXPLOTACION");
-  const aboveEbitdaSections = data?.secciones.filter((s) => !BELOW_EBITDA_GROUPS.has(s.grupo1)) ?? [];
-  const belowEbitdaSections = data?.secciones.filter((s) => BELOW_EBITDA_GROUPS.has(s.grupo1)) ?? [];
+  const ingresos = data?.secciones?.find((s) => s.grupo1 === "INGRESOS DE EXPLOTACION");
+  const aboveEbitdaSections = data?.secciones?.filter((s) => !BELOW_EBITDA_GROUPS.has(s.grupo1)) ?? [];
+  const belowEbitdaSections = data?.secciones?.filter((s) => BELOW_EBITDA_GROUPS.has(s.grupo1)) ?? [];
 
   return (
 
@@ -215,7 +198,7 @@ export function EerrClient({
       <ModuleSectionCard>
         {loading ? (
           <ModuleLoadingState message="Cargando Estado de Resultados..." />
-        ) : !data || data.secciones.length === 0 ? (
+        ) : !data || !data.secciones?.length ? (
           <ModuleEmptyState
             message="Sin datos contables para el periodo seleccionado."
             actionHref={`/finance/upload?project=${selectedProjectId}`}
@@ -312,81 +295,72 @@ export function EerrClient({
                               </td>
                             </tr>
 
-                            {/* Categoria rows (nivel 3) */}
-                            {isLineExpanded && detalle?.categorias.map((cat) => {
-                              const catKey = `${section.grupo1}::${line.grupo3}::${cat.categoriaTipo}`;
-                              const isCatExpanded = expandedCats.has(catKey);
-                              return (
-                                <Fragment key={catKey}>
-                                  <tr className="border-b border-slate-50 bg-slate-50/30 hover:bg-slate-50 transition-colors">
-                                    <td className="sticky left-0 bg-inherit py-1 pl-14 pr-3">
-                                      <div className="flex items-center gap-2">
-                                        <TableDisclosureButton
-                                          expanded={isCatExpanded}
-                                          label={`${isCatExpanded ? "Contraer" : "Expandir"} categoría ${cat.categoriaTipo}`}
-                                          onToggle={() => toggleCat(section.grupo1, line.grupo3, cat.categoriaTipo)}
-                                          className="h-5 w-5"
-                                        />
-                                        <span className="text-slate-500 text-[10px]">{cat.categoriaTipo}</span>
-                                      </div>
+                            {/* Detalle: categoría como header, tiendas directas (sin clic extra) */}
+                            {isLineExpanded && detalle?.categorias.map((cat) => (
+                              <Fragment key={cat.categoriaTipo}>
+                                {/* Header de categoría — no interactivo */}
+                                <tr className="border-b border-slate-100 bg-slate-50">
+                                  <td className="sticky left-0 bg-inherit py-1.5 pl-14 pr-3">
+                                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                      {cat.categoriaTipo}
+                                    </span>
+                                  </td>
+                                  {data.periodos.map((p) => (
+                                    <td key={p} className="px-3 py-1.5 text-right tabular-nums text-[11px] text-slate-500">
+                                      {formatEerr(cat.porPeriodo[p] ?? 0)}
                                     </td>
-                                    {data.periodos.map((p) => (
-                                      <td key={p} className="px-3 py-1 text-right tabular-nums text-[10px] text-slate-400">
-                                        {formatEerr(cat.porPeriodo[p] ?? 0)}
-                                      </td>
-                                    ))}
-                                    <td className="px-3 py-1 text-right tabular-nums text-[10px] text-slate-500 border-l border-slate-100">
-                                      {formatEerr(cat.total)}
-                                    </td>
-                                  </tr>
+                                  ))}
+                                  <td className="px-3 py-1.5 text-right tabular-nums text-[11px] font-medium text-slate-600 border-l border-slate-100">
+                                    {formatEerr(cat.total)}
+                                  </td>
+                                </tr>
 
-                                  {/* Local / Arrendatario rows (nivel 4) */}
-                                  {isCatExpanded && cat.locales.map((loc) => {
-                                    const isActive = loc.arrendatarioId != null && arrendatarioPanel?.arrendatarioId === loc.arrendatarioId;
-                                    return (
-                                      <tr
-                                        key={loc.localId}
-                                        className={`border-b border-slate-50/60 transition-colors ${isActive ? "bg-brand-50/60" : "bg-white hover:bg-brand-50/20"}`}
-                                      >
-                                        <td className="sticky left-0 bg-inherit py-1 pl-[72px] pr-3">
-                                          <span className="font-mono text-[10px] text-slate-300">[{loc.localCodigo}]</span>
-                                          {loc.arrendatarioId ? (
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                void openArrendatarioPanel({
-                                                  arrendatarioId: loc.arrendatarioId!,
-                                                  nombre: loc.arrendatarioNombre ?? loc.localNombre,
-                                                  localCodigo: loc.localCodigo
-                                                });
-                                              }}
-                                              className={`ml-2 inline-flex items-center gap-1 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:ring-offset-1 ${
-                                                isActive ? "font-semibold text-brand-700" : "text-slate-400 hover:text-brand-700"
-                                              }`}
-                                            >
-                                              {loc.arrendatarioNombre ?? loc.localNombre}
-                                              <span className="text-[9px] text-brand-400">{"\u2197"}</span>
-                                            </button>
-                                          ) : (
-                                            <span className="ml-2 text-[10px] text-slate-400">
-                                              {loc.arrendatarioNombre ?? loc.localNombre}
-                                            </span>
-                                          )}
+                                {/* Tiendas directas */}
+                                {cat.locales.map((loc) => {
+                                  const isActive = loc.arrendatarioId != null && arrendatarioPanel?.arrendatarioId === loc.arrendatarioId;
+                                  return (
+                                    <tr
+                                      key={loc.localId}
+                                      className={`border-b border-slate-50 transition-colors ${isActive ? "bg-brand-50/60" : "bg-white hover:bg-brand-50/30"}`}
+                                    >
+                                      <td className="sticky left-0 bg-inherit py-1.5 pl-[72px] pr-3">
+                                        <span className="font-mono text-[10px] text-slate-400">[{loc.localCodigo}]</span>
+                                        {loc.arrendatarioId ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              void openArrendatarioPanel({
+                                                arrendatarioId: loc.arrendatarioId!,
+                                                nombre: loc.arrendatarioNombre ?? loc.localNombre,
+                                                localCodigo: loc.localCodigo
+                                              });
+                                            }}
+                                            className={`ml-2 inline-flex items-center gap-1 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:ring-offset-1 ${
+                                              isActive ? "font-semibold text-brand-700" : "text-slate-600 hover:text-brand-700"
+                                            }`}
+                                          >
+                                            {loc.arrendatarioNombre ?? loc.localNombre}
+                                            <span className="text-[10px] text-brand-400">{"\u2197"}</span>
+                                          </button>
+                                        ) : (
+                                          <span className="ml-2 text-[11px] text-slate-600">
+                                            {loc.arrendatarioNombre ?? loc.localNombre}
+                                          </span>
+                                        )}
+                                      </td>
+                                      {data.periodos.map((p) => (
+                                        <td key={p} className="px-3 py-1.5 text-right tabular-nums text-[11px] text-slate-600">
+                                          {formatEerr(loc.porPeriodo[p] ?? 0)}
                                         </td>
-                                        {data.periodos.map((p) => (
-                                          <td key={p} className="px-3 py-1 text-right tabular-nums text-[10px] text-slate-400">
-                                            {formatEerr(loc.porPeriodo[p] ?? 0)}
-                                          </td>
-                                        ))}
-                                        <td className="px-3 py-1 text-right tabular-nums text-[10px] text-slate-400 border-l border-slate-100">
-                                          {formatEerr(loc.total)}
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </Fragment>
-                              );
-                            })}
+                                      ))}
+                                      <td className="px-3 py-1.5 text-right tabular-nums text-[11px] font-medium text-slate-700 border-l border-slate-100">
+                                        {formatEerr(loc.total)}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </Fragment>
+                            ))}
                           </Fragment>
                         );
                       })}

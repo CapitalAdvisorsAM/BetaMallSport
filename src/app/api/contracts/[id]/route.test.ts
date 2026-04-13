@@ -67,10 +67,10 @@ function makePayload(): ContractFormPayload {
     fechaTermino: "2026-12-31",
     fechaEntrega: null,
     fechaApertura: null,
-    estado: "VIGENTE",
     rentaVariable: [
       {
         pctRentaVariable: "5",
+        umbralVentasUf: "0",
         vigenciaDesde: "2026-01-01",
         vigenciaHasta: null
       }
@@ -331,6 +331,7 @@ describe("PUT /api/contracts/[id]", () => {
       payload.rentaVariable[0],
       {
         pctRentaVariable: "6",
+        umbralVentasUf: "0",
         vigenciaDesde: payload.rentaVariable[0].vigenciaDesde,
         vigenciaHasta: null
       }
@@ -375,7 +376,6 @@ describe("PUT /api/contracts/[id]", () => {
       ggcc: [existing.ggcc[0]]
     };
     const payload = makePayload();
-    payload.estado = "TERMINADO";
     payload.fechaTermino = "2027-01-31";
     payload.anexo = { fecha: "2026-04-01", descripcion: "Cambio de estado y fechas" };
 
@@ -397,7 +397,7 @@ describe("PUT /api/contracts/[id]", () => {
 
     expect(tx.contractAmendment.create).toHaveBeenCalledTimes(1);
     const anexoPayload = tx.contractAmendment.create.mock.calls[0][0].data as { camposModificados: string[] };
-    expect(anexoPayload.camposModificados).toEqual(expect.arrayContaining(["estado", "fechaTermino", "anexo"]));
+    expect(anexoPayload.camposModificados).toEqual(expect.arrayContaining(["fechaTermino", "anexo"]));
     expect(anexoPayload.camposModificados).not.toContain("tarifas");
     expect(anexoPayload.camposModificados).not.toContain("ggcc");
   });
@@ -515,7 +515,7 @@ describe("Scoped GET/DELETE /api/contracts/[id]", () => {
     prismaMock.contract.findFirst.mockResolvedValue(null);
 
     const response = await callGet(
-      new Request("http://localhost/api/contracts/contract-1?proyectoId=other-project"),
+      new Request("http://localhost/api/contracts/contract-1?projectId=other-project"),
       { id: "contract-1" }
     );
 
@@ -537,7 +537,7 @@ describe("Scoped GET/DELETE /api/contracts/[id]", () => {
     prismaMock.contract.deleteMany.mockResolvedValue({ count: 0 });
 
     const response = await callDelete(
-      new Request("http://localhost/api/contracts/contract-1?proyectoId=other-project", {
+      new Request("http://localhost/api/contracts/contract-1?projectId=other-project", {
         method: "DELETE"
       }),
       {

@@ -4,28 +4,22 @@ import { redirect } from "next/navigation";
 import { ContractManager } from "@/components/contracts/ContractManager";
 import { ContractsViewTable } from "@/components/rent-roll/ContractsViewTable";
 import { RentRollEntityModeNav } from "@/components/rent-roll/RentRollEntityModeNav";
-import { CargaHistorial } from "@/components/upload/CargaHistorial";
+import { UploadHistory } from "@/components/upload/UploadHistory";
 import { UploadSection } from "@/components/upload/UploadSection";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
-import { UnifiedTable } from "@/components/ui/UnifiedTable";
-import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
 import type { RentRollMode } from "@/lib/navigation";
 import { buildExportExcelUrl } from "@/lib/export/shared";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
 import { getUploadHistory } from "@/lib/rent-roll/upload-history";
-import { formatDate } from "@/lib/utils";
 
 type ContractsPageProps = {
   searchParams: {
     project?: string | string[];
-    proyecto?: string | string[];
     seccion?: string | string[];
     cursor?: string | string[];
-    detalle?: string | string[];
   };
 };
 
@@ -51,20 +45,26 @@ function getSingleValue(value: string | string[] | undefined): string | undefine
 
 const contractQueryArgs = {
   include: {
-    local: { select: { id: true, codigo: true, nombre: true } },
+    local: { select: { id: true, codigo: true, nombre: true, glam2: true, piso: true, tipo: true } },
     locales: {
       include: {
-        local: { select: { id: true, codigo: true, nombre: true } }
+        local: { select: { id: true, codigo: true, nombre: true, glam2: true, piso: true, tipo: true } }
       },
       orderBy: { createdAt: "asc" as const }
     },
-    arrendatario: { select: { id: true, nombreComercial: true, razonSocial: true } },
+    arrendatario: {
+      select: {
+        id: true, nombreComercial: true, razonSocial: true,
+        rut: true, email: true, telefono: true, vigente: true
+      }
+    },
     tarifas: {
       orderBy: { vigenciaDesde: "desc" as const },
       take: 10,
       select: {
         tipo: true,
         valor: true,
+        umbralVentasUf: true,
         vigenciaDesde: true,
         vigenciaHasta: true,
         esDiciembre: true
@@ -82,25 +82,22 @@ const contractQueryArgs = {
         proximoReajuste: true,
         mesesReajuste: true
       }
+    },
+    anexos: {
+      orderBy: { fecha: "desc" as const },
+      select: {
+        id: true,
+        fecha: true,
+        descripcion: true,
+        camposModificados: true
+      }
     }
   }
 } satisfies Prisma.ContractDefaultArgs;
 
 type ContractRow = Prisma.ContractGetPayload<typeof contractQueryArgs>;
-const compactTableTheme = getTableTheme("compact");
 
-function getDecemberMultiplier(contract: ContractRow): string | null {
-  const value = (contract as Record<string, unknown>)["multiplicadorDiciembre"];
-  if (value === null || value === undefined) {
-    return null;
-  }
-  if (typeof value === "object" && value !== null && "toString" in value) {
-    return (value as { toString: () => string }).toString();
-  }
-  return null;
-}
-
-function getAssociatedLocales(contract: ContractRow): Array<{ id: string; codigo: string; nombre: string }> {
+function getAssociatedLocales(contract: ContractRow) {
   if (contract.locales.length > 0) {
     return contract.locales.map((item) => item.local);
   }
@@ -114,7 +111,6 @@ export default async function ContractsPage({
   const projectParam = resolveProjectIdFromSearchParams(searchParams);
   const seccionParam = getSingleValue(searchParams.seccion);
   const cursor = getSingleValue(searchParams.cursor);
-  const detalleId = getSingleValue(searchParams.detalle);
   const { selectedProjectId } = await getProjectContext(projectParam);
   const canEdit = canWrite(session.user.role);
 
@@ -129,7 +125,7 @@ export default async function ContractsPage({
   }
 
   if (!projectParam) {
-    redirect(`/rent-roll/contracts?project=${selectedProjectId}&proyecto=${selectedProjectId}`);
+    redirect(`/rent-roll/contracts?project=${selectedProjectId}`);
   }
   const mode = resolveMode(seccionParam);
 
@@ -147,7 +143,6 @@ export default async function ContractsPage({
     prisma.contract.findMany({
       where: {
         proyectoId: selectedProjectId,
-        ...(detalleId ? { id: detalleId } : {}),
       },
       ...contractQueryArgs,
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
@@ -165,32 +160,14 @@ export default async function ContractsPage({
   const filteredExportHref = buildExportExcelUrl({
     dataset: "contratos",
     scope: "filtered",
-    proyectoId: selectedProjectId
+    projectId: selectedProjectId
   });
   const allExportHref = buildExportExcelUrl({
     dataset: "contratos",
     scope: "all",
-    proyectoId: selectedProjectId
+    projectId: selectedProjectId
   });
 
-  const buildDetailHref = (id: string | null): string => {
-    const params = new URLSearchParams();
-    params.set("project", selectedProjectId);
-    params.set("proyecto", selectedProjectId);
-    params.set("seccion", mode);
-    if (cursor) {
-      params.set("cursor", cursor);
-    }
-    if (id) {
-      params.set("detalle", id);
-    }
-    return `/rent-roll/contracts?${params.toString()}`;
-  };
-
-  const selectedContract =
-    mode === "ver" && detalleId
-      ? contracts.find((contract) => contract.id === detalleId) ?? null
-      : null;
   const contractViewRows = contracts.map((contract) => ({
     id: contract.id,
     numeroContrato: contract.numeroContrato,
@@ -198,19 +175,12 @@ export default async function ContractsPage({
       .map((unit) => unit.codigo)
       .join(", "),
     arrendatario: contract.arrendatario.nombreComercial,
+    arrendatarioId: contract.arrendatario.id,
     estado: contract.estado,
     fechaInicio: contract.fechaInicio.toISOString(),
     fechaTermino: contract.fechaTermino.toISOString(),
     pdfUrl: contract.pdfUrl
   }));
-  const selectedContractLocales = selectedContract
-    ? getAssociatedLocales(selectedContract)
-        .map((unit) => unit.codigo)
-        .join(", ")
-    : "";
-  const selectedContractDecemberMultiplier = selectedContract
-    ? getDecemberMultiplier(selectedContract)
-    : null;
 
   return (
     <main className="space-y-4">
@@ -256,188 +226,10 @@ export default async function ContractsPage({
             </div>
           </section>
 
-          {selectedContract ? (
-            <section className="space-y-3 rounded-md border border-brand-200 bg-brand-50 p-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-brand-700">
-                  Detalle contrato {selectedContract.numeroContrato}
-                </h3>
-                <Button asChild type="button" variant="outline" size="sm">
-                  <Link href={buildDetailHref(null)}>Cerrar detalle</Link>
-                </Button>
-              </div>
-              <div className="space-y-4 text-sm">
-                <div className="grid gap-x-6 gap-y-2 md:grid-cols-2 lg:grid-cols-3">
-                  <p>
-                    <span className="font-semibold text-slate-700">N contrato:</span>{" "}
-                    {selectedContract.numeroContrato}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-slate-700">Estado:</span>{" "}
-                    <Badge
-                      variant="outline"
-                      className="rounded-full border-brand-200 bg-brand-100 text-brand-700"
-                    >
-                      {selectedContract.estado}
-                    </Badge>
-                  </p>
-                  <p>
-                    <span className="font-semibold text-slate-700">Locales:</span>{" "}
-                    {selectedContractLocales}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-slate-700">Arrendatario:</span>{" "}
-                    {selectedContract.arrendatario.nombreComercial}
-                  </p>
-                  {selectedContract.arrendatario.razonSocial ? (
-                    <p>
-                      <span className="font-semibold text-slate-700">Razon social:</span>{" "}
-                      {selectedContract.arrendatario.razonSocial}
-                    </p>
-                  ) : null}
-                  <p>
-                    <span className="font-semibold text-slate-700">Fecha inicio:</span>{" "}
-                    {formatDate(selectedContract.fechaInicio)}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-slate-700">Fecha termino:</span>{" "}
-                    {formatDate(selectedContract.fechaTermino)}
-                  </p>
-                  {selectedContractDecemberMultiplier ? (
-                    <p>
-                      <span className="font-semibold text-slate-700">Multiplicador diciembre:</span>{" "}
-                      {selectedContractDecemberMultiplier}
-                    </p>
-                  ) : null}
-                  {selectedContract.fechaEntrega ? (
-                    <p>
-                      <span className="font-semibold text-slate-700">Fecha entrega:</span>{" "}
-                      {formatDate(selectedContract.fechaEntrega)}
-                    </p>
-                  ) : null}
-                  {selectedContract.fechaApertura ? (
-                    <p>
-                      <span className="font-semibold text-slate-700">Fecha apertura:</span>{" "}
-                      {formatDate(selectedContract.fechaApertura)}
-                    </p>
-                  ) : null}
-                  <p>
-                    <span className="font-semibold text-slate-700">PDF:</span>{" "}
-                    {selectedContract.pdfUrl ? (
-                      <a
-                        href={selectedContract.pdfUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-medium text-brand-700 underline"
-                      >
-                        Ver PDF
-                      </a>
-                    ) : (
-                      <span className="text-slate-500">Sin PDF</span>
-                    )}
-                  </p>
-                </div>
-
-                {selectedContract.tarifas.length > 0 ? (
-                  <div>
-                    <p className="mb-1.5 font-semibold text-slate-700">Tarifas</p>
-                    <UnifiedTable density="compact">
-                      <table className={`${compactTableTheme.table} text-xs`}>
-                        <thead className={compactTableTheme.head}>
-                          <tr>
-                            <th className={compactTableTheme.compactHeadCell}>Tipo</th>
-                            <th className={`${compactTableTheme.compactHeadCell} text-right`}>Valor UF/m2</th>
-                            <th className={compactTableTheme.compactHeadCell}>Vigencia desde</th>
-                            <th className={compactTableTheme.compactHeadCell}>Vigencia hasta</th>
-                            <th className={`${compactTableTheme.compactHeadCell} text-center`}>Es Diciembre</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {selectedContract.tarifas.map((tarifa, index) => (
-                            <tr
-                              key={`${tarifa.tipo}-${tarifa.vigenciaDesde.toISOString()}-${index}`}
-                              className={`${getStripedRowClass(index, "compact")} ${compactTableTheme.rowHover}`}
-                            >
-                              <td className={`${compactTableTheme.compactCell} font-medium text-slate-800`}>{tarifa.tipo}</td>
-                              <td className={`${compactTableTheme.compactCell} text-right`}>
-                                {tarifa.valor.toString()}
-                              </td>
-                              <td className={compactTableTheme.compactCell}>
-                                {formatDate(tarifa.vigenciaDesde)}
-                              </td>
-                              <td className={compactTableTheme.compactCell}>
-                                {tarifa.vigenciaHasta ? formatDate(tarifa.vigenciaHasta) : "-"}
-                              </td>
-                              <td className={`${compactTableTheme.compactCell} text-center`}>
-                                {tarifa.esDiciembre ? "Si" : "No"}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </UnifiedTable>
-                  </div>
-                ) : null}
-
-                {selectedContract.ggcc.length > 0 ? (
-                  <div>
-                    <p className="mb-1.5 font-semibold text-slate-700">Gastos comunes (GGCC)</p>
-                    <UnifiedTable density="compact">
-                      <table className={`${compactTableTheme.table} text-xs`}>
-                        <thead className={compactTableTheme.head}>
-                          <tr>
-                            <th className={`${compactTableTheme.compactHeadCell} text-right`}>Tarifa base UF/m2</th>
-                            <th className={`${compactTableTheme.compactHeadCell} text-right`}>% Administracion</th>
-                            <th className={`${compactTableTheme.compactHeadCell} text-right`}>% Reajuste</th>
-                            <th className={compactTableTheme.compactHeadCell}>Vigencia desde</th>
-                            <th className={compactTableTheme.compactHeadCell}>Vigencia hasta</th>
-                            <th className={compactTableTheme.compactHeadCell}>Proximo reajuste</th>
-                            <th className={`${compactTableTheme.compactHeadCell} text-center`}>Meses reajuste</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {selectedContract.ggcc.map((item, index) => (
-                            <tr
-                              key={`${item.vigenciaDesde.toISOString()}-${index}`}
-                              className={`${getStripedRowClass(index, "compact")} ${compactTableTheme.rowHover}`}
-                            >
-                              <td className={`${compactTableTheme.compactCell} text-right`}>
-                                {item.tarifaBaseUfM2.toString()}
-                              </td>
-                              <td className={`${compactTableTheme.compactCell} text-right`}>
-                                {item.pctAdministracion.toString()}%
-                              </td>
-                              <td className={`${compactTableTheme.compactCell} text-right`}>
-                                {item.pctReajuste ? `${item.pctReajuste.toString()}%` : "-"}
-                              </td>
-                              <td className={compactTableTheme.compactCell}>
-                                {formatDate(item.vigenciaDesde)}
-                              </td>
-                              <td className={compactTableTheme.compactCell}>
-                                {item.vigenciaHasta ? formatDate(item.vigenciaHasta) : "-"}
-                              </td>
-                              <td className={compactTableTheme.compactCell}>
-                                {item.proximoReajuste ? formatDate(item.proximoReajuste) : "-"}
-                              </td>
-                              <td className={`${compactTableTheme.compactCell} text-center`}>
-                                {item.mesesReajuste ?? "-"}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </UnifiedTable>
-                  </div>
-                ) : null}
-              </div>
-            </section>
-          ) : null}
-
           <section className="overflow-hidden rounded-md bg-white shadow-sm">
             <ContractsViewTable
               rows={contractViewRows}
-              detailBaseHref={buildDetailHref(null)}
-              selectedDetailId={detalleId}
+              proyectoId={selectedProjectId}
             />
           </section>
         </>
@@ -458,13 +250,14 @@ export default async function ContractsPage({
             fechaTermino: contract.fechaTermino.toISOString(),
             pctFondoPromocion: contract.pctFondoPromocion?.toString() ?? null,
             pctAdministracionGgcc: contract.pctAdministracionGgcc?.toString() ?? null,
-            multiplicadorDiciembre: getDecemberMultiplier(contract),
+            multiplicadorDiciembre: contract.multiplicadorDiciembre?.toString() ?? null,
             local: contract.local,
             locales: getAssociatedLocales(contract),
             arrendatario: contract.arrendatario,
             tarifas: contract.tarifas.map((tarifa) => ({
               tipo: tarifa.tipo,
               valor: tarifa.valor.toString(),
+              umbralVentasUf: tarifa.umbralVentasUf?.toString() ?? null,
               vigenciaDesde: tarifa.vigenciaDesde.toISOString().slice(0, 10),
               vigenciaHasta: tarifa.vigenciaHasta ? tarifa.vigenciaHasta.toISOString().slice(0, 10) : null,
               esDiciembre: tarifa.esDiciembre
@@ -492,9 +285,9 @@ export default async function ContractsPage({
             tipo="CONTRATOS"
             proyectoId={selectedProjectId}
             canEdit={canEdit}
-            previewEndpoint="/api/rent-roll/upload/contratos/preview"
-            applyEndpoint="/api/rent-roll/upload/contratos/apply"
-            templateEndpoint="/api/rent-roll/upload/contratos/template"
+            previewEndpoint="/api/rent-roll/upload/contracts/preview"
+            applyEndpoint="/api/rent-roll/upload/contracts/apply"
+            templateEndpoint="/api/rent-roll/upload/contracts/template"
             contractReviewCatalogs={{
               localCodes: units.map((unit) => unit.codigo),
               arrendatarios: tenants.map((tenant) => ({
@@ -506,14 +299,13 @@ export default async function ContractsPage({
               { key: "numeroContrato", label: "Contrato" },
               { key: "localCodigo", label: "Local" },
               { key: "arrendatarioNombre", label: "Arrendatario" },
-              { key: "estado", label: "Estado" },
               { key: "fechaInicio", label: "Inicio" },
               { key: "fechaTermino", label: "Termino" },
               { key: "tarifaTipo", label: "Tarifa tipo" },
               { key: "tarifaValor", label: "Tarifa valor" }
             ]}
           />
-          <CargaHistorial items={uploadHistory} />
+          <UploadHistory items={uploadHistory} />
         </>
       )}
     </main>

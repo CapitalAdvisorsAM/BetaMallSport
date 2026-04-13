@@ -7,7 +7,7 @@ import { extractContractFromPdf } from "@/lib/contracts/pdf-extractor";
 import { MAX_PDF_BYTES } from "@/lib/constants";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { normalizeUploadArrendatarioNombre } from "@/lib/upload/parse-contratos";
+import { normalizeUploadTenantName } from "@/lib/upload/parse-contracts";
 
 export const runtime = "nodejs";
 
@@ -22,9 +22,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     await requireSession();
 
     const { searchParams } = new URL(request.url);
-    const proyectoId = searchParams.get("proyectoId");
+    const proyectoId = searchParams.get("projectId");
     if (!proyectoId) {
-      throw new ApiError(400, "proyectoId es obligatorio.");
+      throw new ApiError(400, "projectId es obligatorio.");
     }
 
     const formData = await request.formData();
@@ -50,7 +50,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       : await extractContractFromPdf(buffer);
 
     const normalizedArrendatarioNombre = extraction.arrendatarioNombre
-      ? normalizeUploadArrendatarioNombre(extraction.arrendatarioNombre)
+      ? normalizeUploadTenantName(extraction.arrendatarioNombre)
       : "";
     const [arrendatarios, local] = await Promise.all([
       normalizedArrendatarioNombre
@@ -68,7 +68,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     ]);
     const matchedArrendatarios = arrendatarios.filter(
       (arrendatario) =>
-        normalizeUploadArrendatarioNombre(arrendatario.nombreComercial) === normalizedArrendatarioNombre
+        normalizeUploadTenantName(arrendatario.nombreComercial) === normalizedArrendatarioNombre
     );
     const arrendatarioId = matchedArrendatarios.length === 1 ? matchedArrendatarios[0].id : null;
 

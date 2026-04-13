@@ -1,0 +1,1242 @@
+{
+  "nodes": [
+    {
+      "id": "timeline_getTimelineData",
+      "label": "getTimelineData()",
+      "file_type": "code",
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": "line 493",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "timeline_buildHistoricalPeriodos",
+      "label": "buildHistoricalPeriodos()",
+      "file_type": "code",
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": "line 130",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "timeline_buildFuturePeriodos",
+      "label": "buildFuturePeriodos()",
+      "file_type": "code",
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": "line 324",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "timeline_buildVariableRentData",
+      "label": "buildVariableRentData()",
+      "file_type": "code",
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": "line 59",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "timeline_computePctPromedioForPeriodo",
+      "label": "computePctPromedioForPeriodo()",
+      "file_type": "code",
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": "line 108",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "timeline_isBodegaEspacio",
+      "label": "isBodegaEspacio()",
+      "file_type": "code",
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": "line 35",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "timeline_isSimuladorModulo",
+      "label": "isSimuladorModulo()",
+      "file_type": "code",
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": "line 39",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "timeline_toPeriodoKey",
+      "label": "toPeriodoKey()",
+      "file_type": "code",
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": "line 6",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "gaputils_buildActualBillingByUnit",
+      "label": "buildActualBillingByUnit()",
+      "file_type": "code",
+      "source_file": "src/lib/shared/gap-utils.ts",
+      "source_location": "line 22",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "gaputils_getGapSeverity",
+      "label": "getGapSeverity()",
+      "file_type": "code",
+      "source_file": "src/lib/shared/gap-utils.ts",
+      "source_location": "line 39",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "gaputils_GapSeverity",
+      "label": "GapSeverity type — ok | warning | danger",
+      "file_type": "code",
+      "source_file": "src/lib/shared/gap-utils.ts",
+      "source_location": "line 31",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "gaputils_REVENUE_GROUP",
+      "label": "REVENUE_GROUP constant — INGRESOS DE EXPLOTACION",
+      "file_type": "code",
+      "source_file": "src/lib/shared/gap-utils.ts",
+      "source_location": "line 14",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tenants_schema_tenantSchema",
+      "label": "tenantSchema — Zod validation schema for tenants",
+      "file_type": "code",
+      "source_file": "src/lib/tenants/schema.ts",
+      "source_location": "line 4",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tenants_schema_normalizeRut",
+      "label": "normalizeRut()",
+      "file_type": "code",
+      "source_file": "src/lib/tenants/schema.ts",
+      "source_location": "line 14",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tenants_schema_resolveTenantRut",
+      "label": "resolveTenantRut()",
+      "file_type": "code",
+      "source_file": "src/lib/tenants/schema.ts",
+      "source_location": "line 24",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tenants_schema_buildRutFallback",
+      "label": "buildRutFallback() — SHA1 hash fallback for missing RUT",
+      "file_type": "code",
+      "source_file": "src/lib/tenants/schema.ts",
+      "source_location": "line 18",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "units_schema_unitSchema",
+      "label": "unitSchema — Zod validation schema for units",
+      "file_type": "code",
+      "source_file": "src/lib/units/schema.ts",
+      "source_location": "line 26",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "units_size_CalculatedLocalSize",
+      "label": "CalculatedLocalSize — union type for commercial size classification",
+      "file_type": "code",
+      "source_file": "src/lib/units/size.ts",
+      "source_location": "line 1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "units_size_CommercialSizeRule",
+      "label": "CommercialSizeRule — min/max m2 rule for size categorization",
+      "file_type": "code",
+      "source_file": "src/lib/units/size.ts",
+      "source_location": "line 9",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "units_size_DEFAULT_COMMERCIAL_SIZE_RULES",
+      "label": "DEFAULT_COMMERCIAL_SIZE_RULES — tier thresholds (0-49, 50-119, 120+)",
+      "file_type": "code",
+      "source_file": "src/lib/units/size.ts",
+      "source_location": "line 16",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "units_size_getCalculatedLocalSize",
+      "label": "getCalculatedLocalSize()",
+      "file_type": "code",
+      "source_file": "src/lib/units/size.ts",
+      "source_location": "line 32",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "units_size_formatCalculatedLocalSize",
+      "label": "formatCalculatedLocalSize()",
+      "file_type": "code",
+      "source_file": "src/lib/units/size.ts",
+      "source_location": "line 53",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "units_size_parseSquareMeters",
+      "label": "parseSquareMeters()",
+      "file_type": "code",
+      "source_file": "src/lib/units/size.ts",
+      "source_location": "line 22",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "upload_datapayload_parseRentRollPreviewPayload",
+      "label": "parseRentRollPreviewPayload() — runtime type guard for upload JSON",
+      "file_type": "code",
+      "source_file": "src/lib/upload/data-payload.ts",
+      "source_location": "line 96",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "upload_datapayload_isRentRollPreviewPayload",
+      "label": "isRentRollPreviewPayload() — shape validator",
+      "file_type": "code",
+      "source_file": "src/lib/upload/data-payload.ts",
+      "source_location": "line 58",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "upload_parsetenants_parseTenantsFile",
+      "label": "parseTenantsFile() — Excel parser for tenant bulk upload",
+      "file_type": "code",
+      "source_file": "src/lib/upload/parse-tenants.ts",
+      "source_location": "line 155",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "upload_parsetenants_TenantUploadRow",
+      "label": "TenantUploadRow type",
+      "file_type": "code",
+      "source_file": "src/lib/upload/parse-tenants.ts",
+      "source_location": "line 11",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "upload_parsetenants_ExistingTenantForDiff",
+      "label": "ExistingTenantForDiff type",
+      "file_type": "code",
+      "source_file": "src/lib/upload/parse-tenants.ts",
+      "source_location": "line 20",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "upload_parsetenants_buildUploadTenantKey",
+      "label": "buildUploadTenantKey() — RUT or name-based dedup key",
+      "file_type": "code",
+      "source_file": "src/lib/upload/parse-tenants.ts",
+      "source_location": "line 70",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "upload_parsetenants_normalizeUploadRut",
+      "label": "normalizeUploadRut()",
+      "file_type": "code",
+      "source_file": "src/lib/upload/parse-tenants.ts",
+      "source_location": "line 44",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "upload_parseunits_parseUnitsFile",
+      "label": "parseUnitsFile() — Excel parser for unit bulk upload",
+      "file_type": "code",
+      "source_file": "src/lib/upload/parse-units.ts",
+      "source_location": "line 161",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "upload_parseunits_UnitUploadRow",
+      "label": "UnitUploadRow type",
+      "file_type": "code",
+      "source_file": "src/lib/upload/parse-units.ts",
+      "source_location": "line 8",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "upload_parseunits_ExistingUnitForDiff",
+      "label": "ExistingUnitForDiff type",
+      "file_type": "code",
+      "source_file": "src/lib/upload/parse-units.ts",
+      "source_location": "line 19",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "upload_parseunits_tipoAliases",
+      "label": "tipoAliases — UnitType mapping including TIENDA alias",
+      "file_type": "code",
+      "source_file": "src/lib/upload/parse-units.ts",
+      "source_location": "line 34",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "finance_types_TenantFinanceRow",
+      "label": "TenantFinanceRow — finance view per tenant",
+      "file_type": "code",
+      "source_file": "src/types/finance.ts",
+      "source_location": "line 13",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "finance_types_EerrData",
+      "label": "EerrData — income statement data structure",
+      "file_type": "code",
+      "source_file": "src/types/finance.ts",
+      "source_location": "line 73",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "finance_types_EerrSection",
+      "label": "EerrSection — P&L section with lines and period totals",
+      "file_type": "code",
+      "source_file": "src/types/finance.ts",
+      "source_location": "line 65",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "finance_types_EerrLine",
+      "label": "EerrLine — individual P&L line item",
+      "file_type": "code",
+      "source_file": "src/types/finance.ts",
+      "source_location": "line 58",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "finance_types_ContableUploadResult",
+      "label": "ContableUploadResult — accounting upload summary",
+      "file_type": "code",
+      "source_file": "src/types/finance.ts",
+      "source_location": "line 98",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "finance_types_VentasUploadResult",
+      "label": "VentasUploadResult — sales upload summary",
+      "file_type": "code",
+      "source_file": "src/types/finance.ts",
+      "source_location": "line 106",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "finance_types_ContableSuggestion",
+      "label": "ContableSuggestion — fuzzy match suggestion for unmapped entries",
+      "file_type": "code",
+      "source_file": "src/types/finance.ts",
+      "source_location": "line 80",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tenant360_types_Tenant360Data",
+      "label": "Tenant360Data — root response type for tenant 360 view",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 149",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tenant360_types_Tenant360Profile",
+      "label": "Tenant360Profile — basic tenant identity",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 4",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tenant360_types_Tenant360QuickStats",
+      "label": "Tenant360QuickStats — header KPIs",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 14",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tenant360_types_Tenant360Kpis",
+      "label": "Tenant360Kpis — occupancy cost, rent, GGCC, WALT",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 25",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tenant360_types_Tenant360Contract",
+      "label": "Tenant360Contract — full contract details in 360 view",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 71",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tenant360_types_GapAnalysisRow",
+      "label": "GapAnalysisRow — expected vs actual billing comparison",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 135",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tenant360_types_Tenant360Projection",
+      "label": "Tenant360Projection — expiring contracts risk",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 129",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tenant360_types_BillingCategory",
+      "label": "BillingCategory — billing breakdown by accounting group",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 97",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tenant360_types_OccupancyDayEntry",
+      "label": "OccupancyDayEntry — daily occupancy status per unit",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 112",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_md_betamallsport",
+      "label": "CLAUDE.md — BetaMallSport Masterclass Reference",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_betamallsport",
+      "label": "BetaMallSport README — Non-Technical Guide",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "setup_alfredo",
+      "label": "SETUP_ALFREDO.md — Alfredo Developer Onboarding Guide",
+      "file_type": "document",
+      "source_file": "SETUP_ALFREDO.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "graphreport_md",
+      "label": "GRAPH_REPORT.md — Knowledge Graph Report",
+      "file_type": "document",
+      "source_file": "graphify-out/GRAPH_REPORT.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "graphify_readme",
+      "label": "graphify-out README — Knowledge Graph Directory Guide",
+      "file_type": "document",
+      "source_file": "graphify-out/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "mallsport_logo",
+      "label": "MallSportLogo.jpg — Sport Swoosh Multi-Color Brand Identity",
+      "file_type": "image",
+      "source_file": "public/MallSportLogo.jpg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "pattern_upload_preview_diff",
+      "label": "Upload Preview Diff Pattern — NEW/UPDATED/UNCHANGED/ERROR classification",
+      "file_type": "code",
+      "source_file": "src/lib/upload/parse-tenants.ts",
+      "source_location": "line 107",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "pattern_income_statement_eerr",
+      "label": "EE.RR. Income Statement Pattern — hierarchical grupo1/grupo3 structure",
+      "file_type": "code",
+      "source_file": "src/types/finance.ts",
+      "source_location": "line 58",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "pattern_tenant360_view",
+      "label": "Tenant 360 View Pattern — unified tenant profile, contracts, financials, projections",
+      "file_type": "code",
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 149",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "timeline_getTimelineData",
+      "target": "timeline_buildHistoricalPeriodos",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": "line 509",
+      "weight": 1.0
+    },
+    {
+      "source": "timeline_getTimelineData",
+      "target": "timeline_buildFuturePeriodos",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": "line 510",
+      "weight": 1.0
+    },
+    {
+      "source": "timeline_getTimelineData",
+      "target": "timeline_buildVariableRentData",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": "line 496",
+      "weight": 1.0
+    },
+    {
+      "source": "timeline_buildHistoricalPeriodos",
+      "target": "timeline_computePctPromedioForPeriodo",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": "line 314",
+      "weight": 1.0
+    },
+    {
+      "source": "timeline_buildFuturePeriodos",
+      "target": "timeline_computePctPromedioForPeriodo",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": "line 483",
+      "weight": 1.0
+    },
+    {
+      "source": "timeline_buildHistoricalPeriodos",
+      "target": "timeline_isBodegaEspacio",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": "line 281",
+      "weight": 1.0
+    },
+    {
+      "source": "timeline_buildHistoricalPeriodos",
+      "target": "timeline_isSimuladorModulo",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": "line 285",
+      "weight": 1.0
+    },
+    {
+      "source": "timeline_buildFuturePeriodos",
+      "target": "timeline_isBodegaEspacio",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": "line 447",
+      "weight": 1.0
+    },
+    {
+      "source": "timeline_buildFuturePeriodos",
+      "target": "timeline_isSimuladorModulo",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": "line 444",
+      "weight": 1.0
+    },
+    {
+      "source": "timeline_buildHistoricalPeriodos",
+      "target": "timeline_toPeriodoKey",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": "line 187",
+      "weight": 1.0
+    },
+    {
+      "source": "gaputils_buildActualBillingByUnit",
+      "target": "gaputils_REVENUE_GROUP",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/shared/gap-utils.ts",
+      "source_location": "line 24",
+      "weight": 1.0
+    },
+    {
+      "source": "gaputils_getGapSeverity",
+      "target": "gaputils_GapSeverity",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/shared/gap-utils.ts",
+      "source_location": "line 39",
+      "weight": 1.0
+    },
+    {
+      "source": "tenants_schema_resolveTenantRut",
+      "target": "tenants_schema_normalizeRut",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/tenants/schema.ts",
+      "source_location": "line 29",
+      "weight": 1.0
+    },
+    {
+      "source": "tenants_schema_resolveTenantRut",
+      "target": "tenants_schema_buildRutFallback",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/tenants/schema.ts",
+      "source_location": "line 30",
+      "weight": 1.0
+    },
+    {
+      "source": "units_size_getCalculatedLocalSize",
+      "target": "units_size_DEFAULT_COMMERCIAL_SIZE_RULES",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/units/size.ts",
+      "source_location": "line 35",
+      "weight": 1.0
+    },
+    {
+      "source": "units_size_getCalculatedLocalSize",
+      "target": "units_size_parseSquareMeters",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/units/size.ts",
+      "source_location": "line 41",
+      "weight": 1.0
+    },
+    {
+      "source": "units_size_getCalculatedLocalSize",
+      "target": "units_size_CalculatedLocalSize",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/units/size.ts",
+      "source_location": "line 32",
+      "weight": 1.0
+    },
+    {
+      "source": "units_size_formatCalculatedLocalSize",
+      "target": "units_size_CalculatedLocalSize",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/units/size.ts",
+      "source_location": "line 53",
+      "weight": 1.0
+    },
+    {
+      "source": "upload_datapayload_parseRentRollPreviewPayload",
+      "target": "upload_datapayload_isRentRollPreviewPayload",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/upload/data-payload.ts",
+      "source_location": "line 99",
+      "weight": 1.0
+    },
+    {
+      "source": "upload_parsetenants_parseTenantsFile",
+      "target": "upload_parsetenants_buildUploadTenantKey",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/upload/parse-tenants.ts",
+      "source_location": "line 244",
+      "weight": 1.0
+    },
+    {
+      "source": "upload_parsetenants_parseTenantsFile",
+      "target": "upload_parsetenants_normalizeUploadRut",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/upload/parse-tenants.ts",
+      "source_location": "line 211",
+      "weight": 1.0
+    },
+    {
+      "source": "upload_parsetenants_buildUploadTenantKey",
+      "target": "upload_parsetenants_normalizeUploadRut",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/upload/parse-tenants.ts",
+      "source_location": "line 75",
+      "weight": 1.0
+    },
+    {
+      "source": "upload_parsetenants_parseTenantsFile",
+      "target": "upload_parsetenants_TenantUploadRow",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/upload/parse-tenants.ts",
+      "source_location": "line 155",
+      "weight": 1.0
+    },
+    {
+      "source": "upload_parsetenants_parseTenantsFile",
+      "target": "upload_parsetenants_ExistingTenantForDiff",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/upload/parse-tenants.ts",
+      "source_location": "line 156",
+      "weight": 1.0
+    },
+    {
+      "source": "upload_parseunits_parseUnitsFile",
+      "target": "upload_parseunits_UnitUploadRow",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/upload/parse-units.ts",
+      "source_location": "line 161",
+      "weight": 1.0
+    },
+    {
+      "source": "upload_parseunits_parseUnitsFile",
+      "target": "upload_parseunits_ExistingUnitForDiff",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/upload/parse-units.ts",
+      "source_location": "line 162",
+      "weight": 1.0
+    },
+    {
+      "source": "upload_parseunits_parseUnitsFile",
+      "target": "upload_parseunits_tipoAliases",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/upload/parse-units.ts",
+      "source_location": "line 231",
+      "weight": 1.0
+    },
+    {
+      "source": "finance_types_EerrData",
+      "target": "finance_types_EerrSection",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/types/finance.ts",
+      "source_location": "line 75",
+      "weight": 1.0
+    },
+    {
+      "source": "finance_types_EerrSection",
+      "target": "finance_types_EerrLine",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/types/finance.ts",
+      "source_location": "line 67",
+      "weight": 1.0
+    },
+    {
+      "source": "finance_types_ContableUploadResult",
+      "target": "finance_types_ContableSuggestion",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/types/finance.ts",
+      "source_location": "line 103",
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360_types_Tenant360Data",
+      "target": "tenant360_types_Tenant360Profile",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 150",
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360_types_Tenant360Data",
+      "target": "tenant360_types_Tenant360QuickStats",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 151",
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360_types_Tenant360Data",
+      "target": "tenant360_types_Tenant360Kpis",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 152",
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360_types_Tenant360Data",
+      "target": "tenant360_types_Tenant360Contract",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 154",
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360_types_Tenant360Data",
+      "target": "tenant360_types_GapAnalysisRow",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 160",
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360_types_Tenant360Data",
+      "target": "tenant360_types_Tenant360Projection",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 158",
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360_types_Tenant360Data",
+      "target": "tenant360_types_BillingCategory",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 155",
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360_types_Tenant360Data",
+      "target": "tenant360_types_OccupancyDayEntry",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 157",
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360_types_GapAnalysisRow",
+      "target": "gaputils_getGapSeverity",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": null,
+      "weight": 0.85
+    },
+    {
+      "source": "gaputils_buildActualBillingByUnit",
+      "target": "tenant360_types_BillingCategory",
+      "relation": "shares_data_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/lib/shared/gap-utils.ts",
+      "source_location": null,
+      "weight": 0.8
+    },
+    {
+      "source": "upload_parsetenants_parseTenantsFile",
+      "target": "pattern_upload_preview_diff",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/upload/parse-tenants.ts",
+      "source_location": "line 107",
+      "weight": 1.0
+    },
+    {
+      "source": "upload_parseunits_parseUnitsFile",
+      "target": "pattern_upload_preview_diff",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/upload/parse-units.ts",
+      "source_location": "line 107",
+      "weight": 1.0
+    },
+    {
+      "source": "finance_types_EerrData",
+      "target": "pattern_income_statement_eerr",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/types/finance.ts",
+      "source_location": "line 73",
+      "weight": 1.0
+    },
+    {
+      "source": "tenant360_types_Tenant360Data",
+      "target": "pattern_tenant360_view",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/types/tenant-360.ts",
+      "source_location": "line 149",
+      "weight": 1.0
+    },
+    {
+      "source": "tenants_schema_normalizeRut",
+      "target": "upload_parsetenants_normalizeUploadRut",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.82,
+      "source_file": "src/lib/tenants/schema.ts",
+      "source_location": null,
+      "weight": 0.82
+    },
+    {
+      "source": "setup_alfredo",
+      "target": "claude_md_betamallsport",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "SETUP_ALFREDO.md",
+      "source_location": null,
+      "weight": 0.75
+    },
+    {
+      "source": "setup_alfredo",
+      "target": "readme_betamallsport",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "SETUP_ALFREDO.md",
+      "source_location": null,
+      "weight": 0.75
+    },
+    {
+      "source": "graphreport_md",
+      "target": "graphify_readme",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify-out/GRAPH_REPORT.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "mallsport_logo",
+      "target": "readme_betamallsport",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.78,
+      "source_file": "public/MallSportLogo.jpg",
+      "source_location": null,
+      "weight": 0.78
+    },
+    {
+      "source": "units_size_CommercialSizeRule",
+      "target": "units_size_DEFAULT_COMMERCIAL_SIZE_RULES",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/units/size.ts",
+      "source_location": "line 16",
+      "weight": 1.0
+    },
+    {
+      "source": "timeline_buildHistoricalPeriodos",
+      "target": "timeline_buildFuturePeriodos",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.88,
+      "source_file": "src/lib/rent-roll/timeline.ts",
+      "source_location": null,
+      "weight": 0.88
+    },
+    {
+      "source": "finance_types_TenantFinanceRow",
+      "target": "tenant360_types_Tenant360Profile",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.72,
+      "source_file": "src/types/finance.ts",
+      "source_location": null,
+      "weight": 0.72
+    },
+    {
+      "source": "upload_parsetenants_TenantUploadRow",
+      "target": "tenants_schema_tenantSchema",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.78,
+      "source_file": "src/lib/upload/parse-tenants.ts",
+      "source_location": null,
+      "weight": 0.78
+    },
+    {
+      "source": "upload_parseunits_UnitUploadRow",
+      "target": "units_schema_unitSchema",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "src/lib/upload/parse-units.ts",
+      "source_location": null,
+      "weight": 0.8
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "timeline_historical_future_variable_rent_pipeline",
+      "label": "Timeline Data Pipeline — Historical, Future, and Variable Rent Data",
+      "nodes": [
+        "timeline_buildHistoricalPeriodos",
+        "timeline_buildFuturePeriodos",
+        "timeline_buildVariableRentData",
+        "timeline_getTimelineData"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.95,
+      "source_file": "src/lib/rent-roll/timeline.ts"
+    },
+    {
+      "id": "bulk_upload_preview_diff_pattern",
+      "label": "Bulk Upload Preview Diff Pattern — Parse, Diff, Classify (Tenants and Units)",
+      "nodes": [
+        "upload_parsetenants_parseTenantsFile",
+        "upload_parseunits_parseUnitsFile",
+        "pattern_upload_preview_diff",
+        "upload_datapayload_parseRentRollPreviewPayload"
+      ],
+      "relation": "implement",
+      "confidence": "INFERRED",
+      "confidence_score": 0.88,
+      "source_file": "src/lib/upload/parse-tenants.ts"
+    },
+    {
+      "id": "tenant360_comprehensive_data_model",
+      "label": "Tenant 360 Comprehensive Data Model — Profile, KPIs, Contracts, Billing, Gap Analysis",
+      "nodes": [
+        "tenant360_types_Tenant360Data",
+        "tenant360_types_Tenant360Kpis",
+        "tenant360_types_GapAnalysisRow",
+        "gaputils_getGapSeverity",
+        "gaputils_buildActualBillingByUnit"
+      ],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "src/types/tenant-360.ts"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

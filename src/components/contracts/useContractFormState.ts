@@ -246,7 +246,7 @@ export function useContractFormState({
       try {
         const formData = new FormData();
         formData.set("file", file);
-        const response = await fetch(`/api/contracts/extract?proyectoId=${encodeURIComponent(proyectoId)}`, {
+        const response = await fetch(`/api/contracts/extract?projectId=${encodeURIComponent(proyectoId)}`, {
           method: "POST",
           body: formData
         });

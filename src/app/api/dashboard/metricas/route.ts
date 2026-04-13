@@ -17,7 +17,7 @@ import { prisma } from "@/lib/prisma";
 import { computeEstadoContrato, startOfDay } from "@/lib/utils";
 import { isPeriodoValido } from "@/lib/validators";
 import { buildMetricsCacheKey, getOrSetMetricsCache } from "@/lib/metrics-cache";
-import type { DashboardMetricasResponse } from "@/types/dashboard-metricas";
+import type { DashboardMetricsResponse } from "@/types/dashboard-metrics";
 
 export const runtime = "nodejs";
 
@@ -36,11 +36,11 @@ export async function GET(request: Request): Promise<NextResponse> {
     await requireSession();
 
     const { searchParams } = new URL(request.url);
-    const proyectoId = searchParams.get("proyecto");
+    const proyectoId = searchParams.get("projectId");
     const periodo = searchParams.get("periodo") ?? toPeriodo(new Date());
 
     if (!proyectoId) {
-      return NextResponse.json({ message: "proyecto es obligatorio." }, { status: 400 });
+      return NextResponse.json({ message: "projectId es obligatorio." }, { status: 400 });
     }
     if (!isPeriodoValido(periodo)) {
       return NextResponse.json({ message: "periodo debe tener formato YYYY-MM." }, { status: 400 });
@@ -51,9 +51,9 @@ export async function GET(request: Request): Promise<NextResponse> {
       cacheKey,
       proyectoId,
       120_000,
-      async (): Promise<DashboardMetricasResponse> => {
+      async (): Promise<DashboardMetricsResponse> => {
         const today = startOfDay(new Date());
-        const [localesActivos, contratosRaw, groupedStates, ventasPeriodoRaw, energiaPeriodo, valorUf] =
+        const [localesActivos, contratosRaw, groupedStates, ventasPeriodoRaw, energiaPeriodoRaw, valorUf] =
           await Promise.all([
             prisma.unit.findMany({
               where: {
@@ -66,7 +66,7 @@ export async function GET(request: Request): Promise<NextResponse> {
                 esGLA: true,
                 glam2: true,
                 tipo: true,
-                zona: true
+                zona: { select: { nombre: true } }
               }
             }),
             prisma.contract.findMany({
@@ -112,7 +112,8 @@ export async function GET(request: Request): Promise<NextResponse> {
                   orderBy: { vigenciaDesde: "desc" },
                   select: {
                     tipo: true,
-                    valor: true
+                    valor: true,
+                    umbralVentasUf: true
                   }
                 },
                 ggcc: {
@@ -133,13 +134,13 @@ export async function GET(request: Request): Promise<NextResponse> {
               where: { proyectoId },
               _count: { _all: true }
             }),
-            prisma.unitSale.findMany({
+            prisma.tenantSale.findMany({
               where: {
                 projectId: proyectoId,
-                period: periodo
+                period: new Date(`${periodo}-01`)
               },
               select: {
-                unitId: true,
+                tenantId: true,
                 period: true,
                 salesUf: true
               }
@@ -147,7 +148,7 @@ export async function GET(request: Request): Promise<NextResponse> {
             prisma.ingresoEnergia.findMany({
               where: {
                 proyectoId,
-                periodo
+                periodo: new Date(`${periodo}-01`)
               },
               select: {
                 localId: true,
@@ -162,9 +163,14 @@ export async function GET(request: Request): Promise<NextResponse> {
           ]);
 
         const ventasPeriodo = ventasPeriodoRaw.map((sale) => ({
-          localId: sale.unitId,
-          periodo: sale.period,
+          arrendatarioId: sale.tenantId,
+          periodo: sale.period.toISOString().slice(0, 7),
           ventasUf: sale.salesUf
+        }));
+        const energiaPeriodo = energiaPeriodoRaw.map((energy) => ({
+          localId: energy.localId,
+          periodo: energy.periodo.toISOString().slice(0, 7),
+          valorUf: energy.valorUf
         }));
 
         const contratosWithState = contratosRaw
@@ -181,8 +187,13 @@ export async function GET(request: Request): Promise<NextResponse> {
               (item) =>
                 item.tipo === ContractRateType.FIJO_UF_M2 || item.tipo === ContractRateType.FIJO_UF
             ) ?? null;
-          const tarifaVariable =
-            contract.tarifas.find((item) => item.tipo === ContractRateType.PORCENTAJE) ?? null;
+          const tarifasVariable = contract.tarifas.filter(
+            (item) => item.tipo === ContractRateType.PORCENTAJE
+          );
+          const variableRentTiers = tarifasVariable.map((t) => ({
+            umbralVentasUf: Number(t.umbralVentasUf?.toString() ?? "0"),
+            pct: Number(t.valor.toString())
+          }));
 
           return {
             estado: estadoComputado,
@@ -195,7 +206,8 @@ export async function GET(request: Request): Promise<NextResponse> {
               arrendatarioNombre: contract.arrendatario.nombreComercial,
               numeroContrato: contract.numeroContrato,
               fechaTermino: contract.fechaTermino,
-              tarifaVariablePct: tarifaVariable?.valor ?? null,
+              tarifaVariablePct: tarifasVariable[0]?.valor ?? null,
+              variableRentTiers: variableRentTiers.length > 0 ? variableRentTiers : undefined,
               tarifa: tarifaFija,
               ggcc: contract.ggcc[0] ?? null
             } satisfies KpiContractInput
@@ -223,10 +235,11 @@ export async function GET(request: Request): Promise<NextResponse> {
         const localesConArrendatario = new Set([...localesConContratoVigente, ...localesEnGracia]);
         const localesVacantes = localesActivos.filter((local) => !localesConArrendatario.has(local.id));
 
-        const ocupacion = buildOcupacionDetalle(localesActivos, activeContracts);
+        const localesActivosMapped = localesActivos.map((l) => ({ ...l, zona: l.zona?.nombre ?? null }));
+        const ocupacion = buildOcupacionDetalle(localesActivosMapped, activeContracts);
         const ingresos = buildIngresoDesglosado(
           vigenteContracts,
-          localesActivos,
+          localesActivosMapped,
           ventasPeriodo,
           energiaPeriodo,
           periodo

@@ -14,7 +14,7 @@ const allowedWriteRoles = new Set(["ADMIN", "CONTABILIDAD"]);
 
 const salesUpsertSchema = z.object({
   projectId: z.string().trim().min(1, "projectId es obligatorio."),
-  unitId: z.string().trim().min(1, "unitId es obligatorio."),
+  tenantId: z.string().trim().min(1, "tenantId es obligatorio."),
   period: z
     .string()
     .trim()
@@ -44,11 +44,11 @@ function normalizeBody(record: Record<string, unknown>) {
         : typeof record.proyectoId === "string"
           ? record.proyectoId
           : "",
-    unitId:
-      typeof record.unitId === "string"
-        ? record.unitId
-        : typeof record.localId === "string"
-          ? record.localId
+    tenantId:
+      typeof record.tenantId === "string"
+        ? record.tenantId
+        : typeof record.arrendatarioId === "string"
+          ? record.arrendatarioId
           : "",
     period:
       typeof record.period === "string"
@@ -70,7 +70,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     await requireSession();
 
     const { searchParams } = new URL(request.url);
-    const projectId = searchParams.get("projectId") ?? searchParams.get("proyectoId");
+    const projectId = searchParams.get("projectId");
     const period = searchParams.get("period") ?? searchParams.get("periodo");
 
     if (!projectId) {
@@ -83,20 +83,21 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "period debe tener formato YYYY-MM." }, { status: 400 });
     }
 
-    const sales = await prisma.unitSale.findMany({
+    const sales = await prisma.tenantSale.findMany({
       where: {
         projectId,
-        period
+        period: new Date(`${period}-01`)
       },
-      orderBy: [{ unitId: "asc" }]
+      orderBy: [{ tenantId: "asc" }]
     });
 
     return NextResponse.json(
       sales.map((sale) => ({
         ...sale,
+        period: sale.period.toISOString().slice(0, 7),
         proyectoId: sale.projectId,
-        localId: sale.unitId,
-        periodo: sale.period,
+        tenantId: sale.tenantId,
+        periodo: sale.period.toISOString().slice(0, 7),
         ventasUf: sale.salesUf
       })),
       { status: 200 }
@@ -122,11 +123,13 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
 
-    const saved = await prisma.unitSale.upsert({
+    const periodDate = new Date(`${parsed.data.period}-01`);
+
+    const saved = await prisma.tenantSale.upsert({
       where: {
-        unitId_period: {
-          unitId: parsed.data.unitId,
-          period: parsed.data.period
+        tenantId_period: {
+          tenantId: parsed.data.tenantId,
+          period: periodDate
         }
       },
       update: {
@@ -135,8 +138,8 @@ export async function POST(request: Request): Promise<NextResponse> {
       },
       create: {
         projectId: parsed.data.projectId,
-        unitId: parsed.data.unitId,
-        period: parsed.data.period,
+        tenantId: parsed.data.tenantId,
+        period: periodDate,
         salesUf: new Prisma.Decimal(parsed.data.salesUf)
       }
     });
@@ -145,9 +148,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json(
       {
         ...saved,
+        period: saved.period.toISOString().slice(0, 7),
         proyectoId: saved.projectId,
-        localId: saved.unitId,
-        periodo: saved.period,
+        tenantId: saved.tenantId,
+        periodo: saved.period.toISOString().slice(0, 7),
         ventasUf: saved.salesUf
       },
       { status: 200 }

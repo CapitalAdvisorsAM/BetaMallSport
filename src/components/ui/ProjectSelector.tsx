@@ -27,10 +27,9 @@ export function ProjectSelector({
   const handleProjectChange = (nextProjectId: string): void => {
     const params = new URLSearchParams();
     params.set("project", nextProjectId);
-    params.set("proyecto", nextProjectId);
 
     Object.entries(preserve).forEach(([key, value]) => {
-      if (!value || key === "project" || key === "proyecto") {
+      if (!value || key === "project") {
         return;
       }
       params.set(key, value);

@@ -11,7 +11,7 @@ export const salesMappingSchema = z.object({
   projectId: z.string().uuid(),
   salesAccountId: z.number().int(),
   storeName: z.string().min(1),
-  unitId: z.string().uuid()
+  tenantId: z.string().uuid()
 });
 
 export async function getActiveUnits(projectId: string) {
@@ -31,9 +31,9 @@ export async function getAccountingMappings(projectId: string) {
 }
 
 export async function getSalesMappings(projectId: string) {
-  return prisma.salesUnitMapping.findMany({
+  return prisma.salesTenantMapping.findMany({
     where: { projectId },
-    include: { unit: { select: { codigo: true, nombre: true } } },
+    include: { tenant: { select: { nombreComercial: true, rut: true } } },
     orderBy: { storeName: "asc" }
   });
 }
@@ -80,7 +80,7 @@ export async function upsertSalesMapping(
   data: z.infer<typeof salesMappingSchema>,
   userId: string
 ) {
-  return prisma.salesUnitMapping.upsert({
+  return prisma.salesTenantMapping.upsert({
     where: {
       projectId_salesAccountId: {
         projectId: data.projectId,
@@ -88,7 +88,7 @@ export async function upsertSalesMapping(
       }
     },
     update: {
-      unitId: data.unitId,
+      tenantId: data.tenantId,
       storeName: data.storeName,
       createdBy: userId
     },
@@ -96,7 +96,7 @@ export async function upsertSalesMapping(
       projectId: data.projectId,
       salesAccountId: data.salesAccountId,
       storeName: data.storeName,
-      unitId: data.unitId,
+      tenantId: data.tenantId,
       createdBy: userId
     }
   });

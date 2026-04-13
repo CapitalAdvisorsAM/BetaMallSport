@@ -1,11 +1,13 @@
 export const dynamic = "force-dynamic";
 
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { handleApiError } from "@/lib/api-error";
 import { SLUG_MAX_ATTEMPTS } from "@/lib/constants";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { ACTIVE_PROJECTS_TAG } from "@/lib/project";
 import { slugify } from "@/lib/utils";
 
 export const runtime = "nodejs";
@@ -74,6 +76,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       select: { id: true, nombre: true, slug: true, color: true, activo: true }
     });
 
+    revalidateTag(ACTIVE_PROJECTS_TAG);
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     return handleApiError(error);

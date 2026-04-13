@@ -22,7 +22,7 @@ describe("contract-upload-review-mapper", () => {
       numeroContrato: "C-900",
       localCodigo: "L-101",
       arrendatarioNombre: "ACME SPORT",
-      estado: "VIGENTE",
+
       fechaInicio: "2026-01-01",
       fechaTermino: "2026-12-31",
       tarifaTipo: "FIJO_UF_M2",
@@ -55,7 +55,7 @@ describe("contract-upload-review-mapper", () => {
       fechaTermino: "2027-12-31",
       fechaEntrega: null,
       fechaApertura: null,
-      estado: "VIGENTE",
+
       rentaVariable: [],
       pctFondoPromocion: null,
       pctAdministracionGgcc: null,
@@ -110,7 +110,7 @@ describe("contract-upload-review-mapper", () => {
       fechaTermino: "2027-12-31",
       fechaEntrega: null,
       fechaApertura: null,
-      estado: "VIGENTE",
+
       rentaVariable: [],
       pctFondoPromocion: null,
       pctAdministracionGgcc: null,

@@ -6,34 +6,47 @@ export function AlertBar({
   vencen90,
   enGracia,
   vacantes,
-  proyectoId
+  proyectoId,
+  brechaFacturacion
 }: AlertCounts): JSX.Element | null {
-  const href = `/rent-roll/dashboard?project=${proyectoId}&proyecto=${proyectoId}`;
+  const href = `/rent-roll/dashboard?project=${proyectoId}`;
+  const rentRollHref = `/rent-roll?project=${proyectoId}`;
 
   const items = [
     {
       key: "vencen30",
       visible: vencen30 > 0,
       label: `${vencen30} contratos vencen en <=30 dias`,
-      className: "bg-rose-100 text-rose-800"
+      className: "bg-rose-100 text-rose-800",
+      href
+    },
+    {
+      key: "brechaFacturacion",
+      visible: (brechaFacturacion ?? 0) > 0,
+      label: `${brechaFacturacion} locales con brecha de facturacion >10%`,
+      className: "bg-rose-100 text-rose-700",
+      href: rentRollHref
     },
     {
       key: "enGracia",
       visible: enGracia > 0,
       label: `${enGracia} en periodo de gracia`,
-      className: "bg-amber-100 text-amber-800"
+      className: "bg-amber-100 text-amber-800",
+      href
     },
     {
       key: "vacantes",
       visible: vacantes > 0,
       label: `${vacantes} locales sin arrendatario`,
-      className: "bg-slate-100 text-slate-700"
+      className: "bg-slate-100 text-slate-700",
+      href
     },
     {
       key: "vencen90",
       visible: vencen90 > 0,
       label: `${vencen90} vencen en 31-90 dias`,
-      className: "bg-orange-100 text-orange-800"
+      className: "bg-orange-100 text-orange-800",
+      href
     }
   ].filter((item) => item.visible);
 
@@ -47,7 +60,7 @@ export function AlertBar({
         {items.map((item) => (
           <Link
             key={item.key}
-            href={href}
+            href={item.href}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors hover:opacity-90 ${item.className}`}
           >
             {item.label}

@@ -24,8 +24,8 @@ type SalesMapping = {
   id: string;
   salesAccountId: number;
   storeName: string;
-  unitId: string;
-  unit: { codigo: string; nombre: string };
+  tenantId: string;
+  tenant: { nombreComercial: string; rut: string };
 };
 
 type FinanceMappingsClientProps = {
@@ -222,7 +222,7 @@ export function FinanceMappingsClient({
           projectId: selectedProjectId,
           salesAccountId: mapping.salesAccountId,
           storeName: mapping.storeName,
-          unitId
+          tenantId: unitId
         })
       });
       refreshPage();
@@ -289,16 +289,14 @@ export function FinanceMappingsClient({
         filterFn: "includesString"
       },
       {
-        id: "unit",
-        accessorFn: (row) => `${row.unit.codigo} ${row.unit.nombre}`,
-        header: "Local Rent Roll",
+        id: "tenant",
+        accessorFn: (row) => `${row.tenant.nombreComercial} ${row.tenant.rut}`,
+        header: "Arrendatario",
         filterFn: "includesString",
         cell: ({ row }) => (
-          <UnitSelect
-            value={row.original.unitId}
-            units={units}
-            onChange={(value) => void updateSalesUnit(row.original, value)}
-          />
+          <span className="text-sm text-slate-700">
+            {row.original.tenant.nombreComercial} ({row.original.tenant.rut})
+          </span>
         )
       },
       {

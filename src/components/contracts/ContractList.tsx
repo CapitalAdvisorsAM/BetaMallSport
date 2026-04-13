@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ type ContractListProps = {
   onLoadMore: () => void;
   selectedId?: string | null;
   deletingId?: string | null;
+  proyectoId?: string;
 };
 
 function toDateLabel(value: string): string {
@@ -32,7 +34,8 @@ export function ContractList({
   nextCursor,
   onLoadMore,
   selectedId,
-  deletingId
+  deletingId,
+  proyectoId
 }: ContractListProps): JSX.Element {
   const [search, setSearch] = useState("");
 
@@ -86,7 +89,17 @@ export function ContractList({
         accessorFn: (row) => row.arrendatario.nombreComercial,
         header: "Arrendatario",
         filterFn: "includesString",
-        cell: ({ row }) => <span className="text-slate-700">{row.original.arrendatario.nombreComercial}</span>
+        cell: ({ row }) =>
+          proyectoId ? (
+            <Link
+              href={`/tenants/${row.original.arrendatario.id}?project=${proyectoId}`}
+              className="text-brand-500 underline underline-offset-2 font-medium transition-colors hover:text-brand-700"
+            >
+              {row.original.arrendatario.nombreComercial}
+            </Link>
+          ) : (
+            <span className="text-slate-700">{row.original.arrendatario.nombreComercial}</span>
+          )
       },
       {
         accessorKey: "estado",
@@ -172,7 +185,7 @@ export function ContractList({
         )
       }
     ],
-    [canEdit, deletingId, onDelete, onEdit, stateOptions]
+    [canEdit, deletingId, onDelete, onEdit, stateOptions, proyectoId]
   );
   const { table } = useDataTable(visibleContracts, columns);
 

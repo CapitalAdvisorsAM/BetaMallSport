@@ -1,4 +1,4 @@
-﻿# BetaMallSport - Guia Clara Para Equipos No Tecnicos
+# BetaMallSport - Guia Clara Para Equipos No Tecnicos
 
 ## Que es este sistema
 BetaMallSport es una plataforma interna para administrar la operacion comercial de un centro comercial.

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { NextAuthOptions } from "next-auth";
 import { getServerSession } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
@@ -40,4 +41,4 @@ export const authOptions: NextAuthOptions = {
   }
 };
 
-export const auth = () => getServerSession(authOptions);
+export const auth = cache(() => getServerSession(authOptions));

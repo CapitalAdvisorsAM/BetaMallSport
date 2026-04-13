@@ -156,7 +156,7 @@ async function buildLocalesExport(
       nombre: true,
       tipo: true,
       piso: true,
-      zona: true,
+      zona: { select: { nombre: true } },
       glam2: true,
       esGLA: true,
       estado: true
@@ -174,7 +174,7 @@ async function buildLocalesExport(
           local.nombre,
           local.tipo,
           local.piso,
-          local.zona ?? "",
+          local.zona?.nombre ?? "",
           asNumber(local.glam2),
           local.esGLA ? "Si" : "No",
           local.estado
@@ -299,6 +299,7 @@ async function buildContratosExport(scope: ExportScope, proyectoId: string): Pro
         asociados,
         tarifa.tipo,
         asNumber(tarifa.valor),
+        tarifa.umbralVentasUf !== null ? asNumber(tarifa.umbralVentasUf) : "",
         formatDateIso(tarifa.vigenciaDesde),
         formatDateIso(tarifa.vigenciaHasta),
         tarifa.esDiciembre ? "Si" : "No"
@@ -330,7 +331,7 @@ async function buildContratosExport(scope: ExportScope, proyectoId: string): Pro
       },
       {
         name: "Tarifas",
-        headers: ["Numero", "Locales", "Tipo", "Valor", "Vigencia desde", "Vigencia hasta", "Es diciembre"],
+        headers: ["Numero", "Locales", "Tipo", "Valor", "Umbral UF", "Vigencia desde", "Vigencia hasta", "Es diciembre"],
         rows: tarifasRows
       },
       {
@@ -399,15 +400,15 @@ async function buildFinanzasArrendatariosExport(
           }
         })
       : Promise.resolve([]),
-    allLocalIds.length > 0
-      ? prisma.unitSale.findMany({
+    arrendatarios.length > 0
+      ? prisma.tenantSale.findMany({
           where: {
             projectId: proyectoId,
-            unitId: { in: allLocalIds },
-            period: { gte: desde ?? "2024-01", lte: hasta ?? "9999-12" }
+            tenantId: { in: arrendatarios.map((a) => a.id) },
+            period: { gte: desdeDate, lte: hastaDate }
           },
           select: {
-            unitId: true,
+            tenantId: true,
             period: true,
             salesUf: true
           }
@@ -423,11 +424,12 @@ async function buildFinanzasArrendatariosExport(
     byPeriodo.set(periodoKey, (byPeriodo.get(periodoKey) ?? 0) + asNumber(registro.valueUf));
     facturacionByLocal.set(registro.unitId, byPeriodo);
   }
-  const ventasByLocal = new Map<string, Map<string, number>>();
+  const ventasByTenant = new Map<string, Map<string, number>>();
   for (const venta of ventas) {
-    const byPeriodo = ventasByLocal.get(venta.unitId) ?? new Map<string, number>();
-    byPeriodo.set(venta.period, (byPeriodo.get(venta.period) ?? 0) + asNumber(venta.salesUf));
-    ventasByLocal.set(venta.unitId, byPeriodo);
+    const periodKey = venta.period.toISOString().slice(0, 7);
+    const byPeriodo = ventasByTenant.get(venta.tenantId) ?? new Map<string, number>();
+    byPeriodo.set(periodKey, (byPeriodo.get(periodKey) ?? 0) + asNumber(venta.salesUf));
+    ventasByTenant.set(venta.tenantId, byPeriodo);
   }
 
   const rows: Array<Array<string | number | boolean | null>> = [];
@@ -448,11 +450,12 @@ async function buildFinanzasArrendatariosExport(
           facturacionPorPeriodo[periodoKey] = (facturacionPorPeriodo[periodoKey] ?? 0) + amount;
         }
       }
-      const ventasLocal = ventasByLocal.get(localId);
-      if (ventasLocal) {
-        for (const [periodoKey, amount] of ventasLocal.entries()) {
-          ventasPorPeriodo[periodoKey] = (ventasPorPeriodo[periodoKey] ?? 0) + amount;
-        }
+    }
+    // Sales are now keyed by tenant ID
+    const ventasTenant = ventasByTenant.get(arrendatario.id);
+    if (ventasTenant) {
+      for (const [periodoKey, amount] of ventasTenant.entries()) {
+        ventasPorPeriodo[periodoKey] = (ventasPorPeriodo[periodoKey] ?? 0) + amount;
       }
     }
 
@@ -639,9 +642,9 @@ async function buildFinanzasMapeosExport(
         })
       : Promise.resolve([]),
     includeVentas
-      ? prisma.salesUnitMapping.findMany({
+      ? prisma.salesTenantMapping.findMany({
           where: { projectId: proyectoId },
-          include: { unit: { select: { codigo: true, nombre: true } } },
+          include: { tenant: { select: { nombreComercial: true, rut: true } } },
           orderBy: { storeName: "asc" }
         })
       : Promise.resolve([])
@@ -660,8 +663,8 @@ async function buildFinanzasMapeosExport(
   if (includeVentas) {
     sheets.push({
       name: "Mapeo Ventas",
-      headers: ["ID CA", "Tienda", "Local codigo", "Local nombre"],
-      rows: ventasMapeos.map((item) => [item.salesAccountId, item.storeName, item.unit.codigo, item.unit.nombre])
+      headers: ["ID CA", "Tienda", "Arrendatario", "RUT"],
+      rows: ventasMapeos.map((item) => [item.salesAccountId, item.storeName, item.tenant.nombreComercial, item.tenant.rut])
     });
   }
 
@@ -690,10 +693,10 @@ async function buildExportResult(
   if (dataset === "contratos") {
     return buildContratosExport(scope, proyectoId);
   }
-  if (dataset === "finance_tenants" || dataset === "finanzas_arrendatarios") {
+  if (dataset === "finance_tenants") {
     return buildFinanzasArrendatariosExport(scope, proyectoId, searchParams);
   }
-  if (dataset === "finance_eerr" || dataset === "finanzas_eerr") {
+  if (dataset === "finance_eerr") {
     return buildFinanzasEerrExport(scope, proyectoId, searchParams);
   }
   return buildFinanzasMapeosExport(scope, proyectoId, searchParams);
@@ -727,7 +730,7 @@ export async function GET(request: Request) {
 
     const dataset = datasetRaw;
     const scope = scopeRaw;
-    const proyectoId = ensureProyectoId(dataset, searchParams.get("projectId") ?? searchParams.get("proyectoId"));
+    const proyectoId = ensureProyectoId(dataset, searchParams.get("projectId"));
     const requestedLimit = Number.parseInt(searchParams.get("limit") ?? "", 10);
     const rowLimit =
       Number.isFinite(requestedLimit) && requestedLimit > 0

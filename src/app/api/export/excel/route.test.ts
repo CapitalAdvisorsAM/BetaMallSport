@@ -20,13 +20,13 @@ const { requireSessionMock, prismaMock } = vi.hoisted(() => ({
     accountingUnitMapping: {
       findMany: vi.fn()
     },
-    salesUnitMapping: {
+    salesTenantMapping: {
       findMany: vi.fn()
     },
     accountingRecord: {
       findMany: vi.fn()
     },
-    unitSale: {
+    tenantSale: {
       findMany: vi.fn()
     }
   }
@@ -102,8 +102,8 @@ beforeEach(() => {
   prismaMock.accountingUnitMapping.findMany.mockResolvedValue([
     { externalUnit: "102", unit: { codigo: "L-102", nombre: "Local 102" } }
   ]);
-  prismaMock.salesUnitMapping.findMany.mockResolvedValue([
-    { salesAccountId: 217, storeName: "Tienda X", unit: { codigo: "L-217", nombre: "Local 217" } }
+  prismaMock.salesTenantMapping.findMany.mockResolvedValue([
+    { salesAccountId: 217, storeName: "Tienda X", tenant: { rut: "12345678-9", nombreComercial: "Tienda X" } }
   ]);
 });
 
@@ -142,7 +142,7 @@ describe("GET /api/export/excel", () => {
 
   it("applies filtered locales query params", async () => {
     const response = await callGet(
-      "http://localhost/api/export/excel?dataset=locales&scope=filtered&proyectoId=p1&q=l-10&estado=ACTIVO"
+      "http://localhost/api/export/excel?dataset=locales&scope=filtered&projectId=p1&q=l-10&estado=ACTIVO"
     );
 
     expect(response.status).toBe(200);
@@ -158,13 +158,13 @@ describe("GET /api/export/excel", () => {
 
   it("exports contratos as three sheets and mapeos filtered/all with expected sheet count", async () => {
     const contratosResponse = await callGet(
-      "http://localhost/api/export/excel?dataset=contratos&scope=all&proyectoId=p1"
+      "http://localhost/api/export/excel?dataset=contratos&scope=all&projectId=p1"
     );
     const contratosWorkbook = read(Buffer.from(await contratosResponse.arrayBuffer()), { type: "buffer" });
     expect(contratosWorkbook.SheetNames).toEqual(["Resumen", "Tarifas", "GGCC"]);
 
     const mapeosFilteredResponse = await callGet(
-      "http://localhost/api/export/excel?dataset=finanzas_mapeos&scope=filtered&proyectoId=p1&tab=contable"
+      "http://localhost/api/export/excel?dataset=finance_mappings&scope=filtered&projectId=p1&tab=contable"
     );
     const mapeosFilteredWorkbook = read(Buffer.from(await mapeosFilteredResponse.arrayBuffer()), {
       type: "buffer"
@@ -172,7 +172,7 @@ describe("GET /api/export/excel", () => {
     expect(mapeosFilteredWorkbook.SheetNames).toEqual(["Mapeo Contable"]);
 
     const mapeosAllResponse = await callGet(
-      "http://localhost/api/export/excel?dataset=finanzas_mapeos&scope=all&proyectoId=p1"
+      "http://localhost/api/export/excel?dataset=finance_mappings&scope=all&projectId=p1"
     );
     const mapeosAllWorkbook = read(Buffer.from(await mapeosAllResponse.arrayBuffer()), {
       type: "buffer"
