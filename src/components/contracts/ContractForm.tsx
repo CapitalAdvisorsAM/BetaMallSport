@@ -14,8 +14,11 @@ import type {
 import { useContractFormState } from "@/components/contracts/useContractFormState";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 
 export type { ContractDraftPayload, UploadReviewExtras } from "@/components/contracts/contract-form-types";
 export { extractionToDraft } from "@/components/contracts/contract-form-utils";
@@ -67,17 +70,17 @@ function ContractReviewExtrasSection({
 }: ContractReviewExtrasSectionProps) {
   if (uploadReviewMode) {
     return (
-      <label className="text-sm">
-        <span className="mb-1 block text-slate-700">Numero contrato</span>
+      <FormField label="Numero contrato" htmlFor="numero-contrato">
         <Input
+          id="numero-contrato"
           value={reviewExtras.numeroContrato}
           onChange={(event) =>
             setReviewExtras((previous) => ({ ...previous, numeroContrato: event.target.value }))
           }
           disabled={!canEdit}
-          className="w-full rounded-md border border-slate-300 px-3 py-2"
+          className="w-full"
         />
-      </label>
+      </FormField>
     );
   }
 
@@ -129,9 +132,9 @@ function ContractStatusAndLocalsSection({
   return (
     <div className="grid gap-3 md:grid-cols-2">
       <div className="space-y-3">
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-700">Dias de gracia</span>
+        <FormField label="Dias de gracia" htmlFor="dias-gracia" helperText="Dias desde entrega del local hasta inicio del arriendo.">
           <Input
+            id="dias-gracia"
             type="number"
             min={0}
             value={payload.diasGracia}
@@ -144,10 +147,7 @@ function ContractStatusAndLocalsSection({
             disabled={!canEdit}
             className="w-full"
           />
-          <span className="mt-1 block text-xs text-slate-500">
-            Dias desde entrega del local hasta inicio del arriendo.
-          </span>
-        </label>
+        </FormField>
       </div>
 
       <div className="text-sm">
@@ -259,17 +259,14 @@ function ContractCommercialSection({
   return (
     <>
       <div className="grid gap-3 md:grid-cols-5">
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-700">
-            Arrendatario <span className="text-rose-500">*</span>
-          </span>
+        <FormField label="Arrendatario" htmlFor="arrendatario" required>
           <Select
             value={payload.arrendatarioId || undefined}
             onValueChange={(value) =>
               setPayload((previous) => ({ ...previous, arrendatarioId: value }))
             }
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger id="arrendatario" className="w-full">
               <SelectValue placeholder="Selecciona un arrendatario" />
             </SelectTrigger>
             <SelectContent>
@@ -280,38 +277,32 @@ function ContractCommercialSection({
               ))}
             </SelectContent>
           </Select>
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-700">
-            Fecha inicio <span className="text-rose-500">*</span>
-          </span>
+        </FormField>
+        <FormField label="Fecha inicio" htmlFor="fecha-inicio" required>
           <Input
+            id="fecha-inicio"
             type="date"
             value={payload.fechaInicio}
             onChange={(event) =>
               setPayload((previous) => ({ ...previous, fechaInicio: event.target.value }))
             }
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            className="w-full"
           />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-700">
-            Fecha termino <span className="text-rose-500">*</span>
-          </span>
+        </FormField>
+        <FormField label="Fecha termino" htmlFor="fecha-termino" required>
           <Input
+            id="fecha-termino"
             type="date"
             value={payload.fechaTermino}
             onChange={(event) =>
               setPayload((previous) => ({ ...previous, fechaTermino: event.target.value }))
             }
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            className="w-full"
           />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-700">
-            % Fondo promocion <span className="text-xs text-slate-400">(opcional)</span>
-          </span>
+        </FormField>
+        <FormField label="% Fondo promocion" htmlFor="pct-fondo-promocion" helperText="Opcional">
           <Input
+            id="pct-fondo-promocion"
             inputMode="decimal"
             placeholder="Ej: 2.5"
             value={payload.pctFondoPromocion ?? ""}
@@ -321,14 +312,12 @@ function ContractCommercialSection({
                 pctFondoPromocion: event.target.value.trim() ? event.target.value : null
               }))
             }
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            className="w-full"
           />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-700">
-            Multiplicador diciembre <span className="text-xs text-slate-400">(opcional)</span>
-          </span>
+        </FormField>
+        <FormField label="Multiplicador diciembre" htmlFor="mult-diciembre" helperText="Opcional">
           <Input
+            id="mult-diciembre"
             inputMode="decimal"
             placeholder="Ej: 1.25"
             value={payload.multiplicadorDiciembre ?? ""}
@@ -339,9 +328,41 @@ function ContractCommercialSection({
               }))
             }
             disabled={!canEdit}
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            className="w-full"
           />
-        </label>
+        </FormField>
+        <FormField label="Multiplicador junio" htmlFor="mult-junio" helperText="Opcional">
+          <Input
+            id="mult-junio"
+            inputMode="decimal"
+            placeholder="Ej: 1.25"
+            value={payload.multiplicadorJunio ?? ""}
+            onChange={(event) =>
+              setPayload((previous) => ({
+                ...previous,
+                multiplicadorJunio: event.target.value.trim() ? event.target.value : null
+              }))
+            }
+            disabled={!canEdit}
+            className="w-full"
+          />
+        </FormField>
+        <FormField label="Multiplicador agosto" htmlFor="mult-agosto" helperText="Opcional">
+          <Input
+            id="mult-agosto"
+            inputMode="decimal"
+            placeholder="Ej: 1.25"
+            value={payload.multiplicadorAgosto ?? ""}
+            onChange={(event) =>
+              setPayload((previous) => ({
+                ...previous,
+                multiplicadorAgosto: event.target.value.trim() ? event.target.value : null
+              }))
+            }
+            disabled={!canEdit}
+            className="w-full"
+          />
+        </FormField>
       </div>
 
       <TarifaListEditor
@@ -359,11 +380,9 @@ function ContractCommercialSection({
 
       <div className="space-y-1 rounded-lg border border-slate-200 p-3">
         <h4 className="text-sm font-semibold text-slate-900">Costo de administracion (GGCC)</h4>
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-700">
-            % administracion <span className="text-xs text-slate-400">(opcional)</span>
-          </span>
+        <FormField label="% administracion" htmlFor="pct-admin-ggcc" helperText="Opcional">
           <Input
+            id="pct-admin-ggcc"
             inputMode="decimal"
             placeholder="Ej: 5"
             value={payload.pctAdministracionGgcc ?? ""}
@@ -374,9 +393,9 @@ function ContractCommercialSection({
               }))
             }
             disabled={!canEdit}
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
+            className="w-full"
           />
-        </label>
+        </FormField>
       </div>
 
       <GgccListEditor
@@ -396,11 +415,9 @@ type ContractAnexoSectionProps = {
 function ContractAnexoSection({ payload, setPayload }: ContractAnexoSectionProps) {
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      <label className="text-sm">
-        <span className="mb-1 block text-slate-700">
-          Fecha anexo <span className="text-xs text-slate-400">(opcional)</span>
-        </span>
+      <FormField label="Fecha anexo" htmlFor="fecha-anexo" helperText="Opcional">
         <Input
+          id="fecha-anexo"
           type="date"
           value={payload.anexo?.fecha ?? ""}
           onChange={(event) =>
@@ -412,14 +429,12 @@ function ContractAnexoSection({ payload, setPayload }: ContractAnexoSectionProps
               }
             }))
           }
-          className="w-full rounded-md border border-slate-300 px-3 py-2"
+          className="w-full"
         />
-      </label>
-      <label className="text-sm">
-        <span className="mb-1 block text-slate-700">
-          Descripcion anexo <span className="text-xs text-slate-400">(opcional)</span>
-        </span>
+      </FormField>
+      <FormField label="Descripcion anexo" htmlFor="desc-anexo" helperText="Opcional">
         <Input
+          id="desc-anexo"
           value={payload.anexo?.descripcion ?? ""}
           onChange={(event) =>
             setPayload((previous) => ({
@@ -430,9 +445,9 @@ function ContractAnexoSection({ payload, setPayload }: ContractAnexoSectionProps
               }
             }))
           }
-          className="w-full rounded-md border border-slate-300 px-3 py-2"
+          className="w-full"
         />
-      </label>
+      </FormField>
     </div>
   );
 }
@@ -530,12 +545,26 @@ export function ContractForm({
     onDraftChange
   });
 
+  const { showConfirm, confirmNavigation, cancelNavigation, proceedNavigation } =
+    useUnsavedChanges({ isDirty: state.isDirty });
+
+  const guardedCancel = () => confirmNavigation(onCancel);
+
   return (
     <section className="space-y-3 rounded-md bg-white p-5 shadow-sm">
+      <ConfirmModal
+        open={showConfirm}
+        title="Cambios sin guardar"
+        description="Tienes cambios sin guardar. ¿Seguro que deseas salir?"
+        confirmLabel="Salir"
+        onConfirm={proceedNavigation}
+        onCancel={cancelNavigation}
+      />
+
       <ContractTitleSection
         batchMode={batchMode}
         hasInitialData={Boolean(initialData)}
-        onCancel={onCancel}
+        onCancel={guardedCancel}
       />
 
       {canEdit && !batchMode && !uploadReviewMode ? (
@@ -591,7 +620,7 @@ export function ContractForm({
         hideActions={hideActions}
         batchMode={batchMode}
         uploadReviewMode={uploadReviewMode}
-        onCancel={onCancel}
+        onCancel={guardedCancel}
         cancelLabel={cancelLabel}
         saveLabel={saveLabel}
         hasInitialData={Boolean(initialData)}

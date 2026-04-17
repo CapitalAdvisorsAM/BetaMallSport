@@ -50,6 +50,8 @@ export type ContractUploadRow = {
   rentaVariable3Pct: string | null;
   pctFondoPromocion: string | null;
   multiplicadorDiciembre: string | null;
+  multiplicadorJunio: string | null;
+  multiplicadorAgosto: string | null;
   codigoCC: string | null;
   ggccPctAdministracion: string | null;
   ggccPctReajuste: string | null;
@@ -71,6 +73,8 @@ export type ExistingContractForDiff = {
   fechaApertura: string | null;
   pctFondoPromocion: string | null;
   multiplicadorDiciembre: string | null;
+  multiplicadorJunio: string | null;
+  multiplicadorAgosto: string | null;
   codigoCC: string | null;
   ggccPctAdministracion: string | null;
   notas: string | null;
@@ -257,6 +261,8 @@ function emptyRow(): ContractUploadRow {
     rentaVariable3Pct: null,
     pctFondoPromocion: null,
     multiplicadorDiciembre: null,
+    multiplicadorJunio: null,
+    multiplicadorAgosto: null,
     codigoCC: null,
     ggccPctAdministracion: null,
     ggccPctReajuste: null,
@@ -321,6 +327,12 @@ function compareWithExisting(
   }
   if (!decimalEquals(existing.multiplicadorDiciembre, row.multiplicadorDiciembre)) {
     changed.push("multiplicadorDiciembre");
+  }
+  if (!decimalEquals(existing.multiplicadorJunio, row.multiplicadorJunio)) {
+    changed.push("multiplicadorJunio");
+  }
+  if (!decimalEquals(existing.multiplicadorAgosto, row.multiplicadorAgosto)) {
+    changed.push("multiplicadorAgosto");
   }
   if ((existing.codigoCC ?? null) !== row.codigoCC) {
     changed.push("codigoCC");
@@ -432,6 +444,8 @@ function buildPreviewRows(
     const rentaVariable3Pct = normalizeNullable(rawRow.rentavariable3pct);
     const pctFondoPromocion = normalizeNullable(rawRow.pctfondopromocion);
     const multiplicadorDiciembre = normalizeNullable(rawRow.multiplicadordiciembre);
+    const multiplicadorJunio = normalizeNullable(rawRow.multiplicadorjunio);
+    const multiplicadorAgosto = normalizeNullable(rawRow.multiplicadoragosto);
     const codigoCC = normalizeNullable(rawRow.codigocc);
     const ggccPctAdministracion = normalizeNullable(rawRow.ggccpctadministracion);
     const ggccPctReajuste = normalizeNullable(rawRow.ggccpctreajuste);
@@ -490,6 +504,8 @@ function buildPreviewRows(
       rentaVariable3Pct: hasFijoType ? rentaVariable3Pct : null,
       pctFondoPromocion,
       multiplicadorDiciembre,
+      multiplicadorJunio,
+      multiplicadorAgosto,
       codigoCC,
       ggccPctAdministracion,
       ggccPctReajuste,
@@ -595,6 +611,22 @@ function buildPreviewRows(
         status: "ERROR",
         data,
         errorMessage: "multiplicadorDiciembre debe ser numerico cuando se informa."
+      };
+    }
+    if (!isValidDecimalOrNull(data.multiplicadorJunio)) {
+      return {
+        rowNumber,
+        status: "ERROR",
+        data,
+        errorMessage: "multiplicadorJunio debe ser numerico cuando se informa."
+      };
+    }
+    if (!isValidDecimalOrNull(data.multiplicadorAgosto)) {
+      return {
+        rowNumber,
+        status: "ERROR",
+        data,
+        errorMessage: "multiplicadorAgosto debe ser numerico cuando se informa."
       };
     }
     if (
@@ -778,6 +810,8 @@ function toRawRowFromPreviewData(data: Record<string, unknown>): RawRow {
     rentavariable3pct: data.rentaVariable3Pct ?? "",
     pctfondopromocion: data.pctFondoPromocion ?? "",
     multiplicadordiciembre: data.multiplicadorDiciembre ?? "",
+    multiplicadorjunio: data.multiplicadorJunio ?? "",
+    multiplicadoragosto: data.multiplicadorAgosto ?? "",
     codigocc: data.codigoCC ?? "",
     ggccpctadministracion: data.ggccPctAdministracion ?? "",
     ggccpctreajuste: data.ggccPctReajuste ?? "",

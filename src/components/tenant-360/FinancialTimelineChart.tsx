@@ -13,6 +13,15 @@ import {
   YAxis
 } from "recharts";
 import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
+import {
+  chartAxisProps,
+  chartColors,
+  chartGridProps,
+  chartHeight,
+  chartLegendProps,
+  chartMargins,
+} from "@/lib/charts/theme";
 import type { Tenant360MonthlyPoint } from "@/types/tenant-360";
 
 type FinancialTimelineChartProps = {
@@ -37,67 +46,55 @@ export function FinancialTimelineChart({ data }: FinancialTimelineChartProps): J
       metricId="kpi_tenant360_costo_ocupacion_pct"
       description="Evolucion mensual de facturacion, ventas y costo de ocupacion."
     >
-      <ResponsiveContainer width="100%" height={320}>
-        <ComposedChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+      <ResponsiveContainer width="100%" height={chartHeight.lg}>
+        <ComposedChart data={data} margin={chartMargins.default}>
+          <CartesianGrid {...chartGridProps} />
           <XAxis
             dataKey="period"
-            tick={{ fontSize: 11, fill: "#64748b" }}
-            tickLine={false}
-            axisLine={{ stroke: "#e2e8f0" }}
+            {...chartAxisProps}
           />
           <YAxis
             yAxisId="left"
-            tick={{ fontSize: 11, fill: "#64748b" }}
-            tickLine={false}
-            axisLine={false}
+            {...chartAxisProps}
             tickFormatter={(v: number) => fmtUf(v)}
           />
           <YAxis
             yAxisId="right"
             orientation="right"
             domain={[0, 30]}
-            tick={{ fontSize: 11, fill: "#64748b" }}
-            tickLine={false}
-            axisLine={false}
+            {...chartAxisProps}
             tickFormatter={(v: number) => `${v}%`}
           />
           <Tooltip
-            contentStyle={{
-              fontSize: 12,
-              borderRadius: 6,
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.08)"
-            }}
-            formatter={(value, name, props) => {
-              const v = typeof value === "number" ? value : Number(value ?? 0);
-              if (name === "Costo Ocup. %") return [fmtPct(v), name];
-              if (name === "Facturacion (UF)") {
-                const entry = props.payload as Tenant360MonthlyPoint | undefined;
-                const m2Line = entry?.billingUfM2 != null ? ` (${fmtUf(entry.billingUfM2)} UF/m\u00b2)` : "";
-                return [`${fmtUf(v)} UF${m2Line}`, name];
-              }
-              return [`${fmtUf(v)} UF`, name];
-            }}
+            content={
+              <ChartTooltip
+                valueFormatter={(value, name, entry) => {
+                  const v = typeof value === "number" ? value : Number(value ?? 0);
+                  if (String(name) === "Costo Ocup. %") return fmtPct(v);
+                  if (String(name) === "Facturacion (UF)") {
+                    const payload = entry as Tenant360MonthlyPoint | undefined;
+                    const m2Line = payload?.billingUfM2 != null ? ` (${fmtUf(payload.billingUfM2)} UF/m\u00b2)` : "";
+                    return `${fmtUf(v)} UF${m2Line}`;
+                  }
+                  return `${fmtUf(v)} UF`;
+                }}
+              />
+            }
           />
-          <Legend
-            verticalAlign="top"
-            height={32}
-            wrapperStyle={{ fontSize: 11, color: "#64748b" }}
-          />
+          <Legend verticalAlign="top" height={32} {...chartLegendProps} />
           <ReferenceLine
             yAxisId="right"
             y={15}
-            stroke="#e11d48"
+            stroke={chartColors.negative}
             strokeDasharray="4 4"
             strokeWidth={1}
-            label={{ value: "15%", position: "right", fill: "#e11d48", fontSize: 10 }}
+            label={{ value: "15%", position: "right", fill: chartColors.negative, fontSize: 10 }}
           />
           <Bar
             yAxisId="left"
             dataKey="billingUf"
             name="Facturacion (UF)"
-            fill="#2563eb"
+            fill={chartColors.brandPrimary}
             radius={[3, 3, 0, 0]}
             barSize={20}
           />
@@ -105,7 +102,7 @@ export function FinancialTimelineChart({ data }: FinancialTimelineChartProps): J
             yAxisId="left"
             dataKey="salesUf"
             name="Ventas (UF)"
-            fill="#10b981"
+            fill={chartColors.positiveLight}
             radius={[3, 3, 0, 0]}
             barSize={20}
           />
@@ -114,9 +111,9 @@ export function FinancialTimelineChart({ data }: FinancialTimelineChartProps): J
             type="monotone"
             dataKey="costoOcupacionPct"
             name="Costo Ocup. %"
-            stroke="#e11d48"
+            stroke={chartColors.negative}
             strokeWidth={2}
-            dot={{ r: 3, fill: "#e11d48" }}
+            dot={{ r: 3, fill: chartColors.negative }}
             connectNulls
           />
         </ComposedChart>

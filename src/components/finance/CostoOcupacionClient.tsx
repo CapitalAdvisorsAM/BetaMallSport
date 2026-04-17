@@ -8,7 +8,6 @@ import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { UnifiedTable } from "@/components/ui/UnifiedTable";
 import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
 import { cn } from "@/lib/utils";
-import type { ProjectOption } from "@/types/finance";
 import type { CostoOcupacionResponse, CostoOcupacionRow } from "@/types/costo-ocupacion";
 
 // ---------------------------------------------------------------------------
@@ -49,13 +48,11 @@ function getCurrentYearMonth(): string {
 // ---------------------------------------------------------------------------
 
 type Props = {
-  projects: ProjectOption[];
   selectedProjectId: string;
   defaultPeriod?: string;
 };
 
 export function CostoOcupacionClient({
-  projects,
   selectedProjectId,
   defaultPeriod
 }: Props): JSX.Element {
@@ -89,9 +86,6 @@ export function CostoOcupacionClient({
       <ModuleHeader
         title="Costo de Ocupacion (%)"
         description="Facturacion vs ventas por arrendatario. Replica la hoja 'Costo Ocupacion' del CDG."
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        preserve={{}}
         actions={
           <div className="flex items-center gap-2">
             <label className="text-xs text-slate-500">Periodo</label>
@@ -111,7 +105,7 @@ export function CostoOcupacionClient({
       ) : !data || rows.length === 0 ? (
         <ModuleEmptyState
           message="Sin datos de costo de ocupacion para el periodo seleccionado."
-          actionHref={`/finance/upload?project=${selectedProjectId}`}
+          actionHref="/finance/upload"
           actionLabel="Cargar datos contables"
         />
       ) : (

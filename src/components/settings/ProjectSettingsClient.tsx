@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { ProjectOption } from "@/types/finance";
 import { toast } from "sonner";
 
 type ProjectRecord = {
@@ -17,13 +16,12 @@ type ProjectRecord = {
   color: string;
   activo: boolean;
   slug: string;
+  glaTotal: string | null;
 };
 
 type ProjectSettingsClientProps = {
   project: ProjectRecord;
   canEdit: boolean;
-  projects: ProjectOption[];
-  selectedProjectId: string;
 };
 
 async function readErrorMessage(response: Response, fallback: string): Promise<string> {
@@ -40,8 +38,6 @@ async function readErrorMessage(response: Response, fallback: string): Promise<s
 export function ProjectSettingsClient({
   project,
   canEdit,
-  projects,
-  selectedProjectId
 }: ProjectSettingsClientProps): JSX.Element {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -49,6 +45,7 @@ export function ProjectSettingsClient({
   const [nombre, setNombre] = useState(project.nombre);
   const [color, setColor] = useState(project.color);
   const [activo, setActivo] = useState(project.activo);
+  const [glaTotal, setGlaTotal] = useState(project.glaTotal ?? "");
 
   async function handleSave(): Promise<void> {
     if (!canEdit || saving) return;
@@ -58,7 +55,7 @@ export function ProjectSettingsClient({
       const response = await fetch(`/api/projects/${project.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, color, activo })
+        body: JSON.stringify({ nombre, color, activo, glaTotal: glaTotal.trim() || null })
       });
 
       if (!response.ok) {
@@ -79,8 +76,6 @@ export function ProjectSettingsClient({
       <ModuleHeader
         title="Configuración del Proyecto"
         description="Edita el nombre, color y estado del proyecto seleccionado."
-        projects={projects}
-        selectedProjectId={selectedProjectId}
       />
 
       <ModuleSectionCard>
@@ -108,6 +103,21 @@ export function ProjectSettingsClient({
                 className="h-10 w-full px-2"
               />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="config-gla-total">GLA Teórica Total (m²)</Label>
+            <Input
+              id="config-gla-total"
+              type="number"
+              step="0.01"
+              min="0"
+              value={glaTotal}
+              onChange={(e) => setGlaTotal(e.target.value)}
+              disabled={!canEdit}
+              placeholder="Ej: 12500.00"
+              className="max-w-xs"
+            />
           </div>
 
           <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">

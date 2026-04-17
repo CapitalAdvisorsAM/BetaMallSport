@@ -7,17 +7,15 @@ import { RentRollEntityModeNav } from "@/components/rent-roll/RentRollEntityMode
 import { UploadHistory } from "@/components/upload/UploadHistory";
 import { UploadSection } from "@/components/upload/UploadSection";
 import { Button } from "@/components/ui/button";
-import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import type { RentRollMode } from "@/lib/navigation";
 import { buildExportExcelUrl } from "@/lib/export/shared";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
+import { getProjectContext } from "@/lib/project";
 import { getUploadHistory } from "@/lib/rent-roll/upload-history";
 
 type ContractsPageProps = {
   searchParams: {
-    project?: string | string[];
     seccion?: string | string[];
     cursor?: string | string[];
   };
@@ -108,24 +106,13 @@ export default async function ContractsPage({
   searchParams
 }: ContractsPageProps): Promise<JSX.Element> {
   const session = await requireSession();
-  const projectParam = resolveProjectIdFromSearchParams(searchParams);
   const seccionParam = getSingleValue(searchParams.seccion);
   const cursor = getSingleValue(searchParams.cursor);
-  const { selectedProjectId } = await getProjectContext(projectParam);
+  const { selectedProjectId } = await getProjectContext();
   const canEdit = canWrite(session.user.role);
 
   if (!selectedProjectId) {
-    return (
-      <ProjectCreationPanel
-        title="Contratos"
-        description="No hay proyectos activos. Crea uno para habilitar el CRUD de contratos."
-        canEdit={canEdit}
-      />
-    );
-  }
-
-  if (!projectParam) {
-    redirect(`/rent-roll/contracts?project=${selectedProjectId}`);
+    redirect("/");
   }
   const mode = resolveMode(seccionParam);
 
@@ -251,6 +238,8 @@ export default async function ContractsPage({
             pctFondoPromocion: contract.pctFondoPromocion?.toString() ?? null,
             pctAdministracionGgcc: contract.pctAdministracionGgcc?.toString() ?? null,
             multiplicadorDiciembre: contract.multiplicadorDiciembre?.toString() ?? null,
+            multiplicadorJunio: contract.multiplicadorJunio?.toString() ?? null,
+            multiplicadorAgosto: contract.multiplicadorAgosto?.toString() ?? null,
             local: contract.local,
             locales: getAssociatedLocales(contract),
             arrendatario: contract.arrendatario,

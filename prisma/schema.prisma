@@ -104,6 +104,7 @@ model Project {
   nombre         String
   slug           String           @unique
   color          String
+  glaTotal       Decimal?         @db.Decimal(12, 2)
   activo         Boolean          @default(true)
   createdAt      DateTime         @default(now()) @db.Timestamptz(3)
   locales              Unit[]
@@ -267,6 +268,8 @@ model Contract {
   /// No agregar nuevas lecturas/escrituras a este campo.
   pctAdministracionGgcc Decimal?    @db.Decimal(6, 3)
   multiplicadorDiciembre Decimal?    @db.Decimal(6, 3)
+  multiplicadorJunio     Decimal?    @db.Decimal(6, 3)
+  multiplicadorAgosto    Decimal?    @db.Decimal(6, 3)
   codigoCC          String?
   estado            ContractStatus
   diasGracia        Int            @default(0)

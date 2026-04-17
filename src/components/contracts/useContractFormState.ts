@@ -75,6 +75,7 @@ export function useContractFormState({
   const [localSearch, setLocalSearch] = useState("");
   const [showOnlySelectedLocals, setShowOnlySelectedLocals] = useState(false);
   const skipDraftNotifyRef = useRef(false);
+  const initialSignatureRef = useRef<string | null>(null);
 
   const localSelectionState = useMemo<LocalSelectionState>(
     () =>
@@ -93,6 +94,16 @@ export function useContractFormState({
     payload.fechaInicio && payload.fechaTermino
       ? { inicio: payload.fechaInicio, termino: payload.fechaTermino }
       : undefined;
+
+  const payloadSignature = useMemo(() => JSON.stringify(payload), [payload]);
+
+  useEffect(() => {
+    if (initialSignatureRef.current === null) {
+      initialSignatureRef.current = payloadSignature;
+    }
+  }, [payloadSignature]);
+
+  const isDirty = initialSignatureRef.current !== null && payloadSignature !== initialSignatureRef.current;
 
   const resolveLocalFields = useCallback(
     (localIds: string[], currentLocalId: string): LocalFields => {
@@ -120,6 +131,7 @@ export function useContractFormState({
           : { ...nextPayload, ...nextLocalFields };
         const shouldSync = previous !== normalizedPayload;
         skipDraftNotifyRef.current = shouldSync;
+        if (shouldSync) initialSignatureRef.current = JSON.stringify(normalizedPayload);
         return shouldSync ? normalizedPayload : previous;
       });
       return;
@@ -133,6 +145,7 @@ export function useContractFormState({
           : { ...initialDraft, ...nextLocalFields };
         const shouldSync = previous !== normalizedDraft;
         skipDraftNotifyRef.current = shouldSync;
+        if (shouldSync) initialSignatureRef.current = JSON.stringify(normalizedDraft);
         return shouldSync ? normalizedDraft : previous;
       });
       return;
@@ -148,6 +161,7 @@ export function useContractFormState({
       const normalizedPayload = { ...nextPayload, ...nextLocalFields };
       const shouldSync = previous !== normalizedPayload;
       skipDraftNotifyRef.current = shouldSync;
+      if (shouldSync) initialSignatureRef.current = JSON.stringify(normalizedPayload);
       return shouldSync ? normalizedPayload : previous;
     });
   }, [
@@ -336,6 +350,7 @@ export function useContractFormState({
     setReviewExtras,
     loading,
     extracting,
+    isDirty,
     localSearch,
     setLocalSearch,
     showOnlySelectedLocals,

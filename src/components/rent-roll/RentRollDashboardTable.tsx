@@ -83,7 +83,7 @@ export function RentRollDashboardTable({
         filterFn: "includesString",
         cell: ({ row }) => (
           <Link
-            href={`/tenants/${row.original.tenantId}?project=${proyectoId}`}
+            href={`/tenants/${row.original.tenantId}`}
             className="whitespace-nowrap text-brand-500 underline underline-offset-2 font-medium transition-colors hover:text-brand-700"
           >
             {row.original.arrendatario}
@@ -272,6 +272,12 @@ export function RentRollDashboardTable({
 
   const { table } = useDataTable(sortedBaseRows, columns);
 
+  const weightedAvgUfM2 = useMemo(() => {
+    const totalGla = rows.reduce((sum, r) => sum + r.glam2, 0);
+    if (totalGla === 0) return null;
+    return rows.reduce((sum, r) => sum + r.tarifaUfM2 * r.glam2, 0) / totalGla;
+  }, [rows]);
+
   return (
     <div className="overflow-hidden rounded-md bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
@@ -279,6 +285,9 @@ export function RentRollDashboardTable({
           <h3 className="text-sm font-semibold text-brand-700">Detalle contractual del snapshot</h3>
           <p className="mt-1 text-xs text-slate-500">
             Contratos ocupados o en gracia vigentes al {snapshotDate}.
+            {weightedAvgUfM2 !== null && (
+              <> · Tarifa ponderada: <span className="font-medium text-slate-700">{weightedAvgUfM2.toLocaleString("es-CL", { minimumFractionDigits: 4, maximumFractionDigits: 4 })} UF/m²</span></>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-4">

@@ -9,17 +9,17 @@ import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolba
 import { TableDisclosureButton } from "@/components/ui/TableDisclosureButton";
 import { tableTheme } from "@/components/ui/table-theme";
 import { BELOW_EBITDA_GROUPS, calculateEbitdaMargin, formatEerr } from "@/lib/finance/eerr";
-import type { EerrData, EerrDetalleResponse, ProjectOption } from "@/types/finance";
+import type { EerrData, EerrDetalleResponse } from "@/types/finance";
 
 type BillingLine = { grupo1: string; grupo3: string; porPeriodo: Record<string, number>; total: number };
 type BillingResponse = { periodos: string[]; lineas: BillingLine[]; total: number };
 type ArrendatarioPanel = { arrendatarioId: string; nombre: string; localCodigo: string };
 
 type EerrClientProps = {
-  projects: ProjectOption[];
   selectedProjectId: string;
   defaultDesde?: string;
   defaultHasta?: string;
+  glaTotal?: number | null;
 };
 
 type ModoVista = "mensual" | "anual";
@@ -59,10 +59,10 @@ function numCls(bold = false): string {
 const CREDIT_LINES = new Set(["RECUPERACION GASTOS COMUNES", "FONDO DE PROMOCION"]);
 
 export function EerrClient({
-  projects,
   selectedProjectId,
   defaultDesde,
-  defaultHasta
+  defaultHasta,
+  glaTotal,
 }: EerrClientProps): JSX.Element {
   const [desde, setDesde] = useState(defaultDesde ?? "");
   const [hasta, setHasta] = useState(defaultHasta ?? "");
@@ -164,16 +164,18 @@ export function EerrClient({
   const aboveEbitdaSections = data?.secciones?.filter((s) => !BELOW_EBITDA_GROUPS.has(s.grupo1)) ?? [];
   const belowEbitdaSections = data?.secciones?.filter((s) => BELOW_EBITDA_GROUPS.has(s.grupo1)) ?? [];
 
+  const ingresoUfM2 =
+    glaTotal && glaTotal > 0 && ingresos && data && data.periodos.length > 0
+      ? ingresos.total / data.periodos.length / glaTotal
+      : null;
+
   return (
 
     <main className="space-y-4">
       <ModuleHeader
         title="Estado de Resultados (UF)"
         description="Resultado consolidado del proyecto por periodo."
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        showProjectSelector={false}
-        preserve={{ desde, hasta }}
+        valueBadges={["efectivo"]}
         actions={
           <div className="flex items-center gap-3">
             <div className="flex overflow-hidden rounded border border-slate-200 text-xs font-medium">
@@ -195,13 +197,27 @@ export function EerrClient({
         }
       />
 
+      {ingresoUfM2 !== null && (
+        <div className="rounded-md border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+          <p className="text-sm text-slate-600">
+            Ingreso mensual promedio:{" "}
+            <span className="font-semibold text-slate-900">
+              {ingresoUfM2.toLocaleString("es-CL", { minimumFractionDigits: 4, maximumFractionDigits: 4 })} UF/m²
+            </span>
+            <span className="ml-2 text-xs text-slate-400">
+              ({ingresos!.total.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} UF total ÷ {data!.periodos.length} períodos ÷ {glaTotal!.toLocaleString("es-CL")} m² GLA)
+            </span>
+          </p>
+        </div>
+      )}
+
       <ModuleSectionCard>
         {loading ? (
           <ModuleLoadingState message="Cargando Estado de Resultados..." />
         ) : !data || !data.secciones?.length ? (
           <ModuleEmptyState
             message="Sin datos contables para el periodo seleccionado."
-            actionHref={`/finance/upload?project=${selectedProjectId}`}
+            actionHref="/finance/upload"
             actionLabel="Cargar datos contables"
           />
         ) : (

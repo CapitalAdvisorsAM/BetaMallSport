@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { type Prisma } from "@prisma/client";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { UnifiedTable } from "@/components/ui/UnifiedTable";
 import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
 import { Button } from "@/components/ui/button";
-import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
+import { getProjectContext } from "@/lib/project";
 import { cn, formatDate, formatUf } from "@/lib/utils";
 import { MS_PER_DAY } from "@/lib/constants";
 
@@ -65,28 +65,15 @@ function rateLabel(tipo: string): string {
 
 export default async function ContractDetailPage({
   params,
-  searchParams,
 }: {
   params: { id: string };
-  searchParams: { project?: string | string[] };
 }): Promise<JSX.Element> {
   const session = await requireSession();
-  const projectParam = resolveProjectIdFromSearchParams(searchParams);
-  const { selectedProjectId } = await getProjectContext(projectParam);
+  const { selectedProjectId } = await getProjectContext();
   const canEdit = canWrite(session.user.role);
 
   if (!selectedProjectId) {
-    return (
-      <ProjectCreationPanel
-        title="Contratos"
-        description="No hay proyectos activos."
-        canEdit={canEdit}
-      />
-    );
-  }
-
-  if (!projectParam) {
-    redirect(`/rent-roll/contracts/${params.id}?project=${selectedProjectId}`);
+    redirect("/");
   }
 
   const contract = await prisma.contract.findFirst({
@@ -101,14 +88,11 @@ export default async function ContractDetailPage({
 
   return (
     <main className="space-y-4">
-      <div>
-        <Link
-          href={`/rent-roll/contracts?project=${selectedProjectId}`}
-          className="text-sm text-brand-600 underline underline-offset-2 hover:text-brand-700"
-        >
-          ← Volver a contratos
-        </Link>
-      </div>
+      <Breadcrumb items={[
+        { label: "Rent Roll", href: "/rent-roll" },
+        { label: "Contratos", href: "/rent-roll/contracts" },
+        { label: `Contrato ${contract.numeroContrato}` },
+      ]} />
 
       <section className="space-y-5 rounded-md border border-brand-200 bg-brand-50 p-5 shadow-sm">
         {/* Header */}
@@ -143,7 +127,7 @@ export default async function ContractDetailPage({
             <div>
               <p className="text-slate-400">Arrendatario</p>
               <Link
-                href={`/tenants/${contract.arrendatario.id}?project=${selectedProjectId}`}
+                href={`/tenants/${contract.arrendatario.id}`}
                 className="font-medium text-brand-600 underline underline-offset-2 hover:text-brand-700"
               >
                 {contract.arrendatario.nombreComercial}
@@ -201,6 +185,18 @@ export default async function ContractDetailPage({
               <div>
                 <p className="text-slate-400">Multiplicador diciembre</p>
                 <p className="font-medium tabular-nums text-slate-700">{contract.multiplicadorDiciembre.toString()}x</p>
+              </div>
+            ) : null}
+            {contract.multiplicadorJunio ? (
+              <div>
+                <p className="text-slate-400">Multiplicador junio</p>
+                <p className="font-medium tabular-nums text-slate-700">{contract.multiplicadorJunio.toString()}x</p>
+              </div>
+            ) : null}
+            {contract.multiplicadorAgosto ? (
+              <div>
+                <p className="text-slate-400">Multiplicador agosto</p>
+                <p className="font-medium tabular-nums text-slate-700">{contract.multiplicadorAgosto.toString()}x</p>
               </div>
             ) : null}
           </div>

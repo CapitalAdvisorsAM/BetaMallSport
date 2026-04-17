@@ -1,26 +1,19 @@
-﻿import { FinanceMappingsClient } from "@/components/finance/FinanceMappingsClient";
-import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
+﻿import { redirect } from "next/navigation";
+import { FinanceMappingsClient } from "@/components/finance/FinanceMappingsClient";
 import { getFinanceMappingsData } from "@/lib/finance/mappings";
-import { canWrite, requireSession } from "@/lib/permissions";
-import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
+import { requireSession } from "@/lib/permissions";
+import { getProjectContext } from "@/lib/project";
 
 export default async function FinanceMappingsPage({
   searchParams
 }: {
-  searchParams: { project?: string; tab?: string };
+  searchParams: { tab?: string };
 }): Promise<JSX.Element> {
-  const session = await requireSession();
-  const projectParam = resolveProjectIdFromSearchParams(searchParams);
-  const { projects, selectedProjectId } = await getProjectContext(projectParam);
+  await requireSession();
+  const { selectedProjectId } = await getProjectContext();
 
   if (!selectedProjectId) {
-    return (
-      <ProjectCreationPanel
-        title="Finanzas"
-        description="No hay proyectos activos. Crea uno para administrar mapeos entre finanzas y rent roll."
-        canEdit={canWrite(session.user.role)}
-      />
-    );
+    redirect("/");
   }
 
   const { accountingMappings, salesMappings, units } = await getFinanceMappingsData(selectedProjectId);
@@ -28,7 +21,6 @@ export default async function FinanceMappingsPage({
 
   return (
     <FinanceMappingsClient
-      projects={projects}
       selectedProjectId={selectedProjectId}
       accountingMappings={accountingMappings}
       salesMappings={salesMappings}

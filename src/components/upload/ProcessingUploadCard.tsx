@@ -141,7 +141,7 @@ export function ProcessingUploadCard({
               <div className="mt-2">
                 <p className="font-semibold text-amber-600">
                   {unmappedItems.length} local(es) sin mapeo.{" "}
-                  <a href={`/finance/mappings?project=${projectId}&tab=accounting`} className="underline">
+                  <a href="/finance/mappings?tab=accounting" className="underline">
                     Ir a Mapeos
                   </a>
                 </p>
@@ -160,7 +160,7 @@ export function ProcessingUploadCard({
               <div className="mt-2">
                 <p className="font-semibold text-amber-600">
                   {unmappedSales.length} tienda(s) sin mapeo.{" "}
-                  <a href={`/finance/mappings?project=${projectId}&tab=sales`} className="underline">
+                  <a href="/finance/mappings?tab=sales" className="underline">
                     Ir a Mapeos
                   </a>
                 </p>

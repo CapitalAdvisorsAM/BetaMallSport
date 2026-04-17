@@ -11,7 +11,6 @@ import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolba
 import { getStripedRowClass, tableTheme } from "@/components/ui/table-theme";
 import { type GapSeverity, getGapSeverity } from "@/lib/shared/gap-utils";
 import { formatUf, cn } from "@/lib/utils";
-import type { ProjectOption } from "@/types/finance";
 
 type ReconciliationRow = {
   tenantId: string;
@@ -50,7 +49,6 @@ type ReconciliationResponse = {
 };
 
 type ReconciliationClientProps = {
-  projects: ProjectOption[];
   selectedProjectId: string;
   defaultDesde?: string;
   defaultHasta?: string;
@@ -81,7 +79,6 @@ function GapBadge({ pct }: { pct: number }): JSX.Element {
 }
 
 export function ReconciliationClient({
-  projects,
   selectedProjectId,
   defaultDesde,
   defaultHasta
@@ -130,9 +127,6 @@ export function ReconciliationClient({
       <ModuleHeader
         title="Reconciliacion"
         description="Facturacion esperada (contratos) vs facturacion real (contabilidad) por arrendatario."
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        preserve={{ desde, hasta }}
         actions={
           <ProjectPeriodToolbar
             desde={desde}
@@ -149,7 +143,7 @@ export function ReconciliationClient({
         <ModuleSectionCard>
           <ModuleEmptyState
             message="Sin datos de reconciliacion para el periodo seleccionado. Asegurate de haber cargado datos contables."
-            actionHref={`/finance/upload?project=${selectedProjectId}`}
+            actionHref="/finance/upload"
             actionLabel="Cargar datos contables"
           />
         </ModuleSectionCard>
@@ -272,7 +266,7 @@ export function ReconciliationClient({
                       <tr key={row.tenantId} className={`${getStripedRowClass(index)} ${tableTheme.rowHover}`}>
                         <td className="sticky left-0 bg-inherit px-4 py-3 font-medium text-slate-800">
                           <Link
-                            href={`/tenants/${row.tenantId}?project=${selectedProjectId}`}
+                            href={`/tenants/${row.tenantId}`}
                             className="text-brand-500 underline underline-offset-2 transition-colors hover:text-brand-700"
                           >
                             {row.nombreComercial}

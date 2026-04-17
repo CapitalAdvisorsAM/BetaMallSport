@@ -24,6 +24,16 @@ import {
   type RentRollCategoryConcentrationDatum
 } from "@/components/rent-roll/RentRollCategoryConcentration";
 import { CustomWidgetChart } from "@/components/rent-roll/CustomWidgetChart";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
+import {
+  chartAxisProps,
+  chartBarRadius,
+  chartColors,
+  chartGridProps,
+  chartHeight,
+  chartLegendProps,
+  chartMargins,
+} from "@/lib/charts/theme";
 import { formatWaltValue } from "@/lib/rent-roll/snapshot-date";
 import type { PeriodoMetrica } from "@/types/timeline";
 import type { FormulaConfig } from "@/lib/dashboard/custom-widget-engine";
@@ -44,6 +54,11 @@ type RentRollChartsSectionProps = {
   waltVariant?: string;
   customWidgets?: CustomWidgetRow[];
 };
+
+// WALT line uses purple from the categorical palette so it is distinguishable
+// from the brand-colored occupancy line. Kept explicit (not getSeriesColor(i))
+// because the two lines aren't a series — they are separate metrics.
+const chartSeriesPaletteWaltColor = "#7c3aed";
 
 const MESES_ES = [
   "Ene",
@@ -210,22 +225,19 @@ export function RentRollChartsSection({
       <div className="grid gap-4 xl:grid-cols-2">
         {chartEnabled("chart_ocupacion_walt") && (
           <MetricChartCard metricId="chart_rent_roll_ocupacion_walt" title="% Ocupacion GLA + WALT">
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={chart1Data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <ResponsiveContainer width="100%" height={chartHeight.sm}>
+              <LineChart data={chart1Data} margin={{ ...chartMargins.default, left: 0 }}>
+                <CartesianGrid {...chartGridProps} />
                 <XAxis
                   dataKey="periodo"
                   tickFormatter={xAxisTickFormatter}
-                  tick={{ fontSize: 11, fill: "#64748b" }}
-                  tickLine={false}
+                  {...chartAxisProps}
                 />
                 <YAxis
                   yAxisId="ocupacion"
                   domain={[0, 100]}
                   tickFormatter={(value: number) => `${value}%`}
-                  tick={{ fontSize: 11, fill: "#64748b" }}
-                  tickLine={false}
-                  axisLine={false}
+                  {...chartAxisProps}
                   width={40}
                 />
                 {waltVariant !== "solo_ocupacion" && (
@@ -234,33 +246,38 @@ export function RentRollChartsSection({
                     orientation="right"
                     domain={[0, waltAxisMax]}
                     tickFormatter={formatWaltAxisTick}
-                    tick={{ fontSize: 11, fill: "#7c3aed" }}
-                    tickLine={false}
-                    axisLine={false}
+                    {...chartAxisProps}
+                    tick={{ fontSize: 11, fill: chartSeriesPaletteWaltColor }}
                     width={36}
                   />
                 )}
                 <Tooltip
-                  labelFormatter={tooltipLabelFormatter}
-                  formatter={(value, name) => {
-                    if (name === "WALT") {
-                      return [formatWaltValue(Number(value)), "WALT"];
-                    }
-                    return [`${Number(value).toFixed(1)}%`, "Ocupacion GLA"];
-                  }}
+                  content={
+                    <ChartTooltip
+                      labelFormatter={(l) => {
+                        const f = tooltipLabelFormatter(l as ReactNode);
+                        return typeof f === "string" ? f : String(l);
+                      }}
+                      valueFormatter={(value, name) =>
+                        String(name) === "WALT"
+                          ? formatWaltValue(Number(value))
+                          : `${Number(value).toFixed(1)}%`
+                      }
+                    />
+                  }
                 />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Legend {...chartLegendProps} />
                 <ReferenceLine
                   x={currentPeriodo}
-                  stroke="#f59e0b"
+                  stroke={chartColors.warningLight}
                   strokeDasharray="4 2"
-                  label={{ value: "Hoy", position: "top", fontSize: 10, fill: "#f59e0b" }}
+                  label={{ value: "Hoy", position: "top", fontSize: 10, fill: chartColors.warningLight }}
                 />
                 <Line
                   yAxisId="ocupacion"
                   type="monotone"
                   dataKey="pctOcupacion"
-                  stroke="#1e40af"
+                  stroke={chartColors.brandPrimary}
                   strokeWidth={2}
                   dot={false}
                   name="Ocupacion GLA"
@@ -271,7 +288,7 @@ export function RentRollChartsSection({
                     yAxisId="walt"
                     type="monotone"
                     dataKey="waltMeses"
-                    stroke="#7c3aed"
+                    stroke={chartSeriesPaletteWaltColor}
                     strokeWidth={2}
                     strokeDasharray="6 3"
                     dot={false}
@@ -289,43 +306,46 @@ export function RentRollChartsSection({
 
         {chartEnabled("chart_renta_fija_serie") && (
           <MetricChartCard metricId="chart_rent_roll_renta_fija_total_uf" title="Renta Fija Total (UF)">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={chart2Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+          <ResponsiveContainer width="100%" height={chartHeight.sm}>
+            <BarChart data={chart2Data} margin={{ ...chartMargins.default, left: 0 }}>
+              <CartesianGrid {...chartGridProps} />
               <XAxis
                 dataKey="periodo"
                 tickFormatter={xAxisTickFormatter}
-                tick={{ fontSize: 11, fill: "#64748b" }}
-                tickLine={false}
+                {...chartAxisProps}
               />
               <YAxis
                 tickFormatter={(value: number) =>
                   value.toLocaleString("es-CL", { maximumFractionDigits: 0 })
                 }
-                tick={{ fontSize: 11, fill: "#64748b" }}
-                tickLine={false}
-                axisLine={false}
+                {...chartAxisProps}
                 width={52}
               />
               <Tooltip
-                labelFormatter={tooltipLabelFormatter}
-                formatter={(value) => [
-                  Number(value).toLocaleString("es-CL", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  }),
-                  "Renta Fija UF"
-                ]}
+                content={
+                  <ChartTooltip
+                    labelFormatter={(l) => {
+                      const f = tooltipLabelFormatter(l as ReactNode);
+                      return typeof f === "string" ? f : String(l);
+                    }}
+                    valueFormatter={(value) =>
+                      Number(value).toLocaleString("es-CL", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })
+                    }
+                  />
+                }
               />
               <ReferenceLine
                 x={currentPeriodo}
-                stroke="#f59e0b"
+                stroke={chartColors.warningLight}
                 strokeDasharray="4 2"
-                label={{ value: "Hoy", position: "top", fontSize: 10, fill: "#f59e0b" }}
+                label={{ value: "Hoy", position: "top", fontSize: 10, fill: chartColors.warningLight }}
               />
-              <Bar dataKey="rentaFijaUf" name="Renta Fija UF" radius={[2, 2, 0, 0]}>
+              <Bar dataKey="rentaFijaUf" name="Renta Fija UF" radius={chartBarRadius}>
                 {chart2Data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.esFuturo ? "#93c5fd" : "#1e40af"} />
+                  <Cell key={`cell-${index}`} fill={entry.esFuturo ? chartColors.brandLight : chartColors.brandPrimary} />
                 ))}
               </Bar>
             </BarChart>
@@ -335,36 +355,40 @@ export function RentRollChartsSection({
 
         {chartEnabled("chart_contratos_activos") && (
           <MetricChartCard metricId="chart_rent_roll_contratos_activos" title="Contratos Activos">
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={chart3Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+          <ResponsiveContainer width="100%" height={chartHeight.sm}>
+            <LineChart data={chart3Data} margin={{ ...chartMargins.default, left: 0 }}>
+              <CartesianGrid {...chartGridProps} />
               <XAxis
                 dataKey="periodo"
                 tickFormatter={xAxisTickFormatter}
-                tick={{ fontSize: 11, fill: "#64748b" }}
-                tickLine={false}
+                {...chartAxisProps}
               />
               <YAxis
                 allowDecimals={false}
-                tick={{ fontSize: 11, fill: "#64748b" }}
-                tickLine={false}
-                axisLine={false}
+                {...chartAxisProps}
                 width={32}
               />
               <Tooltip
-                labelFormatter={tooltipLabelFormatter}
-                formatter={(value) => [value, "Contratos activos"]}
+                content={
+                  <ChartTooltip
+                    labelFormatter={(l) => {
+                      const f = tooltipLabelFormatter(l as ReactNode);
+                      return typeof f === "string" ? f : String(l);
+                    }}
+                    valueFormatter={(value) => String(value)}
+                  />
+                }
               />
               <ReferenceLine
                 x={currentPeriodo}
-                stroke="#f59e0b"
+                stroke={chartColors.warningLight}
                 strokeDasharray="4 2"
-                label={{ value: "Hoy", position: "top", fontSize: 10, fill: "#f59e0b" }}
+                label={{ value: "Hoy", position: "top", fontSize: 10, fill: chartColors.warningLight }}
               />
               <Line
                 type="monotone"
                 dataKey="contratosActivos"
-                stroke="#1e40af"
+                stroke={chartColors.brandPrimary}
                 strokeWidth={2}
                 dot={false}
                 name="Contratos activos"
@@ -376,61 +400,64 @@ export function RentRollChartsSection({
 
         {chartEnabled("chart_gla_arrendada_vacante") && (
           <MetricChartCard metricId="chart_rent_roll_gla_arrendada_vacante_m2" title="GLA Arrendada vs Vacante (m2)">
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={chart4Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
+          <ResponsiveContainer width="100%" height={chartHeight.sm}>
+            <AreaChart data={chart4Data} margin={{ ...chartMargins.default, left: 0 }}>
               <defs>
                 <linearGradient id="colorArrendada" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#1e40af" stopOpacity={0.7} />
-                  <stop offset="95%" stopColor="#1e40af" stopOpacity={0.2} />
+                  <stop offset="5%" stopColor={chartColors.brandPrimary} stopOpacity={0.7} />
+                  <stop offset="95%" stopColor={chartColors.brandPrimary} stopOpacity={0.2} />
                 </linearGradient>
                 <linearGradient id="colorVacante" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#e2e8f0" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="#e2e8f0" stopOpacity={0.3} />
+                  <stop offset="5%" stopColor={chartColors.grid} stopOpacity={0.8} />
+                  <stop offset="95%" stopColor={chartColors.grid} stopOpacity={0.3} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <CartesianGrid {...chartGridProps} />
               <XAxis
                 dataKey="periodo"
                 tickFormatter={xAxisTickFormatter}
-                tick={{ fontSize: 11, fill: "#64748b" }}
-                tickLine={false}
+                {...chartAxisProps}
               />
               <YAxis
                 tickFormatter={(value: number) =>
                   value.toLocaleString("es-CL", { maximumFractionDigits: 0 })
                 }
-                tick={{ fontSize: 11, fill: "#64748b" }}
-                tickLine={false}
-                axisLine={false}
+                {...chartAxisProps}
                 width={52}
               />
               <Tooltip
-                labelFormatter={tooltipLabelFormatter}
-                formatter={(value, name) => [
-                  `${Number(value).toLocaleString("es-CL", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  })} m2`,
-                  name === "glaArrendada" ? "GLA Arrendada" : "GLA Vacante"
-                ]}
+                content={
+                  <ChartTooltip
+                    labelFormatter={(l) => {
+                      const f = tooltipLabelFormatter(l as ReactNode);
+                      return typeof f === "string" ? f : String(l);
+                    }}
+                    valueFormatter={(value) =>
+                      `${Number(value).toLocaleString("es-CL", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })} m2`
+                    }
+                  />
+                }
               />
               <Legend
                 formatter={(value: string) =>
                   value === "glaArrendada" ? "GLA Arrendada" : "GLA Vacante"
                 }
-                wrapperStyle={{ fontSize: 11 }}
+                {...chartLegendProps}
               />
               <ReferenceLine
                 x={currentPeriodo}
-                stroke="#f59e0b"
+                stroke={chartColors.warningLight}
                 strokeDasharray="4 2"
-                label={{ value: "Hoy", position: "top", fontSize: 10, fill: "#f59e0b" }}
+                label={{ value: "Hoy", position: "top", fontSize: 10, fill: chartColors.warningLight }}
               />
               <Area
                 type="monotone"
                 dataKey="glaArrendada"
                 stackId="1"
-                stroke="#1e40af"
+                stroke={chartColors.brandPrimary}
                 strokeWidth={1.5}
                 fill="url(#colorArrendada)"
                 name="glaArrendada"
@@ -439,7 +466,7 @@ export function RentRollChartsSection({
                 type="monotone"
                 dataKey="glaVacante"
                 stackId="1"
-                stroke="#cbd5e1"
+                stroke={chartColors.axisMuted}
                 strokeWidth={1.5}
                 fill="url(#colorVacante)"
                 name="glaVacante"
@@ -451,40 +478,44 @@ export function RentRollChartsSection({
 
         {chartEnabled("chart_vencimientos_mes") && (
           <MetricChartCard metricId="chart_rent_roll_vencimientos_por_mes" title="Vencimientos de Contratos por Mes">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={chart5Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+          <ResponsiveContainer width="100%" height={chartHeight.sm}>
+            <BarChart data={chart5Data} margin={{ ...chartMargins.default, left: 0 }}>
+              <CartesianGrid {...chartGridProps} />
               <XAxis
                 dataKey="periodo"
                 tickFormatter={xAxisTickFormatter}
-                tick={{ fontSize: 11, fill: "#64748b" }}
-                tickLine={false}
+                {...chartAxisProps}
               />
               <YAxis
                 allowDecimals={false}
-                tick={{ fontSize: 11, fill: "#64748b" }}
-                tickLine={false}
-                axisLine={false}
+                {...chartAxisProps}
                 width={32}
               />
               <Tooltip
-                labelFormatter={tooltipLabelFormatter}
-                formatter={(value) => [value, "Contratos que vencen"]}
+                content={
+                  <ChartTooltip
+                    labelFormatter={(l) => {
+                      const f = tooltipLabelFormatter(l as ReactNode);
+                      return typeof f === "string" ? f : String(l);
+                    }}
+                    valueFormatter={(value) => String(value)}
+                  />
+                }
               />
               <ReferenceLine
                 x={currentPeriodo}
-                stroke="#f59e0b"
+                stroke={chartColors.warningLight}
                 strokeDasharray="4 2"
-                label={{ value: "Hoy", position: "top", fontSize: 10, fill: "#f59e0b" }}
+                label={{ value: "Hoy", position: "top", fontSize: 10, fill: chartColors.warningLight }}
               />
-              <Bar dataKey="vencimientos" name="Contratos que vencen" radius={[2, 2, 0, 0]}>
+              <Bar dataKey="vencimientos" name="Contratos que vencen" radius={chartBarRadius}>
                 {chart5Data.map((entry, index) => {
                   const isNearTerm =
                     entry.periodo <= threshold3Periodo && entry.periodo >= currentPeriodo;
                   return (
                     <Cell
                       key={`cell-${index}`}
-                      fill={isNearTerm ? "#f43f5e" : "#fbbf24"}
+                      fill={isNearTerm ? chartColors.negativeLight : chartColors.warningLight}
                     />
                   );
                 })}
@@ -493,11 +524,17 @@ export function RentRollChartsSection({
           </ResponsiveContainer>
           <div className="mt-1 flex gap-4 text-xs text-slate-500">
             <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-3 rounded-sm bg-[#f43f5e]" />
+              <span
+                className="inline-block h-2 w-3 rounded-sm"
+                style={{ backgroundColor: chartColors.negativeLight }}
+              />
               Proximos 3 meses
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-3 rounded-sm bg-[#fbbf24]" />
+              <span
+                className="inline-block h-2 w-3 rounded-sm"
+                style={{ backgroundColor: chartColors.warningLight }}
+              />
               Mas de 3 meses
             </span>
           </div>
@@ -506,41 +543,42 @@ export function RentRollChartsSection({
 
         {chartEnabled("chart_ingresos_tipo_local") && (
           <MetricChartCard metricId="chart_rent_roll_ingresos_tipo_local_uf" title="Ingresos por Tipo de Local (UF)">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={chart6Data} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+          <ResponsiveContainer width="100%" height={chartHeight.sm}>
+            <BarChart data={chart6Data} margin={{ ...chartMargins.default, left: 0 }}>
+              <CartesianGrid {...chartGridProps} />
               <XAxis
                 dataKey="periodo"
                 tickFormatter={xAxisTickFormatter}
-                tick={{ fontSize: 11, fill: "#64748b" }}
-                tickLine={false}
+                {...chartAxisProps}
               />
               <YAxis
                 tickFormatter={(value: number) =>
                   value.toLocaleString("es-CL", { maximumFractionDigits: 0 })
                 }
-                tick={{ fontSize: 11, fill: "#64748b" }}
-                tickLine={false}
-                axisLine={false}
+                {...chartAxisProps}
                 width={52}
               />
               <Tooltip
-                labelFormatter={tooltipLabelFormatter}
-                formatter={(value, name) => {
-                  const labels: Record<string, string> = {
-                    regular: "Local Comercial",
-                    simuladorModulo: "Simulador / Modulo",
-                    bodegaEspacio: "Bodega / Espacio"
-                  };
-                  const nameStr = String(name);
-                  return [
-                    Number(value).toLocaleString("es-CL", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    }),
-                    labels[nameStr] ?? nameStr
-                  ];
-                }}
+                content={
+                  <ChartTooltip
+                    labelFormatter={(l) => {
+                      const f = tooltipLabelFormatter(l as ReactNode);
+                      return typeof f === "string" ? f : String(l);
+                    }}
+                    valueFormatter={(value, name) => {
+                      const labels: Record<string, string> = {
+                        regular: "Local Comercial",
+                        simuladorModulo: "Simulador / Modulo",
+                        bodegaEspacio: "Bodega / Espacio"
+                      };
+                      const prefix = labels[String(name)] ?? String(name);
+                      return `${prefix}: ${Number(value).toLocaleString("es-CL", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })}`;
+                    }}
+                  />
+                }
               />
               <Legend
                 formatter={(value: string) => {
@@ -551,34 +589,34 @@ export function RentRollChartsSection({
                   };
                   return labels[value] ?? value;
                 }}
-                wrapperStyle={{ fontSize: 11 }}
+                {...chartLegendProps}
               />
               <ReferenceLine
                 x={currentPeriodo}
-                stroke="#f59e0b"
+                stroke={chartColors.warningLight}
                 strokeDasharray="4 2"
-                label={{ value: "Hoy", position: "top", fontSize: 10, fill: "#f59e0b" }}
+                label={{ value: "Hoy", position: "top", fontSize: 10, fill: chartColors.warningLight }}
               />
               <Bar
                 dataKey="regular"
                 stackId="ingresos"
-                fill="#1e40af"
+                fill={chartColors.brandDark}
                 name="regular"
                 radius={[0, 0, 0, 0]}
               />
               <Bar
                 dataKey="simuladorModulo"
                 stackId="ingresos"
-                fill="#3b82f6"
+                fill={chartColors.brandPrimary}
                 name="simuladorModulo"
                 radius={[0, 0, 0, 0]}
               />
               <Bar
                 dataKey="bodegaEspacio"
                 stackId="ingresos"
-                fill="#93c5fd"
+                fill={chartColors.brandLight}
                 name="bodegaEspacio"
-                radius={[2, 2, 0, 0]}
+                radius={chartBarRadius}
               />
             </BarChart>
           </ResponsiveContainer>

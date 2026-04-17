@@ -53,7 +53,7 @@ export function ModuleSubNav({
               "rounded-md px-3 py-1.5 text-sm",
               active
                 ? "bg-brand-500 font-semibold text-white"
-                : "bg-slate-100 font-medium text-slate-700 hover:bg-slate-200",
+                : "bg-slate-100 font-medium text-slate-700 hover:bg-slate-200 transition-colors",
               isPending && !active && "pointer-events-none opacity-60"
             )}
             onClick={(e) => {

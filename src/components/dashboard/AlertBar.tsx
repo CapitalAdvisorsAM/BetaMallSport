@@ -6,11 +6,10 @@ export function AlertBar({
   vencen90,
   enGracia,
   vacantes,
-  proyectoId,
   brechaFacturacion
 }: AlertCounts): JSX.Element | null {
-  const href = `/rent-roll/dashboard?project=${proyectoId}`;
-  const rentRollHref = `/rent-roll?project=${proyectoId}`;
+  const href = "/rent-roll/dashboard";
+  const rentRollHref = "/rent-roll";
 
   const items = [
     {

@@ -3,11 +3,9 @@
 import { ModuleHeader } from "@/components/dashboard/ModuleHeader";
 import { UploadHistory } from "@/components/upload/UploadHistory";
 import { ProcessingUploadCard } from "@/components/upload/ProcessingUploadCard";
-import type { ProjectOption } from "@/types/finance";
 import type { UploadHistoryItem } from "@/lib/upload/history";
 
 type FinanceUploadClientProps = {
-  projects: ProjectOption[];
   selectedProjectId: string;
   accountingHistory: UploadHistoryItem[];
   salesHistory: UploadHistoryItem[];
@@ -15,7 +13,6 @@ type FinanceUploadClientProps = {
 };
 
 export function FinanceUploadClient({
-  projects,
   selectedProjectId,
   accountingHistory,
   salesHistory,
@@ -26,9 +23,6 @@ export function FinanceUploadClient({
       <ModuleHeader
         title="Cargar Datos"
         description='Sube el archivo CDG (.xlsx) para procesar las hojas "Data Contable" y "Data Ventas".'
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        showProjectSelector={false}
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

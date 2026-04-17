@@ -1,7 +1,6 @@
 import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
-import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
-import { canWrite, requireSession } from "@/lib/permissions";
+import { requireSession } from "@/lib/permissions";
 import { resolveWidgetConfigs } from "@/lib/dashboard/widget-registry";
 import { CustomKpiCard } from "@/components/rent-roll/CustomKpiCard";
 import type { FormulaConfig } from "@/lib/dashboard/custom-widget-engine";
@@ -23,7 +22,9 @@ const RentRollChartsSection = dynamic(
   }
 );
 import { prisma } from "@/lib/prisma";
-import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
+import { getProjectContext } from "@/lib/project";
+import { toPeriodKey } from "@/lib/finance/period-range";
+import { formatPeriodo } from "@/lib/utils";
 import { buildCategoryConcentration } from "@/lib/rent-roll/category-concentration";
 import { buildVencimientosPorAnio } from "@/lib/kpi";
 import { getTimelineData } from "@/lib/rent-roll/timeline";
@@ -33,33 +34,13 @@ const ExpirationProfileChart = dynamic(
   { ssr: false, loading: () => <div className="h-72 animate-pulse rounded-md bg-slate-100" /> }
 );
 
-type RentRollDashboardPageProps = {
-  searchParams: {
-    project?: string;
-  };
-};
+export default async function RentRollDashboardPage(): Promise<JSX.Element> {
+  await requireSession();
+  const periodoActual = formatPeriodo(toPeriodKey(new Date()));
 
-export default async function RentRollDashboardPage({
-  searchParams
-}: RentRollDashboardPageProps): Promise<JSX.Element> {
-  const session = await requireSession();
-  const projectParam = resolveProjectIdFromSearchParams(searchParams);
-
-  const { selectedProjectId } = await getProjectContext(projectParam);
+  const { selectedProjectId } = await getProjectContext();
   if (!selectedProjectId) {
-    return (
-      <ProjectCreationPanel
-        title="Dashboard Analitico"
-        description="No hay proyectos activos. Crea uno para visualizar tendencias."
-        canEdit={canWrite(session.user.role)}
-      />
-    );
-  }
-
-  if (projectParam !== selectedProjectId) {
-    const params = new URLSearchParams();
-    params.set("project", selectedProjectId);
-    redirect(`/rent-roll/dashboard?${params.toString()}`);
+    redirect("/");
   }
 
   const [timelineData, activeContracts, dashboardConfigRows, customWidgets] = await Promise.all([
@@ -128,6 +109,9 @@ export default async function RentRollDashboardPage({
               <h2 className="text-base font-bold uppercase tracking-wide text-brand-700">
                 Dashboard Analitico
               </h2>
+              <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-brand-50 text-brand-700">
+                {periodoActual}
+              </span>
             </div>
             <p className="mt-1 text-sm text-slate-600">
               Vista proactiva cruzando datos historicos y contractuales para ver proyecciones y

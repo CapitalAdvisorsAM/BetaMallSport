@@ -25,9 +25,9 @@ export const RENT_ROLL_ENTITY_ITEMS: Array<{ key: RentRollEntity; label: string;
 export const TOP_NAV_ITEMS: NavItem[] = [
   {
     label: "Dashboard",
-    href: "/",
+    href: "/dashboard",
     enabled: true,
-    match: "exact"
+    match: "startsWith"
   },
   {
     label: "Rent Roll",

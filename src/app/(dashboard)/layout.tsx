@@ -5,6 +5,7 @@ import { TopNavbar } from "@/components/navigation/TopNavbar";
 import { Button } from "@/components/ui/button";
 import { HelpButton } from "@/components/ui/HelpButton";
 import { auth } from "@/lib/auth";
+import { getProjectContext } from "@/lib/project";
 
 export default async function DashboardLayout({
   children
@@ -16,6 +17,11 @@ export default async function DashboardLayout({
   if (!session?.user) {
     redirect("/login");
   }
+
+  const { projects, selectedProjectId } = await getProjectContext();
+  const selectedProject = selectedProjectId
+    ? projects.find((project) => project.id === selectedProjectId) ?? null
+    : null;
 
   return (
     <div className="min-h-screen bg-[#f1f4f9]">
@@ -41,6 +47,11 @@ export default async function DashboardLayout({
             <TopNavbar />
             <div className="hidden h-5 w-px bg-white/20 md:block" />
             <div className="flex items-center gap-3">
+              {selectedProject ? (
+                <span className="max-w-[200px] truncate rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/80">
+                  Proyecto: {selectedProject.nombre}
+                </span>
+              ) : null}
               <span className="max-w-[190px] truncate text-xs text-white/60 md:max-w-[220px]">
                 {session.user.email}
               </span>

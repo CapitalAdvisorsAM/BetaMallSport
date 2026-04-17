@@ -20,6 +20,7 @@ type ProjectRecord = {
   slug: string;
   color: string;
   activo: boolean;
+  glaTotal: string | null;
 };
 
 type ProjectCrudPanelProps = {
@@ -31,6 +32,7 @@ type ProjectCreatePayload = {
   nombre: string;
   color: string;
   activo: boolean;
+  glaTotal: string | null;
 };
 
 async function createProject(payload: ProjectCreatePayload): Promise<ProjectRecord> {
@@ -49,7 +51,8 @@ async function createProject(payload: ProjectCreatePayload): Promise<ProjectReco
     nombre: data.nombre ?? "",
     slug: data.slug ?? "",
     color: data.color ?? "#0f766e",
-    activo: Boolean(data.activo)
+    activo: Boolean(data.activo),
+    glaTotal: (data as { glaTotal?: string | null }).glaTotal ?? null
   };
 }
 
@@ -69,7 +72,8 @@ async function updateProject(id: string, payload: ProjectCreatePayload): Promise
     nombre: data.nombre ?? "",
     slug: data.slug ?? "",
     color: data.color ?? "#0f766e",
-    activo: Boolean(data.activo)
+    activo: Boolean(data.activo),
+    glaTotal: data.glaTotal ?? null
   };
 }
 
@@ -86,6 +90,7 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
   const [nombre, setNombre] = useState("");
   const [color, setColor] = useState("#0f766e");
   const [activo, setActivo] = useState(true);
+  const [glaTotal, setGlaTotal] = useState("");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const { data: projects, createOne, deleteOne, isLoading, error, resetStatus } = useCrudResource<
@@ -124,7 +129,7 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
     setMessage(null);
 
     const created = await createOne(
-      { nombre: nombre.trim(), color, activo },
+      { nombre: nombre.trim(), color, activo, glaTotal: glaTotal.trim() || null },
       "No se pudo crear el proyecto."
     );
     if (!created) {
@@ -135,7 +140,8 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
     setNombre("");
     setColor("#0f766e");
     setActivo(true);
-  }, [activo, canEdit, color, createOne, isLoading, nombre, resetStatus]);
+    setGlaTotal("");
+  }, [activo, canEdit, color, createOne, glaTotal, isLoading, nombre, resetStatus]);
 
   const handleDelete = useCallback(async (): Promise<void> => {
     if (!pendingDeleteId || !canEdit || isLoading) {
@@ -164,6 +170,16 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
         header: "Slug",
         filterFn: "includesString",
         cell: ({ row }) => <span className="whitespace-nowrap text-slate-600">{row.original.slug}</span>
+      },
+      {
+        accessorKey: "glaTotal",
+        header: "GLA Total (m²)",
+        enableColumnFilter: false,
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap text-slate-700">
+            {row.original.glaTotal !== null ? Number(row.original.glaTotal).toLocaleString("es-CL") : "—"}
+          </span>
+        )
       },
       {
         accessorKey: "color",
@@ -199,7 +215,7 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
           <EntityActionsCell
             canEdit={canEdit}
             loading={isLoading}
-            configureHref={`/configuracion/proyecto?project=${row.original.id}`}
+            configureHref="/configuracion/proyecto"
             onDelete={() => setPendingDeleteId(row.original.id)}
           />
         )
@@ -226,7 +242,7 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
         }
         message={error ?? message}
         form={
-          <div className="grid gap-3 md:grid-cols-[1fr_200px_auto]">
+          <div className="grid gap-3 md:grid-cols-[1fr_160px_160px_auto]">
             <div className="space-y-1.5 text-sm">
               <Label htmlFor="new-project-name">Nombre</Label>
               <Input
@@ -234,6 +250,19 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
                 value={nombre}
                 onChange={(event) => setNombre(event.target.value)}
                 placeholder="Nombre del nuevo proyecto"
+                disabled={!canEdit}
+              />
+            </div>
+            <div className="space-y-1.5 text-sm">
+              <Label htmlFor="new-project-gla">GLA Total (m²)</Label>
+              <Input
+                id="new-project-gla"
+                type="number"
+                step="0.01"
+                min="0"
+                value={glaTotal}
+                onChange={(event) => setGlaTotal(event.target.value)}
+                placeholder="Ej: 12500"
                 disabled={!canEdit}
               />
             </div>

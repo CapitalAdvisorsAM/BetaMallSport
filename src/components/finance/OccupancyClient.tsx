@@ -18,10 +18,19 @@ import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolbar";
 import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { UnifiedTable } from "@/components/ui/UnifiedTable";
 import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
+import {
+  chartAxisProps,
+  chartColors,
+  chartGridProps,
+  chartHeight,
+  chartLegendProps,
+  chartMargins,
+  getSeriesColor,
+} from "@/lib/charts/theme";
 import { cn } from "@/lib/utils";
-import type { ProjectOption } from "@/types/finance";
 import type {
   OccupancyDimensionRow,
   OccupancyTimeSeriesResponse
@@ -38,12 +47,6 @@ const DIMENSION_LABELS: Record<DimensionTab, string> = {
   tamano: "Categoría (Tamaño)",
   piso: "Piso"
 };
-
-const BAR_COLORS = [
-  "#1e40af", "#059669", "#d97706", "#7c3aed",
-  "#dc2626", "#0891b2", "#84cc16", "#f97316",
-  "#6366f1", "#ec4899"
-];
 
 const compactTheme = getTableTheme("compact");
 
@@ -82,7 +85,6 @@ function getRowsForDimension(
 // ---------------------------------------------------------------------------
 
 type Props = {
-  projects: ProjectOption[];
   selectedProjectId: string;
   defaultDesde?: string;
   defaultHasta?: string;
@@ -93,7 +95,6 @@ type Props = {
 // ---------------------------------------------------------------------------
 
 export function OccupancyClient({
-  projects,
   selectedProjectId,
   defaultDesde,
   defaultHasta
@@ -154,9 +155,6 @@ export function OccupancyClient({
       <ModuleHeader
         title="Ocupación Mensual"
         description="Evolución de la ocupación por tipo, tamaño y piso. Replica la hoja 'Ocupación' del CDG."
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        preserve={{ desde, hasta }}
         actions={
           <ProjectPeriodToolbar
             desde={desde}
@@ -194,7 +192,7 @@ export function OccupancyClient({
       ) : !data || snapshots.length === 0 ? (
         <ModuleEmptyState
           message="Sin datos de ocupación para el rango seleccionado."
-          actionHref={`/rent-roll/contracts?project=${selectedProjectId}`}
+          actionHref="/rent-roll/contracts"
           actionLabel="Gestionar contratos"
         />
       ) : (
@@ -205,32 +203,32 @@ export function OccupancyClient({
             metricId="chart_finance_occupancy"
             description="Barras: GLA ocupada por dimensión (m²). Línea: vacancia total (%)."
           >
-            <ResponsiveContainer width="100%" height={300}>
-              <ComposedChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
-                <YAxis yAxisId="left" tick={{ fontSize: 11 }} tickFormatter={(v: number) => v.toLocaleString("es-CL")} />
+            <ResponsiveContainer width="100%" height={chartHeight.lg}>
+              <ComposedChart data={chartData} margin={chartMargins.default}>
+                <CartesianGrid {...chartGridProps} />
+                <XAxis dataKey="mes" {...chartAxisProps} />
+                <YAxis yAxisId="left" {...chartAxisProps} tickFormatter={(v: number) => v.toLocaleString("es-CL")} />
                 <YAxis
                   yAxisId="right"
                   orientation="right"
-                  tick={{ fontSize: 11 }}
+                  {...chartAxisProps}
                   tickFormatter={(v: number) => `${v.toFixed(1)}%`}
                   domain={[0, "auto"]}
                 />
                 <Tooltip
-                  formatter={(value, name) => {
-                    const v = typeof value === "number" ? value : Number(value ?? 0);
-                    const label = String(name ?? "");
-                    return [
-                      label === "Vacancia %"
-                        ? `${v.toFixed(1)}%`
-                        : v.toLocaleString("es-CL", { maximumFractionDigits: 0 }),
-                      label
-                    ];
-                  }}
-                  labelFormatter={(l) => `Mes: ${String(l)}`}
+                  content={
+                    <ChartTooltip
+                      labelFormatter={(l) => `Mes: ${String(l)}`}
+                      valueFormatter={(value, name) => {
+                        const v = typeof value === "number" ? value : Number(value ?? 0);
+                        return String(name) === "Vacancia %"
+                          ? `${v.toFixed(1)}%`
+                          : v.toLocaleString("es-CL", { maximumFractionDigits: 0 });
+                      }}
+                    />
+                  }
                 />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Legend {...chartLegendProps} />
                 {dimensionKeys.map((key, i) => (
                   <Bar
                     key={key}
@@ -238,7 +236,7 @@ export function OccupancyClient({
                     dataKey={key}
                     name={key}
                     stackId="gla"
-                    fill={BAR_COLORS[i % BAR_COLORS.length]}
+                    fill={getSeriesColor(i)}
                   />
                 ))}
                 <Line
@@ -246,7 +244,7 @@ export function OccupancyClient({
                   type="monotone"
                   dataKey="Vacancia %"
                   name="Vacancia %"
-                  stroke="#dc2626"
+                  stroke={chartColors.negative}
                   strokeWidth={2}
                   dot={false}
                 />

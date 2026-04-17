@@ -16,6 +16,15 @@ import { KpiCard } from "@/components/dashboard/KpiCard";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { Badge } from "@/components/ui/badge";
 import { tableTheme, getStripedRowClass } from "@/components/ui/table-theme";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
+import {
+  chartAxisProps,
+  chartColors,
+  chartGridProps,
+  chartHeight,
+  chartLegendProps,
+  chartMargins,
+} from "@/lib/charts/theme";
 import { formatUf, cn } from "@/lib/utils";
 import type { Tenant360Projection, GapAnalysisRow } from "@/types/tenant-360";
 
@@ -128,60 +137,48 @@ export function ProjectionsSection({ projections, gapAnalysis }: ProjectionsSect
             )}
 
             {/* Chart */}
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer width="100%" height={chartHeight.md}>
               <ComposedChart
                 data={gapAnalysis.map((r) => ({
                   ...r,
                   chartExpected: useProRata && r.expectedProRataUf !== null ? r.expectedProRataUf : r.expectedBillingUf,
                   chartGapPct: useProRata && r.gapProRataPct !== null ? r.gapProRataPct : r.gapPct
                 }))}
-                margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
+                margin={chartMargins.default}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <CartesianGrid {...chartGridProps} />
                 <XAxis
                   dataKey="period"
-                  tick={{ fontSize: 11, fill: "#64748b" }}
-                  tickLine={false}
-                  axisLine={{ stroke: "#e2e8f0" }}
+                  {...chartAxisProps}
                 />
                 <YAxis
                   yAxisId="left"
-                  tick={{ fontSize: 11, fill: "#64748b" }}
-                  tickLine={false}
-                  axisLine={false}
+                  {...chartAxisProps}
                   tickFormatter={(v: number) => fmtUf(v)}
                 />
                 <YAxis
                   yAxisId="right"
                   orientation="right"
-                  tick={{ fontSize: 11, fill: "#64748b" }}
-                  tickLine={false}
-                  axisLine={false}
+                  {...chartAxisProps}
                   tickFormatter={(v: number) => `${v.toFixed(0)}%`}
                 />
                 <Tooltip
-                  contentStyle={{
-                    fontSize: 12,
-                    borderRadius: 6,
-                    border: "1px solid #e2e8f0",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.08)"
-                  }}
-                  formatter={(value, name) => {
-                    const v = typeof value === "number" ? value : Number(value ?? 0);
-                    if (name === "Brecha %") return [`${v.toFixed(1)}%`, name];
-                    return [`${fmtUf(v)} UF`, name];
-                  }}
+                  content={
+                    <ChartTooltip
+                      valueFormatter={(value, name) => {
+                        const v = typeof value === "number" ? value : Number(value ?? 0);
+                        if (String(name) === "Brecha %") return `${v.toFixed(1)}%`;
+                        return `${fmtUf(v)} UF`;
+                      }}
+                    />
+                  }
                 />
-                <Legend
-                  verticalAlign="top"
-                  height={32}
-                  wrapperStyle={{ fontSize: 11, color: "#64748b" }}
-                />
+                <Legend verticalAlign="top" height={32} {...chartLegendProps} />
                 <Bar
                   yAxisId="left"
                   dataKey="chartExpected"
                   name={useProRata ? "Esperado Pro-rata (UF)" : "Esperado (UF)"}
-                  fill="#93c5fd"
+                  fill={chartColors.brandLight}
                   radius={[3, 3, 0, 0]}
                   barSize={18}
                 />
@@ -189,7 +186,7 @@ export function ProjectionsSection({ projections, gapAnalysis }: ProjectionsSect
                   yAxisId="left"
                   dataKey="actualBillingUf"
                   name="Real (UF)"
-                  fill="#2563eb"
+                  fill={chartColors.brandPrimary}
                   radius={[3, 3, 0, 0]}
                   barSize={18}
                 />
@@ -198,9 +195,9 @@ export function ProjectionsSection({ projections, gapAnalysis }: ProjectionsSect
                   type="monotone"
                   dataKey="chartGapPct"
                   name="Brecha %"
-                  stroke="#e11d48"
+                  stroke={chartColors.negative}
                   strokeWidth={2}
-                  dot={{ r: 3, fill: "#e11d48" }}
+                  dot={{ r: 3, fill: chartColors.negative }}
                 />
               </ComposedChart>
             </ResponsiveContainer>

@@ -15,6 +15,15 @@ import {
   YAxis,
 } from "recharts";
 import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
+import {
+  chartAxisProps,
+  chartBarRadius,
+  chartColors,
+  chartGridProps,
+  chartHeight,
+  chartMargins,
+} from "@/lib/charts/theme";
 import {
   evaluateFormula,
   type FormulaConfig,
@@ -83,54 +92,55 @@ export function CustomWidgetChart({
     value: p.value,
   }));
 
-  const tooltipFormatter = (value: unknown) => [
-    typeof value === "number" ? formatValue(value, format) : "—",
-    widget.title,
-  ];
-
   const yTick = (value: number) => yAxisFormatter(value, format);
 
   const commonProps = {
     data,
-    margin: { top: 5, right: 16, left: 0, bottom: 5 } as const,
+    margin: { ...chartMargins.default, left: 0 },
   };
 
   const commonAxes = (
     <>
-      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+      <CartesianGrid {...chartGridProps} />
       <XAxis
         dataKey="periodo"
         tickFormatter={xAxisTickFormatter}
-        tick={{ fontSize: 11, fill: "#64748b" }}
-        tickLine={false}
+        {...chartAxisProps}
       />
       <YAxis
         tickFormatter={yTick}
-        tick={{ fontSize: 11, fill: "#64748b" }}
-        tickLine={false}
-        axisLine={false}
+        {...chartAxisProps}
         width={52}
       />
       <Tooltip
-        labelFormatter={tooltipLabelFormatter}
-        formatter={tooltipFormatter}
+        content={
+          <ChartTooltip
+            labelFormatter={(l) => {
+              const formatted = tooltipLabelFormatter(l as ReactNode);
+              return typeof formatted === "string" ? formatted : String(l);
+            }}
+            valueFormatter={(value) =>
+              typeof value === "number" ? formatValue(value, format) : "—"
+            }
+          />
+        }
       />
       <ReferenceLine
         x={currentPeriodo}
-        stroke="#f59e0b"
+        stroke={chartColors.warningLight}
         strokeDasharray="4 2"
-        label={{ value: "Hoy", position: "top", fontSize: 10, fill: "#f59e0b" }}
+        label={{ value: "Hoy", position: "top", fontSize: 10, fill: chartColors.warningLight }}
       />
     </>
   );
 
   return (
     <MetricChartCard title={widget.title} metricId="chart_rent_roll_custom_widget">
-      <ResponsiveContainer width="100%" height={220}>
+      <ResponsiveContainer width="100%" height={chartHeight.sm}>
         {widget.chartType === "bar" ? (
           <BarChart {...commonProps}>
             {commonAxes}
-            <Bar dataKey="value" fill="#1e40af" radius={[2, 2, 0, 0]} />
+            <Bar dataKey="value" name={widget.title} fill={chartColors.brandPrimary} radius={chartBarRadius} />
           </BarChart>
         ) : widget.chartType === "area" ? (
           <AreaChart {...commonProps}>
@@ -138,9 +148,10 @@ export function CustomWidgetChart({
             <Area
               type="monotone"
               dataKey="value"
-              stroke="#1e40af"
+              name={widget.title}
+              stroke={chartColors.brandPrimary}
               strokeWidth={2}
-              fill="#dbeafe"
+              fill={chartColors.brandSurface}
               dot={false}
             />
           </AreaChart>
@@ -150,7 +161,8 @@ export function CustomWidgetChart({
             <Line
               type="monotone"
               dataKey="value"
-              stroke="#1e40af"
+              name={widget.title}
+              stroke={chartColors.brandPrimary}
               strokeWidth={2}
               dot={false}
             />

@@ -9,7 +9,6 @@ import { UploadHistory } from "@/components/upload/UploadHistory";
 import { UploadSection } from "@/components/upload/UploadSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import { UnifiedTable } from "@/components/ui/UnifiedTable";
 import { getStripedRowClass, tableTheme } from "@/components/ui/table-theme";
 import {
@@ -26,14 +25,12 @@ import { canWrite, requireSession } from "@/lib/permissions";
 import { buildUnitsWhere, parseUnitsStatus } from "@/lib/rent-roll/units";
 import { getUploadHistory } from "@/lib/rent-roll/upload-history";
 import { prisma } from "@/lib/prisma";
-import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
-import { appendProjectQuery, buildProjectQueryString } from "@/lib/project-query";
+import { getProjectContext } from "@/lib/project";
 import { DEFAULT_COMMERCIAL_SIZE_RULES } from "@/lib/units/size";
 import { formatDecimal } from "@/lib/utils";
 
 type UnitsPageProps = {
   searchParams: {
-    project?: string;
     q?: string;
     estado?: string;
     seccion?: string;
@@ -79,21 +76,10 @@ export default async function UnitsPage({
   searchParams
 }: UnitsPageProps): Promise<JSX.Element> {
   const session = await requireSession();
-  const projectParam = resolveProjectIdFromSearchParams(searchParams);
 
-  const { selectedProjectId } = await getProjectContext(projectParam);
+  const { selectedProjectId } = await getProjectContext();
   if (!selectedProjectId) {
-    return (
-      <ProjectCreationPanel
-        title="Locales"
-        description="No hay proyectos activos. Crea uno para habilitar el CRUD de locales."
-        canEdit={canWrite(session.user.role)}
-      />
-    );
-  }
-
-  if (!projectParam) {
-    redirect(`/rent-roll/units?${buildProjectQueryString(selectedProjectId)}`);
+    redirect("/");
   }
 
   const q = searchParams.q?.trim() ?? "";
@@ -177,7 +163,7 @@ export default async function UnitsPage({
   const nextPage = Math.min(totalPages, currentPage + 1);
 
   const buildPageHref = (page: number): string => {
-    const params = appendProjectQuery(new URLSearchParams(), selectedProjectId);
+    const params = new URLSearchParams();
     params.set("seccion", "ver");
     if (q) {
       params.set("q", q);
@@ -190,7 +176,7 @@ export default async function UnitsPage({
   };
 
   const buildDetailHref = (id: string | null): string => {
-    const params = appendProjectQuery(new URLSearchParams(), selectedProjectId);
+    const params = new URLSearchParams();
     params.set("seccion", "ver");
     if (q) {
       params.set("q", q);
@@ -317,8 +303,6 @@ export default async function UnitsPage({
 
           <section className="rounded-md bg-white p-4 shadow-sm">
             <form className="grid gap-3 md:grid-cols-[1fr_220px_auto]">
-              <input type="hidden" name="project" value={selectedProjectId} />
-              <input type="hidden" name="proyecto" value={selectedProjectId} />
               <input type="hidden" name="seccion" value="ver" />
               <input type="hidden" name="page" value="1" />
               <Input

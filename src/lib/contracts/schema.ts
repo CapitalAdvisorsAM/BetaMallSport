@@ -62,6 +62,8 @@ export const contractPayloadSchema = z
     pctFondoPromocion: decimalStringSchema.nullable(),
     pctAdministracionGgcc: decimalStringSchema.nullable(),
     multiplicadorDiciembre: decimalStringSchema.nullable(),
+    multiplicadorJunio: decimalStringSchema.nullable(),
+    multiplicadorAgosto: decimalStringSchema.nullable(),
     codigoCC: z.string().nullable(),
     pdfUrl: z.string().nullable(),
     notas: z.string().nullable(),

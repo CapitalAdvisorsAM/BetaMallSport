@@ -12,6 +12,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
 import { ModuleEmptyState } from "@/components/dashboard/ModuleEmptyState";
 import { ModuleHeader } from "@/components/dashboard/ModuleHeader";
@@ -20,9 +21,17 @@ import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { MetricTooltip } from "@/components/ui/MetricTooltip";
 import { UnifiedTable } from "@/components/ui/UnifiedTable";
 import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
+import {
+  chartAxisProps,
+  chartBarRadius,
+  chartColors,
+  chartGridProps,
+  chartHeight,
+  chartLegendProps,
+  chartMargins,
+} from "@/lib/charts/theme";
 import { formatEerr, BELOW_EBITDA_GROUPS } from "@/lib/finance/eerr";
 import type { MetricFormulaId } from "@/lib/metric-formulas";
-import type { ProjectOption } from "@/types/finance";
 
 type Modo = "mes" | "año" | "ltm";
 
@@ -44,7 +53,6 @@ type DashboardData = {
 };
 
 type Props = {
-  projects: ProjectOption[];
   selectedProjectId: string;
 };
 
@@ -224,7 +232,7 @@ function currentPeriodDefault(modo: Modo): string {
   return `${y}-${m}`;
 }
 
-export function FinanceDashboardClient({ projects, selectedProjectId }: Props): JSX.Element {
+export function FinanceDashboardClient({ selectedProjectId }: Props): JSX.Element {
   const [modo, setModo] = useState<Modo>("mes");
   const [periodo, setPeriodo] = useState(() => currentPeriodDefault("mes"));
   const [data, setData] = useState<DashboardData | null>(null);
@@ -272,8 +280,6 @@ export function FinanceDashboardClient({ projects, selectedProjectId }: Props): 
       <ModuleHeader
         title="Dashboard Financiero"
         description="Resumen ejecutivo del proyecto por periodo."
-        projects={projects}
-        selectedProjectId={selectedProjectId}
         actions={
           <div className="flex items-center gap-3">
             {/* Modo */}
@@ -309,7 +315,7 @@ export function FinanceDashboardClient({ projects, selectedProjectId }: Props): 
         <ModuleSectionCard>
           <ModuleEmptyState
             message="Sin datos para el periodo seleccionado."
-            actionHref={`/finance/upload?project=${selectedProjectId}`}
+            actionHref="/finance/upload"
             actionLabel="Cargar datos contables"
           />
         </ModuleSectionCard>
@@ -368,28 +374,31 @@ export function FinanceDashboardClient({ projects, selectedProjectId }: Props): 
             metricId="chart_dashboard_ingresos_ebitda_uf"
             description="Ingresos y EBITDA (UF) con comparativo del ano anterior."
           >
-            <ResponsiveContainer width="100%" height={280}>
-              <ComposedChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => v.toLocaleString("es-CL")} />
+            <ResponsiveContainer width="100%" height={chartHeight.md}>
+              <ComposedChart data={chartData} margin={chartMargins.default}>
+                <CartesianGrid {...chartGridProps} />
+                <XAxis dataKey="mes" {...chartAxisProps} />
+                <YAxis {...chartAxisProps} tickFormatter={(v: number) => v.toLocaleString("es-CL")} />
                 <Tooltip
-                  formatter={(value) => [
-                    typeof value === "number"
-                      ? value.toLocaleString("es-CL", { maximumFractionDigits: 0 })
-                      : String(value ?? "â€”"),
-                    ""
-                  ]}
-                  labelFormatter={(l) => `Mes: ${String(l)}`}
+                  content={
+                    <ChartTooltip
+                      labelFormatter={(l) => `Mes: ${String(l)}`}
+                      valueFormatter={(value) =>
+                        typeof value === "number"
+                          ? value.toLocaleString("es-CL", { maximumFractionDigits: 0 })
+                          : String(value ?? "—")
+                      }
+                    />
+                  }
                 />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="ingresosActual" name="Ingresos año actual" fill="#1e40af" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="ebitda" name="EBITDA año actual" fill="#059669" radius={[2, 2, 0, 0]} />
+                <Legend {...chartLegendProps} />
+                <Bar dataKey="ingresosActual" name="Ingresos año actual" fill={chartColors.brandPrimary} radius={chartBarRadius} />
+                <Bar dataKey="ebitda" name="EBITDA año actual" fill={chartColors.positive} radius={chartBarRadius} />
                 <Line
                   type="monotone"
                   dataKey="ingresosAnterior"
                   name="Ingresos año anterior"
-                  stroke="#94a3b8"
+                  stroke={chartColors.axisMuted}
                   strokeDasharray="4 2"
                   dot={false}
                   strokeWidth={1.5}

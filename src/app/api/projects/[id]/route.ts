@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { SLUG_MAX_ATTEMPTS } from "@/lib/constants";
@@ -18,7 +19,13 @@ const projectUpdateSchema = z.object({
     .string()
     .trim()
     .regex(/^#[0-9a-fA-F]{6}$/, "Color invalido. Usa formato hexadecimal #RRGGBB."),
-  activo: z.boolean()
+  activo: z.boolean(),
+  glaTotal: z
+    .string()
+    .trim()
+    .refine((v) => v === "" || !isNaN(Number(v)), "GLA invalido.")
+    .optional()
+    .nullable()
 });
 
 async function buildUniqueSlug(baseSlug: string, excludeId: string): Promise<string> {
@@ -46,12 +53,12 @@ export async function GET(
     await requireSession();
     const item = await prisma.project.findUnique({
       where: { id: context.params.id },
-      select: { id: true, nombre: true, slug: true, color: true, activo: true }
+      select: { id: true, nombre: true, slug: true, color: true, activo: true, glaTotal: true }
     });
     if (!item) {
       throw new ApiError(404, "No encontrado.");
     }
-    return NextResponse.json(item);
+    return NextResponse.json({ ...item, glaTotal: item.glaTotal?.toString() ?? null });
   } catch (error) {
     return handleApiError(error);
   }
@@ -87,19 +94,21 @@ export async function PUT(
         ? undefined
         : await buildUniqueSlug(slugify(payload.nombre), projectId);
 
+    const glaTotalRaw = payload.glaTotal;
     const updated = await prisma.project.update({
       where: { id: projectId },
       data: {
         nombre: payload.nombre,
         color: payload.color,
         activo: payload.activo,
+        glaTotal: glaTotalRaw && glaTotalRaw !== "" ? new Prisma.Decimal(glaTotalRaw) : null,
         ...(slug ? { slug } : {})
       },
-      select: { id: true, nombre: true, slug: true, color: true, activo: true }
+      select: { id: true, nombre: true, slug: true, color: true, activo: true, glaTotal: true }
     });
 
     revalidateTag(ACTIVE_PROJECTS_TAG);
-    return NextResponse.json(updated);
+    return NextResponse.json({ ...updated, glaTotal: updated.glaTotal?.toString() ?? null });
   } catch (error) {
     return handleApiError(error);
   }

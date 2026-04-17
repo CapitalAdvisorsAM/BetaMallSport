@@ -1,26 +1,15 @@
-﻿import { FinanceDashboardClient } from "@/components/finance/FinanceDashboardClient";
-import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
-import { canWrite, requireSession } from "@/lib/permissions";
-import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
+﻿import { redirect } from "next/navigation";
+import { FinanceDashboardClient } from "@/components/finance/FinanceDashboardClient";
+import { requireSession } from "@/lib/permissions";
+import { getProjectContext } from "@/lib/project";
 
-export default async function FinanceDashboardPage({
-  searchParams
-}: {
-  searchParams: { project?: string };
-}): Promise<JSX.Element> {
-  const session = await requireSession();
-  const projectParam = resolveProjectIdFromSearchParams(searchParams);
-  const { projects, selectedProjectId } = await getProjectContext(projectParam);
+export default async function FinanceDashboardPage(): Promise<JSX.Element> {
+  await requireSession();
+  const { selectedProjectId } = await getProjectContext();
 
   if (!selectedProjectId) {
-    return (
-      <ProjectCreationPanel
-        title="Finanzas"
-        description="No hay proyectos activos. Crea uno para ver el dashboard financiero."
-        canEdit={canWrite(session.user.role)}
-      />
-    );
+    redirect("/");
   }
 
-  return <FinanceDashboardClient projects={projects} selectedProjectId={selectedProjectId} />;
+  return <FinanceDashboardClient selectedProjectId={selectedProjectId} />;
 }

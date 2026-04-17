@@ -323,6 +323,21 @@ export const METRIC_FORMULAS = {
     title: "Deficit de gastos comunes",
     formula: "Deficit = Recuperacion GGCC - Costos operacionales; Deficit % = Deficit / Recuperacion * 100",
     detail: "Compara la recuperacion de gastos comunes vs costos reales de operacion."
+  },
+  kpi_tenants_total_periodo: {
+    title: "Total arrendatarios en período",
+    formula: "COUNT(tenants con contratos OCUPADO o GRACIA en el período seleccionado)",
+    detail: "Arrendatarios con al menos un contrato activo (OCUPADO o GRACIA) durante el período."
+  },
+  kpi_tenants_vigentes_periodo: {
+    title: "Arrendatarios vigentes",
+    formula: "COUNT(tenants vigente=true con contratos activos en el período)",
+    detail: "Arrendatarios marcados como vigentes con contratos activos en el período seleccionado."
+  },
+  kpi_tenants_contratos_activos: {
+    title: "Contratos activos en período",
+    formula: "COUNT(contratos en estado OCUPADO o GRACIA en el período seleccionado)",
+    detail: "Total de contratos con estado activo (OCUPADO o GRACIA) durante el período."
   }
 } as const satisfies Record<string, MetricFormulaDefinition>;
 

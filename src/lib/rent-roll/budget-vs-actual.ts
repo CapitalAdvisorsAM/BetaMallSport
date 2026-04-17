@@ -32,6 +32,8 @@ export type BvaContract = {
   fechaInicio: Date;
   fechaTermino: Date;
   multiplicadorDiciembre: DecimalLike | null;
+  multiplicadorJunio: DecimalLike | null;
+  multiplicadorAgosto: DecimalLike | null;
   pctFondoPromocion: DecimalLike | null;
   local: { id: string; codigo: string; nombre: string; glam2: DecimalLike };
   arrendatario: { id: string; rut: string; nombreComercial: string };
@@ -134,6 +136,8 @@ export function buildBudgetVsActual(
           ggcc: c.ggcc,
           glam2,
           multiplicadorDiciembre: c.multiplicadorDiciembre !== null ? toNum(c.multiplicadorDiciembre) : null,
+          multiplicadorJunio: c.multiplicadorJunio !== null ? toNum(c.multiplicadorJunio) : null,
+          multiplicadorAgosto: c.multiplicadorAgosto !== null ? toNum(c.multiplicadorAgosto) : null,
           pctFondoPromocion: c.pctFondoPromocion !== null ? toNum(c.pctFondoPromocion) : null,
           periodDate,
           salesUf: salesUf ?? 0,

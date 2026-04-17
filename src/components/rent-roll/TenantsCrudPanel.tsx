@@ -15,7 +15,6 @@ import { enumFilterColumn } from "@/components/ui/data-table-columns";
 import { useCrudResource } from "@/hooks/useCrudResource";
 import { useDataTable } from "@/hooks/useDataTable";
 import { extractApiErrorMessage } from "@/lib/http/client-errors";
-import { buildProjectIdQueryString } from "@/lib/project-query";
 import { TENANT_CATEGORY_LABELS } from "@/lib/tenants/schema";
 import { cn } from "@/lib/utils";
 import type { TenantCategory } from "@prisma/client";
@@ -81,7 +80,7 @@ async function createTenant(form: TenantForm): Promise<TenantRecord> {
 }
 
 async function updateTenant(id: string, form: TenantForm): Promise<TenantRecord> {
-  const query = buildProjectIdQueryString(form.proyectoId);
+  const query = new URLSearchParams({ projectId: form.proyectoId }).toString();
   const response = await fetch(`/api/tenants/${id}?${query}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -95,7 +94,7 @@ async function updateTenant(id: string, form: TenantForm): Promise<TenantRecord>
 }
 
 async function removeTenant(id: string, projectId: string): Promise<void> {
-  const query = buildProjectIdQueryString(projectId);
+  const query = new URLSearchParams({ projectId }).toString();
   const response = await fetch(`/api/tenants/${id}?${query}`, { method: "DELETE" });
   if (!response.ok) {
     throw new Error(await extractApiErrorMessage(response, "No se pudo eliminar el arrendatario."));

@@ -180,4 +180,6 @@ export type WaterfallResponse = {
   previousTotal: number;
   netChange: number;
   netChangePct: number;
+  glaArrendadaCurrent: number;
+  glaArrendadaPrevious: number;
 };

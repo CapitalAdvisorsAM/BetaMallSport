@@ -62,13 +62,6 @@ export function TenantProfileHeader({ profile, quickStats }: TenantProfileHeader
             value={`${formatUf(quickStats.monthlyFixedRentUf)} UF`}
             sub={formatClp(quickStats.monthlyFixedRentClp)}
           />
-          {quickStats.ufDate ? (
-            <QuickStat
-              label="Valor UF"
-              value={formatClp(quickStats.ufValue)}
-              sub={`al ${quickStats.ufDate}`}
-            />
-          ) : null}
         </div>
       </div>
     </ModuleSectionCard>

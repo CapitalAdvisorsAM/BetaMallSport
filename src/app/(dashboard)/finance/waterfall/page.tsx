@@ -1,30 +1,18 @@
+import { redirect } from "next/navigation";
 import { WaterfallClient } from "@/components/finance/WaterfallClient";
-import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
-import { canWrite, requireSession } from "@/lib/permissions";
-import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
+import { requireSession } from "@/lib/permissions";
+import { getProjectContext } from "@/lib/project";
 
-export default async function WaterfallPage({
-  searchParams,
-}: {
-  searchParams: { project?: string };
-}): Promise<JSX.Element> {
-  const session = await requireSession();
-  const projectParam = resolveProjectIdFromSearchParams(searchParams);
-  const { projects, selectedProjectId } = await getProjectContext(projectParam);
+export default async function WaterfallPage(): Promise<JSX.Element> {
+  await requireSession();
+  const { selectedProjectId } = await getProjectContext();
 
   if (!selectedProjectId) {
-    return (
-      <ProjectCreationPanel
-        title="Waterfall de Ingresos"
-        description="No hay proyectos activos. Crea uno para analizar la variacion de ingresos."
-        canEdit={canWrite(session.user.role)}
-      />
-    );
+    redirect("/");
   }
 
   return (
     <WaterfallClient
-      projects={projects}
       selectedProjectId={selectedProjectId}
     />
   );

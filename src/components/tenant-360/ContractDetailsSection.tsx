@@ -170,6 +170,8 @@ export function ContractDetailsSection({ contracts }: ContractDetailsSectionProp
                             {c.codigoCC ? <span>CC: {c.codigoCC}</span> : null}
                             {c.diasGracia > 0 ? <span>Gracia: {c.diasGracia}d</span> : null}
                             {c.multiplicadorDiciembre !== null ? <span>Mult. dic: {c.multiplicadorDiciembre}x</span> : null}
+                            {c.multiplicadorJunio !== null ? <span>Mult. jun: {c.multiplicadorJunio}x</span> : null}
+                            {c.multiplicadorAgosto !== null ? <span>Mult. ago: {c.multiplicadorAgosto}x</span> : null}
                             {c.pctFondoPromocion !== null ? <span>Fondo prom: {c.pctFondoPromocion}%</span> : null}
                             {c.pdfUrl ? (
                               <a href={c.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-brand-500 underline underline-offset-2 hover:text-brand-700">

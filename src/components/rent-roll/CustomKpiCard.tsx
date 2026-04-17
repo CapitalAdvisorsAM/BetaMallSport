@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { chartColors } from "@/lib/charts/theme";
 import {
   evaluateFormula,
   type FormulaConfig,
@@ -131,7 +132,12 @@ export function CustomKpiCard({ widget, periodos }: Props) {
 
   const cfg = trendConfig[trend];
   const sparkPath = buildSparklinePath(sparkValues);
-  const sparkColor = trend === "up" ? "#10b981" : trend === "down" ? "#f43f5e" : "#94a3b8";
+  const sparkColor =
+    trend === "up"
+      ? chartColors.positiveLight
+      : trend === "down"
+        ? chartColors.negativeLight
+        : chartColors.axisMuted;
   const noData = displayValue === "—";
 
   return (

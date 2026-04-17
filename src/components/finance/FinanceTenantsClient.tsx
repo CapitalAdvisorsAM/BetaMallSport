@@ -12,7 +12,7 @@ import { TableDisclosureButton } from "@/components/ui/TableDisclosureButton";
 import { getStripedRowClass, tableTheme } from "@/components/ui/table-theme";
 import { getGapSeverity } from "@/lib/shared/gap-utils";
 import { useRouter } from "next/navigation";
-import type { ArrendatarioPartidaDetalle, ProjectOption, TenantFinanceRow } from "@/types/finance";
+import type { ArrendatarioPartidaDetalle, TenantFinanceRow } from "@/types/finance";
 import { formatUf, cn } from "@/lib/utils";
 
 type GapFilter = "all" | "over5" | "over10" | "overbilled";
@@ -24,14 +24,12 @@ const gapTextColor: Record<ReturnType<typeof getGapSeverity>, string> = {
 };
 
 type FinanceTenantsClientProps = {
-  projects: ProjectOption[];
   selectedProjectId: string;
   defaultDesde?: string;
   defaultHasta?: string;
 };
 
 export function FinanceTenantsClient({
-  projects,
   selectedProjectId,
   defaultDesde,
   defaultHasta
@@ -119,9 +117,6 @@ export function FinanceTenantsClient({
       <ModuleHeader
         title="Arrendatarios"
         description="Facturacion total versus ventas por arrendatario y costo de ocupacion."
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        preserve={{ desde, hasta }}
         actions={
           <div className="flex flex-wrap items-end gap-3">
             <ProjectPeriodToolbar
@@ -152,7 +147,7 @@ export function FinanceTenantsClient({
         ) : data.length === 0 ? (
           <ModuleEmptyState
             message="Sin datos para el periodo seleccionado."
-            actionHref={`/finance/upload?project=${selectedProjectId}`}
+            actionHref="/finance/upload"
             actionLabel="Cargar datos contables"
           />
         ) : (
@@ -203,7 +198,7 @@ export function FinanceTenantsClient({
                             onToggle={() => setExpandedId(expandedId === tenant.id ? null : tenant.id)}
                           />
                           <Link
-                            href={`/tenants/${tenant.id}?project=${selectedProjectId}`}
+                            href={`/tenants/${tenant.id}`}
                             className="text-brand-500 underline underline-offset-2 transition-colors hover:text-brand-700"
                           >
                             {tenant.nombreComercial}
@@ -215,7 +210,7 @@ export function FinanceTenantsClient({
                         {tenant.locales.map((local, i) => (
                           <span
                             key={local.id}
-                            onClick={() => router.push(`/rent-roll/units?project=${selectedProjectId}&detalle=${local.id}`)}
+                            onClick={() => router.push(`/rent-roll/units?detalle=${local.id}`)}
                             className={cn(
                               "cursor-pointer text-brand-500 hover:text-brand-700 underline underline-offset-2 font-medium transition-colors",
                               i > 0 && "ml-1"

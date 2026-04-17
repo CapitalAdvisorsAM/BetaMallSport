@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
 import {
   PERIODO_FIELD_CATALOG,
   getFormulaDisplay,
@@ -113,17 +115,15 @@ export function CustomWidgetForm({ onSubmit, onCancel, saving }: Props) {
       <h4 className="text-sm font-semibold text-brand-700">Nuevo widget personalizado</h4>
 
       {/* Title */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-slate-600">Título</label>
-        <input
-          type="text"
+      <FormField label="Titulo" htmlFor="widget-title" required>
+        <Input
+          id="widget-title"
           value={form.title}
           onChange={(e) => update("title", e.target.value)}
-          placeholder="Ej: GLA Vacante histórica"
+          placeholder="Ej: GLA Vacante historica"
           required
-          className="rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand-300"
         />
-      </div>
+      </FormField>
 
       {/* Chart type */}
       <div className="flex flex-col gap-1">

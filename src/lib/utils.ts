@@ -83,6 +83,14 @@ export function computeEstadoContrato(
   return ContractStatus.VIGENTE;
 }
 
+const MESES_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+export function formatPeriodo(periodo: string): string {
+  const [year, month] = periodo.split("-");
+  if (!year || !month) return periodo;
+  return `${MESES_ES[parseInt(month, 10) - 1] ?? month} ${year}`;
+}
+
 export function slugify(value: string): string {
   const normalized = value
     .normalize("NFD")

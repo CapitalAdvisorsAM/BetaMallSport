@@ -1,10 +1,10 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 type ProjectCreationPanelProps = {
   title: string;
@@ -23,7 +23,6 @@ export function ProjectCreationPanel({
   canEdit
 }: ProjectCreationPanelProps): JSX.Element {
   const router = useRouter();
-  const pathname = usePathname();
   const [nombre, setNombre] = useState("");
   const [color, setColor] = useState("#0f766e");
   const [loading, setLoading] = useState(false);
@@ -48,9 +47,7 @@ export function ProjectCreationPanel({
         throw new Error(data.message ?? "No se pudo crear el proyecto.");
       }
 
-      const projectId = encodeURIComponent(data.id);
-      const targetUrl = `${pathname}?project=${projectId}`;
-      router.push(targetUrl);
+      router.push("/dashboard");
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Error inesperado al crear proyecto.");
@@ -75,10 +72,7 @@ export function ProjectCreationPanel({
         </p>
       ) : (
         <form onSubmit={(event) => void handleSubmit(event)} className="grid gap-3 md:grid-cols-[1fr_180px_auto]">
-          <div className="text-sm">
-            <Label htmlFor="project-name" className="mb-1 block text-slate-700">
-              Nombre del proyecto
-            </Label>
+          <FormField label="Nombre del proyecto" htmlFor="project-name" required>
             <Input
               id="project-name"
               value={nombre}
@@ -87,11 +81,8 @@ export function ProjectCreationPanel({
               className="w-full"
               required
             />
-          </div>
-          <div className="text-sm">
-            <Label htmlFor="project-color" className="mb-1 block text-slate-700">
-              Color
-            </Label>
+          </FormField>
+          <FormField label="Color" htmlFor="project-color">
             <Input
               id="project-color"
               type="color"
@@ -99,7 +90,7 @@ export function ProjectCreationPanel({
               onChange={(event) => setColor(event.target.value)}
               className="h-10 w-full px-2"
             />
-          </div>
+          </FormField>
           <Button
             type="submit"
             variant="default"

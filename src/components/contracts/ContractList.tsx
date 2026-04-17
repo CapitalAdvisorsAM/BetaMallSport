@@ -92,7 +92,7 @@ export function ContractList({
         cell: ({ row }) =>
           proyectoId ? (
             <Link
-              href={`/tenants/${row.original.arrendatario.id}?project=${proyectoId}`}
+              href={`/tenants/${row.original.arrendatario.id}`}
               className="text-brand-500 underline underline-offset-2 font-medium transition-colors hover:text-brand-700"
             >
               {row.original.arrendatario.nombreComercial}

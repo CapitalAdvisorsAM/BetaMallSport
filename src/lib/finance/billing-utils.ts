@@ -170,16 +170,25 @@ export function calcExpectedIncome(params: {
   ggcc: GgccEntry[];
   glam2: number;
   multiplicadorDiciembre: number | null;
+  multiplicadorJunio: number | null;
+  multiplicadorAgosto: number | null;
   pctFondoPromocion: number | null;
   periodDate: Date;
   salesUf?: number;
 }): ExpectedIncomeResult {
-  const { tarifas, ggcc, glam2, multiplicadorDiciembre, pctFondoPromocion, periodDate, salesUf } = params;
-  const isDecember = periodDate.getUTCMonth() === 11;
+  const { tarifas, ggcc, glam2, multiplicadorDiciembre, multiplicadorJunio, multiplicadorAgosto, pctFondoPromocion, periodDate, salesUf } = params;
+  const monthIndex = periodDate.getUTCMonth();
+  const multiplier =
+    monthIndex === 5 ? multiplicadorJunio :
+    monthIndex === 7 ? multiplicadorAgosto :
+    monthIndex === 11 ? multiplicadorDiciembre :
+    null;
+  const isDecember = monthIndex === 11;
 
   // Fixed rent
   let fixedRentUf = 0;
-  if (isDecember && multiplicadorDiciembre !== null) {
+  if (isDecember && multiplier !== null) {
+    // December: check for esDiciembre-specific tariff first
     const decRate = findDecemberRate(tarifas, periodDate);
     if (decRate) {
       if (decRate.tipo === ContractRateType.FIJO_UF_M2) fixedRentUf = toNum(decRate.valor) * glam2;
@@ -187,9 +196,16 @@ export function calcExpectedIncome(params: {
     } else {
       const regularRate = findRateForPeriod(tarifas, periodDate);
       if (regularRate) {
-        if (regularRate.tipo === ContractRateType.FIJO_UF_M2) fixedRentUf = toNum(regularRate.valor) * glam2 * multiplicadorDiciembre;
-        else if (regularRate.tipo === ContractRateType.FIJO_UF) fixedRentUf = toNum(regularRate.valor) * multiplicadorDiciembre;
+        if (regularRate.tipo === ContractRateType.FIJO_UF_M2) fixedRentUf = toNum(regularRate.valor) * glam2 * multiplier;
+        else if (regularRate.tipo === ContractRateType.FIJO_UF) fixedRentUf = toNum(regularRate.valor) * multiplier;
       }
+    }
+  } else if (multiplier !== null) {
+    // June or August: apply multiplier to regular tariff
+    const rate = findRateForPeriod(tarifas, periodDate);
+    if (rate) {
+      if (rate.tipo === ContractRateType.FIJO_UF_M2) fixedRentUf = toNum(rate.valor) * glam2 * multiplier;
+      else if (rate.tipo === ContractRateType.FIJO_UF) fixedRentUf = toNum(rate.valor) * multiplier;
     }
   } else {
     const rate = findRateForPeriod(tarifas, periodDate);

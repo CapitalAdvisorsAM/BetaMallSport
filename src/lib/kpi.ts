@@ -447,7 +447,6 @@ export type AlertCounts = {
   vencen90: number;
   enGracia: number;
   vacantes: number;
-  proyectoId: string;
   brechaFacturacion?: number;
 };
 
@@ -465,8 +464,7 @@ type AlertContractInput = Pick<KpiContractInput, "fechaTermino"> & {
 export function buildAlertCounts(
   contratos: AlertContractInput[],
   localesVacantes: Array<Pick<KpiLocalInput, "id">>,
-  hoy: Date,
-  proyectoId: string
+  hoy: Date
 ): AlertCounts {
   const start = startOfDay(hoy);
   const day30 = addDays(start, 30);
@@ -492,8 +490,7 @@ export function buildAlertCounts(
       vencen30: 0,
       vencen90: 0,
       enGracia: 0,
-      vacantes: localesVacantes.length,
-      proyectoId
+      vacantes: localesVacantes.length
     }
   );
 }

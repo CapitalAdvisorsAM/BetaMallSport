@@ -18,10 +18,20 @@ import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolbar";
 import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { UnifiedTable } from "@/components/ui/UnifiedTable";
 import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
+import {
+  chartAxisProps,
+  chartBarRadius,
+  chartColors,
+  chartGridProps,
+  chartHeight,
+  chartLegendProps,
+  chartMargins,
+  getSeriesColor,
+} from "@/lib/charts/theme";
 import { cn } from "@/lib/utils";
-import type { ProjectOption } from "@/types/finance";
 import type { VentasAnalyticsResponse } from "@/types/ventas-analytics";
 
 // ---------------------------------------------------------------------------
@@ -35,12 +45,6 @@ const DIMENSION_LABELS: Record<DimensionTab, string> = {
   tipo: "Categoria (Tipo)",
   piso: "Piso"
 };
-
-const BAR_COLORS = [
-  "#1e40af", "#059669", "#d97706", "#7c3aed",
-  "#dc2626", "#0891b2", "#84cc16", "#f97316",
-  "#6366f1", "#ec4899"
-];
 
 const compactTheme = getTableTheme("compact");
 
@@ -62,14 +66,12 @@ function valueCls(v: number): string {
 // ---------------------------------------------------------------------------
 
 type Props = {
-  projects: ProjectOption[];
   selectedProjectId: string;
   defaultDesde?: string;
   defaultHasta?: string;
 };
 
 export function VentasAnalyticsClient({
-  projects,
   selectedProjectId,
   defaultDesde,
   defaultHasta
@@ -121,9 +123,6 @@ export function VentasAnalyticsClient({
       <ModuleHeader
         title="Ventas Mensuales (UF/m\u00B2)"
         description="Ventas por dimension de local. Replica la hoja 'Ventas' del CDG."
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        preserve={{ desde, hasta }}
         actions={
           <ProjectPeriodToolbar
             desde={desde}
@@ -161,7 +160,7 @@ export function VentasAnalyticsClient({
       ) : !data || series.length === 0 ? (
         <ModuleEmptyState
           message="Sin datos de ventas para el rango seleccionado."
-          actionHref={`/finance/upload?project=${selectedProjectId}`}
+          actionHref="/finance/upload"
           actionLabel="Cargar datos de ventas"
         />
       ) : (
@@ -172,33 +171,37 @@ export function VentasAnalyticsClient({
             metricId="chart_finance_ventas"
             description="Barras: ventas UF/m\u00B2 por dimension. Linea: total UF/m\u00B2."
           >
-            <ResponsiveContainer width="100%" height={300}>
-              <ComposedChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => v.toFixed(1)} />
+            <ResponsiveContainer width="100%" height={chartHeight.lg}>
+              <ComposedChart data={chartData} margin={chartMargins.default}>
+                <CartesianGrid {...chartGridProps} />
+                <XAxis dataKey="mes" {...chartAxisProps} />
+                <YAxis {...chartAxisProps} tickFormatter={(v: number) => v.toFixed(1)} />
                 <Tooltip
-                  formatter={(value, name) => {
-                    const v = typeof value === "number" ? value : Number(value ?? 0);
-                    return [v.toFixed(3), String(name ?? "")];
-                  }}
-                  labelFormatter={(l) => `Mes: ${String(l)}`}
+                  content={
+                    <ChartTooltip
+                      labelFormatter={(l) => `Mes: ${String(l)}`}
+                      valueFormatter={(value) => {
+                        const v = typeof value === "number" ? value : Number(value ?? 0);
+                        return v.toFixed(3);
+                      }}
+                    />
+                  }
                 />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Legend {...chartLegendProps} />
                 {dimensionKeys.map((key, i) => (
                   <Bar
                     key={key}
                     dataKey={key}
                     name={key}
-                    fill={BAR_COLORS[i % BAR_COLORS.length]}
-                    radius={[2, 2, 0, 0]}
+                    fill={getSeriesColor(i)}
+                    radius={chartBarRadius}
                   />
                 ))}
                 <Line
                   type="monotone"
                   dataKey="Total UF/m\u00B2"
                   name="Total UF/m\u00B2"
-                  stroke="#94a3b8"
+                  stroke={chartColors.axisMuted}
                   strokeDasharray="4 2"
                   dot={false}
                   strokeWidth={1.5}

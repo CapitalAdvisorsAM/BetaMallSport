@@ -57,6 +57,8 @@ export async function createContractCommand(input: {
         pctFondoPromocion: toDecimal(payload.pctFondoPromocion),
         pctAdministracionGgcc: toDecimal(payload.pctAdministracionGgcc),
         multiplicadorDiciembre: toDecimal(payload.multiplicadorDiciembre),
+        multiplicadorJunio: toDecimal(payload.multiplicadorJunio),
+        multiplicadorAgosto: toDecimal(payload.multiplicadorAgosto),
         codigoCC: payload.codigoCC,
         pdfUrl: payload.pdfUrl,
         notas: payload.notas

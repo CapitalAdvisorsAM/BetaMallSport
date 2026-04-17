@@ -60,6 +60,8 @@ function makeStoredPreview() {
           tarifaVigenciaHasta: null,
           pctFondoPromocion: null,
           multiplicadorDiciembre: null,
+          multiplicadorJunio: null,
+          multiplicadorAgosto: null,
           codigoCC: null,
           ggccPctAdministracion: null,
           ggccPctReajuste: null,

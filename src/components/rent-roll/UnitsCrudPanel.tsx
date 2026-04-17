@@ -17,7 +17,6 @@ import { useCrudResource } from "@/hooks/useCrudResource";
 import { useDataTable } from "@/hooks/useDataTable";
 import { extractApiErrorMessage } from "@/lib/http/client-errors";
 import { formatCalculatedLocalSize, getCalculatedLocalSize } from "@/lib/units/size";
-import { buildProjectIdQueryString } from "@/lib/project-query";
 import { cn, formatDecimal } from "@/lib/utils";
 
 type LocalTipo =
@@ -105,7 +104,7 @@ async function createUnit(form: LocalForm): Promise<LocalRecord> {
 }
 
 async function updateUnit(id: string, form: LocalForm): Promise<LocalRecord> {
-  const query = buildProjectIdQueryString(form.proyectoId);
+  const query = new URLSearchParams({ projectId: form.proyectoId }).toString();
   const response = await fetch(`/api/units/${id}?${query}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -119,7 +118,7 @@ async function updateUnit(id: string, form: LocalForm): Promise<LocalRecord> {
 }
 
 async function removeUnit(id: string, projectId: string): Promise<void> {
-  const query = buildProjectIdQueryString(projectId);
+  const query = new URLSearchParams({ projectId }).toString();
   const response = await fetch(`/api/units/${id}?${query}`, { method: "DELETE" });
   if (!response.ok) {
     throw new Error(await extractApiErrorMessage(response, "No se pudo eliminar el local."));

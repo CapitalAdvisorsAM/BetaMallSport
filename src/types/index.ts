@@ -91,6 +91,8 @@ export type RentRollUploadRow = {
   tarifaVigenciaHasta: string | null;
   pctFondoPromocion: string | null;
   multiplicadorDiciembre: string | null;
+  multiplicadorJunio: string | null;
+  multiplicadorAgosto: string | null;
   codigoCC: string | null;
   ggccPctAdministracion: string | null;
   ggccPctReajuste: string | null;
@@ -145,6 +147,8 @@ export type ContractFormPayload = {
   pctFondoPromocion: string | null;
   pctAdministracionGgcc: string | null;
   multiplicadorDiciembre: string | null;
+  multiplicadorJunio: string | null;
+  multiplicadorAgosto: string | null;
   codigoCC: string | null;
   pdfUrl: string | null;
   notas: string | null;

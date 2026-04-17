@@ -5,13 +5,12 @@ import { RentRollDashboardTable, type RentRollDashboardTableRow } from "@/compon
 import { OccupancyBySizeTable } from "@/components/rent-roll/OccupancyBySizeTable";
 import { OcupacionTipoTable } from "@/components/rent-roll/OcupacionTipoTable";
 import { RentRollSnapshotDatePicker } from "@/components/rent-roll/RentRollSnapshotDatePicker";
-import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import { VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
 import { shiftPeriod, calcTieredVariableRent } from "@/lib/finance/billing-utils";
 import { buildOcupacionDetalle, calculateWalt } from "@/lib/kpi";
-import { canWrite, requireSession } from "@/lib/permissions";
+import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
+import { getProjectContext } from "@/lib/project";
 import {
   formatWaltValue,
   getPeriodoFromFecha,
@@ -23,7 +22,6 @@ import { formatDecimal } from "@/lib/utils";
 
 type RentRollPageProps = {
   searchParams: {
-    project?: string;
     periodo?: string;
     fecha?: string;
   };
@@ -32,18 +30,11 @@ type RentRollPageProps = {
 export default async function RentRollPage({
   searchParams
 }: RentRollPageProps): Promise<JSX.Element> {
-  const session = await requireSession();
-  const projectParam = resolveProjectIdFromSearchParams(searchParams);
+  await requireSession();
 
-  const { selectedProjectId } = await getProjectContext(projectParam);
+  const { selectedProjectId } = await getProjectContext();
   if (!selectedProjectId) {
-    return (
-      <ProjectCreationPanel
-        title="Rent Roll"
-        description="No hay proyectos activos. Crea uno para visualizar metricas por local."
-        canEdit={canWrite(session.user.role)}
-      />
-    );
+    redirect("/");
   }
 
   const fecha = resolveSnapshotDate(searchParams.fecha, searchParams.periodo);
@@ -51,12 +42,10 @@ export default async function RentRollPage({
   const periodoVentas = getPeriodoFromFecha(fecha);
 
   if (
-    projectParam !== selectedProjectId ||
     searchParams.fecha !== fecha ||
     searchParams.periodo
   ) {
     const params = new URLSearchParams();
-    params.set("project", selectedProjectId);
     params.set("fecha", fecha);
     redirect(`/rent-roll?${params.toString()}`);
   }
@@ -339,6 +328,8 @@ export default async function RentRollPage({
               <h2 className="text-base font-bold uppercase tracking-wide text-brand-700">
                 Rent Roll
               </h2>
+              <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-700">Teórico</span>
+              <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700">Efectivo</span>
             </div>
             <p className="mt-1 text-sm text-slate-600">
               Vista operacional snapshot: estado contractual actual y metricas en una fecha exacta.

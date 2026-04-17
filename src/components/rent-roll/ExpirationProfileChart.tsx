@@ -10,6 +10,14 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
+import {
+  chartAxisProps,
+  chartColors,
+  chartGridProps,
+  chartHeight,
+  chartMargins,
+} from "@/lib/charts/theme";
 import { formatDecimal } from "@/lib/utils";
 
 type ExpirationRow = {
@@ -23,13 +31,14 @@ type ExpirationProfileChartProps = {
   data: ExpirationRow[];
 };
 
+// Brand-gradient palette so adjacent years read as "same family, progressing".
 const BAR_COLORS = [
-  "#1e40af", // brand-800
-  "#2563eb", // brand-600
-  "#3b82f6", // brand-500
-  "#60a5fa", // brand-400
-  "#93c5fd", // brand-300
-  "#bfdbfe"  // brand-200
+  chartColors.brandDark,
+  chartColors.brandPrimary,
+  "#3b82f6",
+  "#60a5fa",
+  chartColors.brandLight,
+  chartColors.brandSurface
 ];
 
 export function ExpirationProfileChart({ data }: ExpirationProfileChartProps): JSX.Element {
@@ -43,22 +52,25 @@ export function ExpirationProfileChart({ data }: ExpirationProfileChartProps): J
 
   return (
     <div className="space-y-4 p-4">
-      <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="anio" tick={{ fontSize: 12 }} />
+      <ResponsiveContainer width="100%" height={chartHeight.md}>
+        <BarChart data={data} margin={chartMargins.default}>
+          <CartesianGrid {...chartGridProps} />
+          <XAxis dataKey="anio" {...chartAxisProps} />
           <YAxis
             yAxisId="m2"
-            tick={{ fontSize: 12 }}
+            {...chartAxisProps}
             tickFormatter={(v: number) => formatDecimal(v)}
-            label={{ value: "m²", angle: -90, position: "insideLeft", fontSize: 11 }}
+            label={{ value: "m²", angle: -90, position: "insideLeft", fontSize: 11, fill: chartColors.axis }}
           />
           <Tooltip
-            formatter={(value) => [`${formatDecimal(Number(value))} m²`, "GLA"]}
-            labelFormatter={(label) => `Año ${label}`}
-            contentStyle={{ fontSize: 12 }}
+            content={
+              <ChartTooltip
+                labelFormatter={(label) => `Año ${label}`}
+                valueFormatter={(value) => `${formatDecimal(Number(value))} m²`}
+              />
+            }
           />
-          <Bar yAxisId="m2" dataKey="m2" name="m2" radius={[4, 4, 0, 0]}>
+          <Bar yAxisId="m2" dataKey="m2" name="GLA" radius={[4, 4, 0, 0]}>
             {data.map((_, index) => (
               <Cell key={index} fill={BAR_COLORS[index % BAR_COLORS.length]} />
             ))}

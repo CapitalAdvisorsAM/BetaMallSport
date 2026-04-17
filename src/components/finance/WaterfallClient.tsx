@@ -17,11 +17,17 @@ import { ModuleEmptyState } from "@/components/dashboard/ModuleEmptyState";
 import { ModuleHeader } from "@/components/dashboard/ModuleHeader";
 import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
+import {
+  chartAxisProps,
+  chartColors,
+  chartGridProps,
+  chartHeight,
+  chartMargins,
+} from "@/lib/charts/theme";
 import { formatDecimal, cn } from "@/lib/utils";
-import type { ProjectOption, WaterfallBar, WaterfallMode, WaterfallResponse } from "@/types/finance";
+import type { WaterfallBar, WaterfallMode, WaterfallResponse } from "@/types/finance";
 
 type WaterfallClientProps = {
-  projects: ProjectOption[];
   selectedProjectId: string;
 };
 
@@ -40,7 +46,7 @@ function toWaterfallChartData(bars: WaterfallBar[]): ChartDatum[] {
         name: bar.label,
         invisible: 0,
         value: bar.value,
-        fill: "#2563eb",
+        fill: chartColors.brandPrimary,
         rawValue: bar.value,
       };
     }
@@ -49,7 +55,7 @@ function toWaterfallChartData(bars: WaterfallBar[]): ChartDatum[] {
       name: bar.label,
       invisible: Math.max(0, base),
       value: Math.abs(bar.value),
-      fill: bar.value >= 0 ? "#10b981" : "#ef4444",
+      fill: bar.value >= 0 ? chartColors.positiveLight : chartColors.negativeLight,
       rawValue: bar.value,
     };
   });
@@ -74,7 +80,6 @@ function getCurrentPeriod(): string {
 }
 
 export function WaterfallClient({
-  projects,
   selectedProjectId,
 }: WaterfallClientProps): JSX.Element {
   const [mode, setMode] = useState<WaterfallMode>("mom");
@@ -113,9 +118,6 @@ export function WaterfallClient({
       <ModuleHeader
         title="Waterfall de Ingresos"
         description="Analisis de variacion de ingresos entre periodos: que causo el cambio."
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        preserve={{ period, mode }}
         actions={
           <div className="flex flex-wrap items-center gap-3">
             <input
@@ -158,7 +160,7 @@ export function WaterfallClient({
         <ModuleSectionCard>
           <ModuleEmptyState
             message="Sin datos para el periodo seleccionado. Asegurate de haber cargado datos contables."
-            actionHref={`/finance/upload?project=${selectedProjectId}`}
+            actionHref="/finance/upload"
             actionLabel="Cargar datos contables"
           />
         </ModuleSectionCard>
@@ -170,14 +172,22 @@ export function WaterfallClient({
               metricId="kpi_finance_waterfall_prev"
               title="Ingreso anterior"
               value={`${formatDecimal(data.previousTotal)} UF`}
-              subtitle={data.previousPeriod}
+              subtitle={
+                data.glaArrendadaPrevious > 0
+                  ? `${(data.previousTotal / data.glaArrendadaPrevious).toLocaleString("es-CL", { minimumFractionDigits: 4, maximumFractionDigits: 4 })} UF/m² · ${data.previousPeriod}`
+                  : data.previousPeriod
+              }
               accent="slate"
             />
             <KpiCard
               metricId="kpi_finance_waterfall_current"
               title="Ingreso actual"
               value={`${formatDecimal(data.currentTotal)} UF`}
-              subtitle={data.currentPeriod}
+              subtitle={
+                data.glaArrendadaCurrent > 0
+                  ? `${(data.currentTotal / data.glaArrendadaCurrent).toLocaleString("es-CL", { minimumFractionDigits: 4, maximumFractionDigits: 4 })} UF/m² · ${data.currentPeriod}`
+                  : data.currentPeriod
+              }
               accent="slate"
             />
             <KpiCard
@@ -194,26 +204,21 @@ export function WaterfallClient({
             title="Analisis de variacion de ingresos"
             metricId="chart_finance_waterfall"
           >
-            <ResponsiveContainer width="100%" height={360}>
+            <ResponsiveContainer width="100%" height={chartHeight.xl}>
               <BarChart
                 data={chartData}
-                margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
+                margin={chartMargins.compact}
               >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#e2e8f0"
-                  vertical={false}
-                />
+                <CartesianGrid {...chartGridProps} />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 11, fill: "#64748b" }}
-                  tickLine={false}
+                  {...chartAxisProps}
                   angle={-20}
                   textAnchor="end"
                   height={60}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: "#64748b" }}
+                  {...chartAxisProps}
                   tickFormatter={(v: number) => formatDecimal(v)}
                 />
                 <Tooltip content={<WaterfallTooltip />} />
