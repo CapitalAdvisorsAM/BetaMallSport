@@ -67,6 +67,7 @@ async function loadLookupData(projectId: string): Promise<{
       pctFondoPromocion: contrato.pctFondoPromocion?.toString() ?? null,
       multiplicadorDiciembre: contrato.multiplicadorDiciembre?.toString() ?? null,
       multiplicadorJunio: contrato.multiplicadorJunio?.toString() ?? null,
+      multiplicadorJulio: contrato.multiplicadorJulio?.toString() ?? null,
       multiplicadorAgosto: contrato.multiplicadorAgosto?.toString() ?? null,
       codigoCC: contrato.codigoCC,
       ggccPctAdministracion:

@@ -19,10 +19,10 @@ export function MetricChartCard({
   children
 }: MetricChartCardProps): JSX.Element {
   return (
-    <article className={cn("overflow-hidden rounded-md bg-white shadow-sm", className)}>
-      <div className="border-b border-slate-200 px-4 py-3">
+    <article className={cn("overflow-hidden rounded-md border border-slate-200 bg-white shadow", className)}>
+      <div className="border-b border-slate-200 bg-gradient-to-b from-slate-50 to-white px-4 py-3">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-sm font-semibold text-brand-700">{title}</h3>
+          <h3 className="text-sm font-semibold tracking-tight text-brand-700">{title}</h3>
           <MetricTooltip metricId={metricId} />
         </div>
         {description ? <p className="mt-1 text-xs text-slate-500">{description}</p> : null}

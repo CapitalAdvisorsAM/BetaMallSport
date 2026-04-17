@@ -47,6 +47,7 @@ type ContractGroup = {
   pctFondoPromocion: string | null;
   multiplicadorDiciembre: string | null;
   multiplicadorJunio: string | null;
+  multiplicadorJulio: string | null;
   multiplicadorAgosto: string | null;
   codigoCC: string | null;
   pctAdministracionGgcc: string | null;
@@ -146,6 +147,7 @@ export async function POST(request: Request): Promise<NextResponse> {
           pctFondoPromocion: nullableStr(row.pctfondopromocion),
           multiplicadorDiciembre: nullableStr(row.multiplicadordiciembre),
           multiplicadorJunio: nullableStr(row.multiplicadorjunio),
+          multiplicadorJulio: nullableStr(row.multiplicadorjulio),
           multiplicadorAgosto: nullableStr(row.multiplicadoragosto),
           codigoCC: nullableStr(row.codigocc),
           pctAdministracionGgcc: nullableStr(row.ggccpctadministracion),
@@ -281,6 +283,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         pctFondoPromocion: group.pctFondoPromocion,
         multiplicadorDiciembre: group.multiplicadorDiciembre,
         multiplicadorJunio: group.multiplicadorJunio,
+        multiplicadorJulio: group.multiplicadorJulio,
         multiplicadorAgosto: group.multiplicadorAgosto,
         codigoCC: group.codigoCC,
         pctAdministracionGgcc: group.pctAdministracionGgcc,

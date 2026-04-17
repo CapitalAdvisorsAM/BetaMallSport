@@ -102,6 +102,15 @@ const columns: ColumnDef[] = [
     headerPalette: "slate"
   },
   {
+    key: "multiplicadorJulio",
+    label: "Multiplicador Julio",
+    required: false,
+    description: "Opcional. Factor decimal para julio. Ej: 1.25",
+    format: "number",
+    width: 22,
+    headerPalette: "slate"
+  },
+  {
     key: "multiplicadorAgosto",
     label: "Multiplicador Agosto",
     required: false,
@@ -405,6 +414,7 @@ export async function GET(): Promise<NextResponse> {
           pctFondoPromocion: "2.5",
           multiplicadorDiciembre: "1.25",
           multiplicadorJunio: "",
+          multiplicadorJulio: "",
           multiplicadorAgosto: "",
           codigoCC: "CC-101",
           ggccPctAdministracion: "5",
@@ -447,6 +457,7 @@ export async function GET(): Promise<NextResponse> {
           pctFondoPromocion: "2.5",
           multiplicadorDiciembre: "1.25",
           multiplicadorJunio: "",
+          multiplicadorJulio: "",
           multiplicadorAgosto: "",
           codigoCC: "CC-101",
           ggccPctAdministracion: "5",
@@ -489,6 +500,7 @@ export async function GET(): Promise<NextResponse> {
           pctFondoPromocion: "",
           multiplicadorDiciembre: "",
           multiplicadorJunio: "",
+          multiplicadorJulio: "",
           multiplicadorAgosto: "",
           codigoCC: "CC-102",
           ggccPctAdministracion: "",
@@ -531,6 +543,7 @@ export async function GET(): Promise<NextResponse> {
           pctFondoPromocion: "",
           multiplicadorDiciembre: "",
           multiplicadorJunio: "",
+          multiplicadorJulio: "",
           multiplicadorAgosto: "",
           codigoCC: "CC-BOD-01",
           ggccPctAdministracion: "",

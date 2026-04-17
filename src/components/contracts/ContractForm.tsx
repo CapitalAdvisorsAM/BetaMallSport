@@ -347,6 +347,22 @@ function ContractCommercialSection({
             className="w-full"
           />
         </FormField>
+        <FormField label="Multiplicador julio" htmlFor="mult-julio" helperText="Opcional">
+          <Input
+            id="mult-julio"
+            inputMode="decimal"
+            placeholder="Ej: 1.25"
+            value={payload.multiplicadorJulio ?? ""}
+            onChange={(event) =>
+              setPayload((previous) => ({
+                ...previous,
+                multiplicadorJulio: event.target.value.trim() ? event.target.value : null
+              }))
+            }
+            disabled={!canEdit}
+            className="w-full"
+          />
+        </FormField>
         <FormField label="Multiplicador agosto" htmlFor="mult-agosto" helperText="Opcional">
           <Input
             id="mult-agosto"

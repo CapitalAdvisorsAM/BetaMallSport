@@ -65,7 +65,11 @@ const contractQueryArgs = {
         umbralVentasUf: true,
         vigenciaDesde: true,
         vigenciaHasta: true,
-        esDiciembre: true
+        esDiciembre: true,
+        descuentoTipo: true,
+        descuentoValor: true,
+        descuentoDesde: true,
+        descuentoHasta: true
       }
     },
     ggcc: {
@@ -239,6 +243,7 @@ export default async function ContractsPage({
             pctAdministracionGgcc: contract.pctAdministracionGgcc?.toString() ?? null,
             multiplicadorDiciembre: contract.multiplicadorDiciembre?.toString() ?? null,
             multiplicadorJunio: contract.multiplicadorJunio?.toString() ?? null,
+            multiplicadorJulio: contract.multiplicadorJulio?.toString() ?? null,
             multiplicadorAgosto: contract.multiplicadorAgosto?.toString() ?? null,
             local: contract.local,
             locales: getAssociatedLocales(contract),
@@ -249,7 +254,11 @@ export default async function ContractsPage({
               umbralVentasUf: tarifa.umbralVentasUf?.toString() ?? null,
               vigenciaDesde: tarifa.vigenciaDesde.toISOString().slice(0, 10),
               vigenciaHasta: tarifa.vigenciaHasta ? tarifa.vigenciaHasta.toISOString().slice(0, 10) : null,
-              esDiciembre: tarifa.esDiciembre
+              esDiciembre: tarifa.esDiciembre,
+              descuentoTipo: tarifa.descuentoTipo ?? null,
+              descuentoValor: tarifa.descuentoValor?.toString() ?? null,
+              descuentoDesde: tarifa.descuentoDesde ? tarifa.descuentoDesde.toISOString().slice(0, 10) : null,
+              descuentoHasta: tarifa.descuentoHasta ? tarifa.descuentoHasta.toISOString().slice(0, 10) : null
             })),
             ggcc: contract.ggcc.map((item) => ({
               tarifaBaseUfM2: item.tarifaBaseUfM2.toString(),

@@ -26,6 +26,7 @@ type ReconciliationRow = {
   gapPct: number;
   gapGgccUf: number;
   gapGgccPct: number;
+  missingSalesPeriods: string[];
 };
 
 type ReconciliationSummary = {
@@ -265,12 +266,22 @@ export function ReconciliationClient({
                     return (
                       <tr key={row.tenantId} className={`${getStripedRowClass(index)} ${tableTheme.rowHover}`}>
                         <td className="sticky left-0 bg-inherit px-4 py-3 font-medium text-slate-800">
-                          <Link
-                            href={`/tenants/${row.tenantId}`}
-                            className="text-brand-500 underline underline-offset-2 transition-colors hover:text-brand-700"
-                          >
-                            {row.nombreComercial}
-                          </Link>
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={`/tenants/${row.tenantId}`}
+                              className="text-brand-500 underline underline-offset-2 transition-colors hover:text-brand-700"
+                            >
+                              {row.nombreComercial}
+                            </Link>
+                            {row.missingSalesPeriods.length > 0 && (
+                              <span
+                                className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
+                                title={`Sin ventas reportadas en ${row.missingSalesPeriods.length} periodo(s): ${row.missingSalesPeriods.join(", ")}`}
+                              >
+                                Sin ventas ({row.missingSalesPeriods.length})
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-slate-400">{row.rut}</p>
                         </td>
                         <td className="px-3 py-3 text-sm text-slate-500">

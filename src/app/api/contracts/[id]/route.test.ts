@@ -79,6 +79,7 @@ function makePayload(): ContractFormPayload {
     pctAdministracionGgcc: null,
     multiplicadorDiciembre: null,
     multiplicadorJunio: null,
+    multiplicadorJulio: null,
     multiplicadorAgosto: null,
     diasGracia: 0,
     codigoCC: "CC-1",
@@ -90,7 +91,11 @@ function makePayload(): ContractFormPayload {
         valor: "12.5",
         vigenciaDesde: "2026-01-01",
         vigenciaHasta: null,
-        esDiciembre: false
+        esDiciembre: false,
+        descuentoTipo: null,
+        descuentoValor: null,
+        descuentoDesde: null,
+        descuentoHasta: null
       }
     ],
     ggcc: [
@@ -122,6 +127,7 @@ function makeExistingContract() {
     pctAdministracionGgcc: null,
     multiplicadorDiciembre: null,
     multiplicadorJunio: null,
+    multiplicadorJulio: null,
     multiplicadorAgosto: null,
     codigoCC: "CC-1",
     pdfUrl: "https://example.com/contract.pdf",

@@ -15,7 +15,7 @@ export function TopNavbar(): JSX.Element {
   return (
     <nav
       aria-label="Navegacion principal"
-      className="flex max-w-full items-center gap-2 overflow-x-auto pb-1 text-sm"
+      className="flex max-w-full items-center gap-2 overflow-hidden text-sm"
     >
       {visibleItems.map((item) => {
         const active = isNavItemActive(pathname, item.href, item.match);
@@ -24,10 +24,10 @@ export function TopNavbar(): JSX.Element {
             key={item.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "whitespace-nowrap rounded-md px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400",
+              "whitespace-nowrap rounded-md border-b-2 px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400",
               active
-                ? "bg-white/10 font-semibold text-white"
-                : "font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white",
+                ? "border-b-gold-400 bg-white/10 font-semibold text-white"
+                : "border-b-transparent font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white",
               isPending && "pointer-events-none opacity-60"
             )}
             href={item.href}

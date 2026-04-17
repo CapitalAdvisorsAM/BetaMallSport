@@ -17,6 +17,7 @@ export function createEmptyRentaVariableItem(umbralVentasUf = ""): RentaVariable
     _key: crypto.randomUUID(),
     pctRentaVariable: "",
     umbralVentasUf,
+    pisoMinimoUf: null,
     vigenciaDesde: "",
     vigenciaHasta: null
   };
@@ -46,6 +47,11 @@ export function RentaVariableListEditor({
     );
   }
 
+  function handlePisoMinimoChange(key: string, value: string) {
+    const normalized = value.trim() === "" ? null : value;
+    onChange(items.map((item) => (item._key === key ? { ...item, pisoMinimoUf: normalized } : item)));
+  }
+
   return (
     <div className="rounded-lg border border-slate-200 p-3">
       <div className="mb-2 flex items-center justify-between">
@@ -62,13 +68,14 @@ export function RentaVariableListEditor({
       </div>
       <p className="mb-2 text-xs text-slate-500">
         El % del tramo alcanzado se aplica sobre todas las ventas. El primer tramo (umbral 0) es la base.
+        El piso mínimo (opcional, en UF) garantiza un arriendo mensual no inferior a ese monto.
       </p>
       {items.length === 0 ? (
         <p className="text-sm text-slate-500">Sin renta variable configurada.</p>
       ) : (
         <div className="space-y-2">
           {items.map((item, index) => (
-            <div key={item._key} className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+            <div key={item._key} className="grid gap-2 md:grid-cols-[1fr_1fr_1fr_auto]">
               <Input
                 placeholder="Umbral ventas UF"
                 disabled={disabled || index === 0}
@@ -81,6 +88,13 @@ export function RentaVariableListEditor({
                 disabled={disabled}
                 value={item.pctRentaVariable}
                 onChange={(event) => handleChange(item._key, "pctRentaVariable", event.target.value)}
+                className="rounded-md border border-slate-300 px-2 py-2 text-sm"
+              />
+              <Input
+                placeholder="Piso mínimo UF (opcional)"
+                disabled={disabled}
+                value={item.pisoMinimoUf ?? ""}
+                onChange={(event) => handlePisoMinimoChange(item._key, event.target.value)}
                 className="rounded-md border border-slate-300 px-2 py-2 text-sm"
               />
               <Button

@@ -101,6 +101,7 @@ export type RawContract = {
   diasGracia: number;
   multiplicadorDiciembre: DecimalLike | null;
   multiplicadorJunio: DecimalLike | null;
+  multiplicadorJulio: DecimalLike | null;
   multiplicadorAgosto: DecimalLike | null;
   pctFondoPromocion: DecimalLike | null;
   codigoCC: string | null;
@@ -418,6 +419,7 @@ function serializeContracts(contracts: RawContract[]): Tenant360Contract[] {
       diasRestantes,
       multiplicadorDiciembre: c.multiplicadorDiciembre !== null ? toNum(c.multiplicadorDiciembre) : null,
       multiplicadorJunio: c.multiplicadorJunio !== null ? toNum(c.multiplicadorJunio) : null,
+      multiplicadorJulio: c.multiplicadorJulio !== null ? toNum(c.multiplicadorJulio) : null,
       multiplicadorAgosto: c.multiplicadorAgosto !== null ? toNum(c.multiplicadorAgosto) : null,
       pctFondoPromocion: c.pctFondoPromocion !== null ? toNum(c.pctFondoPromocion) : null,
       codigoCC: c.codigoCC,
@@ -632,6 +634,7 @@ export function buildGapAnalysis(
         glam2: toNum(c.local.glam2),
         multiplicadorDiciembre: c.multiplicadorDiciembre !== null ? toNum(c.multiplicadorDiciembre) : null,
         multiplicadorJunio: c.multiplicadorJunio !== null ? toNum(c.multiplicadorJunio) : null,
+        multiplicadorJulio: c.multiplicadorJulio !== null ? toNum(c.multiplicadorJulio) : null,
         multiplicadorAgosto: c.multiplicadorAgosto !== null ? toNum(c.multiplicadorAgosto) : null,
         pctFondoPromocion: c.pctFondoPromocion !== null ? toNum(c.pctFondoPromocion) : null,
         periodDate,

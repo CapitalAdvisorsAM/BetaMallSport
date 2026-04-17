@@ -10,6 +10,7 @@ import {
   withNormalizedProjectId
 } from "@/lib/http/request";
 import {
+  assertNoOverlappingContracts,
   normalizedLocalIds,
   payloadTarifas,
   persistContratoLocales,
@@ -87,6 +88,10 @@ function normalizedTarifas(
     vigenciaDesde: Date | string;
     vigenciaHasta: Date | string | null;
     esDiciembre: boolean;
+    descuentoTipo?: string | null;
+    descuentoValor?: Prisma.Decimal | string | null;
+    descuentoDesde?: Date | string | null;
+    descuentoHasta?: Date | string | null;
   }>
 ): string {
   return JSON.stringify(
@@ -97,7 +102,11 @@ function normalizedTarifas(
         valor: toDecimalString(item.valor),
         vigenciaDesde: toDateOnly(item.vigenciaDesde),
         vigenciaHasta: toDateOnly(item.vigenciaHasta),
-        esDiciembre: item.esDiciembre
+        esDiciembre: item.esDiciembre,
+        descuentoTipo: item.descuentoTipo ?? null,
+        descuentoValor: toDecimalString(item.descuentoValor ?? null),
+        descuentoDesde: toDateOnly(item.descuentoDesde ?? null),
+        descuentoHasta: toDateOnly(item.descuentoHasta ?? null)
       }))
       .sort((a, b) => a.key.localeCompare(b.key))
   );
@@ -190,6 +199,11 @@ function computeCamposModificados(
       toDecimalString(payload.multiplicadorJunio)
     ],
     [
+      "multiplicadorJulio",
+      toDecimalString(existing.multiplicadorJulio),
+      toDecimalString(payload.multiplicadorJulio)
+    ],
+    [
       "multiplicadorAgosto",
       toDecimalString(existing.multiplicadorAgosto),
       toDecimalString(payload.multiplicadorAgosto)
@@ -267,6 +281,7 @@ function buildContratoPayload(
     pctAdministracionGgcc: toDecimal(parsed.pctAdministracionGgcc),
     multiplicadorDiciembre: toDecimal(parsed.multiplicadorDiciembre),
     multiplicadorJunio: toDecimal(parsed.multiplicadorJunio),
+    multiplicadorJulio: toDecimal(parsed.multiplicadorJulio),
     multiplicadorAgosto: toDecimal(parsed.multiplicadorAgosto),
     codigoCC: parsed.codigoCC,
     pdfUrl: parsed.pdfUrl,
@@ -316,6 +331,15 @@ export async function PUT(
     const camposModificados = computeCamposModificados(existing, payload, localIds);
 
     const updated = await prisma.$transaction(async (tx) => {
+      await assertNoOverlappingContracts(tx, {
+        proyectoId: payload.proyectoId,
+        localIds,
+        fechaInicio: payload.fechaInicio,
+        fechaTermino: payload.fechaTermino,
+        diasGracia: payload.diasGracia,
+        excludeContractId: contractId
+      });
+
       await tx.contract.update({
         where: { id: contractId },
         data: buildContratoPayload(payload, existing.numeroContrato, localIds)
@@ -333,15 +357,15 @@ export async function PUT(
         throw new Error("Contrato no encontrado.");
       }
 
-      if (payload.anexo) {
+      if (camposModificados.length > 0) {
         await tx.contractAmendment.create({
           data: {
             contratoId: contractId,
-            fecha: new Date(payload.anexo.fecha),
-            descripcion: payload.anexo.descripcion,
+            fecha: payload.anexo ? new Date(payload.anexo.fecha) : new Date(),
+            descripcion: payload.anexo?.descripcion ?? "Edicion de contrato",
             camposModificados,
-            snapshotAntes: existing,
-            snapshotDespues,
+            snapshotAntes: existing as unknown as Prisma.InputJsonValue,
+            snapshotDespues: snapshotDespues as unknown as Prisma.InputJsonValue,
             usuarioId: session.user.id
           }
         });

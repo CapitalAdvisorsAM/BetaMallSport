@@ -51,6 +51,7 @@ export type ContractUploadRow = {
   pctFondoPromocion: string | null;
   multiplicadorDiciembre: string | null;
   multiplicadorJunio: string | null;
+  multiplicadorJulio: string | null;
   multiplicadorAgosto: string | null;
   codigoCC: string | null;
   ggccPctAdministracion: string | null;
@@ -74,6 +75,7 @@ export type ExistingContractForDiff = {
   pctFondoPromocion: string | null;
   multiplicadorDiciembre: string | null;
   multiplicadorJunio: string | null;
+  multiplicadorJulio: string | null;
   multiplicadorAgosto: string | null;
   codigoCC: string | null;
   ggccPctAdministracion: string | null;
@@ -262,6 +264,7 @@ function emptyRow(): ContractUploadRow {
     pctFondoPromocion: null,
     multiplicadorDiciembre: null,
     multiplicadorJunio: null,
+    multiplicadorJulio: null,
     multiplicadorAgosto: null,
     codigoCC: null,
     ggccPctAdministracion: null,
@@ -330,6 +333,9 @@ function compareWithExisting(
   }
   if (!decimalEquals(existing.multiplicadorJunio, row.multiplicadorJunio)) {
     changed.push("multiplicadorJunio");
+  }
+  if (!decimalEquals(existing.multiplicadorJulio, row.multiplicadorJulio)) {
+    changed.push("multiplicadorJulio");
   }
   if (!decimalEquals(existing.multiplicadorAgosto, row.multiplicadorAgosto)) {
     changed.push("multiplicadorAgosto");
@@ -445,6 +451,7 @@ function buildPreviewRows(
     const pctFondoPromocion = normalizeNullable(rawRow.pctfondopromocion);
     const multiplicadorDiciembre = normalizeNullable(rawRow.multiplicadordiciembre);
     const multiplicadorJunio = normalizeNullable(rawRow.multiplicadorjunio);
+    const multiplicadorJulio = normalizeNullable(rawRow.multiplicadorjulio);
     const multiplicadorAgosto = normalizeNullable(rawRow.multiplicadoragosto);
     const codigoCC = normalizeNullable(rawRow.codigocc);
     const ggccPctAdministracion = normalizeNullable(rawRow.ggccpctadministracion);
@@ -505,6 +512,7 @@ function buildPreviewRows(
       pctFondoPromocion,
       multiplicadorDiciembre,
       multiplicadorJunio,
+      multiplicadorJulio,
       multiplicadorAgosto,
       codigoCC,
       ggccPctAdministracion,
@@ -619,6 +627,14 @@ function buildPreviewRows(
         status: "ERROR",
         data,
         errorMessage: "multiplicadorJunio debe ser numerico cuando se informa."
+      };
+    }
+    if (!isValidDecimalOrNull(data.multiplicadorJulio)) {
+      return {
+        rowNumber,
+        status: "ERROR",
+        data,
+        errorMessage: "multiplicadorJulio debe ser numerico cuando se informa."
       };
     }
     if (!isValidDecimalOrNull(data.multiplicadorAgosto)) {
@@ -811,6 +827,7 @@ function toRawRowFromPreviewData(data: Record<string, unknown>): RawRow {
     pctfondopromocion: data.pctFondoPromocion ?? "",
     multiplicadordiciembre: data.multiplicadorDiciembre ?? "",
     multiplicadorjunio: data.multiplicadorJunio ?? "",
+    multiplicadorjulio: data.multiplicadorJulio ?? "",
     multiplicadoragosto: data.multiplicadorAgosto ?? "",
     codigocc: data.codigoCC ?? "",
     ggccpctadministracion: data.ggccPctAdministracion ?? "",

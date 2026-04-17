@@ -54,6 +54,7 @@ export const contractPayloadSchema = z
         z.object({
           pctRentaVariable: decimalStringSchema,
           umbralVentasUf: decimalStringSchema,
+          pisoMinimoUf: decimalStringSchema.nullable().default(null),
           vigenciaDesde: dateStringSchema,
           vigenciaHasta: nullableDateStringSchema
         })
@@ -63,6 +64,7 @@ export const contractPayloadSchema = z
     pctAdministracionGgcc: decimalStringSchema.nullable(),
     multiplicadorDiciembre: decimalStringSchema.nullable(),
     multiplicadorJunio: decimalStringSchema.nullable(),
+    multiplicadorJulio: decimalStringSchema.nullable(),
     multiplicadorAgosto: decimalStringSchema.nullable(),
     codigoCC: z.string().nullable(),
     pdfUrl: z.string().nullable(),
@@ -73,7 +75,11 @@ export const contractPayloadSchema = z
         valor: decimalStringSchema,
         vigenciaDesde: dateStringSchema,
         vigenciaHasta: nullableDateStringSchema,
-        esDiciembre: z.boolean()
+        esDiciembre: z.boolean(),
+        descuentoTipo: z.enum(["PORCENTAJE", "MONTO_UF"]).nullable().default(null),
+        descuentoValor: decimalStringSchema.nullable().default(null),
+        descuentoDesde: nullableDateStringSchema,
+        descuentoHasta: nullableDateStringSchema
       })
     ),
     ggcc: z.array(
@@ -115,6 +121,103 @@ export const contractPayloadSchema = z
       keys.add(key);
     }
 
+    for (let i = 0; i < payload.tarifas.length; i += 1) {
+      const tarifa = payload.tarifas[i];
+
+      if (tarifa.descuentoTipo !== null) {
+        if (tarifa.descuentoValor === null) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "descuentoValor es obligatorio cuando hay descuentoTipo.",
+            path: ["tarifas", i, "descuentoValor"]
+          });
+          continue;
+        }
+
+        if (tarifa.tipo === "PORCENTAJE") {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "No se puede aplicar descuento a una tarifa de renta variable (PORCENTAJE).",
+            path: ["tarifas", i, "descuentoTipo"]
+          });
+          continue;
+        }
+
+        let descValor: Prisma.Decimal;
+        let valorBase: Prisma.Decimal;
+        try {
+          descValor = new Prisma.Decimal(tarifa.descuentoValor);
+          valorBase = new Prisma.Decimal(tarifa.valor);
+        } catch {
+          continue;
+        }
+
+        if (descValor.lessThanOrEqualTo(0)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "descuentoValor debe ser positivo.",
+            path: ["tarifas", i, "descuentoValor"]
+          });
+          continue;
+        }
+
+        if (tarifa.descuentoTipo === "PORCENTAJE" && descValor.greaterThan(1)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "descuentoValor en PORCENTAJE debe ser <= 1.",
+            path: ["tarifas", i, "descuentoValor"]
+          });
+          continue;
+        }
+
+        if (tarifa.descuentoTipo === "MONTO_UF" && descValor.greaterThanOrEqualTo(valorBase)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "descuentoValor en MONTO_UF debe ser menor al valor base de la tarifa.",
+            path: ["tarifas", i, "descuentoValor"]
+          });
+          continue;
+        }
+      } else if (tarifa.descuentoValor !== null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "descuentoTipo es obligatorio cuando hay descuentoValor.",
+          path: ["tarifas", i, "descuentoTipo"]
+        });
+        continue;
+      }
+
+      if (tarifa.descuentoDesde !== null && tarifa.descuentoHasta !== null) {
+        if (new Date(tarifa.descuentoDesde) > new Date(tarifa.descuentoHasta)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "descuentoDesde no puede ser mayor que descuentoHasta.",
+            path: ["tarifas", i, "descuentoDesde"]
+          });
+        }
+      }
+
+      if (tarifa.descuentoDesde !== null && new Date(tarifa.descuentoDesde) < new Date(tarifa.vigenciaDesde)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "descuentoDesde debe estar dentro de la vigencia de la tarifa.",
+          path: ["tarifas", i, "descuentoDesde"]
+        });
+      }
+
+      if (
+        tarifa.descuentoHasta !== null &&
+        tarifa.vigenciaHasta !== null &&
+        new Date(tarifa.descuentoHasta) > new Date(tarifa.vigenciaHasta)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "descuentoHasta debe estar dentro de la vigencia de la tarifa.",
+          path: ["tarifas", i, "descuentoHasta"]
+        });
+      }
+    }
+
     for (const item of payload.ggcc) {
       if (item.mesesReajuste !== null && item.pctReajuste === null) {
         ctx.addIssue({
@@ -138,6 +241,56 @@ export const contractPayloadSchema = z
         break;
       }
       rentaVariableKeys.add(key);
+    }
+
+    // Overlapping validity windows within the same tarifa group.
+    // Fixed rates are grouped by (tipo, esDiciembre); variable tiers are grouped by umbralVentasUf.
+    // Two windows [desdeA, hastaA] and [desdeB, hastaB] overlap iff desdeA <= hastaB AND desdeB <= hastaA.
+    // A null hasta is treated as +infinity.
+    const tarifaGroups = new Map<string, Array<{ desde: number; hasta: number }>>();
+    for (const tarifa of payload.tarifas) {
+      const groupKey = `${tarifa.tipo}|${tarifa.esDiciembre ? "DEC" : "REG"}`;
+      const desde = new Date(tarifa.vigenciaDesde).getTime();
+      const hasta = tarifa.vigenciaHasta ? new Date(tarifa.vigenciaHasta).getTime() : Number.POSITIVE_INFINITY;
+      const list = tarifaGroups.get(groupKey) ?? [];
+      list.push({ desde, hasta });
+      tarifaGroups.set(groupKey, list);
+    }
+    for (const list of tarifaGroups.values()) {
+      const sorted = [...list].sort((a, b) => a.desde - b.desde);
+      for (let i = 1; i < sorted.length; i += 1) {
+        if (sorted[i].desde <= sorted[i - 1].hasta) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Hay tarifas con vigencias solapadas del mismo tipo.",
+            path: ["tarifas"]
+          });
+          break;
+        }
+      }
+    }
+
+    const rentaVariableGroups = new Map<string, Array<{ desde: number; hasta: number }>>();
+    for (const item of payload.rentaVariable) {
+      const groupKey = item.umbralVentasUf;
+      const desde = new Date(item.vigenciaDesde).getTime();
+      const hasta = item.vigenciaHasta ? new Date(item.vigenciaHasta).getTime() : Number.POSITIVE_INFINITY;
+      const list = rentaVariableGroups.get(groupKey) ?? [];
+      list.push({ desde, hasta });
+      rentaVariableGroups.set(groupKey, list);
+    }
+    for (const list of rentaVariableGroups.values()) {
+      const sorted = [...list].sort((a, b) => a.desde - b.desde);
+      for (let i = 1; i < sorted.length; i += 1) {
+        if (sorted[i].desde <= sorted[i - 1].hasta) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Hay tramos de renta variable con vigencias solapadas para el mismo umbral.",
+            path: ["rentaVariable"]
+          });
+          break;
+        }
+      }
     }
 
     if (payload.rentaVariable.length > 0) {

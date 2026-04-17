@@ -1,4 +1,4 @@
-import type { ContractStatus, ContractRateType } from "@prisma/client";
+import type { ContractStatus, ContractRateType, ContractDiscountType } from "@prisma/client";
 
 export type ContractApiBaseRow = {
   id: string;
@@ -15,6 +15,7 @@ export type ContractApiBaseRow = {
   pctAdministracionGgcc: string | null;
   multiplicadorDiciembre: string | null;
   multiplicadorJunio: string | null;
+  multiplicadorJulio: string | null;
   multiplicadorAgosto: string | null;
   codigoCC: string | null;
   diasGracia: number;
@@ -31,9 +32,14 @@ export type ContractTarifaApiRow = {
   tipo: ContractRateType;
   valor: string;
   umbralVentasUf: string | null;
+  pisoMinimoUf: string | null;
   vigenciaDesde: string;
   vigenciaHasta: string | null;
   esDiciembre: boolean;
+  descuentoTipo: ContractDiscountType | null;
+  descuentoValor: string | null;
+  descuentoDesde: string | null;
+  descuentoHasta: string | null;
   createdAt: string;
 };
 
@@ -76,6 +82,7 @@ export type ContractManagerListItem = {
   pctAdministracionGgcc: string | null;
   multiplicadorDiciembre: string | null;
   multiplicadorJunio: string | null;
+  multiplicadorJulio: string | null;
   multiplicadorAgosto: string | null;
   local: { id: string; codigo: string; nombre: string };
   locales: Array<{ id: string; codigo: string; nombre: string }>;
@@ -84,9 +91,14 @@ export type ContractManagerListItem = {
     tipo: "FIJO_UF_M2" | "FIJO_UF" | "PORCENTAJE";
     valor: string;
     umbralVentasUf: string | null;
+    pisoMinimoUf: string | null;
     vigenciaDesde: string;
     vigenciaHasta: string | null;
     esDiciembre: boolean;
+    descuentoTipo: ContractDiscountType | null;
+    descuentoValor: string | null;
+    descuentoDesde: string | null;
+    descuentoHasta: string | null;
   }>;
   ggcc: Array<{
     tarifaBaseUfM2: string;

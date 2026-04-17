@@ -5,15 +5,15 @@ type KpiCardSkeletonProps = {
 };
 
 const accentStyles: Record<string, string> = {
-  green: "border-l-4 border-l-emerald-500",
-  yellow: "border-l-4 border-l-gold-400",
-  red: "border-l-4 border-l-rose-500",
-  slate: "border-l-4 border-l-brand-500",
+  green: "border-t-2 border-t-emerald-500",
+  yellow: "border-t-2 border-t-gold-400",
+  red: "border-t-2 border-t-rose-500",
+  slate: "border-t-2 border-t-brand-500",
 };
 
 export function KpiCardSkeleton({ accent = "slate" }: KpiCardSkeletonProps): JSX.Element {
   return (
-    <article className={cn("rounded-lg border border-slate-200 bg-white p-5 shadow-sm", accentStyles[accent])}>
+    <article className={cn("rounded-lg border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-5 shadow", accentStyles[accent])}>
       <div className="h-3 w-24 animate-pulse rounded bg-slate-100" />
       <div className="mt-3 h-9 w-32 animate-pulse rounded bg-slate-100" />
       <div className="mt-1.5 h-3 w-20 animate-pulse rounded bg-slate-100" />

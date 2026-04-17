@@ -42,7 +42,7 @@ export function ChartTooltip({
   return (
     <div
       className={cn(
-        "rounded-md border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm",
+        "rounded-md border border-slate-200/60 bg-white/95 px-3 py-2.5 text-xs shadow-lg backdrop-blur-sm",
         className
       )}
       style={{ color: chartColors.text }}
@@ -69,7 +69,7 @@ export function ChartTooltip({
               {name !== undefined && name !== null ? (
                 <span className="text-slate-600">{String(name)}:</span>
               ) : null}
-              <span className="font-medium text-slate-800">{display}</span>
+              <span className="font-mono font-medium text-slate-800">{display}</span>
             </li>
           );
         })}

@@ -92,6 +92,7 @@ export type RentRollUploadRow = {
   pctFondoPromocion: string | null;
   multiplicadorDiciembre: string | null;
   multiplicadorJunio: string | null;
+  multiplicadorJulio: string | null;
   multiplicadorAgosto: string | null;
   codigoCC: string | null;
   ggccPctAdministracion: string | null;
@@ -141,6 +142,7 @@ export type ContractFormPayload = {
   rentaVariable: Array<{
     pctRentaVariable: string;
     umbralVentasUf: string;
+    pisoMinimoUf: string | null;
     vigenciaDesde: string;
     vigenciaHasta: string | null;
   }>;
@@ -148,6 +150,7 @@ export type ContractFormPayload = {
   pctAdministracionGgcc: string | null;
   multiplicadorDiciembre: string | null;
   multiplicadorJunio: string | null;
+  multiplicadorJulio: string | null;
   multiplicadorAgosto: string | null;
   codigoCC: string | null;
   pdfUrl: string | null;
@@ -158,6 +161,10 @@ export type ContractFormPayload = {
     vigenciaDesde: string;
     vigenciaHasta: string | null;
     esDiciembre: boolean;
+    descuentoTipo: "PORCENTAJE" | "MONTO_UF" | null;
+    descuentoValor: string | null;
+    descuentoDesde: string | null;
+    descuentoHasta: string | null;
   }>;
   ggcc: Array<{
     tarifaBaseUfM2: string;

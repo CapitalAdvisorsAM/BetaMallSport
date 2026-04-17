@@ -80,7 +80,11 @@ export function previewRowToUploadDraft(
         valor: asString(row.data[k.valor]).trim(),
         vigenciaDesde: asString(row.data[k.desde]).trim(),
         vigenciaHasta: asNullableString(row.data[k.hasta]),
-        esDiciembre: false
+        esDiciembre: false,
+        descuentoTipo: null,
+        descuentoValor: null,
+        descuentoDesde: null,
+        descuentoHasta: null
       }));
 
   const basePct = rentaVariablePctValue ?? (isOnlyRentaVariable ? tarifaValor : null);
@@ -137,6 +141,7 @@ export function previewRowToUploadDraft(
       pctAdministracionGgcc: ggccPctAdministracion,
       multiplicadorDiciembre: asNullableString(row.data.multiplicadorDiciembre),
       multiplicadorJunio: asNullableString(row.data.multiplicadorJunio),
+      multiplicadorJulio: asNullableString(row.data.multiplicadorJulio),
       multiplicadorAgosto: asNullableString(row.data.multiplicadorAgosto),
       codigoCC: asNullableString(row.data.codigoCC),
       pdfUrl: null,
@@ -217,6 +222,7 @@ export function uploadDraftToPreviewData(
     pctFondoPromocion: draft.pctFondoPromocion,
     multiplicadorDiciembre: draft.multiplicadorDiciembre,
     multiplicadorJunio: draft.multiplicadorJunio,
+    multiplicadorJulio: draft.multiplicadorJulio,
     multiplicadorAgosto: draft.multiplicadorAgosto,
     codigoCC: draft.codigoCC,
     ggccPctAdministracion,

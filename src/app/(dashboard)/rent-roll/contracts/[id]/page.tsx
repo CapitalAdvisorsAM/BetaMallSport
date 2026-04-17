@@ -6,11 +6,13 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { UnifiedTable } from "@/components/ui/UnifiedTable";
 import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
 import { Button } from "@/components/ui/button";
+import { ContractDetailEditButton } from "@/components/contracts/ContractDetailEditButton";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
 import { cn, formatDate, formatUf } from "@/lib/utils";
 import { MS_PER_DAY } from "@/lib/constants";
+import type { ContractManagerListItem } from "@/types";
 
 const detailQueryArgs = {
   include: {
@@ -76,15 +78,75 @@ export default async function ContractDetailPage({
     redirect("/");
   }
 
-  const contract = await prisma.contract.findFirst({
-    where: { id: params.id, proyectoId: selectedProjectId },
-    ...detailQueryArgs,
-  }) as ContractDetailRow | null;
+  const [contract, allUnits, allTenants] = await Promise.all([
+    prisma.contract.findFirst({
+      where: { id: params.id, proyectoId: selectedProjectId },
+      ...detailQueryArgs,
+    }) as Promise<ContractDetailRow | null>,
+    canEdit
+      ? prisma.unit.findMany({
+          where: { proyectoId: selectedProjectId },
+          select: { id: true, codigo: true },
+          orderBy: { codigo: "asc" }
+        })
+      : Promise.resolve([] as Array<{ id: string; codigo: string }>),
+    canEdit
+      ? prisma.tenant.findMany({
+          where: { proyectoId: selectedProjectId },
+          select: { id: true, nombreComercial: true },
+          orderBy: { nombreComercial: "asc" }
+        })
+      : Promise.resolve([] as Array<{ id: string; nombreComercial: string }>)
+  ]);
 
   if (!contract) notFound();
 
   const units = getAssociatedLocales(contract);
   const diasRestantes = getDiasRestantes(contract.fechaTermino);
+
+  const editableContract: ContractManagerListItem = {
+    id: contract.id,
+    numeroContrato: contract.numeroContrato,
+    diasGracia: contract.diasGracia,
+    estado: contract.estado,
+    pdfUrl: contract.pdfUrl,
+    fechaInicio: contract.fechaInicio.toISOString(),
+    fechaTermino: contract.fechaTermino.toISOString(),
+    pctFondoPromocion: contract.pctFondoPromocion?.toString() ?? null,
+    pctAdministracionGgcc: contract.pctAdministracionGgcc?.toString() ?? null,
+    multiplicadorDiciembre: contract.multiplicadorDiciembre?.toString() ?? null,
+    multiplicadorJunio: contract.multiplicadorJunio?.toString() ?? null,
+    multiplicadorJulio: contract.multiplicadorJulio?.toString() ?? null,
+    multiplicadorAgosto: contract.multiplicadorAgosto?.toString() ?? null,
+    local: { id: contract.local.id, codigo: contract.local.codigo, nombre: contract.local.nombre },
+    locales: getAssociatedLocales(contract).map((l) => ({ id: l.id, codigo: l.codigo, nombre: l.nombre })),
+    arrendatario: {
+      id: contract.arrendatario.id,
+      nombreComercial: contract.arrendatario.nombreComercial,
+      razonSocial: contract.arrendatario.razonSocial ?? ""
+    },
+    tarifas: contract.tarifas.map((tarifa) => ({
+      tipo: tarifa.tipo,
+      valor: tarifa.valor.toString(),
+      umbralVentasUf: tarifa.umbralVentasUf?.toString() ?? null,
+      vigenciaDesde: tarifa.vigenciaDesde.toISOString().slice(0, 10),
+      vigenciaHasta: tarifa.vigenciaHasta ? tarifa.vigenciaHasta.toISOString().slice(0, 10) : null,
+      esDiciembre: tarifa.esDiciembre,
+      descuentoTipo: tarifa.descuentoTipo ?? null,
+      descuentoValor: tarifa.descuentoValor?.toString() ?? null,
+      descuentoDesde: tarifa.descuentoDesde ? tarifa.descuentoDesde.toISOString().slice(0, 10) : null,
+      descuentoHasta: tarifa.descuentoHasta ? tarifa.descuentoHasta.toISOString().slice(0, 10) : null
+    })),
+    ggcc: contract.ggcc.map((item) => ({
+      tarifaBaseUfM2: item.tarifaBaseUfM2.toString(),
+      pctAdministracion: item.pctAdministracion.toString(),
+      pctReajuste: item.pctReajuste?.toString() ?? null,
+      vigenciaDesde: item.vigenciaDesde.toISOString().slice(0, 10),
+      vigenciaHasta: item.vigenciaHasta ? item.vigenciaHasta.toISOString().slice(0, 10) : null,
+      proximoReajuste: item.proximoReajuste ? item.proximoReajuste.toISOString().slice(0, 10) : null,
+      mesesReajuste: item.mesesReajuste ?? null
+    }))
+  };
 
   return (
     <main className="space-y-4">
@@ -116,6 +178,14 @@ export default async function ContractDetailPage({
                   Ver PDF
                 </a>
               </Button>
+            ) : null}
+            {canEdit ? (
+              <ContractDetailEditButton
+                contract={editableContract}
+                proyectoId={selectedProjectId}
+                locals={allUnits.map((u) => ({ id: u.id, label: u.codigo }))}
+                arrendatarios={allTenants.map((t) => ({ id: t.id, label: t.nombreComercial }))}
+              />
             ) : null}
           </div>
         </div>
@@ -191,6 +261,12 @@ export default async function ContractDetailPage({
               <div>
                 <p className="text-slate-400">Multiplicador junio</p>
                 <p className="font-medium tabular-nums text-slate-700">{contract.multiplicadorJunio.toString()}x</p>
+              </div>
+            ) : null}
+            {contract.multiplicadorJulio ? (
+              <div>
+                <p className="text-slate-400">Multiplicador julio</p>
+                <p className="font-medium tabular-nums text-slate-700">{contract.multiplicadorJulio.toString()}x</p>
               </div>
             ) : null}
             {contract.multiplicadorAgosto ? (

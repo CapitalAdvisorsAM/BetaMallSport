@@ -16,11 +16,10 @@ type ModuleHeaderProps = {
 
 export function ModuleHeader({ title, description, actions, valueBadges }: ModuleHeaderProps): JSX.Element {
   return (
-    <header className="rounded-md bg-white p-5 shadow-sm">
+    <header className="rounded-md border border-slate-200 border-l-4 border-l-gold-400 bg-white p-5 shadow">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="mb-1 flex items-center gap-2">
-            <div className="h-5 w-1 rounded-full bg-gold-400" />
             <h2 className="text-base font-bold uppercase tracking-wide text-brand-700">{title}</h2>
             {valueBadges?.map((badge) => {
               const cfg = VALUE_BADGE_CONFIG[badge];

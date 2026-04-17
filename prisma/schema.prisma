@@ -44,6 +44,13 @@ enum ContractRateType {
   @@map("TipoTarifaContrato")
 }
 
+enum ContractDiscountType {
+  PORCENTAJE
+  MONTO_UF
+
+  @@map("TipoDescuentoTarifa")
+}
+
 enum TenantCategory {
   ENTERTAINMENT
   LIFESTYLE
@@ -269,6 +276,7 @@ model Contract {
   pctAdministracionGgcc Decimal?    @db.Decimal(6, 3)
   multiplicadorDiciembre Decimal?    @db.Decimal(6, 3)
   multiplicadorJunio     Decimal?    @db.Decimal(6, 3)
+  multiplicadorJulio     Decimal?    @db.Decimal(6, 3)
   multiplicadorAgosto    Decimal?    @db.Decimal(6, 3)
   codigoCC          String?
   estado            ContractStatus
@@ -319,9 +327,16 @@ model ContractRate {
   tipo            ContractRateType
   valor           Decimal            @db.Decimal(10, 4)
   umbralVentasUf  Decimal?           @db.Decimal(14, 4)
+  /// Piso mínimo mensual en UF aplicable sólo a tarifas PORCENTAJE.
+  /// Cuando está definido se cobra max(fixedRent+variable, pisoMinimoUf) mensualmente.
+  pisoMinimoUf    Decimal?           @db.Decimal(14, 4)
   vigenciaDesde   DateTime           @db.Date
   vigenciaHasta   DateTime?          @db.Date
   esDiciembre   Boolean            @default(false)
+  descuentoTipo   ContractDiscountType?
+  descuentoValor  Decimal?           @db.Decimal(10, 4)
+  descuentoDesde  DateTime?          @db.Date
+  descuentoHasta  DateTime?          @db.Date
   createdAt     DateTime           @default(now()) @db.Timestamptz(3)
 
   contrato Contract @relation(fields: [contratoId], references: [id], onDelete: Cascade)

@@ -131,6 +131,8 @@ export type BudgetVsActualTenantRow = {
   varianceUf: number;
   variancePct: number;
   achievementPct: number;
+  /** Periods (YYYY-MM) where the contract has a PORCENTAJE tarifa but no sales were reported for the lagged period. */
+  missingSalesPeriods: string[];
 };
 
 export type BudgetVsActualSummary = {

@@ -41,6 +41,8 @@ function isUploadRowArray(value: unknown): value is RentRollPreviewPayload["rows
           typeof item.multiplicadorDiciembre === "string") &&
         ((item.multiplicadorJunio ?? null) === null ||
           typeof item.multiplicadorJunio === "string") &&
+        ((item.multiplicadorJulio ?? null) === null ||
+          typeof item.multiplicadorJulio === "string") &&
         ((item.multiplicadorAgosto ?? null) === null ||
           typeof item.multiplicadorAgosto === "string") &&
         (item.codigoCC === null || typeof item.codigoCC === "string") &&

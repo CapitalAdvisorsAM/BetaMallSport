@@ -111,6 +111,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         pctFondoPromocion: contrato.pctFondoPromocion?.toString() ?? null,
         multiplicadorDiciembre: contrato.multiplicadorDiciembre?.toString() ?? null,
         multiplicadorJunio: contrato.multiplicadorJunio?.toString() ?? null,
+        multiplicadorJulio: contrato.multiplicadorJulio?.toString() ?? null,
         multiplicadorAgosto: contrato.multiplicadorAgosto?.toString() ?? null,
         codigoCC: contrato.codigoCC,
         ggccPctAdministracion:

@@ -38,6 +38,7 @@ export type WfContract = {
   fechaTermino: Date;
   multiplicadorDiciembre: DecimalLike | null;
   multiplicadorJunio: DecimalLike | null;
+  multiplicadorJulio: DecimalLike | null;
   multiplicadorAgosto: DecimalLike | null;
   pctFondoPromocion: DecimalLike | null;
   local: { id: string; glam2: DecimalLike };
@@ -172,6 +173,10 @@ export function buildWaterfall(
         c.multiplicadorJunio !== null
           ? toNum(c.multiplicadorJunio)
           : null,
+      multiplicadorJulio:
+        c.multiplicadorJulio !== null
+          ? toNum(c.multiplicadorJulio)
+          : null,
       multiplicadorAgosto:
         c.multiplicadorAgosto !== null
           ? toNum(c.multiplicadorAgosto)
@@ -200,6 +205,10 @@ export function buildWaterfall(
       multiplicadorJunio:
         c.multiplicadorJunio !== null
           ? toNum(c.multiplicadorJunio)
+          : null,
+      multiplicadorJulio:
+        c.multiplicadorJulio !== null
+          ? toNum(c.multiplicadorJulio)
           : null,
       multiplicadorAgosto:
         c.multiplicadorAgosto !== null

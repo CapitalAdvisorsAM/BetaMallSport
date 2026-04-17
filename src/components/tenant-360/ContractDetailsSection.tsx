@@ -171,6 +171,7 @@ export function ContractDetailsSection({ contracts }: ContractDetailsSectionProp
                             {c.diasGracia > 0 ? <span>Gracia: {c.diasGracia}d</span> : null}
                             {c.multiplicadorDiciembre !== null ? <span>Mult. dic: {c.multiplicadorDiciembre}x</span> : null}
                             {c.multiplicadorJunio !== null ? <span>Mult. jun: {c.multiplicadorJunio}x</span> : null}
+                            {c.multiplicadorJulio !== null ? <span>Mult. jul: {c.multiplicadorJulio}x</span> : null}
                             {c.multiplicadorAgosto !== null ? <span>Mult. ago: {c.multiplicadorAgosto}x</span> : null}
                             {c.pctFondoPromocion !== null ? <span>Fondo prom: {c.pctFondoPromocion}%</span> : null}
                             {c.pdfUrl ? (

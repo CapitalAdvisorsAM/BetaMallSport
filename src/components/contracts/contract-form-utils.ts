@@ -46,6 +46,7 @@ export function toApiPayload(payload: ContractDraftPayload): ContractFormPayload
     rentaVariable: validTiers.map((item) => ({
       pctRentaVariable: item.pctRentaVariable,
       umbralVentasUf: item.umbralVentasUf || "0",
+      pisoMinimoUf: item.pisoMinimoUf ?? null,
       vigenciaDesde: payload.fechaInicio,
       vigenciaHasta: payload.fechaTermino
     })),
@@ -54,7 +55,11 @@ export function toApiPayload(payload: ContractDraftPayload): ContractFormPayload
       valor: tarifa.valor,
       vigenciaDesde: tarifa.vigenciaDesde,
       vigenciaHasta: tarifa.vigenciaHasta,
-      esDiciembre: tarifa.esDiciembre
+      esDiciembre: tarifa.esDiciembre,
+      descuentoTipo: tarifa.descuentoTipo ?? null,
+      descuentoValor: tarifa.descuentoValor ?? null,
+      descuentoDesde: tarifa.descuentoDesde ?? null,
+      descuentoHasta: tarifa.descuentoHasta ?? null
     })),
     ggcc: payload.ggcc.map((item) => ({
       tarifaBaseUfM2: item.tarifaBaseUfM2,
@@ -87,6 +92,7 @@ export function createEmptyPayload(
     pctAdministracionGgcc: null,
     multiplicadorDiciembre: null,
     multiplicadorJunio: null,
+    multiplicadorJulio: null,
     multiplicadorAgosto: null,
     codigoCC: null,
     pdfUrl: null,
@@ -119,6 +125,7 @@ export function fromContract(
         .map((tarifa) => ({
           pctRentaVariable: tarifa.valor,
           umbralVentasUf: tarifa.umbralVentasUf ?? "0",
+          pisoMinimoUf: tarifa.pisoMinimoUf ?? null,
           vigenciaDesde: tarifa.vigenciaDesde,
           vigenciaHasta: tarifa.vigenciaHasta
         }))
@@ -127,6 +134,7 @@ export function fromContract(
     pctAdministracionGgcc: contract.pctAdministracionGgcc,
     multiplicadorDiciembre: contract.multiplicadorDiciembre,
     multiplicadorJunio: contract.multiplicadorJunio,
+    multiplicadorJulio: contract.multiplicadorJulio,
     multiplicadorAgosto: contract.multiplicadorAgosto,
     codigoCC: null,
     pdfUrl: contract.pdfUrl,
@@ -172,7 +180,11 @@ function toDraftTarifaFromExtraction(
     valor: item.valor,
     vigenciaDesde: item.vigenciaDesde,
     vigenciaHasta: item.vigenciaHasta,
-    esDiciembre: item.esDiciembre
+    esDiciembre: item.esDiciembre,
+    descuentoTipo: null,
+    descuentoValor: null,
+    descuentoDesde: null,
+    descuentoHasta: null
   };
 }
 
@@ -183,6 +195,7 @@ function toDraftRentaVariableFromExtraction(
     _key: crypto.randomUUID(),
     pctRentaVariable: item.valor,
     umbralVentasUf: "0",
+    pisoMinimoUf: null,
     vigenciaDesde: "",
     vigenciaHasta: null
   };

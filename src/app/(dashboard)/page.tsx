@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getSelectedProjectCookie } from "@/lib/project-cookie";
-import { selectProjectAction } from "./actions";
 import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
+import { selectProjectAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +45,7 @@ export default async function HomePage(): Promise<JSX.Element> {
   }
 
   if (projects.length === 1) {
-    await selectProjectAction(projects[0].id);
+    redirect(`/api/projects/activate?projectId=${projects[0].id}`);
   }
 
   return (

@@ -10,7 +10,7 @@ import {
   type Table as TanStackTable
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Inbox, Search, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useRouter } from "next/navigation";
 import {
@@ -621,9 +621,12 @@ export function DataTable<TData>({
                 <TableRow className="bg-white hover:bg-white">
                   <TableCell
                     colSpan={columnCount}
-                    className={cn(theme.cell, "py-6 text-center text-sm text-slate-500")}
+                    className={cn(theme.cell, "py-8 text-center")}
                   >
-                    {emptyMessage}
+                    <div className="flex flex-col items-center gap-2">
+                      <Inbox className="h-8 w-8 text-slate-300" aria-hidden />
+                      <p className="text-sm text-slate-500">{emptyMessage}</p>
+                    </div>
                   </TableCell>
                 </TableRow>
               )}

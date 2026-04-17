@@ -61,6 +61,7 @@ function makeStoredPreview() {
           pctFondoPromocion: null,
           multiplicadorDiciembre: null,
           multiplicadorJunio: null,
+          multiplicadorJulio: null,
           multiplicadorAgosto: null,
           codigoCC: null,
           ggccPctAdministracion: null,
