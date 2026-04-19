@@ -50,6 +50,7 @@ declare module "@tanstack/react-table" {
     filterType?: DataTableFilterType; // "text" = free search; "string"/"enum" = checklist; "number" = range
     isNumeric?: boolean;
     isCritical?: boolean;
+    sticky?: boolean; // pin column to left edge (sticky left-0)
     summary?: DataTableSummaryMeta;
     linkTo?: {
       path?: string;
@@ -529,7 +530,8 @@ export function DataTable<TData>({
                   getCellAlignClass(getColumnAlign(cell.column)),
                   (cell.column.columnDef.meta?.isNumeric || getColumnAlign(cell.column) === "right") && "tabular-nums",
                   cell.column.columnDef.meta?.isNumeric && "text-right",
-                  cell.column.columnDef.meta?.isCritical && "font-mono font-semibold"
+                  cell.column.columnDef.meta?.isCritical && "font-mono font-semibold",
+                  cell.column.columnDef.meta?.sticky && "sticky left-0 z-10 bg-inherit"
                 )}
               >
                 {linkTo ? (
@@ -584,7 +586,8 @@ export function DataTable<TData>({
                       }
                       className={cn(
                         theme.headCell,
-                        getCellAlignClass(getColumnAlign(header.column))
+                        getCellAlignClass(getColumnAlign(header.column)),
+                        header.column.columnDef.meta?.sticky && "sticky left-0 z-10 bg-brand-700"
                       )}
                     >
                       {renderHeader(header)}
