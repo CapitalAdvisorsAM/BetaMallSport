@@ -24,7 +24,6 @@ type TenantsViewTableProps = {
   rows: TenantsViewRow[];
   detailBaseHref: string;
   selectedDetailId?: string;
-  proyectoId: string;
 };
 
 const VIGENTE_OPTIONS = ["Si", "No"];
@@ -35,8 +34,7 @@ function renderSubRow(row: Row<TenantsViewRow>): React.ReactNode {
 
 export function TenantsViewTable({
   rows,
-  selectedDetailId,
-  proyectoId
+  selectedDetailId
 }: TenantsViewTableProps): JSX.Element {
   const columns = useMemo<ColumnDef<TenantsViewRow, unknown>[]>(
     () => [

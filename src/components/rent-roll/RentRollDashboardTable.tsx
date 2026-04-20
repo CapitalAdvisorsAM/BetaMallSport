@@ -27,7 +27,6 @@ export type RentRollDashboardTableRow = {
 type RentRollDashboardTableProps = {
   rows: RentRollDashboardTableRow[];
   snapshotDate: string;
-  proyectoId: string;
 };
 
 function renderMetric(value: number | null, suffix = ""): string {
@@ -39,8 +38,7 @@ function renderMetric(value: number | null, suffix = ""): string {
 
 export function RentRollDashboardTable({
   rows,
-  snapshotDate,
-  proyectoId
+  snapshotDate
 }: RentRollDashboardTableProps): JSX.Element {
   const sortedBaseRows = useMemo(
     () => [...rows].sort((a, b) => a.local.localeCompare(b.local, "es-CL")),

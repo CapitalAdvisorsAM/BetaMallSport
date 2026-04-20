@@ -211,23 +211,6 @@ export function FinanceMappingsClient({
     [refreshPage, selectedProjectId]
   );
 
-  const updateSalesUnit = useCallback(
-    async (mapping: SalesMapping, unitId: string): Promise<void> => {
-      await fetch("/api/finance/mappings/sales", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectId: selectedProjectId,
-          salesAccountId: mapping.salesAccountId,
-          storeName: mapping.storeName,
-          tenantId: unitId
-        })
-      });
-      refreshPage();
-    },
-    [refreshPage, selectedProjectId]
-  );
-
   const accountingColumns = useMemo<ColumnDef<AccountingMapping, unknown>[]>(
     () => [
       {

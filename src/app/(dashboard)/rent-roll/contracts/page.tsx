@@ -223,7 +223,6 @@ export default async function ContractsPage({
           <section className="overflow-hidden rounded-md bg-white shadow-sm">
             <ContractsViewTable
               rows={contractViewRows}
-              proyectoId={selectedProjectId}
             />
           </section>
         </>
