@@ -37,7 +37,7 @@ type RegistroContableBase = {
 type VentaLocalBase = {
   tenantId: string;
   periodo: string;
-  ventasUf: NumericLike;
+  ventasPesos: NumericLike;
 };
 
 function appendPeriodValue(
@@ -70,7 +70,7 @@ export function buildTenantFinanceRows(
   });
 
   ventas.forEach((venta) => {
-    appendPeriodValue(salesByTenant, venta.tenantId, venta.periodo, Number(venta.ventasUf));
+    appendPeriodValue(salesByTenant, venta.tenantId, venta.periodo, Number(venta.ventasPesos));
   });
 
   return tenants.flatMap((tenant) => {

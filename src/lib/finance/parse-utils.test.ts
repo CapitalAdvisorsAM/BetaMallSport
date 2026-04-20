@@ -93,7 +93,7 @@ describe("parser smoke tests", () => {
     expect(filas[0]).toMatchObject({
       idCa: 10,
       tienda: "Store 10",
-      ventasUf: 40,
+      ventasPesos: 40,
       categoriaTamano: "Grande"
     });
     expect(filas[0]?.mes.toISOString().slice(0, 7)).toBe("2026-02");

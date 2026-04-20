@@ -44,7 +44,7 @@ describe("PUT /api/finance/budgeted-sales", () => {
       projectId: "p1",
       tenantId: "t1",
       period: "2026/01",
-      salesUf: "100",
+      salesPesos: "100",
     });
     expect(response.status).toBe(400);
     expect(prismaMock.tenantBudgetedSale.upsert).not.toHaveBeenCalled();
@@ -58,7 +58,7 @@ describe("PUT /api/finance/budgeted-sales", () => {
       projectId: "p1",
       tenantId: "t1",
       period: "2026-01",
-      salesUf: "100",
+      salesPesos: "100",
     });
     expect(response.status).toBe(403);
   });
@@ -69,52 +69,52 @@ describe("PUT /api/finance/budgeted-sales", () => {
       projectId: "p1",
       tenantId: "t-other",
       period: "2026-01",
-      salesUf: "100",
+      salesPesos: "100",
     });
     expect(response.status).toBe(404);
     expect(prismaMock.tenantBudgetedSale.upsert).not.toHaveBeenCalled();
   });
 
-  it("upserts the cell when salesUf is provided", async () => {
+  it("upserts the cell when salesPesos is provided", async () => {
     prismaMock.tenantBudgetedSale.upsert.mockResolvedValue({
       tenantId: "t1",
       period: new Date(Date.UTC(2026, 0, 1)),
-      salesUf: new Prisma.Decimal("1234.5"),
+      salesPesos: new Prisma.Decimal("1234.5"),
     });
     const response = await callPut({
       projectId: "p1",
       tenantId: "t1",
       period: "2026-01",
-      salesUf: "1234.5",
+      salesPesos: "1234.5",
     });
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { tenantId: string; period: string; salesUf: string };
+    const body = (await response.json()) as { tenantId: string; period: string; salesPesos: string };
     expect(body.period).toBe("2026-01");
-    expect(body.salesUf).toBe("1234.5");
+    expect(body.salesPesos).toBe("1234.5");
     expect(prismaMock.tenantBudgetedSale.upsert).toHaveBeenCalledTimes(1);
   });
 
-  it("deletes the cell when salesUf is null", async () => {
+  it("deletes the cell when salesPesos is null", async () => {
     prismaMock.tenantBudgetedSale.deleteMany.mockResolvedValue({ count: 1 });
     const response = await callPut({
       projectId: "p1",
       tenantId: "t1",
       period: "2026-01",
-      salesUf: null,
+      salesPesos: null,
     });
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { salesUf: string | null };
-    expect(body.salesUf).toBeNull();
+    const body = (await response.json()) as { salesPesos: string | null };
+    expect(body.salesPesos).toBeNull();
     expect(prismaMock.tenantBudgetedSale.deleteMany).toHaveBeenCalledTimes(1);
     expect(prismaMock.tenantBudgetedSale.upsert).not.toHaveBeenCalled();
   });
 
-  it("rejects negative salesUf", async () => {
+  it("rejects negative salesPesos", async () => {
     const response = await callPut({
       projectId: "p1",
       tenantId: "t1",
       period: "2026-01",
-      salesUf: "-5",
+      salesPesos: "-5",
     });
     expect(response.status).toBe(400);
     expect(prismaMock.tenantBudgetedSale.upsert).not.toHaveBeenCalled();

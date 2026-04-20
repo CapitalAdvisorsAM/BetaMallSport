@@ -11,7 +11,7 @@ import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolba
 import { Button } from "@/components/ui/button";
 import { getStripedRowClass, tableTheme } from "@/components/ui/table-theme";
 import { useBudgetedSalesCellApi } from "@/hooks/useBudgetedSalesCellApi";
-import { cn, formatUf, formatUfPerM2 } from "@/lib/utils";
+import { cn, formatClp, formatDecimal } from "@/lib/utils";
 import type { BudgetedSalesMatrixResponse } from "@/types/rent-roll";
 
 type BudgetedSalesMatrixClientProps = {
@@ -22,7 +22,7 @@ type BudgetedSalesMatrixClientProps = {
   canEdit: boolean;
 };
 
-type ViewMode = "uf" | "ufm2";
+type ViewMode = "pesos" | "pesosm2";
 
 const MONTH_NAMES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -33,11 +33,11 @@ function formatPeriodShort(period: string): string {
 
 function formatCell(value: number | null, mode: ViewMode, glam2: number): string {
   if (value === null) return "—";
-  if (mode === "ufm2") {
+  if (mode === "pesosm2") {
     if (glam2 <= 0) return "—";
-    return formatUfPerM2(value / glam2);
+    return formatDecimal(value / glam2);
   }
-  return formatUf(value);
+  return formatClp(value);
 }
 
 function cellKey(tenantId: string, period: string): string {
@@ -67,11 +67,11 @@ function EditableCell({
   const [draft, setDraft] = useState(initial);
   const [editing, setEditing] = useState(false);
 
-  if (mode === "ufm2") {
+  if (mode === "pesosm2") {
     return (
       <span
         className="text-slate-400"
-        title="Cambia a UF para editar"
+        title="Cambia a Pesos para editar"
       >
         {formatCell(value, mode, glam2)}
       </span>
@@ -98,8 +98,8 @@ function EditableCell({
   return (
     <input
       type="number"
-      inputMode="decimal"
-      step="0.0001"
+      inputMode="numeric"
+      step="1"
       min="0"
       value={editing ? draft : initial}
       disabled={isSaving}
@@ -131,7 +131,7 @@ export function BudgetedSalesMatrixClient({
 }: BudgetedSalesMatrixClientProps): JSX.Element {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [mode, setMode] = useState<ViewMode>("uf");
+  const [mode, setMode] = useState<ViewMode>("pesos");
   const [localDesde, setLocalDesde] = useState(desde);
   const [localHasta, setLocalHasta] = useState(hasta);
   const { saveCell } = useBudgetedSalesCellApi();
@@ -147,7 +147,7 @@ export function BudgetedSalesMatrixClient({
     if (nextDesde) params.set("desde", nextDesde);
     if (nextHasta) params.set("hasta", nextHasta);
     startTransition(() => {
-      router.replace(`/rent-roll/ventas-presupuestadas?${params.toString()}`);
+      router.replace(`/rent-roll/budgeted-sales?${params.toString()}`);
     });
   };
 
@@ -165,10 +165,10 @@ export function BudgetedSalesMatrixClient({
     nextRaw: string,
   ): Promise<void> {
     const key = cellKey(tenantId, period);
-    const salesUf = nextRaw === "" ? null : nextRaw;
-    const parsedNumber = salesUf === null ? null : Number(salesUf);
+    const salesPesos = nextRaw === "" ? null : nextRaw;
+    const parsedNumber = salesPesos === null ? null : Number(salesPesos);
 
-    if (salesUf !== null && (Number.isNaN(parsedNumber) || (parsedNumber ?? 0) < 0)) {
+    if (salesPesos !== null && (Number.isNaN(parsedNumber) || (parsedNumber ?? 0) < 0)) {
       toast.error("Ingresa un numero valido (>= 0).");
       return;
     }
@@ -179,11 +179,11 @@ export function BudgetedSalesMatrixClient({
         projectId: selectedProjectId,
         tenantId,
         period,
-        salesUf,
+        salesPesos,
       });
-      const nextValue = response.salesUf === null ? null : Number(response.salesUf);
+      const nextValue = response.salesPesos === null ? null : Number(response.salesPesos);
       setOverrides((prev) => ({ ...prev, [key]: nextValue }));
-      toast.success(salesUf === null ? "Celda borrada." : "Valor guardado.");
+      toast.success(salesPesos === null ? "Celda borrada." : "Valor guardado.");
       startTransition(() => router.refresh());
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al guardar.");
@@ -227,7 +227,7 @@ export function BudgetedSalesMatrixClient({
     return totals;
   }, [data.periods, rowsWithOverrides]);
 
-  const totalBudgetUf = useMemo(
+  const totalBudgetPesos = useMemo(
     () => rowsWithOverrides.reduce((acc, row) => acc + row.total, 0),
     [rowsWithOverrides],
   );
@@ -244,8 +244,8 @@ export function BudgetedSalesMatrixClient({
   const hasRows = rowsWithOverrides.length > 0;
 
   const description = canEdit
-    ? "Matriz mensual editable: haz clic en una celda para ingresar o corregir el presupuesto. Use el toggle para ver UF totales o UF/m²."
-    : "Matriz mensual de ventas presupuestadas cargadas por arrendatario. Use el toggle para ver UF totales o UF/m².";
+    ? "Matriz mensual editable: haz clic en una celda para ingresar o corregir el presupuesto. Use el toggle para ver Pesos totales o Pesos/m²."
+    : "Matriz mensual de ventas presupuestadas cargadas por arrendatario. Use el toggle para ver Pesos totales o Pesos/m².";
 
   return (
     <main className={cn("space-y-4", isPending && "opacity-60")}>
@@ -274,8 +274,8 @@ export function BudgetedSalesMatrixClient({
         <>
           <section className="grid gap-4 md:grid-cols-3">
             <KpiCard
-              title="Presupuesto total (UF)"
-              value={formatUf(totalBudgetUf)}
+              title="Presupuesto total (Pesos)"
+              value={formatClp(totalBudgetPesos)}
               subtitle={`${data.periods.length} meses en rango`}
               accent="slate"
             />
@@ -307,21 +307,21 @@ export function BudgetedSalesMatrixClient({
               <div className="inline-flex overflow-hidden rounded-md border border-slate-200 bg-white">
                 <Button
                   type="button"
-                  variant={mode === "uf" ? "default" : "ghost"}
+                  variant={mode === "pesos" ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setMode("uf")}
+                  onClick={() => setMode("pesos")}
                   className="rounded-none"
                 >
-                  UF
+                  Pesos
                 </Button>
                 <Button
                   type="button"
-                  variant={mode === "ufm2" ? "default" : "ghost"}
+                  variant={mode === "pesosm2" ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setMode("ufm2")}
+                  onClick={() => setMode("pesosm2")}
                   className="rounded-none"
                 >
-                  UF/m²
+                  Pesos/m²
                 </Button>
               </div>
             }
@@ -363,7 +363,7 @@ export function BudgetedSalesMatrixClient({
                         <p className="text-xs text-slate-400">{row.rut}</p>
                       </td>
                       <td className="px-3 py-3 text-right tabular-nums text-slate-700">
-                        {row.glam2 > 0 ? formatUf(row.glam2, 1) : "—"}
+                        {row.glam2 > 0 ? formatDecimal(row.glam2) : "—"}
                       </td>
                       {data.periods.map((p) => {
                         const value = row.byPeriod[p] ?? null;
@@ -394,11 +394,11 @@ export function BudgetedSalesMatrixClient({
                         );
                       })}
                       <td className="px-3 py-3 text-right font-semibold tabular-nums text-slate-800">
-                        {mode === "ufm2"
+                        {mode === "pesosm2"
                           ? row.glam2 > 0
-                            ? formatUfPerM2(row.total / row.glam2)
+                            ? formatDecimal(row.total / row.glam2)
                             : "—"
-                          : formatUf(row.total)}
+                          : formatClp(row.total)}
                       </td>
                     </tr>
                   ))}
@@ -414,11 +414,11 @@ export function BudgetedSalesMatrixClient({
                         key={p}
                         className="px-3 py-3 text-right font-semibold tabular-nums text-slate-800"
                       >
-                        {mode === "uf" ? formatUf(columnTotals[p] ?? 0) : "—"}
+                        {mode === "pesos" ? formatClp(columnTotals[p] ?? 0) : "—"}
                       </td>
                     ))}
                     <td className="px-3 py-3 text-right font-semibold tabular-nums text-slate-800">
-                      {mode === "uf" ? formatUf(totalBudgetUf) : "—"}
+                      {mode === "pesos" ? formatClp(totalBudgetPesos) : "—"}
                     </td>
                   </tr>
                 </tfoot>

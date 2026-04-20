@@ -295,9 +295,10 @@ describe("cdg mall sport KPIs", () => {
     const ingresos = buildIngresoDesglosado(
       contratos,
       locales,
-      [{ arrendatarioId: "tenant-var", periodo: "2026-03", ventasUf: "1000" }],
+      [{ arrendatarioId: "tenant-var", periodo: "2026-03", ventasPesos: "1000" }],
       [{ periodo: "2026-03", valorUf: "9" }],
-      "2026-03"
+      "2026-03",
+      1
     );
 
     expect(ingresos.arriendoFijoUf).toBe(50);

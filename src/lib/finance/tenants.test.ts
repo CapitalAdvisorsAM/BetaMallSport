@@ -43,17 +43,17 @@ describe("buildTenantFinanceRows", () => {
         {
           tenantId: "tenant-1",
           periodo: "2026-01",
-          ventasUf: 1000
+          ventasPesos: 1000
         },
         {
           tenantId: "tenant-1",
           periodo: "2026-01",
-          ventasUf: 500
+          ventasPesos: 500
         },
         {
           tenantId: "tenant-1",
           periodo: "2026-02",
-          ventasUf: 200
+          ventasPesos: 200
         }
       ]
     );

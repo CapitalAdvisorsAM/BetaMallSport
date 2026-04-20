@@ -56,7 +56,7 @@ export type BvaContract = {
 export type BvaBudgetedSale = {
   tenantId: string;
   period: Date;
-  salesUf: DecimalLike;
+  salesPesos: DecimalLike;
 };
 
 export type BvaAccountingRecord = {
@@ -76,7 +76,8 @@ export function buildBudgetVsActual(
   contracts: BvaContract[],
   accountingRecords: BvaAccountingRecord[],
   budgetedSales: BvaBudgetedSale[],
-  periods: string[]
+  periods: string[],
+  ufRateByPeriod: Map<string, number> = new Map()
 ): BudgetVsActualResponse {
   // Index actual billing by unitId+period
   const actualByUnitPeriod = new Map<string, Map<string, number>>();
@@ -90,12 +91,12 @@ export function buildBudgetVsActual(
     actualByUnitPeriod.set(r.unitId, unitMap);
   }
 
-  // Index budgeted sales by tenant+period (no period filter — lag needs M-1)
+  // Index budgeted sales (pesos) by tenant+period (no period filter — lag needs M-1)
   const budgetSalesByTenantPeriod = new Map<string, Map<string, number>>();
   for (const s of budgetedSales) {
     const p = periodKey(s.period);
     const tenantMap = budgetSalesByTenantPeriod.get(s.tenantId) ?? new Map<string, number>();
-    tenantMap.set(p, (tenantMap.get(p) ?? 0) + toNum(s.salesUf));
+    tenantMap.set(p, (tenantMap.get(p) ?? 0) + toNum(s.salesPesos));
     budgetSalesByTenantPeriod.set(s.tenantId, tenantMap);
   }
 
@@ -132,10 +133,13 @@ export function buildBudgetVsActual(
         if (!isContractActiveInPeriod(c, periodDate)) continue;
 
         const lagPeriod = shiftPeriod(period, -VARIABLE_RENT_LAG_MONTHS);
-        const salesUf = budgetSalesByTenantPeriod.get(c.arrendatarioId)?.get(lagPeriod);
-        if (hasPercentageRate && salesUf === undefined) {
+        const salesPesosRaw = budgetSalesByTenantPeriod.get(c.arrendatarioId)?.get(lagPeriod);
+        if (hasPercentageRate && salesPesosRaw === undefined) {
           missingSalesPeriods.add(period);
         }
+        // Convert pesos → UF using the UF rate for the sales lag period.
+        const lagUfRate = ufRateByPeriod.get(lagPeriod) ?? 0;
+        const salesUf = salesPesosRaw !== undefined && lagUfRate > 0 ? salesPesosRaw / lagUfRate : 0;
 
         const expected = calcExpectedIncome({
           tarifas: c.tarifas,
@@ -147,7 +151,7 @@ export function buildBudgetVsActual(
           multiplicadorAgosto: c.multiplicadorAgosto !== null ? toNum(c.multiplicadorAgosto) : null,
           pctFondoPromocion: c.pctFondoPromocion !== null ? toNum(c.pctFondoPromocion) : null,
           periodDate,
-          salesUf: salesUf ?? 0,
+          salesUf,
           estado: c.estado,
         });
 

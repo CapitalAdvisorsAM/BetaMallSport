@@ -88,7 +88,7 @@ export function VentasAnalyticsClient({
       });
       if (desde) params.set("from", desde);
       if (hasta) params.set("to", hasta);
-      const res = await fetch(`/api/finance/ventas-analytics?${params}`);
+      const res = await fetch(`/api/finance/sales-analytics?${params}`);
       if (res.ok) {
         setData((await res.json()) as VentasAnalyticsResponse);
       }
@@ -108,9 +108,9 @@ export function VentasAnalyticsClient({
   const chartData = periods.map((p, i) => {
     const entry: Record<string, string | number> = { mes: p.slice(5) };
     for (const s of series) {
-      entry[s.dimension] = s.data[i]?.salesUfPerM2 ?? 0;
+      entry[s.dimension] = s.data[i]?.salesPesosM2 ?? 0;
     }
-    entry["Total UF/m²"] = totals[i]?.salesUfPerM2 ?? 0;
+    entry["Total UF/m²"] = totals[i]?.salesPesosM2 ?? 0;
     return entry;
   });
 
@@ -239,8 +239,8 @@ export function VentasAnalyticsClient({
                         {s.dimension}
                       </td>
                       {s.data.map((d) => (
-                        <td key={d.period} className={cn("px-2 py-1.5 text-right", valueCls(d.salesUfPerM2))}>
-                          {formatUfPerM2(d.salesUfPerM2)}
+                        <td key={d.period} className={cn("px-2 py-1.5 text-right", valueCls(d.salesPesosM2))}>
+                          {formatUfPerM2(d.salesPesosM2)}
                         </td>
                       ))}
                     </tr>
@@ -252,7 +252,7 @@ export function VentasAnalyticsClient({
                     </td>
                     {totals.map((t) => (
                       <td key={t.period} className="px-2 py-2 text-right text-xs font-bold">
-                        {formatUfPerM2(t.salesUfPerM2)}
+                        {formatUfPerM2(t.salesPesosM2)}
                       </td>
                     ))}
                   </tr>

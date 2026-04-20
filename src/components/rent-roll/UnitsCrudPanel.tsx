@@ -272,7 +272,7 @@ export function UnitsCrudPanel({
         )
       }
     ],
-    [beginEdit, canEdit, isLoading]
+    [beginEdit, canEdit, isLoading, zones]
   );
 
   const { table } = useDataTable(locales, columns);

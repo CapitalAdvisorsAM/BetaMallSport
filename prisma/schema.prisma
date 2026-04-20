@@ -215,7 +215,7 @@ model TenantSale {
   projectId  String   @db.Uuid @map("proyectoId")
   tenantId   String   @db.Uuid @map("arrendatarioId")
   period     DateTime @db.Date @map("periodo")
-  salesUf    Decimal  @db.Decimal(14, 4) @map("ventasUf")
+  salesPesos Decimal  @db.Decimal(18, 2) @map("ventasPesos")
   createdAt  DateTime @default(now()) @db.Timestamptz(3)
   updatedAt  DateTime @updatedAt @db.Timestamptz(3)
 
@@ -232,7 +232,7 @@ model TenantBudgetedSale {
   projectId String   @db.Uuid @map("proyectoId")
   tenantId  String   @db.Uuid @map("arrendatarioId")
   period    DateTime @db.Date @map("periodo")
-  salesUf   Decimal  @db.Decimal(14, 4) @map("ventasUf")
+  salesPesos Decimal  @db.Decimal(18, 2) @map("ventasPesos")
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 

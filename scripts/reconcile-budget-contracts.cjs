@@ -169,6 +169,17 @@ function sameContractNumber(left, right) {
   );
 }
 
+function appendReconciliationNote(existingNotes, note) {
+  const current = asString(existingNotes);
+  if (!current) {
+    return note;
+  }
+  if (current.includes(note)) {
+    return current;
+  }
+  return `${current} | ${note}`;
+}
+
 function buildReportPath(explicitReportPath) {
   if (explicitReportPath) {
     return explicitReportPath;
@@ -410,25 +421,31 @@ function buildActions(activeContracts, workbookStates, period) {
           normalizeTenantBase(keeper.arrendatario.nombreComercial);
         const sameStart =
           contract.fechaInicio.toISOString().slice(0, 10) === keeper.fechaInicio.toISOString().slice(0, 10);
+        const sameEnd =
+          contract.fechaTermino.toISOString().slice(0, 10) === keeper.fechaTermino.toISOString().slice(0, 10);
 
         actions.push({
-          type: sameTenant && sameStart ? "DELETE" : "TERMINATE",
+          type: sameTenant && sameStart && sameEnd ? "DELETE" : "TERMINATE",
           localCodigo,
           contractId: contract.id,
           numeroContrato: contract.numeroContrato,
           tenant: contract.arrendatario.nombreComercial,
+          currentNotes: contract.notas ?? null,
           keeperContractId: keeper.id,
           keeperNumeroContrato: keeper.numeroContrato,
           keeperTenant: keeper.arrendatario.nombreComercial,
           cutoffDate: cutoffDate.toISOString().slice(0, 10),
-          reason: sameTenant && sameStart ? "duplicate_active_same_origin" : "active_conflict_budget_prefers_other",
+          reason:
+            sameTenant && sameStart && sameEnd
+              ? "duplicate_active_exact_match"
+              : "active_conflict_budget_prefers_other",
           ranking
         });
       }
       continue;
     }
 
-    if (budgetState.vacancyRows.length > 0 || budgetState.inactiveRows.length > 0 || budgetState.invalidRows.length > 0) {
+    if (budgetState.vacancyRows.length > 0) {
       for (const contract of contracts) {
         actions.push({
           type: "TERMINATE",
@@ -436,13 +453,41 @@ function buildActions(activeContracts, workbookStates, period) {
           contractId: contract.id,
           numeroContrato: contract.numeroContrato,
           tenant: contract.arrendatario.nombreComercial,
+          currentNotes: contract.notas ?? null,
           cutoffDate: cutoffDate.toISOString().slice(0, 10),
-          reason:
-            budgetState.vacancyRows.length > 0
-              ? "budget_marks_vacant"
-              : budgetState.invalidRows.length > 0
-                ? "budget_has_no_valid_active_row"
-                : "budget_has_only_inactive_rows"
+          reason: "budget_marks_vacant"
+        });
+      }
+      continue;
+    }
+
+    if (budgetState.invalidRows.length > 0) {
+      for (const contract of contracts) {
+        actions.push({
+          type: "REVIEW",
+          localCodigo,
+          contractId: contract.id,
+          numeroContrato: contract.numeroContrato,
+          tenant: contract.arrendatario.nombreComercial,
+          currentNotes: contract.notas ?? null,
+          reason: "budget_has_no_valid_active_row",
+          invalidRows: budgetState.invalidRows
+        });
+      }
+      continue;
+    }
+
+    if (budgetState.inactiveRows.length > 0) {
+      for (const contract of contracts) {
+        actions.push({
+          type: "TERMINATE",
+          localCodigo,
+          contractId: contract.id,
+          numeroContrato: contract.numeroContrato,
+          tenant: contract.arrendatario.nombreComercial,
+          currentNotes: contract.notas ?? null,
+          cutoffDate: cutoffDate.toISOString().slice(0, 10),
+          reason: "budget_has_only_inactive_rows"
         });
       }
     }
@@ -462,6 +507,9 @@ async function applyActions(projectId, actions) {
       if (action.type === "KEEP") {
         continue;
       }
+      if (action.type === "REVIEW") {
+        continue;
+      }
 
       if (action.type === "DELETE") {
         await tx.contract.delete({
@@ -472,18 +520,18 @@ async function applyActions(projectId, actions) {
       }
 
       const cutoffDate = new Date(`${action.cutoffDate}T00:00:00.000Z`);
+      const note =
+        action.reason === "budget_marks_vacant"
+          ? `Ajustado por conciliacion con presupuesto ${action.cutoffDate}: local vacante`
+          : action.reason === "budget_has_only_inactive_rows"
+            ? `Ajustado por conciliacion con presupuesto ${action.cutoffDate}: sin fila activa en presupuesto`
+            : `Ajustado por conciliacion con presupuesto ${action.cutoffDate}`;
       await tx.contract.update({
         where: { id: action.contractId },
         data: {
           fechaTermino: cutoffDate,
           estado: ContractStatus.TERMINADO,
-          notas: [
-            action.reason === "budget_marks_vacant"
-              ? `Ajustado por conciliacion con presupuesto ${action.cutoffDate}: local vacante`
-              : `Ajustado por conciliacion con presupuesto ${action.cutoffDate}`
-          ]
-            .concat([])
-            .join(" | ")
+          notas: appendReconciliationNote(action.currentNotes, note)
         }
       });
 
@@ -528,9 +576,10 @@ async function main() {
       if (action.type === "KEEP") acc.keep += 1;
       if (action.type === "DELETE") acc.delete += 1;
       if (action.type === "TERMINATE") acc.terminate += 1;
+      if (action.type === "REVIEW") acc.review += 1;
       return acc;
     },
-    { total: 0, keep: 0, delete: 0, terminate: 0 }
+    { total: 0, keep: 0, delete: 0, terminate: 0, review: 0 }
   );
 
   const report = {

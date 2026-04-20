@@ -91,7 +91,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         select: {
           tenantId: true,
           period: true,
-          salesUf: true
+          salesPesos: true
         }
       })
     ]);
@@ -104,7 +104,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const legacySales = sales.map((sale) => ({
       tenantId: sale.tenantId,
       periodo: sale.period.toISOString().slice(0, 7),
-      ventasUf: sale.salesUf
+      ventasPesos: sale.salesPesos
     }));
 
     const rows = buildTenantFinanceRows(tenants, legacyAccountingRecords, legacySales);

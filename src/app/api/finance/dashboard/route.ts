@@ -27,7 +27,7 @@ type BudgetRow = {
 
 type SaleRow = {
   period: Date;
-  salesUf: { toString(): string };
+  salesPesos: { toString(): string };
 };
 
 type BalanceRow = {
@@ -141,7 +141,7 @@ function sumEbitdaBudget(records: BudgetRow[]): number {
 }
 
 function sumSales(records: SaleRow[]): number {
-  return records.reduce((sum, record) => sum + toNumber(record.salesUf), 0);
+  return records.reduce((sum, record) => sum + toNumber(record.salesPesos), 0);
 }
 
 function sumCashBalances(records: BalanceRow[]): number | null {
@@ -194,14 +194,14 @@ async function queryBudgets(projectId: string, from: Date, to: Date): Promise<Bu
 async function querySales(projectId: string, from: Date, to: Date): Promise<SaleRow[]> {
   return prisma.tenantSale.findMany({
     where: { projectId, period: { gte: from, lte: to } },
-    select: { period: true, salesUf: true }
+    select: { period: true, salesPesos: true }
   });
 }
 
 async function queryBudgetedSales(projectId: string, from: Date, to: Date): Promise<SaleRow[]> {
   return prisma.tenantBudgetedSale.findMany({
     where: { projectId, period: { gte: from, lte: to } },
-    select: { period: true, salesUf: true }
+    select: { period: true, salesPesos: true }
   });
 }
 

@@ -86,7 +86,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         select: {
           tenantId: true,
           period: true,
-          salesUf: true,
+          salesPesos: true,
         },
       }),
     ]);

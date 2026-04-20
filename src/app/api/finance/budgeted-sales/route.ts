@@ -38,7 +38,7 @@ export async function PUT(request: Request): Promise<NextResponse> {
       );
     }
 
-    const { tenantId, period, salesUf } = parsed.data;
+    const { tenantId, period, salesPesos } = parsed.data;
 
     const tenant = await prisma.tenant.findFirst({
       where: { id: tenantId, proyectoId: projectId },
@@ -50,18 +50,18 @@ export async function PUT(request: Request): Promise<NextResponse> {
 
     const periodDate = periodStringToDate(period);
 
-    if (salesUf === null) {
+    if (salesPesos === null) {
       await prisma.tenantBudgetedSale.deleteMany({
         where: { tenantId, period: periodDate, projectId },
       });
       return NextResponse.json({
         tenantId,
         period,
-        salesUf: null,
+        salesPesos: null,
       });
     }
 
-    const value = new Prisma.Decimal(salesUf);
+    const value = new Prisma.Decimal(salesPesos);
 
     const saved = await prisma.tenantBudgetedSale.upsert({
       where: { tenantId_period: { tenantId, period: periodDate } },
@@ -69,16 +69,16 @@ export async function PUT(request: Request): Promise<NextResponse> {
         projectId,
         tenantId,
         period: periodDate,
-        salesUf: value,
+        salesPesos: value,
       },
-      update: { salesUf: value },
-      select: { tenantId: true, period: true, salesUf: true },
+      update: { salesPesos: value },
+      select: { tenantId: true, period: true, salesPesos: true },
     });
 
     return NextResponse.json({
       tenantId: saved.tenantId,
       period: dateToPeriodString(saved.period),
-      salesUf: saved.salesUf.toString(),
+      salesPesos: saved.salesPesos.toString(),
     });
   } catch (error) {
     return handleApiError(error);

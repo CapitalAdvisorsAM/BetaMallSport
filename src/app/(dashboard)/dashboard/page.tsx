@@ -27,6 +27,7 @@ import { buildActualBillingByUnit } from "@/lib/shared/gap-utils";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
 import type { MetricFormulaId } from "@/lib/metric-formulas";
+import { buildUfRateMap } from "@/lib/finance/uf-lookup";
 import { isPeriodoValido } from "@/lib/validators";
 import { formatUf, startOfDay } from "@/lib/utils";
 import { resolveWidgetConfigs, type ResolvedWidgetConfig } from "@/lib/dashboard/widget-registry";
@@ -209,7 +210,7 @@ export default async function DashboardPage({
         select: {
           tenantId: true,
           period: true,
-          salesUf: true
+          salesPesos: true
         }
       }),
       prisma.ingresoEnergia.findMany({
@@ -260,7 +261,7 @@ export default async function DashboardPage({
   const ventasPeriodo = ventasPeriodoRaw.map((sale) => ({
     arrendatarioId: sale.tenantId,
     periodo: sale.period.toISOString().slice(0, 7),
-    ventasUf: sale.salesUf
+    ventasPesos: sale.salesPesos
   }));
   const energiaPeriodo = energiaPeriodoRaw.map((energy) => ({
     localId: energy.localId,
@@ -347,12 +348,15 @@ export default async function DashboardPage({
 
   const activeLocalesMapped = activeLocales.map((l) => ({ ...l, zona: l.zona?.nombre ?? null }));
   const ocupacion = buildOcupacionDetalle(activeLocalesMapped, ocupacionContracts);
+  const ufRateMap = await buildUfRateMap([periodo]);
+  const ufRateForPeriodo = ufRateMap.get(periodo) ?? (latestValorUf ? Number(latestValorUf.valor.toString()) : 0);
   const ingresos = buildIngresoDesglosado(
     vigenteContracts,
     activeLocalesMapped,
     ventasPeriodo,
     energiaPeriodo,
-    periodo
+    periodo,
+    ufRateForPeriodo
   );
   const ggccUf = calculateEstimatedGgccUf(vigenteContracts);
   const diasRiesgo = getParam("kpi_renta_en_riesgo", "dias", 90);
@@ -421,7 +425,7 @@ export default async function DashboardPage({
   const contratosConGgcc = vigenteContracts.filter((contract) => contract.ggcc !== null).length;
   const contratosSinGgcc = vigenteContracts.length - contratosConGgcc;
 
-  const salesByTenant = new Map(ventasPeriodo.map((venta) => [venta.arrendatarioId, Number(venta.ventasUf)]));
+  const salesByTenant = new Map(ventasPeriodo.map((venta) => [venta.arrendatarioId, Number(venta.ventasPesos)]));
   const contratosVariableConVentas = vigenteContracts.filter(
     (contract) => Number(contract.tarifaVariablePct?.toString() ?? "0") > 0 && contract.arrendatarioId && salesByTenant.has(contract.arrendatarioId)
   ).length;

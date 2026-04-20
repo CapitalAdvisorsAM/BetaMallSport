@@ -314,7 +314,7 @@ export function FinanceMappingsClient({
         )
       }
     ],
-    [deleteMapping, units, updateSalesUnit]
+    [deleteMapping]
   );
 
   const { table: accountingTable } = useDataTable(accountingMappings, accountingColumns);

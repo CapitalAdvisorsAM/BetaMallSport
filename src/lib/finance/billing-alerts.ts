@@ -84,7 +84,7 @@ export async function recalculateBillingAlerts(projectId: string): Promise<void>
         tenantId: { in: tenantIds },
         period: { gte: salesLookbackStart, lte: lookbackEnd }
       },
-      select: { tenantId: true, period: true, salesUf: true }
+      select: { tenantId: true, period: true, salesPesos: true }
     })
   ]);
 
@@ -93,7 +93,7 @@ export async function recalculateBillingAlerts(projectId: string): Promise<void>
   for (const s of salesRecords) {
     const p = s.period.toISOString().slice(0, 7);
     const tenantMap = salesByTenantPeriod.get(s.tenantId) ?? new Map<string, number>();
-    tenantMap.set(p, (tenantMap.get(p) ?? 0) + Number(s.salesUf));
+    tenantMap.set(p, (tenantMap.get(p) ?? 0) + Number(s.salesPesos));
     salesByTenantPeriod.set(s.tenantId, tenantMap);
   }
 

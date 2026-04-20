@@ -142,14 +142,17 @@ export function calcularGgcc(
 }
 
 export function calcularRentaVariable(
-  ventasUf: number | null,
+  ventasPesos: number | null,
   tarifaVariablePct: Decimal | null,
   rentaFijaUf: number = 0,
-  tiers?: Array<{ umbralVentasUf: number; pct: number }>
+  tiers?: Array<{ umbralVentasUf: number; pct: number }>,
+  ufRate = 0
 ): number | null {
-  if (ventasUf === null) {
+  if (ventasPesos === null) {
     return null;
   }
+  // Convert pesos → UF for threshold comparison and variable-rent calculation.
+  const ventasUf = ufRate > 0 ? ventasPesos / ufRate : 0;
   if (tiers && tiers.length > 0) {
     const sorted = [...tiers].sort((a, b) => b.umbralVentasUf - a.umbralVentasUf);
     const tier = sorted.find((t) => ventasUf >= t.umbralVentasUf);
@@ -185,13 +188,14 @@ export function buildMetricaRow(
   contrato: ContratoConRelaciones,
   estado: ContractDayStatus,
   ventasMap: Map<string, number>,
-  periodo: string
+  periodo: string,
+  ufRate = 0
 ): RentRollMetricRow {
   const tarifaFijaVigente =
     contrato.tarifas.find((tarifa) => tarifa.tipo === ContractRateType.FIJO_UF_M2)?.valor ?? null;
   const tarifasVariable = contrato.tarifas.filter((tarifa) => tarifa.tipo === ContractRateType.PORCENTAJE);
   const ggccVigente = contrato.ggcc[0];
-  const ventasUf = ventasMap.get(contrato.arrendatarioId) ?? null;
+  const ventasPesos = ventasMap.get(contrato.arrendatarioId) ?? null;
 
   const tarifaUfM2 = round4(tarifaFijaVigente?.toNumber() ?? 0);
   const rentaFijaUf = calcularRentaFija(contrato.local.glam2, tarifaFijaVigente);
@@ -204,7 +208,7 @@ export function buildMetricaRow(
     umbralVentasUf: Number(t.umbralVentasUf?.toString() ?? "0"),
     pct: Number(t.valor.toString()),
   }));
-  const rentaVariableUf = calcularRentaVariable(ventasUf, tarifasVariable[0]?.valor ?? null, rentaFijaUf, variableTiers);
+  const rentaVariableUf = calcularRentaVariable(ventasPesos, tarifasVariable[0]?.valor ?? null, rentaFijaUf, variableTiers, ufRate);
   const ingresoBrutoUf = round4(rentaFijaUf + ggccUf + (rentaVariableUf ?? 0));
 
   return {
@@ -217,7 +221,7 @@ export function buildMetricaRow(
     tarifaUfM2,
     rentaFijaUf,
     ggccUf,
-    ventasUf,
+    ventasPesos,
     rentaVariableUf,
     ingresoBrutoUf,
     fechaTermino: contrato.fechaTermino.toISOString().slice(0, 10),
@@ -261,18 +265,36 @@ export async function getMetricasRentRoll(
 
   const tenantIds = [...new Set(contratosConRelaciones.map((c) => c.arrendatarioId))];
 
-  const ventasPeriodo = tenantIds.length > 0
-    ? await prisma.tenantSale.findMany({
-        where: { projectId: proyectoId, tenantId: { in: tenantIds }, period: new Date(`${prevPeriodo}-01`) },
-        select: {
-          tenantId: true,
-          salesUf: true
-        }
-      })
-    : [];
+  const [prevYear, prevMonth] = prevPeriodo.split("-").map(Number) as [number, number];
+  const prevMonthStart = new Date(Date.UTC(prevYear, prevMonth - 1, 1));
+  const prevMonthEnd = new Date(Date.UTC(prevYear, prevMonth, 1));
+
+  const [ventasPeriodo, ufForPeriod] = await Promise.all([
+    tenantIds.length > 0
+      ? prisma.tenantSale.findMany({
+          where: { projectId: proyectoId, tenantId: { in: tenantIds }, period: new Date(`${prevPeriodo}-01`) },
+          select: { tenantId: true, salesPesos: true }
+        })
+      : Promise.resolve([]),
+    prisma.valorUF.findFirst({
+      where: { fecha: { gte: prevMonthStart, lt: prevMonthEnd } },
+      orderBy: { fecha: "asc" },
+      select: { valor: true },
+    }).then((uf) =>
+      uf
+        ? uf
+        : prisma.valorUF.findFirst({
+            where: { fecha: { lt: prevMonthStart } },
+            orderBy: { fecha: "desc" },
+            select: { valor: true },
+          })
+    ),
+  ]);
+
+  const ufRate = ufForPeriod ? Number(ufForPeriod.valor.toString()) : 0;
 
   const ventasMap = new Map<string, number>(
-    ventasPeriodo.map((venta) => [venta.tenantId, venta.salesUf.toNumber()])
+    ventasPeriodo.map((venta) => [venta.tenantId, venta.salesPesos.toNumber()])
   );
 
   return contratosConRelaciones
@@ -284,7 +306,7 @@ export async function getMetricasRentRoll(
       if (!estadoContrato || estadoContrato === "VACANTE") {
         return null;
       }
-      return buildMetricaRow(contrato, estadoContrato, ventasMap, periodo);
+      return buildMetricaRow(contrato, estadoContrato, ventasMap, periodo, ufRate);
     })
     .filter((fila): fila is MetricaRow => fila !== null);
 }
@@ -294,7 +316,8 @@ export function buildResumen(
   todosLocales: LocalActivo[],
   hoy: Date
 ): RentRollSummary {
-  const filasOcupadas = filas.filter(
+  const filasResumen = dedupeRowsByLocal(filas);
+  const filasOcupadas = filasResumen.filter(
     (fila) => fila.estado === "OCUPADO" || fila.estado === "GRACIA"
   );
 
@@ -303,10 +326,10 @@ export function buildResumen(
   const glaVacante = round4(glaTotal - glaArrendada);
   const tasaOcupacion = glaTotal > 0 ? round4((glaArrendada / glaTotal) * 100) : 0;
 
-  const ventasDisponibles = filas
-    .map((fila) => fila.ventasUf)
+  const ventasDisponibles = filasResumen
+    .map((fila) => fila.ventasPesos)
     .filter((value): value is number => value !== null);
-  const rentaVariableDisponibles = filas
+  const rentaVariableDisponibles = filasResumen
     .map((fila) => fila.rentaVariableUf)
     .filter((value): value is number => value !== null);
 
@@ -328,16 +351,44 @@ export function buildResumen(
     glaArrendada,
     glaVacante,
     tasaOcupacion,
-    rentaFijaTotalUf: sum(filas.map((fila) => fila.rentaFijaUf)),
-    ggccTotalUf: sum(filas.map((fila) => fila.ggccUf)),
-    ventasTotalUf: ventasDisponibles.length > 0 ? sum(ventasDisponibles) : null,
+    rentaFijaTotalUf: sum(filasResumen.map((fila) => fila.rentaFijaUf)),
+    ggccTotalUf: sum(filasResumen.map((fila) => fila.ggccUf)),
+    ventasTotalPesos: ventasDisponibles.length > 0 ? sum(ventasDisponibles) : null,
     rentaVariableTotalUf:
       rentaVariableDisponibles.length > 0 ? sum(rentaVariableDisponibles) : null,
-    ingresoBrutoTotalUf: sum(filas.map((fila) => fila.ingresoBrutoUf)),
+    ingresoBrutoTotalUf: sum(filasResumen.map((fila) => fila.ingresoBrutoUf)),
     contratosVigentes: filasOcupadas.length,
     contratosPorVencer30,
     contratosPorVencer60,
     contratosPorVencer90
   };
+}
+
+function dedupeRowsByLocal(filas: RentRollMetricRow[]): RentRollMetricRow[] {
+  const deduped = new Map<string, RentRollMetricRow>();
+  for (const fila of filas) {
+    const current = deduped.get(fila.localCodigo);
+    if (!current || compareRowsForResumen(fila, current) < 0) {
+      deduped.set(fila.localCodigo, fila);
+    }
+  }
+  return [...deduped.values()];
+}
+
+function compareRowsForResumen(left: RentRollMetricRow, right: RentRollMetricRow): number {
+  const estadoRank = (estado: RentRollMetricRow["estado"]) =>
+    estado === "OCUPADO" ? 0 : estado === "GRACIA" ? 1 : 2;
+  const leftEstadoRank = estadoRank(left.estado);
+  const rightEstadoRank = estadoRank(right.estado);
+  if (leftEstadoRank !== rightEstadoRank) {
+    return leftEstadoRank - rightEstadoRank;
+  }
+  if (left.diasVigentes !== right.diasVigentes) {
+    return right.diasVigentes - left.diasVigentes;
+  }
+  if (left.ingresoBrutoUf !== right.ingresoBrutoUf) {
+    return right.ingresoBrutoUf - left.ingresoBrutoUf;
+  }
+  return right.fechaTermino.localeCompare(left.fechaTermino);
 }
 

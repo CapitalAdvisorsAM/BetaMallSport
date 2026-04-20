@@ -18,7 +18,7 @@ type DecimalLike = number | string | { toString(): string };
 export type VentaSaleInput = {
   tenantId: string;
   period: Date;
-  salesUf: DecimalLike;
+  salesPesos: DecimalLike;
 };
 
 export type VentaContractInput = {
@@ -103,7 +103,7 @@ export function buildVentasTimeSeries(
     const totalGla = tenantUnits.reduce((s, u) => s + u.gla, 0);
     if (totalGla <= 0) continue;
 
-    const salesVal = toNum(sale.salesUf);
+    const salesVal = toNum(sale.salesPesos);
 
     // Distribute sales proportionally
     for (const { dim, gla } of tenantUnits) {
@@ -118,29 +118,29 @@ export function buildVentasTimeSeries(
   const series: VentasDimensionSeries[] = [];
   for (const [dim, periodMap] of agg) {
     const data: VentasSeriesPoint[] = periods.map((p) => {
-      const salesUf = periodMap.get(p) ?? 0;
+      const salesPesos = periodMap.get(p) ?? 0;
       const glaM2 = glaOccupied.get(dim)?.get(p) ?? glaTotals.get(dim) ?? 0;
       return {
         period: p,
-        salesUf,
+        salesPesos,
         glaM2,
-        salesUfPerM2: glaM2 > 0 ? salesUf / glaM2 : 0
+        salesPesosM2: glaM2 > 0 ? salesPesos / glaM2 : 0
       };
     });
     series.push({ dimension: dim, data });
   }
 
   series.sort((a, b) => {
-    const aTotal = a.data.reduce((s, d) => s + d.salesUfPerM2, 0);
-    const bTotal = b.data.reduce((s, d) => s + d.salesUfPerM2, 0);
+    const aTotal = a.data.reduce((s, d) => s + d.salesPesosM2, 0);
+    const bTotal = b.data.reduce((s, d) => s + d.salesPesosM2, 0);
     return bTotal - aTotal;
   });
 
   // Totals
   const totals: VentasSeriesPoint[] = periods.map((p) => {
-    let salesUf = 0;
+    let salesPesos = 0;
     for (const [, periodMap] of agg) {
-      salesUf += periodMap.get(p) ?? 0;
+      salesPesos += periodMap.get(p) ?? 0;
     }
     let glaM2 = 0;
     for (const [, periodMap] of glaOccupied) {
@@ -148,9 +148,9 @@ export function buildVentasTimeSeries(
     }
     return {
       period: p,
-      salesUf,
+      salesPesos,
       glaM2,
-      salesUfPerM2: glaM2 > 0 ? salesUf / glaM2 : 0
+      salesPesosM2: glaM2 > 0 ? salesPesos / glaM2 : 0
     };
   });
 

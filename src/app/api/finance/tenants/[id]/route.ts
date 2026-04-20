@@ -8,6 +8,8 @@ import { getFinanceFrom, getFinanceProjectId, getFinanceTo } from "@/lib/finance
 import { resolveMonthRange, toPeriodKey } from "@/lib/finance/period-range";
 import { buildTenant360Data } from "@/lib/finance/tenant-360";
 import { buildPeerComparison } from "@/lib/finance/peer-comparison";
+import { buildUfRateMap } from "@/lib/finance/uf-lookup";
+import { shiftPeriod } from "@/lib/finance/billing-utils";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
@@ -91,7 +93,7 @@ export async function GET(
             lte: hastaDate
           }
         },
-        select: { tenantId: true, period: true, salesUf: true },
+        select: { tenantId: true, period: true, salesPesos: true },
         orderBy: { period: "asc" }
       }),
       contractIds.length > 0
@@ -141,6 +143,9 @@ export async function GET(
         })
       : null;
 
+    const lagPeriods = periods.map((p) => shiftPeriod(p, -VARIABLE_RENT_LAG_MONTHS));
+    const ufRateByPeriod = await buildUfRateMap([...new Set([...periods, ...lagPeriods])]);
+
     const data = buildTenant360Data({
       tenant,
       contracts,
@@ -149,7 +154,8 @@ export async function GET(
       contractDays,
       latestUf,
       periods,
-      peerComparison
+      peerComparison,
+      ufRateByPeriod,
     });
 
     return NextResponse.json(data);

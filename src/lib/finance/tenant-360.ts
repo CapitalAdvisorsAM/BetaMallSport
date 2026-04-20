@@ -124,7 +124,7 @@ export type RawAccountingRecord = {
 export type RawUnitSale = {
   tenantId: string;
   period: Date;
-  salesUf: DecimalLike;
+  salesPesos: DecimalLike;
 };
 
 export type RawContractDay = {
@@ -149,6 +149,7 @@ export type BuildTenant360Input = {
   latestUf: RawUfValue | null;
   periods: string[];
   peerComparison?: PeerComparison | null;
+  ufRateByPeriod?: Map<string, number>;
 };
 
 // ---------------------------------------------------------------------------
@@ -156,7 +157,7 @@ export type BuildTenant360Input = {
 // ---------------------------------------------------------------------------
 
 export function buildTenant360Data(input: BuildTenant360Input): Tenant360Data {
-  const { tenant, contracts, accountingRecords, sales, contractDays, latestUf, periods, peerComparison } = input;
+  const { tenant, contracts, accountingRecords, sales, contractDays, latestUf, periods, peerComparison, ufRateByPeriod = new Map() } = input;
 
   const activeContracts = contracts.filter(
     (c) => c.estado === ContractStatus.VIGENTE || c.estado === ContractStatus.GRACIA
@@ -172,7 +173,7 @@ export function buildTenant360Data(input: BuildTenant360Input): Tenant360Data {
   const salesPerformance = buildSalesPerformance(sales, activeContracts, periods, quickStats.totalLeasedM2, quickStats.ufValue);
   const occupancyDays = serializeOccupancyDays(contractDays);
   const projections = buildProjections(activeContracts);
-  const gapAnalysis = buildGapAnalysis(activeContracts, accountingRecords, sales, periods, contractDays);
+  const gapAnalysis = buildGapAnalysis(activeContracts, accountingRecords, sales, periods, contractDays, ufRateByPeriod);
 
   return {
     profile,
@@ -299,8 +300,8 @@ function buildKpis(
   const waltMeses = calculateWalt(kpiContracts, new Date());
 
   const totalBilling = timeline.reduce((s, p) => s + p.billingUf, 0);
-  const totalSales = timeline.reduce((s, p) => s + p.salesUf, 0);
-  const periodsWithSales = timeline.filter((p) => p.salesUf > 0).length;
+  const totalSales = timeline.reduce((s, p) => s + p.salesPesos, 0);
+  const periodsWithSales = timeline.filter((p) => p.salesPesos > 0).length;
   const periodsWithBilling = timeline.filter((p) => p.billingUf > 0).length;
 
   const avgMonthlyBilling = periodsWithBilling > 0 ? totalBilling / periodsWithBilling : 0;
@@ -311,10 +312,10 @@ function buildKpis(
     rentaFijaMensualUf,
     rentaFijaClp: rentaFijaMensualUf * ufValue,
     ggccEstimadoUf,
-    ventasPromedioMensualUf: avgMonthlySales,
+    ventasPromedioMensualPesos: avgMonthlySales,
     waltMeses,
     facturacionUfM2: totalLeasedM2 > 0 ? avgMonthlyBilling / totalLeasedM2 : null,
-    ventasUfM2: totalLeasedM2 > 0 ? avgMonthlySales / totalLeasedM2 : null
+    ventasPesosM2: totalLeasedM2 > 0 ? avgMonthlySales / totalLeasedM2 : null
   };
 }
 
@@ -338,17 +339,17 @@ export function buildMonthlyTimeline(
 
   for (const s of sales) {
     const p = periodKey(s.period);
-    salesByPeriod.set(p, (salesByPeriod.get(p) ?? 0) + toNum(s.salesUf));
+    salesByPeriod.set(p, (salesByPeriod.get(p) ?? 0) + toNum(s.salesPesos));
   }
 
   return periods.map((period) => {
     const billingUf = billingByPeriod.get(period) ?? 0;
-    const salesUf = salesByPeriod.get(period) ?? 0;
+    const salesPesos = salesByPeriod.get(period) ?? 0;
     return {
       period,
       billingUf,
-      salesUf,
-      costoOcupacionPct: salesUf > 0 ? (billingUf / salesUf) * 100 : null,
+      salesPesos,
+      costoOcupacionPct: salesPesos > 0 ? (billingUf / salesPesos) * 100 : null,
       billingUfM2: totalLeasedM2 > 0 ? billingUf / totalLeasedM2 : null
     };
   });
@@ -471,7 +472,7 @@ export function buildSalesPerformance(
   const salesByPeriod = new Map<string, number>();
   for (const s of sales) {
     const p = periodKey(s.period);
-    salesByPeriod.set(p, (salesByPeriod.get(p) ?? 0) + toNum(s.salesUf));
+    salesByPeriod.set(p, (salesByPeriod.get(p) ?? 0) + toNum(s.salesPesos));
   }
 
   // Build map of variable rent tiers and fixed rent by contract
@@ -497,7 +498,7 @@ export function buildSalesPerformance(
   for (const s of sales) {
     const p = periodKey(s.period);
     const tenantMap = salesByTenantPeriod.get(s.tenantId) ?? new Map<string, number>();
-    tenantMap.set(p, (tenantMap.get(p) ?? 0) + toNum(s.salesUf));
+    tenantMap.set(p, (tenantMap.get(p) ?? 0) + toNum(s.salesPesos));
     salesByTenantPeriod.set(s.tenantId, tenantMap);
   }
 
@@ -505,7 +506,7 @@ export function buildSalesPerformance(
   const tenantSalesMap = salesByTenantPeriod.values().next().value ?? new Map<string, number>();
 
   return periods.map((period) => {
-    const salesUf = salesByPeriod.get(period) ?? 0;
+    const salesPesos = salesByPeriod.get(period) ?? 0;
     const lagPeriod = shiftPeriod(period, -VARIABLE_RENT_LAG_MONTHS);
 
     let variableRentUf = 0;
@@ -516,10 +517,10 @@ export function buildSalesPerformance(
 
     return {
       period,
-      salesUf,
-      salesPerM2: totalLeasedM2 > 0 ? salesUf / totalLeasedM2 : 0,
+      salesPesos,
+      salesPerM2: totalLeasedM2 > 0 ? salesPesos / totalLeasedM2 : 0,
       variableRentUf,
-      salesClp: ufValue > 0 ? salesUf * ufValue : null
+      salesClp: ufValue > 0 ? salesPesos * ufValue : null
     };
   });
 }
@@ -596,7 +597,8 @@ export function buildGapAnalysis(
   accountingRecords: RawAccountingRecord[],
   sales: RawUnitSale[],
   periods: string[],
-  contractDays?: RawContractDay[]
+  contractDays?: RawContractDay[],
+  ufRateByPeriod: Map<string, number> = new Map()
 ): GapAnalysisRow[] {
   // Build actual billing by period (from accounting)
   const actualByPeriod = new Map<string, number>();
@@ -611,7 +613,7 @@ export function buildGapAnalysis(
   for (const s of sales) {
     const p = periodKey(s.period);
     const tenantMap = salesByTenantPeriod.get(s.tenantId) ?? new Map<string, number>();
-    tenantMap.set(p, (tenantMap.get(p) ?? 0) + toNum(s.salesUf));
+    tenantMap.set(p, (tenantMap.get(p) ?? 0) + toNum(s.salesPesos));
     salesByTenantPeriod.set(s.tenantId, tenantMap);
   }
 
@@ -626,7 +628,9 @@ export function buildGapAnalysis(
       if (!isContractActiveInPeriod(c, periodDate)) continue;
 
       const lagPeriod = shiftPeriod(period, -VARIABLE_RENT_LAG_MONTHS);
-      const salesUf = tenantSalesMap.get(lagPeriod) ?? 0;
+      const salesPesosRaw = tenantSalesMap.get(lagPeriod) ?? 0;
+      const lagUfRate = ufRateByPeriod.get(lagPeriod) ?? 0;
+      const salesUf = lagUfRate > 0 ? salesPesosRaw / lagUfRate : 0;
 
       const expected = calcExpectedIncome({
         tarifas: c.tarifas,

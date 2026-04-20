@@ -23,17 +23,17 @@ export const budgetedSaleCellSchema = z
     projectId: z.string().min(1),
     tenantId: z.string().min(1),
     period: periodSchema,
-    salesUf: decimalStringSchema.nullable(),
+    salesPesos: decimalStringSchema.nullable(),
   })
   .superRefine((payload, ctx) => {
-    if (payload.salesUf === null) return;
+    if (payload.salesPesos === null) return;
     try {
-      const decimal = new Prisma.Decimal(payload.salesUf);
+      const decimal = new Prisma.Decimal(payload.salesPesos);
       if (decimal.isNegative()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "salesUf no puede ser negativo.",
-          path: ["salesUf"],
+          message: "salesPesos no puede ser negativo.",
+          path: ["salesPesos"],
         });
       }
     } catch {

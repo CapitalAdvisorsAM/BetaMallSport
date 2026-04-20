@@ -6,6 +6,8 @@ import { ApiError, handleApiError } from "@/lib/api-error";
 import { VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
 import { getFinanceFrom, getFinanceProjectId, getFinanceTo } from "@/lib/finance/api-params";
 import { resolveMonthRange, toPeriodKey } from "@/lib/finance/period-range";
+import { buildUfRateMap } from "@/lib/finance/uf-lookup";
+import { shiftPeriod } from "@/lib/finance/billing-utils";
 import { buildBudgetVsActual } from "@/lib/rent-roll/budget-vs-actual";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -91,12 +93,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         select: {
           tenantId: true,
           period: true,
-          salesUf: true,
+          salesPesos: true,
         },
       }),
     ]);
 
-    const result = buildBudgetVsActual(contracts, accountingRecords, budgetedSales, periods);
+    // Build UF map for all periods and their lag counterparts.
+    const lagPeriods = periods.map((p) => shiftPeriod(p, -VARIABLE_RENT_LAG_MONTHS));
+    const ufRateByPeriod = await buildUfRateMap([...new Set([...periods, ...lagPeriods])]);
+    const result = buildBudgetVsActual(contracts, accountingRecords, budgetedSales, periods, ufRateByPeriod);
 
     return NextResponse.json(result);
   } catch (error) {

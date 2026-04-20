@@ -1,8 +1,8 @@
 export type VentasSeriesPoint = {
   period: string;
-  salesUf: number;
+  salesPesos: number;
   glaM2: number;
-  salesUfPerM2: number;
+  salesPesosM2: number;
 };
 
 export type VentasDimensionSeries = {

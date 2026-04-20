@@ -410,7 +410,7 @@ async function buildFinanzasArrendatariosExport(
           select: {
             tenantId: true,
             period: true,
-            salesUf: true
+            salesPesos: true
           }
         })
       : Promise.resolve([])
@@ -428,7 +428,7 @@ async function buildFinanzasArrendatariosExport(
   for (const venta of ventas) {
     const periodKey = venta.period.toISOString().slice(0, 7);
     const byPeriodo = ventasByTenant.get(venta.tenantId) ?? new Map<string, number>();
-    byPeriodo.set(periodKey, (byPeriodo.get(periodKey) ?? 0) + asNumber(venta.salesUf));
+    byPeriodo.set(periodKey, (byPeriodo.get(periodKey) ?? 0) + asNumber(venta.salesPesos));
     ventasByTenant.set(venta.tenantId, byPeriodo);
   }
 

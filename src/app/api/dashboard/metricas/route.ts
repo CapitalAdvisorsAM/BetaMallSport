@@ -12,6 +12,7 @@ import {
   calculateContractStateCounters,
   type KpiContractInput
 } from "@/lib/kpi";
+import { buildUfRateMap } from "@/lib/finance/uf-lookup";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { computeEstadoContrato, startOfDay } from "@/lib/utils";
@@ -142,7 +143,7 @@ export async function GET(request: Request): Promise<NextResponse> {
               select: {
                 tenantId: true,
                 period: true,
-                salesUf: true
+                salesPesos: true
               }
             }),
             prisma.ingresoEnergia.findMany({
@@ -165,7 +166,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         const ventasPeriodo = ventasPeriodoRaw.map((sale) => ({
           arrendatarioId: sale.tenantId,
           periodo: sale.period.toISOString().slice(0, 7),
-          ventasUf: sale.salesUf
+          ventasPesos: sale.salesPesos
         }));
         const energiaPeriodo = energiaPeriodoRaw.map((energy) => ({
           localId: energy.localId,
@@ -237,12 +238,15 @@ export async function GET(request: Request): Promise<NextResponse> {
 
         const localesActivosMapped = localesActivos.map((l) => ({ ...l, zona: l.zona?.nombre ?? null }));
         const ocupacion = buildOcupacionDetalle(localesActivosMapped, activeContracts);
+        const ufRateMap = await buildUfRateMap([periodo]);
+        const ufRateForPeriodo = ufRateMap.get(periodo) ?? (valorUf ? Number(valorUf.valor.toString()) : 0);
         const ingresos = buildIngresoDesglosado(
           vigenteContracts,
           localesActivosMapped,
           ventasPeriodo,
           energiaPeriodo,
-          periodo
+          periodo,
+          ufRateForPeriodo
         );
         const alertas = buildAlertCounts(
           contratosWithState.map((contract) => ({

@@ -115,7 +115,7 @@ export function ContractsViewTable({
         cell: ({ row }) => <span>{row.original.pdfUrl ? "Disponible" : "Sin PDF"}</span>
       }
     ],
-    [stateOptions, proyectoId]
+    [stateOptions]
   );
 
   const { table } = useDataTable(rows, columns);
