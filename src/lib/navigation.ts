@@ -182,12 +182,6 @@ export const FINANCE_SUB_NAV_ITEMS: NavItem[] = FINANZAS_SUB_NAV_ITEMS;
 
 export const RENT_ROLL_SUB_NAV_ITEMS: NavItem[] = [
   {
-    label: "Proyectos",
-    href: "/rent-roll/projects",
-    enabled: true,
-    match: "startsWith"
-  },
-  {
     label: "Dashboard",
     href: "/rent-roll/dashboard",
     enabled: true,
@@ -216,6 +210,12 @@ export const RENT_ROLL_SUB_NAV_ITEMS: NavItem[] = [
     href: "/rent-roll/contracts",
     enabled: true,
     match: "exact"
+  },
+  {
+    label: "Ventas Presupuestadas",
+    href: "/rent-roll/ventas-presupuestadas",
+    enabled: true,
+    match: "startsWith"
   },
   {
     label: "Configuración",

@@ -18,6 +18,11 @@ export type {
 } from "@/types/metrics";
 export type { PeriodoMetrica, TimelineResponse } from "@/types/timeline";
 export type {
+  BudgetedSalesMatrixResponse,
+  BudgetedSalesMatrixRow,
+  BudgetedSalesMatrixSummary
+} from "@/types/rent-roll";
+export type {
   OccupancyDimensionRow,
   OccupancyPeriodSnapshot,
   OccupancyTimeSeriesResponse

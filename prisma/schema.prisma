@@ -31,6 +31,7 @@ enum MasterStatus {
 
 enum ContractStatus {
   VIGENTE
+  NO_INICIADO
   TERMINADO
   TERMINADO_ANTICIPADO
   GRACIA

@@ -54,7 +54,7 @@ export function FacturacionPerM2Chart({ monthlyData, salesData }: FacturacionPer
 
   return (
     <MetricChartCard
-      title="Facturacion vs Ventas por m\u00b2"
+      title="Facturacion vs Ventas por m²"
       metricId="kpi_tenant360_facturacion_uf_m2"
       description="Evolucion mensual normalizada por metro cuadrado arrendado."
     >
@@ -82,7 +82,7 @@ export function FacturacionPerM2Chart({ monthlyData, salesData }: FacturacionPer
           <Line
             type="monotone"
             dataKey="billingUfM2"
-            name="Facturacion/m\u00b2"
+            name="Facturacion/m²"
             stroke={chartColors.brandPrimary}
             strokeWidth={2}
             dot={{ r: 3, fill: chartColors.brandPrimary }}
@@ -91,7 +91,7 @@ export function FacturacionPerM2Chart({ monthlyData, salesData }: FacturacionPer
           <Line
             type="monotone"
             dataKey="salesPerM2"
-            name="Ventas/m\u00b2"
+            name="Ventas/m²"
             stroke={chartColors.positiveLight}
             strokeWidth={2}
             dot={{ r: 3, fill: chartColors.positiveLight }}

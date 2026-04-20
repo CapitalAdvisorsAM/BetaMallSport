@@ -1,4 +1,4 @@
-import { ContractRateType } from "@prisma/client";
+import { ContractRateType, ContractStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { RentRollDashboardTable, type RentRollDashboardTableRow } from "@/components/rent-roll/RentRollDashboardTable";
@@ -56,6 +56,7 @@ export default async function RentRollPage({
     prisma.contract.findMany({
       where: {
         proyectoId: selectedProjectId,
+        estado: { in: [ContractStatus.VIGENTE, ContractStatus.GRACIA] },
         fechaInicio: { lte: fechaReferencia },
         fechaTermino: { gte: fechaReferencia }
       },

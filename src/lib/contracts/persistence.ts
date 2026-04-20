@@ -274,7 +274,7 @@ export async function assertNoOverlappingContracts(
     where: {
       proyectoId,
       ...(excludeContractId ? { id: { not: excludeContractId } } : {}),
-      estado: { in: [ContractStatus.VIGENTE, ContractStatus.GRACIA] },
+      estado: { in: [ContractStatus.VIGENTE, ContractStatus.GRACIA, ContractStatus.NO_INICIADO] },
       OR: [
         { localId: { in: localIds } },
         { locales: { some: { localId: { in: localIds } } } }

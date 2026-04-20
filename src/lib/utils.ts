@@ -1,6 +1,7 @@
 import { ContractStatus } from "@prisma/client";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { MS_PER_DAY, UF_STALENESS_DAYS } from "@/lib/constants";
 
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
@@ -92,6 +93,21 @@ export function addDays(date: Date, days: number): Date {
   return result;
 }
 
+export function ufAgeInDays(fecha: Date | null, today: Date = startOfDay(new Date())): number | null {
+  if (!fecha) {
+    return null;
+  }
+  return Math.floor((today.getTime() - startOfDay(fecha).getTime()) / MS_PER_DAY);
+}
+
+export function isUfStale(fecha: Date | null, today: Date = startOfDay(new Date())): boolean {
+  const age = ufAgeInDays(fecha, today);
+  if (age === null) {
+    return true;
+  }
+  return age > UF_STALENESS_DAYS;
+}
+
 export function computeEstadoContrato(
   fechaInicio: Date,
   fechaTermino: Date,
@@ -104,6 +120,9 @@ export function computeEstadoContrato(
   }
   if (today > fechaTermino) {
     return ContractStatus.TERMINADO;
+  }
+  if (today < startOfDay(fechaInicio)) {
+    return ContractStatus.NO_INICIADO;
   }
   const finGracia = addDays(fechaInicio, diasGracia);
   if (today < finGracia) {

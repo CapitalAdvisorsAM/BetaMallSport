@@ -1,6 +1,7 @@
 import { ContractStatus, UnitType, ContractRateType } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 import {
+  buildAlertCounts,
   buildIngresoDesglosado,
   buildOcupacionDetalle,
   buildContractExpiryBuckets,
@@ -99,8 +100,33 @@ describe("rent KPIs", () => {
   it("returns graceful fallback when UF value is missing", () => {
     expect(buildFixedRentClpMetric(100, null)).toEqual({
       value: "Sin valor UF",
-      subtitle: "No hay valor UF registrado"
+      subtitle: "No hay valor UF registrado",
+      stale: true
     });
+  });
+
+  it("marks UF as not stale when the valor UF is fresh", () => {
+    const today = new Date("2026-04-20T00:00:00.000Z");
+    const result = buildFixedRentClpMetric(
+      100,
+      { fecha: new Date("2026-04-19T00:00:00.000Z"), valor: "37000" },
+      today
+    );
+
+    expect(result.stale).toBe(false);
+    expect(result.subtitle.startsWith("UF al")).toBe(true);
+  });
+
+  it("marks UF as stale and annotates age when older than UF_STALENESS_DAYS", () => {
+    const today = new Date("2026-04-20T00:00:00.000Z");
+    const result = buildFixedRentClpMetric(
+      100,
+      { fecha: new Date("2026-04-10T00:00:00.000Z"), valor: "37000" },
+      today
+    );
+
+    expect(result.stale).toBe(true);
+    expect(result.subtitle.startsWith("UF desactualizada (10d)")).toBe(true);
   });
 
   it("calculates WALT weighted by GLA using remaining lease term", () => {
@@ -170,6 +196,7 @@ describe("portfolio KPIs", () => {
     expect(metrics.total).toBe(6);
     expect(metrics.counters).toEqual([
       expect.objectContaining({ estado: "VIGENTE", cantidad: 2, porcentaje: 33.33333333333333 }),
+      expect.objectContaining({ estado: "NO_INICIADO", cantidad: 0, porcentaje: 0 }),
       expect.objectContaining({ estado: "GRACIA", cantidad: 1, porcentaje: 16.666666666666664 }),
       expect.objectContaining({
         estado: "TERMINADO_ANTICIPADO",
@@ -363,5 +390,35 @@ describe("cdg mall sport KPIs", () => {
     expect(rows[1]).toMatchObject({ anio: 2027, cantidadContratos: 2, m2: 100 });
     expect(rows[0]?.pctTotal).toBe(50);
     expect(rows[1]?.pctTotal).toBe(50);
+  });
+});
+
+describe("buildAlertCounts", () => {
+  const today = new Date("2026-04-20T00:00:00.000Z");
+
+  it("counts GRACIA and NO_INICIADO contracts into separate buckets", () => {
+    const contracts = [
+      { estado: ContractStatus.GRACIA, fechaTermino: new Date("2027-01-01T00:00:00.000Z") },
+      { estado: ContractStatus.GRACIA, fechaTermino: new Date("2027-01-01T00:00:00.000Z") },
+      { estado: ContractStatus.NO_INICIADO, fechaTermino: new Date("2028-01-01T00:00:00.000Z") },
+      { estado: ContractStatus.VIGENTE, fechaTermino: new Date("2028-01-01T00:00:00.000Z") }
+    ];
+
+    const counts = buildAlertCounts(contracts, [], today);
+
+    expect(counts.enGracia).toBe(2);
+    expect(counts.noIniciados).toBe(1);
+  });
+
+  it("reports zero counts when no contracts are in grace or not started", () => {
+    const counts = buildAlertCounts(
+      [{ estado: ContractStatus.VIGENTE, fechaTermino: new Date("2028-01-01T00:00:00.000Z") }],
+      [{ id: "l1" }],
+      today
+    );
+
+    expect(counts.enGracia).toBe(0);
+    expect(counts.noIniciados).toBe(0);
+    expect(counts.vacantes).toBe(1);
   });
 });

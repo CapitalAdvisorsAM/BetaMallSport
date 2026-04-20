@@ -56,6 +56,12 @@ const CARTERA_CARD_CONFIG: Record<ContractStatus, CarteraCardConfig> = {
     metricId: "kpi_dashboard_cartera_gracia",
     subtitle: "Sin ingreso hasta inicio efectivo"
   },
+  NO_INICIADO: {
+    title: "No iniciados",
+    accent: "slate",
+    metricId: "kpi_dashboard_cartera_no_iniciado",
+    subtitle: "Firmados con inicio posterior a hoy"
+  },
   TERMINADO_ANTICIPADO: {
     title: "Terminados anticipadamente",
     accent: "red",

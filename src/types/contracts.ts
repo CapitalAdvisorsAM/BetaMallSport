@@ -78,12 +78,16 @@ export type ContractManagerListItem = {
   pdfUrl: string | null;
   fechaInicio: string;
   fechaTermino: string;
+  fechaEntrega: string | null;
+  fechaApertura: string | null;
   pctFondoPromocion: string | null;
   pctAdministracionGgcc: string | null;
   multiplicadorDiciembre: string | null;
   multiplicadorJunio: string | null;
   multiplicadorJulio: string | null;
   multiplicadorAgosto: string | null;
+  codigoCC: string | null;
+  notas: string | null;
   local: { id: string; codigo: string; nombre: string };
   locales: Array<{ id: string; codigo: string; nombre: string }>;
   arrendatario: { id: string; nombreComercial: string; razonSocial: string };

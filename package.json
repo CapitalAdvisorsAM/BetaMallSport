@@ -17,7 +17,9 @@
     "prisma:push": "node scripts/prisma-safe.mjs db push",
     "prisma:migrate": "node scripts/prisma-safe.mjs migrate deploy",
     "prisma:migrate:dev": "node scripts/prisma-safe.mjs migrate dev",
-    "prisma:reset": "node scripts/prisma-safe.mjs migrate reset"
+    "prisma:reset": "node scripts/prisma-safe.mjs migrate reset",
+    "sync:budget-contracts": "node scripts/sync-budget-contracts.cjs",
+    "reconcile:budget-contracts": "node scripts/reconcile-budget-contracts.cjs"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",
