@@ -41,6 +41,7 @@ export function FinanceUploadClient({
             endpoint="/api/finance/upload/accounting"
             projectId={selectedProjectId}
             variant="contable"
+            templateHref="/api/finance/upload/accounting/template"
           />
           <UploadHistory
             items={accountingHistory}
@@ -58,6 +59,7 @@ export function FinanceUploadClient({
             endpoint="/api/finance/upload/sales"
             projectId={selectedProjectId}
             variant="ventas"
+            templateHref="/api/finance/upload/sales/template"
           />
           <UploadHistory
             items={salesHistory}
@@ -75,6 +77,7 @@ export function FinanceUploadClient({
             endpoint="/api/finance/upload/budgeted-sales"
             projectId={selectedProjectId}
             variant="ventas"
+            templateHref="/api/finance/upload/budgeted-sales/template"
           />
           <UploadHistory
             items={budgetedSalesHistory}
@@ -110,6 +113,7 @@ export function FinanceUploadClient({
             endpoint="/api/finance/upload/balances"
             projectId={selectedProjectId}
             variant="balances"
+            templateHref="/api/finance/upload/balances/template"
           />
           <UploadHistory
             items={balancesHistory}
@@ -127,6 +131,7 @@ export function FinanceUploadClient({
             endpoint="/api/finance/upload/bank"
             projectId={selectedProjectId}
             variant="bank"
+            templateHref="/api/finance/upload/bank/template"
           />
           <UploadHistory
             items={bankHistory}
