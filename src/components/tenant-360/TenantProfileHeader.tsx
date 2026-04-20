@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { cn, formatClp, formatSquareMeters, formatUf } from "@/lib/utils";
@@ -14,6 +15,23 @@ export function TenantProfileHeader({ profile, quickStats }: TenantProfileHeader
   return (
     <ModuleSectionCard>
       <div className="px-5 py-4">
+        {/* Breadcrumb */}
+        <nav className="mb-2 flex flex-wrap items-center gap-1 text-xs text-slate-500">
+          <Link
+            href="/rent-roll/tenants"
+            className="text-brand-500 underline underline-offset-2 transition-colors hover:text-brand-700"
+          >
+            Rent Roll · Arrendatarios
+          </Link>
+          <span className="text-slate-300">·</span>
+          <Link
+            href="/finance/tenants"
+            className="text-brand-500 underline underline-offset-2 transition-colors hover:text-brand-700"
+          >
+            Finanzas · Arrendatarios
+          </Link>
+        </nav>
+
         {/* Top row: name + status */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
