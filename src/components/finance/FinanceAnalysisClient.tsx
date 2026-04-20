@@ -9,7 +9,21 @@ import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolba
 import { UnifiedTable } from "@/components/ui/UnifiedTable";
 import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
 import { formatEerr } from "@/lib/finance/eerr";
-import type { AnalisisFila, AnalisisResponse } from "@/app/api/finance/analysis/route";
+type AnalisisFila = {
+  id: string;
+  nombre: string;
+  sub?: string | null;
+  porPeriodo: Record<string, number>;
+  total: number;
+};
+
+type AnalisisResponse = {
+  periodos: string[];
+  filas: AnalisisFila[];
+  totalesPorPeriodo: Record<string, number>;
+  totalGeneral: number;
+  grupo3Disponibles?: string[];
+};
 
 type DimensionType = "arrendatario" | "local" | "categoria" | "seccion" | "piso";
 type OrdenType = "nombre" | "total_desc" | "total_asc";
