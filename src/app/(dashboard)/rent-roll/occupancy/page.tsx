@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import { OccupancyClient } from "@/components/finance/OccupancyClient";
+import { OccupancyClient } from "@/components/rent-roll/OccupancyClient";
 import { requireSession } from "@/lib/permissions";
 import { getProjectContext } from "@/lib/project";
 
-export default async function FinanceOccupancyPage({
+export default async function RentRollOccupancyPage({
   searchParams
 }: {
   searchParams: { from?: string; to?: string; desde?: string; hasta?: string };
