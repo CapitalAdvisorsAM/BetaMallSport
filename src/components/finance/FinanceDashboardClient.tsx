@@ -375,8 +375,8 @@ export function FinanceDashboardClient({ selectedProjectId, reportDate }: Props)
         <>
           <PanelCdg kpis={data.panel} reportDate={reportDate} />
 
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {/* KPI Cards — EE.RR focus: ingresos, EBITDA, YTD. UF/m² y vacancia viven en /dashboard. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <KpiCard
               metricId="kpi_dashboard_ingresos_uf"
               label="Ingresos"
@@ -407,19 +407,6 @@ export function FinanceDashboardClient({ selectedProjectId, reportDate }: Props)
                 anterior={data.kpis.ytdEbitda.anterior}
               />
             )}
-            <KpiCard
-              metricId="kpi_dashboard_uf_por_m2"
-              label="UF / m²"
-              value={data.kpis.ufPorm2}
-              subLabel="Ingresos / GLA total"
-            />
-            <KpiCard
-              metricId="kpi_dashboard_vacancia_pct"
-              label="Vacancia"
-              value={data.kpis.vacanciaPct}
-              suffix="%"
-              subLabel={`${data.kpis.localesOcupados}/${data.kpis.totalLocalesGLA} locales GLA`}
-            />
           </div>
 
           {/* Gráfico mensual */}
