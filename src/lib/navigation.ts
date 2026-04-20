@@ -63,6 +63,18 @@ export const SETTINGS_SUB_NAV_ITEMS: NavItem[] = [
     match: "startsWith"
   },
   {
+    label: "Proyectos",
+    href: "/settings/projects",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
+    label: "Mapeos",
+    href: "/settings/finance-mappings",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
     label: "Dashboard",
     href: "/settings/dashboard",
     enabled: true,
@@ -161,12 +173,6 @@ export const FINANZAS_SUB_NAV_ITEMS: NavItem[] = [
     enabled: true,
     match: "startsWith"
   },
-  {
-    label: "Mapeos",
-    href: "/finance/mappings",
-    enabled: true,
-    match: "startsWith"
-  }
 ];
 
 export const FINANCE_SUB_NAV_ITEMS: NavItem[] = FINANZAS_SUB_NAV_ITEMS;

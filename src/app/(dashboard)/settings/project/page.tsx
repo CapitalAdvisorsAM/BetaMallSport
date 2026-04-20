@@ -9,7 +9,7 @@ export default async function ProyectoConfigPage(): Promise<JSX.Element> {
   const { selectedProjectId } = await getProjectContext();
 
   if (!selectedProjectId) {
-    redirect("/rent-roll/projects");
+    redirect("/settings/projects");
   }
 
   const projectRaw = await prisma.project.findFirst({
@@ -18,7 +18,7 @@ export default async function ProyectoConfigPage(): Promise<JSX.Element> {
   });
 
   if (!projectRaw) {
-    redirect("/rent-roll/projects");
+    redirect("/settings/projects");
   }
 
   const project = { ...projectRaw, glaTotal: projectRaw.glaTotal?.toString() ?? null };

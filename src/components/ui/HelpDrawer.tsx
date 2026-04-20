@@ -410,10 +410,10 @@ const HELP_CONTENT: Record<DrawerSection, HelpContent> = {
 
 function resolveDrawerSection(pathname: string, fallback: HelpSection): DrawerSection {
   switch (pathname) {
-    case "/rent-roll/projects":
+    case "/settings/projects":
       return "proyectos";
     default:
-      if (pathname.startsWith("/rent-roll/projects/")) {
+      if (pathname.startsWith("/settings/projects/")) {
         return "proyectos";
       }
       return fallback;

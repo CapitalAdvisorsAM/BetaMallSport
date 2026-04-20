@@ -334,7 +334,7 @@ export function ProcessingUploadCard({
                     <div>
                       <p className="font-semibold text-warning-700">
                         {unmappedItems.length} local(es) sin mapeo.{" "}
-                        <a href="/finance/mappings?tab=accounting" className="underline">Ir a Mapeos</a>
+                        <a href="/settings/finance-mappings?tab=accounting" className="underline">Ir a Mapeos</a>
                       </p>
                       <ul className="mt-1 space-y-0.5 text-slate-500">
                         {unmappedItems.map((item) => (
@@ -350,7 +350,7 @@ export function ProcessingUploadCard({
                     <div>
                       <p className="font-semibold text-warning-700">
                         {unmappedSales.length} tienda(s) sin mapeo.{" "}
-                        <a href="/finance/mappings?tab=sales" className="underline">Ir a Mapeos</a>
+                        <a href="/settings/finance-mappings?tab=sales" className="underline">Ir a Mapeos</a>
                       </p>
                       <ul className="mt-1 space-y-0.5 text-slate-500">
                         {unmappedSales.map((item) => (
