@@ -82,7 +82,7 @@ export function GgccDeficitClient({
       const params = new URLSearchParams({ projectId: selectedProjectId });
       if (desde) params.set("from", desde);
       if (hasta) params.set("to", hasta);
-      const res = await fetch(`/api/finance/ggcc?${params}`);
+      const res = await fetch(`/api/finance/common-charges?${params}`);
       if (res.ok) {
         setData((await res.json()) as GgccDeficitResponse);
       }

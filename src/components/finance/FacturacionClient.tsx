@@ -90,7 +90,7 @@ export function FacturacionClient({
       });
       if (desde) params.set("from", desde);
       if (hasta) params.set("to", hasta);
-      const res = await fetch(`/api/finance/facturacion?${params}`);
+      const res = await fetch(`/api/finance/billing?${params}`);
       if (res.ok) {
         setData((await res.json()) as FacturacionResponse);
       }

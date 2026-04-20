@@ -64,7 +64,7 @@ export function CostoOcupacionClient({
         projectId: selectedProjectId,
         period
       });
-      const res = await fetch(`/api/finance/costo-ocupacion?${params}`);
+      const res = await fetch(`/api/finance/occupancy-cost?${params}`);
       if (res.ok) {
         setData((await res.json()) as CostoOcupacionResponse);
       }

@@ -42,7 +42,7 @@ export function EeffClient({ selectedProjectId, defaultDesde, defaultHasta }: Pr
       const params = new URLSearchParams({ projectId: selectedProjectId });
       if (desde) params.set("from", desde);
       if (hasta) params.set("to", hasta);
-      const res = await fetch(`/api/finance/eeff?${params}`);
+      const res = await fetch(`/api/finance/cash-flow-statement?${params}`);
       if (!res.ok) {
         setData(null);
         return;

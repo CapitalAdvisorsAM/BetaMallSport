@@ -56,7 +56,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       }),
       prisma.tenantSale.findMany({
         where: { projectId, period: { gte: ytdStart, lte: periodDate } },
-        select: { tenantId: true, period: true, salesUf: true }
+        select: { tenantId: true, period: true, salesPesos: true }
       })
     ]);
 
@@ -84,7 +84,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     const sales: CostoSaleInput[] = rawSales.map((s) => ({
       tenantId: s.tenantId,
       period: s.period,
-      salesUf: s.salesUf
+      salesPesos: s.salesPesos
     }));
 
     const result: CostoOcupacionResponse = buildCostoOcupacionTable(
