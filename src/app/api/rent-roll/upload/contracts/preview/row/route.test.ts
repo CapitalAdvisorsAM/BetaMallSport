@@ -82,7 +82,20 @@ function makeStoredPreview() {
       sinCambio: 0,
       errores: 0
     },
-    warnings: []
+    warnings: [],
+    sourceFormat: "rent_roll" as const,
+    reconciliation: {
+      summary: {
+        matchedByNaturalKey: 0,
+        creatableContracts: 1,
+        vacancyConfirmed: 0,
+        vacancyConflicts: 0,
+        blockedRows: 0,
+        refCaMismatches: 0,
+        skippedRows: 0
+      },
+      items: []
+    }
   };
 }
 
@@ -156,14 +169,24 @@ describe("PATCH /api/rent-roll/upload/contracts/preview/row", () => {
     });
 
     expect(response.status).toBe(200);
-    const payload = (await response.json()) as { cargaId: string; preview: { rows: Array<{ data: { tarifaValor: string } }> } };
+    const payload = (await response.json()) as {
+      cargaId: string;
+      preview: {
+        rows: Array<{ data: { tarifaValor: string } }>;
+        sourceFormat?: string;
+        reconciliation?: { summary: { creatableContracts: number } };
+      };
+    };
     expect(payload.cargaId).toBe("c1");
     expect(payload.preview.rows[0]?.data.tarifaValor).toBe("4.1");
+    expect(payload.preview.sourceFormat).toBe("rent_roll");
+    expect(payload.preview.reconciliation?.summary.creatableContracts).toBe(1);
 
     expect(prismaMock.dataUpload.update).toHaveBeenCalledTimes(1);
     const updateArgs = prismaMock.dataUpload.update.mock.calls[0][0];
     expect(updateArgs.where.id).toBe("c1");
     expect(typeof updateArgs.data.errorDetail).toBe("string");
+    expect(JSON.parse(updateArgs.data.errorDetail).sourceFormat).toBe("rent_roll");
   });
 });
 

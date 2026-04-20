@@ -1,0 +1,126 @@
+{
+  "generatedAt": "2026-04-20T14:24:01.063Z",
+  "target": "production",
+  "schemaStatus": "drift detectado",
+  "findingCounts": {
+    "critical": 2,
+    "high": 3,
+    "medium": 1,
+    "low": 1
+  },
+  "topRisks": [
+    {
+      "severity": "critical",
+      "title": "Contratos superpuestos sobre un mismo local",
+      "evidence": "8 pares de contratos activos/gracia se superponen en el mismo local.",
+      "impact": "Riesgo de duplicar ocupación, renta esperada y métricas de vencimiento.",
+      "recommendation": "Corregir datos y agregar una validación persistente previa a altas/ediciones masivas.",
+      "queryFiles": [
+        "integrity_contract_overlap.sql"
+      ]
+    },
+    {
+      "severity": "critical",
+      "title": "La credencial auditada no opera con privilegios read-only mínimos",
+      "evidence": "CREATE en base; TEMP en base; CREATE en esquema public; 30 tablas con INSERT/UPDATE/DELETE/TRUNCATE",
+      "impact": "La auditoría se ejecuta segura por transacción read-only, pero la credencial subyacente sigue sobredimensionada para producción.",
+      "recommendation": "Crear un rol dedicado de auditoría/lectura y rotar DATABASE_URL productivo a privilegios mínimos.",
+      "queryFiles": [
+        "security_role_privileges.sql",
+        "security_table_privileges.sql"
+      ]
+    },
+    {
+      "severity": "high",
+      "title": "Se detectaron rangos temporales inválidos o estados incoherentes",
+      "evidence": "6 filas afectadas en 1 chequeos temporales.",
+      "impact": "Afecta el cálculo de vigencias, días de gracia, timeline y rent roll diario.",
+      "recommendation": "Normalizar fechas inválidas y reconciliar estados calculados versus persistidos.",
+      "queryFiles": [
+        "integrity_invalid_ranges.sql"
+      ]
+    },
+    {
+      "severity": "high",
+      "title": "Schema/migraciones con drift respecto del repo",
+      "evidence": "8 objetos en estado drift entre Prisma, migraciones y PostgreSQL.",
+      "impact": "Eleva el riesgo de despliegues inconsistentes, regresiones silenciosas y pérdida de trazabilidad.",
+      "recommendation": "Resolver diferencias antes de nuevas migraciones y formalizar índices/manuales pendientes.",
+      "queryFiles": [
+        "migrations_applied.sql",
+        "table_inventory.sql",
+        "index_inventory.sql"
+      ]
+    },
+    {
+      "severity": "high",
+      "title": "La credencial puede leer PII y tokens de autenticación",
+      "evidence": "5 tablas sensibles legibles y 8 columnas sensibles inventariadas.",
+      "impact": "Un uso impropio de la credencial permitiría exfiltración de sesiones, tokens OAuth o datos personales básicos.",
+      "recommendation": "Segregar credenciales por uso, limitar SELECT sobre tablas auth y revisar necesidad de retener tokens en claro.",
+      "queryFiles": [
+        "security_table_privileges.sql",
+        "column_inventory.sql"
+      ]
+    },
+    {
+      "severity": "medium",
+      "title": "Hay valores financieros u operativos fuera de rango esperado",
+      "evidence": "5 filas anómalas en 1 chequeos de rango.",
+      "impact": "Puede distorsionar KPIs, presupuesto versus real y simulaciones de renta/GGCC.",
+      "recommendation": "Revisar cargas históricas y agregar validaciones explícitas de rango en formularios y ETL.",
+      "queryFiles": [
+        "integrity_value_ranges.sql"
+      ]
+    },
+    {
+      "severity": "low",
+      "title": "Observabilidad de queries incompleta",
+      "evidence": "No se pudo consultar pg_stat_statements en esta ejecución.",
+      "impact": "La priorización de performance depende más de estadísticas de tabla/índice que de latencia por query real.",
+      "recommendation": "Habilitar o exponer pg_stat_statements al rol de auditoría.",
+      "queryFiles": [
+        "performance_top_statements.sql"
+      ]
+    }
+  ],
+  "backlog": [
+    {
+      "wave": 1,
+      "title": "Riesgos críticos de integridad y seguridad",
+      "tasks": [
+        "Crear un rol read-only real para auditoría/analítica productiva.",
+        "Corregir contratos superpuestos y bloquear nuevas superposiciones.",
+        "Corregir incoherencias de projectId entre tablas relacionadas."
+      ]
+    },
+    {
+      "wave": 2,
+      "title": "Drift y deuda de migraciones",
+      "tasks": [
+        "Conciliar _prisma_migrations con carpetas del repo.",
+        "Versionar o documentar formalmente índices/manuales fuera de Prisma.",
+        "Planificar retiro seguro de columnas deprecated y restos de migraciones transicionales."
+      ]
+    },
+    {
+      "wave": 3,
+      "title": "Performance y costo",
+      "tasks": [
+        "Analizar tablas grandes con seq_scan dominante contra rutas hotspot.",
+        "Revisar índices grandes sin uso y confirmar si son deuda o cobertura estacional.",
+        "Habilitar métricas de query-level con pg_stat_statements para siguiente iteración."
+      ]
+    },
+    {
+      "wave": 4,
+      "title": "Limpieza de modelo y observabilidad",
+      "tasks": [
+        "Reducir superficie de lectura sensible en tablas auth y PII.",
+        "Automatizar esta auditoría read-only en ambientes controlados.",
+        "Agregar chequeos recurrentes de integridad sobre fechas, rangos y snapshots diarios."
+      ]
+    }
+  ],
+  "blockedQueries": []
+}

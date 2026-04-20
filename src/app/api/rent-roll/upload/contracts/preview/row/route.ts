@@ -160,7 +160,7 @@ export async function PATCH(request: Request): Promise<NextResponse> {
     }
 
     const lookupData = await loadLookupData(carga.projectId);
-    const nextPreview = revalidateContractPreviewRows(
+    const revalidatedPreview = revalidateContractPreviewRows(
       storedPreview.rows.map((row) => ({
         rowNumber: row.rowNumber,
         data: row.rowNumber === rowNumber ? rowData : row.data
@@ -172,6 +172,11 @@ export async function PATCH(request: Request): Promise<NextResponse> {
         existingArrendatarioNombres: lookupData.existingArrendatarioNombres
       }
     );
+    const nextPreview = {
+      ...revalidatedPreview,
+      sourceFormat: storedPreview.sourceFormat ?? revalidatedPreview.sourceFormat,
+      reconciliation: storedPreview.reconciliation
+    };
 
     await prisma.dataUpload.update({
       where: { id: carga.id },

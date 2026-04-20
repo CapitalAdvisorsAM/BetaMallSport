@@ -1,7 +1,13 @@
 import { ContractRateType } from "@prisma/client";
 import { read, utils } from "xlsx";
 import { MAX_ROWS, normalizeHeaders, parseDate } from "@/lib/upload/parse-utils";
-import type { PreviewRow, UploadIssue, UploadPreview } from "@/types/upload";
+import type {
+  ContractReconciliation,
+  ContractReconciliationItem,
+  PreviewRow,
+  UploadIssue,
+  UploadPreview
+} from "@/types/upload";
 
 type RawRow = Record<string, unknown>;
 type GgccTipoInput = "FIJO_UF_M2" | "FIJO_UF";
@@ -104,6 +110,39 @@ type ParseContractsOptions = {
   existingArrendatarioNombres: Map<string, number>;
 };
 
+type RentRollParsedRow = {
+  rowNumber: number;
+  rawRow: RawRow;
+  localCodigo: string;
+  arrendatarioNombre: string;
+  refCa: string | null;
+  fechaInicio: string | null;
+  fechaTermino: string | null;
+  isVacancy: boolean;
+  isSkippedRow: boolean;
+};
+
+type BuildPreviewRowsResult = {
+  rows: PreviewRow<ContractUploadRow>[];
+  matchedByNaturalKeyCount: number;
+  creatableContractsCount: number;
+  blockedRowsCount: number;
+};
+
+const RENT_ROLL_SHEET_NAME = "Rent Roll";
+const RENT_ROLL_HEADER_ROW_INDEX = 4;
+const RENT_ROLL_DATA_ROW_INDEX = 5;
+const RENT_ROLL_SUPPORTED_TYPES = new Set([
+  "LOCAL COMERCIAL",
+  "MODULO COMERCIAL",
+  "BODEGA",
+  "MAQUINA EXPENDEDORA",
+  "OLA",
+  "OTROS"
+]);
+const RENT_ROLL_SKIPPED_LOCAL_CODES = new Set(["-", "GESTION COMERCIAL - NUEVOS LOCALES"]);
+const RENT_ROLL_EMPTY_MARKERS = new Set(["", "-", "N/A", "NA", "NULL"]);
+
 export type ContractPreviewInputRow = {
   rowNumber: number;
   data: Record<string, unknown>;
@@ -113,6 +152,14 @@ type PreviewSourceRow = {
   rowNumber: number;
   rawRow: RawRow;
 };
+
+function emptyPreview(rows: PreviewRow<ContractUploadRow>[], warnings: string[]): UploadPreview<ContractUploadRow> {
+  return {
+    rows,
+    summary: summarize(rows),
+    warnings
+  };
+}
 
 export function buildContractLookupKey(input: {
   numeroContrato?: string | null;
@@ -155,8 +202,64 @@ export function normalizeUploadTenantName(value: string): string {
     .trim()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\s*->.*$/g, " ")
     .toLowerCase()
     .replace(/\s+/g, " ");
+}
+
+function normalizeLocalCode(value: unknown): string {
+  return asString(value).toUpperCase();
+}
+
+function normalizeRentRollLabel(value: unknown): string {
+  return asString(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/\s+/g, " ");
+}
+
+function isEmptyMarker(value: unknown): boolean {
+  return RENT_ROLL_EMPTY_MARKERS.has(normalizeRentRollLabel(value));
+}
+
+function normalizeRefCaNumber(value: unknown): string | null {
+  const normalized = asString(value).toUpperCase();
+  if (!normalized || normalized === "-") {
+    return null;
+  }
+  return normalized;
+}
+
+function isEquivalentRefCa(refCa: string | null, numeroContrato: string | null): boolean {
+  const left = normalizeRefCaNumber(refCa);
+  const right = normalizeRefCaNumber(numeroContrato);
+  if (!left || !right) {
+    return false;
+  }
+  return left === right || `C-${left}` === right || left === `C-${right}`;
+}
+
+function normalizeRentRollPercent(value: unknown): string | null {
+  const normalized = normalizeDecimal(normalizeNullable(value));
+  if (!normalized) {
+    return null;
+  }
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  const scaled = parsed !== 0 && Math.abs(parsed) <= 1 ? parsed * 100 : parsed;
+  return String(Number(scaled.toFixed(6)));
+}
+
+function appendNotePart(parts: string[], label: string, value: unknown): void {
+  const normalized = asString(value);
+  if (!normalized || normalized === "-") {
+    return;
+  }
+  parts.push(`${label}: ${normalized}`);
 }
 
 function normalizeDecimal(value: string | null): string | null {
@@ -421,10 +524,13 @@ function compareWithExisting(
 function buildPreviewRows(
   sourceRows: PreviewSourceRow[],
   options: ParseContractsOptions
-): PreviewRow<ContractUploadRow>[] {
+): BuildPreviewRowsResult {
   const duplicatedTarifaKey = new Set<string>();
+  let matchedByNaturalKeyCount = 0;
+  let creatableContractsCount = 0;
+  let blockedRowsCount = 0;
 
-  return sourceRows.map(({ rawRow, rowNumber }) => {
+  const rows = sourceRows.map(({ rawRow, rowNumber }) => {
     const numeroContrato = asString(rawRow.numerocontrato);
     const localCodigo = asString(rawRow.localcodigo).toUpperCase();
     const arrendatarioNombre = asString(rawRow.arrendatarionombre);
@@ -538,6 +644,7 @@ function buildPreviewRows(
     };
 
     if (!localCodigo || !arrendatarioNombreLookup) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -546,6 +653,7 @@ function buildPreviewRows(
       };
     }
     if (!allowedTipoTarifa.has(data.tarifaTipo)) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -554,6 +662,7 @@ function buildPreviewRows(
       };
     }
     if (!data.fechaInicio || !data.fechaTermino || !data.tarifaVigenciaDesde) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -562,6 +671,7 @@ function buildPreviewRows(
       };
     }
     if (new Date(data.fechaInicio) > new Date(data.fechaTermino)) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -570,6 +680,7 @@ function buildPreviewRows(
       };
     }
     if (!data.tarifaValor || Number.isNaN(Number(data.tarifaValor))) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -588,29 +699,36 @@ function buildPreviewRows(
     const tramosProvided = extraTramoSpecs.filter((t) => t.rawValor !== null || t.rawDesde !== null);
     if (tramosProvided.length > 0) {
       if (tarifaTipoFinal === ContractRateType.PORCENTAJE) {
+        blockedRowsCount += 1;
         return { rowNumber, status: "ERROR", data, errorMessage: "Tarifa escalonada no es compatible con PORCENTAJE." };
       }
       // Tramos must be consecutive: 2, 3, 4, 5 — no gaps
       for (let i = 0; i < tramosProvided.length; i++) {
         if (tramosProvided[i].n !== i + 2) {
+          blockedRowsCount += 1;
           return { rowNumber, status: "ERROR", data, errorMessage: `Los tramos deben ser consecutivos. Falta Tarifa ${i + 2}.` };
         }
       }
       let prevHasta: string | null = data.tarifaVigenciaHasta;
       for (const tramo of tramosProvided) {
         if (!prevHasta) {
+          blockedRowsCount += 1;
           return { rowNumber, status: "ERROR", data, errorMessage: `Tarifa ${tramo.n - 1} Hasta es obligatorio para tarifa escalonada.` };
         }
         if (!tramo.rawValor) {
+          blockedRowsCount += 1;
           return { rowNumber, status: "ERROR", data, errorMessage: `Tarifa ${tramo.n} Valor es obligatorio cuando se informa Tarifa ${tramo.n} Desde.` };
         }
         if (Number.isNaN(Number(tramo.rawValor.replace(",", ".")))) {
+          blockedRowsCount += 1;
           return { rowNumber, status: "ERROR", data, errorMessage: `Tarifa ${tramo.n} Valor debe ser numerico.` };
         }
         if (!tramo.rawDesde) {
+          blockedRowsCount += 1;
           return { rowNumber, status: "ERROR", data, errorMessage: `Tarifa ${tramo.n} Desde es obligatorio cuando se informa Tarifa ${tramo.n} Valor.` };
         }
         if (!tramo.desde) {
+          blockedRowsCount += 1;
           return { rowNumber, status: "ERROR", data, errorMessage: `Tarifa ${tramo.n} Desde tiene fecha invalida.` };
         }
         prevHasta = tramo.hasta;
@@ -618,6 +736,7 @@ function buildPreviewRows(
     }
 
     if (!isValidDecimalOrNull(data.pctFondoPromocion)) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -626,6 +745,7 @@ function buildPreviewRows(
       };
     }
     if (!isValidDecimalOrNull(data.multiplicadorDiciembre)) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -634,6 +754,7 @@ function buildPreviewRows(
       };
     }
     if (!isValidDecimalOrNull(data.multiplicadorJunio)) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -642,6 +763,7 @@ function buildPreviewRows(
       };
     }
     if (!isValidDecimalOrNull(data.multiplicadorJulio)) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -650,6 +772,7 @@ function buildPreviewRows(
       };
     }
     if (!isValidDecimalOrNull(data.multiplicadorAgosto)) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -662,6 +785,7 @@ function buildPreviewRows(
       !isValidDecimalOrNull(data.ggccPctAdministracion) ||
       !isValidDecimalOrNull(data.ggccPctReajuste)
     ) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -670,6 +794,7 @@ function buildPreviewRows(
       };
     }
     if (normalizeNullable(rawRow.ggccmesesreajuste) && data.ggccMesesReajuste === null) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -678,6 +803,7 @@ function buildPreviewRows(
       };
     }
     if (data.ggccMesesReajuste !== null && !data.ggccPctReajuste) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -687,6 +813,7 @@ function buildPreviewRows(
     }
     const localData = options.existingLocalData.get(data.localCodigo);
     if (!localData) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -696,6 +823,7 @@ function buildPreviewRows(
     }
     const arrendatarioNombreCount = options.existingArrendatarioNombres.get(arrendatarioNombreLookup) ?? 0;
     if (arrendatarioNombreCount === 0) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -704,6 +832,7 @@ function buildPreviewRows(
       };
     }
     if (arrendatarioNombreCount > 1) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -727,6 +856,7 @@ function buildPreviewRows(
         ggccTarifaBaseUfM2
     );
     if (hasAnyGgccValue && !hasCompleteGgcc) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -736,6 +866,7 @@ function buildPreviewRows(
       };
     }
     if (data.ggccTipo === null && normalizeNullable(rawRow.ggcctipo)) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -744,6 +875,7 @@ function buildPreviewRows(
       };
     }
     if (data.ggccTipo === "FIJO_UF" && !parsePositiveDecimal(localData.glam2)) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -753,6 +885,7 @@ function buildPreviewRows(
     }
 
     if ((data.anexoFecha && !data.anexoDescripcion) || (!data.anexoFecha && data.anexoDescripcion)) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -761,15 +894,30 @@ function buildPreviewRows(
       };
     }
 
-    const contractLookupKey = buildContractLookupKey({
-      numeroContrato,
+    const naturalLookupKey = buildContractLookupKey({
+      numeroContrato: "",
       localCodigo: data.localCodigo,
       arrendatarioNombre: data.arrendatarioNombre,
       fechaInicio: data.fechaInicio,
       fechaTermino: data.fechaTermino
     });
-    const tarifaKey = `${contractLookupKey}-${data.tarifaTipo}-${data.tarifaVigenciaDesde}`;
+    const existingByNatural = options.existingContratos.get(naturalLookupKey);
+    const existingByNumber = numeroContrato
+      ? options.existingContratos.get(
+          buildContractLookupKey({
+            numeroContrato
+          })
+        )
+      : undefined;
+    const existing = existingByNatural ?? existingByNumber;
+    if (existingByNatural) {
+      matchedByNaturalKeyCount += 1;
+    }
+
+    const tariffIdentityKey = existing ? buildContractLookupKey(existing) : naturalLookupKey;
+    const tarifaKey = `${tariffIdentityKey}-${data.tarifaTipo}-${data.tarifaVigenciaDesde}`;
     if (duplicatedTarifaKey.has(tarifaKey)) {
+      blockedRowsCount += 1;
       return {
         rowNumber,
         status: "ERROR",
@@ -778,9 +926,8 @@ function buildPreviewRows(
       };
     }
     duplicatedTarifaKey.add(tarifaKey);
-
-    const existing = options.existingContratos.get(contractLookupKey);
     if (!existing) {
+      creatableContractsCount += 1;
       return {
         rowNumber,
         status: "NEW",
@@ -804,6 +951,13 @@ function buildPreviewRows(
       changedFields
     };
   });
+
+  return {
+    rows,
+    matchedByNaturalKeyCount,
+    creatableContractsCount,
+    blockedRowsCount
+  };
 }
 
 function toRawRowFromPreviewData(data: Record<string, unknown>): RawRow {
@@ -857,34 +1011,158 @@ function toRawRowFromPreviewData(data: Record<string, unknown>): RawRow {
   };
 }
 
-export function revalidateContractPreviewRows(
-  rows: ContractPreviewInputRow[],
-  options: ParseContractsOptions
-): UploadPreview<ContractUploadRow> {
-  const sourceRows: PreviewSourceRow[] = rows.map((row) => ({
-    rowNumber: row.rowNumber,
-    rawRow: toRawRowFromPreviewData(row.data)
-  }));
-
-  const previewRows = buildPreviewRows(sourceRows, options);
-  return {
-    rows: previewRows,
-    summary: summarize(previewRows),
-    warnings: []
-  };
+function buildExistingNaturalContractMap(
+  existingContratos: Map<string, ExistingContractForDiff>
+): Map<string, ExistingContractForDiff> {
+  const existingByNatural = new Map<string, ExistingContractForDiff>();
+  for (const snapshot of existingContratos.values()) {
+    existingByNatural.set(
+      buildContractLookupKey({
+        ...snapshot,
+        numeroContrato: ""
+      }),
+      snapshot
+    );
+  }
+  return existingByNatural;
 }
 
-export function parseContractsFile(
-  buffer: ArrayBuffer,
-  options: ParseContractsOptions
+function buildRentRollNotes(row: unknown[]): string | null {
+  const parts: string[] = [];
+  appendNotePart(parts, "GGCC reajuste", row[14]);
+  appendNotePart(parts, "Renta variable", row[16]);
+  appendNotePart(parts, "Renta fija", row[18]);
+  appendNotePart(parts, "Diciembre", row[20]);
+  appendNotePart(parts, "Fondo promocion", row[22]);
+  return parts.length > 0 ? parts.join(" | ") : null;
+}
+
+function isRentRollSheet(sheet: unknown): boolean {
+  if (!sheet) {
+    return false;
+  }
+
+  const rows = utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
+    raw: true,
+    defval: null,
+    range: RENT_ROLL_HEADER_ROW_INDEX
+  });
+  const header = Array.isArray(rows[0]) ? rows[0] : [];
+  return (
+    normalizeRentRollLabel(header[1]) === "ID LOCAL" &&
+    normalizeRentRollLabel(header[2]).startsWith("NUMERO CONTRATO") &&
+    normalizeRentRollLabel(header[4]) === "ARRENDATARIO" &&
+    normalizeRentRollLabel(header[6]) === "INICIO" &&
+    normalizeRentRollLabel(header[7]) === "TERMINO"
+  );
+}
+
+function parseRentRollRows(sheet: unknown): RentRollParsedRow[] {
+  const rows = utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
+    raw: true,
+    cellDates: true,
+    defval: null,
+    range: RENT_ROLL_HEADER_ROW_INDEX
+  });
+
+  return rows
+    .slice(1)
+    .filter((row) => Array.isArray(row) && row.some((cell) => cell !== null && cell !== ""))
+    .map((row, index) => {
+      const localCodigo = normalizeLocalCode(row[1]);
+      const arrendatarioNombre = asString(row[4]);
+      const tipo = normalizeRentRollLabel(row[3]);
+      const fechaInicio = parseDate(row[6]);
+      const fechaTermino = parseDate(row[7]);
+      const rentaFija = normalizeDecimal(normalizeNullable(row[17]));
+      const rentaVariablePct = normalizeRentRollPercent(row[15]);
+      const ggccValor = normalizeDecimal(normalizeNullable(row[10]));
+      const ggccPctAdministracion = normalizeRentRollPercent(row[9]);
+      const ggccPctReajuste = normalizeRentRollPercent(row[11]);
+      const pctFondoPromocion = normalizeRentRollPercent(row[21]);
+      const multiplicadorDiciembre = normalizeDecimal(normalizeNullable(row[19]));
+      const ggccMesesReajusteRaw = isEmptyMarker(row[12]) ? null : asString(row[12]);
+      const isVacancy = normalizeRentRollLabel(arrendatarioNombre).includes("VACANTE");
+      const isSkippedRow =
+        !localCodigo ||
+        RENT_ROLL_SKIPPED_LOCAL_CODES.has(normalizeRentRollLabel(localCodigo)) ||
+        !RENT_ROLL_SUPPORTED_TYPES.has(tipo);
+      const tarifaTipo =
+        rentaFija !== null ? ContractRateType.FIJO_UF_M2 : rentaVariablePct ? ContractRateType.PORCENTAJE : "";
+
+      return {
+        rowNumber: RENT_ROLL_DATA_ROW_INDEX + index + 1,
+        localCodigo,
+        arrendatarioNombre,
+        refCa: normalizeRefCaNumber(row[2]),
+        fechaInicio,
+        fechaTermino,
+        isVacancy,
+        isSkippedRow,
+        rawRow: {
+          numerocontrato: "",
+          localcodigo: localCodigo,
+          arrendatarionombre: arrendatarioNombre,
+          fechainicio: fechaInicio ?? "",
+          fechatermino: fechaTermino ?? "",
+          fechaentrega: "",
+          fechaapertura: "",
+          tarifatipo: tarifaTipo,
+          tarifavalor: rentaFija ?? rentaVariablePct ?? "",
+          tarifavigenciadesde: fechaInicio ?? "",
+          tarifavigenciahasta: tarifaTipo === ContractRateType.FIJO_UF_M2 ? fechaTermino ?? "" : "",
+          tarifa2valor: "",
+          tarifa2vigenciadesde: "",
+          tarifa2vigenciahasta: "",
+          tarifa3valor: "",
+          tarifa3vigenciadesde: "",
+          tarifa3vigenciahasta: "",
+          tarifa4valor: "",
+          tarifa4vigenciadesde: "",
+          tarifa4vigenciahasta: "",
+          tarifa5valor: "",
+          tarifa5vigenciadesde: "",
+          tarifa5vigenciahasta: "",
+          rentavariablepct: tarifaTipo === ContractRateType.FIJO_UF_M2 ? rentaVariablePct ?? "" : "",
+          rentavariablepisominimouf: "",
+          rentavariable2umbraluf: "",
+          rentavariable2pct: "",
+          rentavariable2pisominimouf: "",
+          rentavariable3umbraluf: "",
+          rentavariable3pct: "",
+          rentavariable3pisominimouf: "",
+          pctfondopromocion: pctFondoPromocion ?? "",
+          multiplicadordiciembre: multiplicadorDiciembre ?? "",
+          multiplicadorjunio: "",
+          multiplicadorjulio: "",
+          multiplicadoragosto: "",
+          codigocc: "",
+          ggccpctadministracion: ggccPctAdministracion ?? "",
+          ggccpctreajuste: ggccPctReajuste ?? "",
+          notas: buildRentRollNotes(row) ?? "",
+          ggcctipo: ggccValor ? "FIJO_UF_M2" : "",
+          ggccvalor: ggccValor ?? "",
+          ggccmesesreajuste: ggccMesesReajusteRaw ?? "",
+          anexofecha: "",
+          anexodescripcion: ""
+        }
+      };
+    });
+}
+
+function parseTemplateContractsWorkbook(
+  workbook: ReturnType<typeof read>,
+  options: ParseContractsOptions,
+  warnings: string[]
 ): UploadPreview<ContractUploadRow> {
-  const workbook = read(Buffer.from(buffer), { type: "buffer", raw: false, cellDates: false });
   const firstSheet = workbook.SheetNames[0];
   if (!firstSheet) {
     const rows: PreviewRow<ContractUploadRow>[] = [
       { rowNumber: 0, status: "ERROR", data: emptyRow(), errorMessage: "El archivo no contiene hojas." }
     ];
-    return { rows, summary: summarize(rows), warnings: [] };
+    return emptyPreview(rows, warnings);
   }
 
   const rawRows = utils.sheet_to_json<RawRow>(workbook.Sheets[firstSheet], {
@@ -893,11 +1171,6 @@ export function parseContractsFile(
     range: 2
   });
   const normalizedRows = rawRows.map((row) => normalizeHeaders(row));
-  const warnings: string[] = [];
-
-  if (options.fileName && !/\.(csv|xlsx|xls)$/i.test(options.fileName)) {
-    warnings.push("Formato no estandar detectado. Se intento procesar igualmente.");
-  }
 
   if (normalizedRows.length > MAX_ROWS) {
     const rows: PreviewRow<ContractUploadRow>[] = [
@@ -908,7 +1181,7 @@ export function parseContractsFile(
         errorMessage: `El archivo supera el maximo de ${MAX_ROWS} filas.`
       }
     ];
-    return { rows, summary: summarize(rows), warnings };
+    return emptyPreview(rows, warnings);
   }
 
   const headers = normalizedRows.length > 0 ? Object.keys(normalizedRows[0]) : [];
@@ -922,20 +1195,226 @@ export function parseContractsFile(
         errorMessage: `Faltan columnas requeridas: ${missing.join(", ")}`
       }
     ];
-    return { rows, summary: summarize(rows), warnings };
+    return emptyPreview(rows, warnings);
   }
 
   const sourceRows: PreviewSourceRow[] = normalizedRows.map((rawRow, index) => ({
     rowNumber: index + 2,
     rawRow
   }));
-  const previewRows = buildPreviewRows(sourceRows, options);
+  const preview = buildPreviewRows(sourceRows, options);
 
   return {
-    rows: previewRows,
-    summary: summarize(previewRows),
-    warnings
+    rows: preview.rows,
+    summary: summarize(preview.rows),
+    warnings,
+    sourceFormat: "template"
   };
+}
+
+function parseRentRollContractsWorkbook(
+  workbook: ReturnType<typeof read>,
+  options: ParseContractsOptions,
+  warnings: string[]
+): UploadPreview<ContractUploadRow> {
+  const rentRollSheet =
+    workbook.Sheets[RENT_ROLL_SHEET_NAME] ??
+    workbook.Sheets[workbook.SheetNames.find((name) => isRentRollSheet(workbook.Sheets[name])) ?? ""];
+
+  if (!rentRollSheet || !isRentRollSheet(rentRollSheet)) {
+    const rows: PreviewRow<ContractUploadRow>[] = [
+      {
+        rowNumber: 0,
+        status: "ERROR",
+        data: emptyRow(),
+        errorMessage: "No se encontro una hoja 'Rent Roll' valida en el archivo."
+      }
+    ];
+    return emptyPreview(rows, warnings);
+  }
+
+  const parsedRows = parseRentRollRows(rentRollSheet);
+  const contractSourceRows = parsedRows
+    .filter((row) => !row.isVacancy && !row.isSkippedRow)
+    .map<PreviewSourceRow>((row) => ({
+      rowNumber: row.rowNumber,
+      rawRow: row.rawRow
+    }));
+
+  const preview = buildPreviewRows(contractSourceRows, options);
+  const previewByRowNumber = new Map(preview.rows.map((row) => [row.rowNumber, row]));
+  const existingByNatural = buildExistingNaturalContractMap(options.existingContratos);
+  const today = new Date().toISOString().slice(0, 10);
+  const activeContractsByLocal = new Map<string, ExistingContractForDiff[]>();
+
+  for (const snapshot of existingByNatural.values()) {
+    if (snapshot.fechaInicio <= today && snapshot.fechaTermino >= today) {
+      const existing = activeContractsByLocal.get(snapshot.localCodigo) ?? [];
+      existing.push(snapshot);
+      activeContractsByLocal.set(snapshot.localCodigo, existing);
+    }
+  }
+
+  const reconciliationItems: ContractReconciliationItem[] = [];
+  let vacancyConfirmed = 0;
+  let vacancyConflicts = 0;
+  let refCaMismatches = 0;
+  let skippedRows = 0;
+
+  for (const row of parsedRows) {
+    if (row.isSkippedRow) {
+      skippedRows += 1;
+      reconciliationItems.push({
+        rowNumber: row.rowNumber,
+        kind: "skipped_row",
+        localCodigo: row.localCodigo || null,
+        arrendatarioNombre: row.arrendatarioNombre || null,
+        refCa: row.refCa,
+        message: "Fila omitida por no representar un contrato cargable del Rent Roll."
+      });
+      continue;
+    }
+
+    if (row.isVacancy) {
+      const activeContracts = activeContractsByLocal.get(row.localCodigo) ?? [];
+      const kind = activeContracts.length > 0 ? "vacancy_conflict" : "vacancy_confirmed";
+      if (kind === "vacancy_conflict") {
+        vacancyConflicts += 1;
+      } else {
+        vacancyConfirmed += 1;
+      }
+      reconciliationItems.push({
+        rowNumber: row.rowNumber,
+        kind,
+        localCodigo: row.localCodigo || null,
+        arrendatarioNombre: row.arrendatarioNombre || null,
+        refCa: row.refCa,
+        message:
+          kind === "vacancy_conflict"
+            ? "El Rent Roll marca VACANTE pero existe un contrato activo para ese local en la base."
+            : "El Rent Roll marca VACANTE y no se detecto contrato activo para ese local."
+      });
+      continue;
+    }
+
+    const previewRow = previewByRowNumber.get(row.rowNumber);
+    if (!previewRow) {
+      continue;
+    }
+
+    const naturalKey =
+      row.fechaInicio && row.fechaTermino
+        ? buildContractLookupKey({
+            numeroContrato: "",
+            localCodigo: row.localCodigo,
+            arrendatarioNombre: row.arrendatarioNombre,
+            fechaInicio: row.fechaInicio,
+            fechaTermino: row.fechaTermino
+          })
+        : null;
+    const existingByNaturalKey = naturalKey ? existingByNatural.get(naturalKey) : undefined;
+
+    if (previewRow.status === "NEW") {
+      reconciliationItems.push({
+        rowNumber: row.rowNumber,
+        kind: "creatable_contract",
+        localCodigo: row.localCodigo,
+        arrendatarioNombre: row.arrendatarioNombre,
+        refCa: row.refCa,
+        message: "Fila valida sin contrato existente por clave natural; se puede crear."
+      });
+    }
+
+    if (previewRow.status === "ERROR") {
+      reconciliationItems.push({
+        rowNumber: row.rowNumber,
+        kind: "blocked_row",
+        localCodigo: row.localCodigo,
+        arrendatarioNombre: row.arrendatarioNombre,
+        refCa: row.refCa,
+        message: previewRow.errorMessage ?? "Fila bloqueada durante la reconciliacion."
+      });
+    }
+
+    if (existingByNaturalKey && row.refCa && !isEquivalentRefCa(row.refCa, existingByNaturalKey.numeroContrato)) {
+      refCaMismatches += 1;
+      reconciliationItems.push({
+        rowNumber: row.rowNumber,
+        kind: "ref_ca_mismatch",
+        localCodigo: row.localCodigo,
+        arrendatarioNombre: row.arrendatarioNombre,
+        refCa: row.refCa,
+        message: `REF CA '${row.refCa}' no coincide con numeroContrato actual '${existingByNaturalKey.numeroContrato}'.`
+      });
+    }
+  }
+
+  const reconciliation: ContractReconciliation = {
+    summary: {
+      matchedByNaturalKey: preview.matchedByNaturalKeyCount,
+      creatableContracts: preview.creatableContractsCount,
+      vacancyConfirmed,
+      vacancyConflicts,
+      blockedRows: preview.blockedRowsCount,
+      refCaMismatches,
+      skippedRows
+    },
+    items: reconciliationItems
+  };
+
+  return {
+    rows: preview.rows,
+    summary: summarize(preview.rows),
+    warnings,
+    sourceFormat: "rent_roll",
+    reconciliation
+  };
+}
+
+export function revalidateContractPreviewRows(
+  rows: ContractPreviewInputRow[],
+  options: ParseContractsOptions
+): UploadPreview<ContractUploadRow> {
+  const sourceRows: PreviewSourceRow[] = rows.map((row) => ({
+    rowNumber: row.rowNumber,
+    rawRow: toRawRowFromPreviewData(row.data)
+  }));
+
+  const preview = buildPreviewRows(sourceRows, options);
+  return {
+    rows: preview.rows,
+    summary: summarize(preview.rows),
+    warnings: [],
+    sourceFormat: "template"
+  };
+}
+
+export function parseContractsFile(
+  buffer: ArrayBuffer,
+  options: ParseContractsOptions
+): UploadPreview<ContractUploadRow> {
+  const warnings: string[] = [];
+  const workbook = read(Buffer.from(buffer), { type: "buffer", raw: true, cellDates: true });
+  const firstSheet = workbook.SheetNames[0];
+  const rentRollSheetName = workbook.SheetNames.find((sheetName) =>
+    isRentRollSheet(workbook.Sheets[sheetName])
+  );
+  if (!firstSheet) {
+    const rows: PreviewRow<ContractUploadRow>[] = [
+      { rowNumber: 0, status: "ERROR", data: emptyRow(), errorMessage: "El archivo no contiene hojas." }
+    ];
+    return emptyPreview(rows, warnings);
+  }
+
+  if (options.fileName && !/\.(csv|xlsx|xls)$/i.test(options.fileName)) {
+    warnings.push("Formato no estandar detectado. Se intento procesar igualmente.");
+  }
+  if (rentRollSheetName) {
+    warnings.push("Se detecto formato Rent Roll; la reconciliacion usa clave natural y REF CA solo informativo.");
+    return parseRentRollContractsWorkbook(workbook, options, warnings);
+  }
+
+  return parseTemplateContractsWorkbook(workbook, options, warnings);
 }
 
 export function buildErrorCsv(issues: UploadIssue[]): string {

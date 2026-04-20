@@ -388,26 +388,29 @@ export async function applyContrato(
     };
   }
 
-  const before = row.numeroContrato
-    ? await tx.contract.findUnique({
-        where: {
-          proyectoId_numeroContrato: {
-            proyectoId,
-            numeroContrato: row.numeroContrato
-          }
-        },
-        include: { tarifas: true, ggcc: true }
-      })
-    : await tx.contract.findFirst({
-        where: {
-          proyectoId,
-          localId: localData.id,
-          arrendatarioId,
-          fechaInicio: new Date(row.fechaInicio),
-          fechaTermino: new Date(row.fechaTermino)
-        },
-        include: { tarifas: true, ggcc: true }
-      });
+  const beforeByNatural = await tx.contract.findFirst({
+    where: {
+      proyectoId,
+      localId: localData.id,
+      arrendatarioId,
+      fechaInicio: new Date(row.fechaInicio),
+      fechaTermino: new Date(row.fechaTermino)
+    },
+    include: { tarifas: true, ggcc: true }
+  });
+  const beforeByNumero =
+    !beforeByNatural && row.numeroContrato
+      ? await tx.contract.findUnique({
+          where: {
+            proyectoId_numeroContrato: {
+              proyectoId,
+              numeroContrato: row.numeroContrato
+            }
+          },
+          include: { tarifas: true, ggcc: true }
+        })
+      : null;
+  const before = beforeByNatural ?? beforeByNumero;
 
   const numeroContrato =
     before?.numeroContrato || row.numeroContrato || (await generateNumeroContrato(tx, proyectoId));
