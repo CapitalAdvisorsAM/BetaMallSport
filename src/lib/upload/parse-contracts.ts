@@ -205,7 +205,8 @@ export function normalizeUploadTenantName(value: string): string {
     .replace(/\([^)]*\)/g, " ")
     .replace(/\s*->.*$/g, " ")
     .toLowerCase()
-    .replace(/\s+/g, " ");
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function normalizeLocalCode(value: unknown): string {
