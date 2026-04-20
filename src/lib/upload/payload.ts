@@ -1,5 +1,11 @@
 import type { Prisma } from "@prisma/client";
-import type { ApplyReport, PreviewRow, RowStatus, UploadPreview } from "@/types/upload";
+import type {
+  ApplyReport,
+  ContractReconciliation,
+  PreviewRow,
+  RowStatus,
+  UploadPreview
+} from "@/types/upload";
 
 type UploadRecord = Record<string, unknown>;
 
@@ -51,6 +57,31 @@ function isApplyReport(value: unknown): value is ApplyReport {
   );
 }
 
+function isContractReconciliation(value: unknown): value is ContractReconciliation {
+  return (
+    isObject(value) &&
+    isObject(value.summary) &&
+    typeof value.summary.matchedByNaturalKey === "number" &&
+    typeof value.summary.creatableContracts === "number" &&
+    typeof value.summary.vacancyConfirmed === "number" &&
+    typeof value.summary.vacancyConflicts === "number" &&
+    typeof value.summary.blockedRows === "number" &&
+    typeof value.summary.refCaMismatches === "number" &&
+    typeof value.summary.skippedRows === "number" &&
+    Array.isArray(value.items) &&
+    value.items.every(
+      (item) =>
+        isObject(item) &&
+        typeof item.rowNumber === "number" &&
+        typeof item.kind === "string" &&
+        (item.localCodigo === null || typeof item.localCodigo === "string") &&
+        (item.arrendatarioNombre === null || typeof item.arrendatarioNombre === "string") &&
+        (item.refCa === null || typeof item.refCa === "string") &&
+        typeof item.message === "string"
+    )
+  );
+}
+
 function isUploadPreview(value: unknown): value is UploadPreview<UploadRecord> {
   return (
     isObject(value) &&
@@ -63,7 +94,11 @@ function isUploadPreview(value: unknown): value is UploadPreview<UploadRecord> {
     typeof value.summary.sinCambio === "number" &&
     typeof value.summary.errores === "number" &&
     Array.isArray(value.warnings) &&
-    value.warnings.every((warning) => typeof warning === "string")
+    value.warnings.every((warning) => typeof warning === "string") &&
+    (value.sourceFormat === undefined ||
+      value.sourceFormat === "template" ||
+      value.sourceFormat === "rent_roll") &&
+    (value.reconciliation === undefined || isContractReconciliation(value.reconciliation))
   );
 }
 

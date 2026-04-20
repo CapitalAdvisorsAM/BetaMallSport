@@ -16,6 +16,31 @@ function buildWorkbookBuffer(headers: string[], dataRows: string[][]): ArrayBuff
   return Uint8Array.from(output).buffer;
 }
 
+function buildRentRollWorkbookBuffer(dataRows: unknown[][]): ArrayBuffer {
+  const header = Array.from({ length: 23 }, () => "");
+  header[1] = "ID Local";
+  header[2] = "Numero Contrato (REF CA)";
+  header[3] = "Tipo";
+  header[4] = "Arrendatario";
+  header[6] = "Inicio";
+  header[7] = "Termino";
+  header[9] = "Administracion GGCC";
+  header[10] = "GGCC Final (UF/m2)";
+  header[11] = "Reajuste";
+  header[12] = "Meses Reajuste";
+  header[15] = "% Renta Variable + IVA";
+  header[17] = "Renta Fija (UF x m2) + IVA";
+  header[19] = "Diciembre";
+  header[21] = "Fondo Promocion (% Arriendo)";
+
+  const sheet = utils.aoa_to_sheet([[], [], [], [], header, ...dataRows]);
+  const workbook = utils.book_new();
+  utils.book_append_sheet(workbook, sheet, "Rent Roll");
+
+  const output = write(workbook, { bookType: "xlsx", type: "buffer" }) as Buffer;
+  return Uint8Array.from(output).buffer;
+}
+
 function parseRows(
   dataRows: string[][],
   existingContratos: Map<string, ExistingContractForDiff> = new Map()
@@ -225,6 +250,132 @@ describe("parseContractsFile", () => {
 
     expect(preview.rows[0]?.status).toBe("ERROR");
     expect(preview.rows[0]?.errorMessage).toContain("es ambiguo");
+  });
+
+  it("detects Rent Roll format and reports reconciliation without creating duplicates by REF CA", () => {
+    const existingSnapshot = {
+      numeroContrato: "C-200",
+      localCodigo: "L-101",
+      arrendatarioNombre: "ACME SPORT",
+      fechaInicio: "2026-01-01",
+      fechaTermino: "2026-12-31",
+      fechaEntrega: null,
+      fechaApertura: null,
+      pctFondoPromocion: null,
+      multiplicadorDiciembre: null,
+      multiplicadorJunio: null,
+      multiplicadorJulio: null,
+      multiplicadorAgosto: null,
+      codigoCC: null,
+      ggccPctAdministracion: null,
+      notas: null,
+      tarifas: [
+        {
+          tipo: "FIJO_UF_M2" as const,
+          valor: "3.5",
+          vigenciaDesde: "2026-01-01",
+          vigenciaHasta: "2026-12-31"
+        }
+      ],
+      ggcc: []
+    } satisfies ExistingContractForDiff;
+    const existingContratos = new Map<string, ExistingContractForDiff>([
+      [buildContractLookupKey(existingSnapshot), existingSnapshot],
+      [buildContractLookupKey({ ...existingSnapshot, numeroContrato: "" }), existingSnapshot]
+    ]);
+
+    const contractRow = Array.from({ length: 23 }, () => "");
+    contractRow[1] = "L-101";
+    contractRow[2] = "999";
+    contractRow[3] = "Local Comercial";
+    contractRow[4] = "ACME SPORT";
+    contractRow[6] = "2026-01-01";
+    contractRow[7] = "2026-12-31";
+    contractRow[17] = "3.5";
+
+    const vacancyConflictRow = Array.from({ length: 23 }, () => "");
+    vacancyConflictRow[1] = "L-101";
+    vacancyConflictRow[3] = "Local Comercial";
+    vacancyConflictRow[4] = "VACANTE";
+    vacancyConflictRow[6] = "2026-01-01";
+    vacancyConflictRow[7] = "2026-12-31";
+
+    const vacancyConfirmedRow = Array.from({ length: 23 }, () => "");
+    vacancyConfirmedRow[1] = "L-102";
+    vacancyConfirmedRow[3] = "Local Comercial";
+    vacancyConfirmedRow[4] = "VACANTE";
+    vacancyConfirmedRow[6] = "2026-01-01";
+    vacancyConfirmedRow[7] = "2026-12-31";
+
+    const skippedRow = Array.from({ length: 23 }, () => "");
+    skippedRow[1] = "-";
+    skippedRow[3] = "Local Comercial";
+    skippedRow[4] = "Gestión Comercial - Nuevos Locales";
+
+    const preview = parseContractsFile(
+      buildRentRollWorkbookBuffer([contractRow, vacancyConflictRow, vacancyConfirmedRow, skippedRow]),
+      {
+        fileName: "20260415 Presupuesto v24.xlsb.xlsx",
+        existingContratos,
+        existingLocalData: new Map([
+          ["L-101", { glam2: "100" }],
+          ["L-102", { glam2: "100" }]
+        ]),
+        existingArrendatarioNombres: new Map([["acme sport", 1]])
+      }
+    );
+
+    expect(preview.sourceFormat).toBe("rent_roll");
+    expect(preview.rows).toHaveLength(1);
+    expect(preview.rows[0]?.rowNumber).toBe(6);
+    expect(preview.rows[0]?.status).toBe("UNCHANGED");
+    expect(preview.summary.nuevo).toBe(0);
+    expect(preview.reconciliation?.summary.matchedByNaturalKey).toBe(1);
+    expect(preview.reconciliation?.summary.creatableContracts).toBe(0);
+    expect(preview.reconciliation?.summary.vacancyConflicts).toBe(1);
+    expect(preview.reconciliation?.summary.vacancyConfirmed).toBe(1);
+    expect(preview.reconciliation?.summary.refCaMismatches).toBe(1);
+    expect(preview.reconciliation?.summary.skippedRows).toBe(1);
+    expect(preview.warnings).toContain(
+      "Se detecto formato Rent Roll; la reconciliacion usa clave natural y REF CA solo informativo."
+    );
+  });
+
+  it("maps Rent Roll percentages and supported special types into contract rows", () => {
+    const row = Array.from({ length: 23 }, () => "");
+    row[1] = "B-201";
+    row[2] = "321";
+    row[3] = "Bodega";
+    row[4] = "BODEGA SPA (Outlet)";
+    row[6] = "2026-02-01";
+    row[7] = "2026-12-31";
+    row[9] = "0.05";
+    row[10] = "0.40";
+    row[11] = "0.03";
+    row[12] = "12";
+    row[15] = "0.081";
+    row[17] = "2.1";
+    row[19] = "2";
+    row[21] = "0.05";
+
+    const preview = parseContractsFile(buildRentRollWorkbookBuffer([row]), {
+      fileName: "rent-roll.xlsx",
+      existingContratos: new Map(),
+      existingLocalData: new Map([["B-201", { glam2: "25" }]]),
+      existingArrendatarioNombres: new Map([["bodega spa", 1]])
+    });
+
+    expect(preview.sourceFormat).toBe("rent_roll");
+    expect(preview.rows).toHaveLength(1);
+    expect(preview.rows[0]?.status).toBe("NEW");
+    expect(preview.rows[0]?.data.tarifaTipo).toBe("FIJO_UF_M2");
+    expect(preview.rows[0]?.data.tarifaValor).toBe("2.1");
+    expect(preview.rows[0]?.data.rentaVariablePct).toBe("8.1");
+    expect(preview.rows[0]?.data.ggccPctAdministracion).toBe("5");
+    expect(preview.rows[0]?.data.ggccPctReajuste).toBe("3");
+    expect(preview.rows[0]?.data.pctFondoPromocion).toBe("5");
+    expect(preview.rows[0]?.data.multiplicadorDiciembre).toBe("2");
+    expect(preview.reconciliation?.summary.creatableContracts).toBe(1);
   });
 });
 

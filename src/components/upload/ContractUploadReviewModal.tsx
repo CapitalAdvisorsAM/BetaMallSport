@@ -25,7 +25,12 @@ import {
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Spinner } from "@/components/ui/Spinner";
 import type { ContractManagerOption } from "@/types";
-import type { PreviewRow, RowStatus, UploadPreview } from "@/types/upload";
+import type {
+  ContractReconciliation,
+  PreviewRow,
+  RowStatus,
+  UploadPreview
+} from "@/types/upload";
 
 type UploadRecord = Record<string, unknown>;
 
@@ -62,6 +67,31 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isContractReconciliation(value: unknown): value is ContractReconciliation {
+  return (
+    isObject(value) &&
+    isObject(value.summary) &&
+    typeof value.summary.matchedByNaturalKey === "number" &&
+    typeof value.summary.creatableContracts === "number" &&
+    typeof value.summary.vacancyConfirmed === "number" &&
+    typeof value.summary.vacancyConflicts === "number" &&
+    typeof value.summary.blockedRows === "number" &&
+    typeof value.summary.refCaMismatches === "number" &&
+    typeof value.summary.skippedRows === "number" &&
+    Array.isArray(value.items) &&
+    value.items.every(
+      (item) =>
+        isObject(item) &&
+        typeof item.rowNumber === "number" &&
+        typeof item.kind === "string" &&
+        (item.localCodigo === null || typeof item.localCodigo === "string") &&
+        (item.arrendatarioNombre === null || typeof item.arrendatarioNombre === "string") &&
+        (item.refCa === null || typeof item.refCa === "string") &&
+        typeof item.message === "string"
+    )
+  );
+}
+
 function isPreviewResponse(value: unknown): value is PreviewResponse {
   return (
     isObject(value) &&
@@ -69,7 +99,11 @@ function isPreviewResponse(value: unknown): value is PreviewResponse {
     isObject(value.preview) &&
     Array.isArray(value.preview.rows) &&
     isObject(value.preview.summary) &&
-    Array.isArray(value.preview.warnings)
+    Array.isArray(value.preview.warnings) &&
+    (value.preview.sourceFormat === undefined ||
+      value.preview.sourceFormat === "template" ||
+      value.preview.sourceFormat === "rent_roll") &&
+    (value.preview.reconciliation === undefined || isContractReconciliation(value.preview.reconciliation))
   );
 }
 

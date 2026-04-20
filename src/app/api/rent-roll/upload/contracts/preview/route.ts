@@ -43,7 +43,9 @@ export async function GET(request: Request): Promise<NextResponse> {
       preview: {
         rows: payload.rows,
         summary: payload.summary,
-        warnings: payload.warnings
+        warnings: payload.warnings,
+        sourceFormat: payload.sourceFormat,
+        reconciliation: payload.reconciliation
       }
     });
   } catch (error) {

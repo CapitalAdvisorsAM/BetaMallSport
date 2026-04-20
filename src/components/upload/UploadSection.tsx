@@ -12,7 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/Spinner";
 import { useDataTable } from "@/hooks/useDataTable";
 import type { ContractManagerOption } from "@/types";
-import type { ApplyReport, PreviewRow, RowStatus, UploadPreview } from "@/types/upload";
+import type {
+  ApplyReport,
+  ContractReconciliation,
+  PreviewRow,
+  RowStatus,
+  UploadPreview
+} from "@/types/upload";
 
 type UploadRecord = Record<string, unknown>;
 
@@ -71,6 +77,40 @@ const statusMeta: Record<RowStatus, { label: string; rowClass: string; badgeClas
   }
 };
 
+const reconciliationKindMeta: Record<
+  ContractReconciliation["items"][number]["kind"],
+  { label: string; badgeClass: string }
+> = {
+  matched_by_natural_key: {
+    label: "Match natural",
+    badgeClass: "border-sky-200 bg-sky-100 text-sky-800"
+  },
+  creatable_contract: {
+    label: "Creable",
+    badgeClass: "border-emerald-200 bg-emerald-100 text-emerald-800"
+  },
+  vacancy_confirmed: {
+    label: "Vacante OK",
+    badgeClass: "border-slate-200 bg-slate-100 text-slate-700"
+  },
+  vacancy_conflict: {
+    label: "Vacante conflicto",
+    badgeClass: "border-amber-200 bg-amber-100 text-amber-800"
+  },
+  blocked_row: {
+    label: "Bloqueada",
+    badgeClass: "border-rose-200 bg-rose-100 text-rose-800"
+  },
+  ref_ca_mismatch: {
+    label: "REF CA",
+    badgeClass: "border-fuchsia-200 bg-fuchsia-100 text-fuchsia-800"
+  },
+  skipped_row: {
+    label: "Omitida",
+    badgeClass: "border-slate-200 bg-slate-100 text-slate-700"
+  }
+};
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -109,6 +149,31 @@ function isPreviewRow(value: unknown): value is PreviewRow<UploadRecord> {
   );
 }
 
+function isContractReconciliation(value: unknown): value is ContractReconciliation {
+  return (
+    isObject(value) &&
+    isObject(value.summary) &&
+    typeof value.summary.matchedByNaturalKey === "number" &&
+    typeof value.summary.creatableContracts === "number" &&
+    typeof value.summary.vacancyConfirmed === "number" &&
+    typeof value.summary.vacancyConflicts === "number" &&
+    typeof value.summary.blockedRows === "number" &&
+    typeof value.summary.refCaMismatches === "number" &&
+    typeof value.summary.skippedRows === "number" &&
+    Array.isArray(value.items) &&
+    value.items.every(
+      (item) =>
+        isObject(item) &&
+        typeof item.rowNumber === "number" &&
+        typeof item.kind === "string" &&
+        (item.localCodigo === null || typeof item.localCodigo === "string") &&
+        (item.arrendatarioNombre === null || typeof item.arrendatarioNombre === "string") &&
+        (item.refCa === null || typeof item.refCa === "string") &&
+        typeof item.message === "string"
+    )
+  );
+}
+
 function isUploadPreview(value: unknown): value is UploadPreview<UploadRecord> {
   return (
     isObject(value) &&
@@ -121,7 +186,11 @@ function isUploadPreview(value: unknown): value is UploadPreview<UploadRecord> {
     typeof value.summary.sinCambio === "number" &&
     typeof value.summary.errores === "number" &&
     Array.isArray(value.warnings) &&
-    value.warnings.every((item) => typeof item === "string")
+    value.warnings.every((item) => typeof item === "string") &&
+    (value.sourceFormat === undefined ||
+      value.sourceFormat === "template" ||
+      value.sourceFormat === "rent_roll") &&
+    (value.reconciliation === undefined || isContractReconciliation(value.reconciliation))
   );
 }
 
@@ -495,6 +564,11 @@ export function UploadSection({
       {preview ? (
         <div className="space-y-3 rounded-md border border-slate-200 p-4">
           <div className="flex flex-wrap gap-2">
+            {preview.sourceFormat === "rent_roll" ? (
+              <Badge variant="outline" className="rounded-md border-sky-200 bg-sky-100 text-sky-800">
+                FORMATO: RENT ROLL
+              </Badge>
+            ) : null}
             <Badge variant="outline" className="rounded-md border-emerald-200 bg-emerald-100 text-emerald-800">
               NUEVOS: {preview.summary.nuevo}
             </Badge>
@@ -517,6 +591,76 @@ export function UploadSection({
                 <li key={warning}>{warning}</li>
               ))}
             </ul>
+          ) : null}
+
+          {preview.reconciliation ? (
+            <div className="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="rounded-md border-sky-200 bg-sky-100 text-sky-800">
+                  MATCH CLAVE NATURAL: {preview.reconciliation.summary.matchedByNaturalKey}
+                </Badge>
+                <Badge variant="outline" className="rounded-md border-emerald-200 bg-emerald-100 text-emerald-800">
+                  CREABLES: {preview.reconciliation.summary.creatableContracts}
+                </Badge>
+                <Badge variant="outline" className="rounded-md border-slate-200 bg-slate-100 text-slate-700">
+                  VACANTES OK: {preview.reconciliation.summary.vacancyConfirmed}
+                </Badge>
+                <Badge variant="outline" className="rounded-md border-amber-200 bg-amber-100 text-amber-800">
+                  VACANTES CONFLICTO: {preview.reconciliation.summary.vacancyConflicts}
+                </Badge>
+                {preview.reconciliation.summary.blockedRows > 0 ? (
+                  <Badge variant="outline" className="rounded-md border-rose-200 bg-rose-100 text-rose-800">
+                    BLOQUEADAS: {preview.reconciliation.summary.blockedRows}
+                  </Badge>
+                ) : null}
+                {preview.reconciliation.summary.refCaMismatches > 0 ? (
+                  <Badge variant="outline" className="rounded-md border-fuchsia-200 bg-fuchsia-100 text-fuchsia-800">
+                    REF CA DISTINTO: {preview.reconciliation.summary.refCaMismatches}
+                  </Badge>
+                ) : null}
+                {preview.reconciliation.summary.skippedRows > 0 ? (
+                  <Badge variant="outline" className="rounded-md border-slate-200 bg-slate-100 text-slate-700">
+                    OMITIDAS: {preview.reconciliation.summary.skippedRows}
+                  </Badge>
+                ) : null}
+              </div>
+
+              {preview.reconciliation.items.length > 0 ? (
+                <div className="space-y-2">
+                  {preview.reconciliation.items.slice(0, 8).map((item) => {
+                    const meta = reconciliationKindMeta[item.kind];
+                    const title = [
+                      `Fila ${item.rowNumber}`,
+                      item.localCodigo ? `Local ${item.localCodigo}` : null,
+                      item.arrendatarioNombre ?? null
+                    ]
+                      .filter(Boolean)
+                      .join(" · ");
+
+                    return (
+                      <div
+                        key={`${item.kind}-${item.rowNumber}-${item.localCodigo ?? "na"}`}
+                        className="rounded-md border border-slate-200 bg-white px-3 py-2"
+                      >
+                        <div className="flex flex-wrap items-center gap-2 text-sm">
+                          <Badge variant="outline" className={`rounded-md px-2 py-0.5 ${meta.badgeClass}`}>
+                            {meta.label}
+                          </Badge>
+                          <span className="font-medium text-slate-800">{title}</span>
+                          {item.refCa ? <span className="text-slate-500">REF CA {item.refCa}</span> : null}
+                        </div>
+                        <p className="mt-1 text-sm text-slate-600">{item.message}</p>
+                      </div>
+                    );
+                  })}
+                  {preview.reconciliation.items.length > 8 ? (
+                    <p className="text-xs text-slate-500">
+                      Mostrando 8 de {preview.reconciliation.items.length} elementos de reconciliacion.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
           ) : null}
 
           <div className="overflow-x-auto">
