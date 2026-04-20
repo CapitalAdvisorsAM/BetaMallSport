@@ -22,14 +22,12 @@ type ContractsViewRow = {
 
 type ContractsViewTableProps = {
   rows: ContractsViewRow[];
-  proyectoId: string;
 };
 
 const PDF_OPTIONS = ["Disponible", "Sin PDF"];
 
 export function ContractsViewTable({
-  rows,
-  proyectoId
+  rows
 }: ContractsViewTableProps): JSX.Element {
   const stateOptions = useMemo(
     () => Array.from(new Set(rows.map((row) => row.estado))).sort(),

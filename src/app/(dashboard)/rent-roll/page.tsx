@@ -353,7 +353,7 @@ export default async function RentRollPage({
         </article>
       </section>
 
-      <RentRollDashboardTable rows={rows} snapshotDate={fecha} proyectoId={selectedProjectId} />
+      <RentRollDashboardTable rows={rows} snapshotDate={fecha} />
     </main>
   );
 }
