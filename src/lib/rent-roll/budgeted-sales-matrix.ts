@@ -72,35 +72,38 @@ export function buildBudgetedSalesMatrix(params: {
 
   const rows: BudgetedSalesMatrixRow[] = [];
   let totalBudgetUf = 0;
+  let tenantsWithData = 0;
   let tenantsWithMissing = 0;
 
-  for (const [tenantId, periodMap] of byTenantPeriod) {
-    const info = tenantsById.get(tenantId);
-    if (!info) continue;
+  for (const info of tenantsById.values()) {
+    const periodMap = byTenantPeriod.get(info.id) ?? new Map<string, number>();
 
     const byPeriod: Record<string, number | null> = {};
     const missingPeriods: string[] = [];
     let total = 0;
+    let filledCount = 0;
 
     for (const p of periods) {
       if (periodMap.has(p)) {
         const value = periodMap.get(p) ?? 0;
         byPeriod[p] = value;
         total += value;
+        filledCount += 1;
       } else {
         byPeriod[p] = null;
         missingPeriods.push(p);
       }
     }
 
-    if (missingPeriods.length > 0) tenantsWithMissing += 1;
+    if (filledCount > 0) tenantsWithData += 1;
+    if (filledCount > 0 && missingPeriods.length > 0) tenantsWithMissing += 1;
     totalBudgetUf += total;
 
     rows.push({
-      tenantId,
+      tenantId: info.id,
       rut: info.rut,
       nombreComercial: info.nombreComercial,
-      glam2: glaByTenantId.get(tenantId) ?? 0,
+      glam2: glaByTenantId.get(info.id) ?? 0,
       byPeriod,
       total,
       missingPeriods,
@@ -114,7 +117,7 @@ export function buildBudgetedSalesMatrix(params: {
     rows,
     summary: {
       totalBudgetUf,
-      tenantsWithData: rows.length,
+      tenantsWithData,
       tenantsWithMissing,
     },
   };

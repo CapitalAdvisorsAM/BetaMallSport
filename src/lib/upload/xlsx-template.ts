@@ -218,7 +218,7 @@ export function buildXlsxTemplate(config: BuildTemplateConfig): Buffer {
   ];
 
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, dataSheet, "Datos");
+  XLSX.utils.book_append_sheet(workbook, dataSheet, config.sheetName);
   XLSX.utils.book_append_sheet(workbook, instructionsSheet, "Instrucciones");
 
   const baseBuffer = XLSX.write(workbook, {

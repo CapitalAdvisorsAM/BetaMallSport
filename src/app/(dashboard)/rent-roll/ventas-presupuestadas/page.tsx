@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { BudgetedSalesMatrixClient } from "@/components/rent-roll/BudgetedSalesMatrixClient";
-import { requireSession } from "@/lib/permissions";
+import { canWrite, requireSession } from "@/lib/permissions";
 import { getProjectContext } from "@/lib/project";
 import { fetchBudgetedSalesMatrix } from "@/lib/rent-roll/budgeted-sales-matrix";
 import { isPeriodoValido } from "@/lib/validators";
@@ -21,7 +21,8 @@ function defaultRangeForCurrentYear(): { desde: string; hasta: string } {
 export default async function BudgetedSalesByTenantPage({
   searchParams,
 }: PageProps): Promise<JSX.Element> {
-  await requireSession();
+  const session = await requireSession();
+  const canEdit = canWrite(session.user.role);
 
   const { selectedProjectId } = await getProjectContext();
   if (!selectedProjectId) {
@@ -46,6 +47,7 @@ export default async function BudgetedSalesByTenantPage({
       desde={minDesde}
       hasta={maxHasta}
       data={data}
+      canEdit={canEdit}
     />
   );
 }

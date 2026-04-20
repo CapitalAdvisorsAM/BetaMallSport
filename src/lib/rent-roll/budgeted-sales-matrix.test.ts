@@ -109,7 +109,7 @@ describe("buildBudgetedSalesMatrix", () => {
     expect(result.summary.tenantsWithMissing).toBe(0);
   });
 
-  it("excludes tenants without any data in the range", () => {
+  it("includes all project tenants even when they have no data in the range", () => {
     const tenantsById = new Map([
       ["t1", tenant("t1", "Alpha")],
       ["t2", tenant("t2", "Beta")],
@@ -127,9 +127,13 @@ describe("buildBudgetedSalesMatrix", () => {
       periods,
     });
 
-    expect(result.rows).toHaveLength(1);
-    expect(result.rows[0].tenantId).toBe("t1");
+    expect(result.rows).toHaveLength(2);
+    const byTenant = Object.fromEntries(result.rows.map((r) => [r.tenantId, r]));
+    expect(byTenant.t1.byPeriod["2026-02"]).toBe(25);
+    expect(byTenant.t2.byPeriod["2026-02"]).toBeNull();
+    expect(byTenant.t2.total).toBe(0);
     expect(result.summary.tenantsWithData).toBe(1);
+    expect(result.summary.tenantsWithMissing).toBe(1);
   });
 
   it("sorts rows alphabetically by nombreComercial (Spanish locale)", () => {

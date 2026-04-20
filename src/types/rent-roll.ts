@@ -31,3 +31,16 @@ export type RentRollKpis = {
   rentaFijaTotalUf: number;
   ggccTotalUf: number;
 };
+
+export type BudgetedSaleCellPayload = {
+  projectId: string;
+  tenantId: string;
+  period: string;
+  salesUf: string | null;
+};
+
+export type BudgetedSaleCellResponse = {
+  tenantId: string;
+  period: string;
+  salesUf: string | null;
+};
