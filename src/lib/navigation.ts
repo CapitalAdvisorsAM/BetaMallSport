@@ -42,6 +42,12 @@ export const TOP_NAV_ITEMS: NavItem[] = [
     match: "startsWith"
   },
   {
+    label: "Cargar Datos",
+    href: "/imports",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
     label: "Reportes",
     href: "/reportes",
     enabled: false,
@@ -164,12 +170,6 @@ export const FINANZAS_SUB_NAV_ITEMS: NavItem[] = [
   {
     label: "GG.CC.",
     href: "/finance/common-charges",
-    enabled: true,
-    match: "startsWith"
-  },
-  {
-    label: "Cargar Datos",
-    href: "/finance/upload",
     enabled: true,
     match: "startsWith"
   },
