@@ -1,5 +1,6 @@
 import { ContractRateType } from "@prisma/client";
 import { read, utils } from "xlsx";
+import type { WorkSheet } from "xlsx";
 import { MAX_ROWS, normalizeHeaders, parseDate } from "@/lib/upload/parse-utils";
 import type {
   ContractReconciliation,
@@ -531,7 +532,7 @@ function buildPreviewRows(
   let creatableContractsCount = 0;
   let blockedRowsCount = 0;
 
-  const rows = sourceRows.map(({ rawRow, rowNumber }) => {
+  const rows: PreviewRow<ContractUploadRow>[] = sourceRows.map(({ rawRow, rowNumber }) => {
     const numeroContrato = asString(rawRow.numerocontrato);
     const localCodigo = asString(rawRow.localcodigo).toUpperCase();
     const arrendatarioNombre = asString(rawRow.arrendatarionombre);
@@ -1038,7 +1039,7 @@ function buildRentRollNotes(row: unknown[]): string | null {
   return parts.length > 0 ? parts.join(" | ") : null;
 }
 
-function isRentRollSheet(sheet: unknown): boolean {
+function isRentRollSheet(sheet: WorkSheet | undefined): boolean {
   if (!sheet) {
     return false;
   }
@@ -1059,11 +1060,10 @@ function isRentRollSheet(sheet: unknown): boolean {
   );
 }
 
-function parseRentRollRows(sheet: unknown): RentRollParsedRow[] {
+function parseRentRollRows(sheet: WorkSheet): RentRollParsedRow[] {
   const rows = utils.sheet_to_json<unknown[]>(sheet, {
     header: 1,
     raw: true,
-    cellDates: true,
     defval: null,
     range: RENT_ROLL_HEADER_ROW_INDEX
   });
