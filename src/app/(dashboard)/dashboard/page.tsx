@@ -23,7 +23,7 @@ import {
   type KpiContractInput
 } from "@/lib/kpi";
 import { requireSession } from "@/lib/permissions";
-import { buildActualBillingByUnit } from "@/lib/shared/gap-utils";
+import { buildActualBillingByUnit } from "@/lib/finance/gap-utils";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
 import type { MetricFormulaId } from "@/lib/metric-formulas";

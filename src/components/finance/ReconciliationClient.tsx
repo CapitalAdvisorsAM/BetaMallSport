@@ -12,7 +12,7 @@ import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolba
 import { DataTable } from "@/components/ui/DataTable";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useDataTable } from "@/hooks/useDataTable";
-import { type GapSeverity, getGapSeverity } from "@/lib/shared/gap-utils";
+import { type GapSeverity, getGapSeverity } from "@/lib/finance/gap-utils";
 import { formatUf, cn } from "@/lib/utils";
 
 type ReconciliationRow = {

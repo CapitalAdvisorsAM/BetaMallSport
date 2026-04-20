@@ -10,7 +10,7 @@ import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolba
 import { OccupancyBadge } from "@/components/finance/OccupancyBadge";
 import { TableDisclosureButton } from "@/components/ui/TableDisclosureButton";
 import { getStripedRowClass, tableTheme } from "@/components/ui/table-theme";
-import { getGapSeverity } from "@/lib/shared/gap-utils";
+import { getGapSeverity } from "@/lib/finance/gap-utils";
 import { useRouter } from "next/navigation";
 import type { ArrendatarioPartidaDetalle, TenantFinanceRow } from "@/types/finance";
 import { formatUf, cn } from "@/lib/utils";

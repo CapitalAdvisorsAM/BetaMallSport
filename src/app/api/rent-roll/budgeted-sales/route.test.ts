@@ -23,7 +23,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 async function callPut(body: unknown, projectId = "p1"): Promise<Response> {
   const { PUT } = await import("./route");
   return PUT(
-    new Request(`http://localhost/api/finance/budgeted-sales?projectId=${projectId}`, {
+    new Request(`http://localhost/api/rent-roll/budgeted-sales?projectId=${projectId}`, {
       method: "PUT",
       body: JSON.stringify(body),
       headers: { "Content-Type": "application/json" },
@@ -31,7 +31,7 @@ async function callPut(body: unknown, projectId = "p1"): Promise<Response> {
   );
 }
 
-describe("PUT /api/finance/budgeted-sales", () => {
+describe("PUT /api/rent-roll/budgeted-sales", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     requireWriteAccessMock.mockResolvedValue({ user: { id: "u1", role: "ADMIN" } });
