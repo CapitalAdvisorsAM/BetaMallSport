@@ -50,12 +50,6 @@ function getDiasRestantes(fechaTermino: Date): number {
   return Math.max(0, Math.round((fechaTermino.getTime() - Date.now()) / MS_PER_DAY));
 }
 
-function diasRestantesColor(dias: number): string {
-  if (dias <= 30) return "text-rose-600";
-  if (dias <= 90) return "text-amber-600";
-  return "text-emerald-600";
-}
-
 function rateLabel(tipo: string): string {
   switch (tipo) {
     case "FIJO_UF_M2": return "UF/m\u00b2";
@@ -129,6 +123,7 @@ export default async function ContractDetailPage({
       tipo: tarifa.tipo,
       valor: tarifa.valor.toString(),
       umbralVentasUf: tarifa.umbralVentasUf?.toString() ?? null,
+      pisoMinimoUf: tarifa.pisoMinimoUf?.toString() ?? null,
       vigenciaDesde: tarifa.vigenciaDesde.toISOString().slice(0, 10),
       vigenciaHasta: tarifa.vigenciaHasta ? tarifa.vigenciaHasta.toISOString().slice(0, 10) : null,
       esDiciembre: tarifa.esDiciembre,
@@ -156,19 +151,21 @@ export default async function ContractDetailPage({
         { label: `Contrato ${contract.numeroContrato}` },
       ]} />
 
-      <section className="space-y-5 rounded-md border border-brand-200 bg-brand-50 p-5 shadow-sm">
+      <section className="divide-y divide-brand-100 space-y-5 rounded-md border border-brand-200 bg-brand-50 p-5 shadow-sm">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <h3 className="text-sm font-bold text-brand-700">
+            <h3 className="text-base font-semibold text-slate-900">
               Contrato {contract.numeroContrato}
             </h3>
             <StatusBadge status={contract.estado} />
             <span className={cn(
-              "text-xs font-semibold tabular-nums",
-              diasRestantesColor(diasRestantes)
+              "rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums",
+              diasRestantes <= 30 && "bg-rose-100 text-rose-700",
+              diasRestantes > 30 && diasRestantes <= 90 && "bg-amber-100 text-amber-700",
+              diasRestantes > 90 && "bg-emerald-100 text-emerald-700"
             )}>
-              {diasRestantes} dias restantes
+              {diasRestantes} días restantes
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -192,7 +189,7 @@ export default async function ContractDetailPage({
 
         {/* Informacion General */}
         <div>
-          <h4 className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">Informacion General</h4>
+          <h4 className="mb-2 border-l-2 border-brand-300 pl-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Informacion General</h4>
           <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">
             <div>
               <p className="text-slate-400">Arrendatario</p>
@@ -206,73 +203,73 @@ export default async function ContractDetailPage({
             {contract.arrendatario.razonSocial ? (
               <div>
                 <p className="text-slate-400">Razon social</p>
-                <p className="font-medium text-slate-700">{contract.arrendatario.razonSocial}</p>
+                <p className="text-sm font-medium text-slate-700">{contract.arrendatario.razonSocial}</p>
               </div>
             ) : null}
             <div>
               <p className="text-slate-400">RUT</p>
-              <p className="font-medium tabular-nums text-slate-700">{contract.arrendatario.rut}</p>
+              <p className="text-sm font-medium tabular-nums text-slate-700">{contract.arrendatario.rut}</p>
             </div>
             <div>
               <p className="text-slate-400">Fecha inicio</p>
-              <p className="font-medium tabular-nums text-slate-700">{formatDate(contract.fechaInicio)}</p>
+              <p className="text-sm font-medium tabular-nums text-slate-700">{formatDate(contract.fechaInicio)}</p>
             </div>
             <div>
               <p className="text-slate-400">Fecha termino</p>
-              <p className="font-medium tabular-nums text-slate-700">{formatDate(contract.fechaTermino)}</p>
+              <p className="text-sm font-medium tabular-nums text-slate-700">{formatDate(contract.fechaTermino)}</p>
             </div>
             {contract.fechaEntrega ? (
               <div>
                 <p className="text-slate-400">Fecha entrega</p>
-                <p className="font-medium tabular-nums text-slate-700">{formatDate(contract.fechaEntrega)}</p>
+                <p className="text-sm font-medium tabular-nums text-slate-700">{formatDate(contract.fechaEntrega)}</p>
               </div>
             ) : null}
             {contract.fechaApertura ? (
               <div>
                 <p className="text-slate-400">Fecha apertura</p>
-                <p className="font-medium tabular-nums text-slate-700">{formatDate(contract.fechaApertura)}</p>
+                <p className="text-sm font-medium tabular-nums text-slate-700">{formatDate(contract.fechaApertura)}</p>
               </div>
             ) : null}
             {contract.diasGracia > 0 ? (
               <div>
                 <p className="text-slate-400">Dias de gracia</p>
-                <p className="font-medium tabular-nums text-slate-700">{contract.diasGracia}</p>
+                <p className="text-sm font-medium tabular-nums text-slate-700">{contract.diasGracia}</p>
               </div>
             ) : null}
             {contract.codigoCC ? (
               <div>
                 <p className="text-slate-400">Codigo CC</p>
-                <p className="font-medium text-slate-700">{contract.codigoCC}</p>
+                <p className="text-sm font-medium text-slate-700">{contract.codigoCC}</p>
               </div>
             ) : null}
             {contract.pctFondoPromocion ? (
               <div>
                 <p className="text-slate-400">Fondo promocion</p>
-                <p className="font-medium tabular-nums text-slate-700">{contract.pctFondoPromocion.toString()}%</p>
+                <p className="text-sm font-medium tabular-nums text-slate-700">{contract.pctFondoPromocion.toString()}%</p>
               </div>
             ) : null}
             {contract.multiplicadorDiciembre ? (
               <div>
                 <p className="text-slate-400">Multiplicador diciembre</p>
-                <p className="font-medium tabular-nums text-slate-700">{contract.multiplicadorDiciembre.toString()}x</p>
+                <p className="text-sm font-medium tabular-nums text-slate-700">{contract.multiplicadorDiciembre.toString()}x</p>
               </div>
             ) : null}
             {contract.multiplicadorJunio ? (
               <div>
                 <p className="text-slate-400">Multiplicador junio</p>
-                <p className="font-medium tabular-nums text-slate-700">{contract.multiplicadorJunio.toString()}x</p>
+                <p className="text-sm font-medium tabular-nums text-slate-700">{contract.multiplicadorJunio.toString()}x</p>
               </div>
             ) : null}
             {contract.multiplicadorJulio ? (
               <div>
                 <p className="text-slate-400">Multiplicador julio</p>
-                <p className="font-medium tabular-nums text-slate-700">{contract.multiplicadorJulio.toString()}x</p>
+                <p className="text-sm font-medium tabular-nums text-slate-700">{contract.multiplicadorJulio.toString()}x</p>
               </div>
             ) : null}
             {contract.multiplicadorAgosto ? (
               <div>
                 <p className="text-slate-400">Multiplicador agosto</p>
-                <p className="font-medium tabular-nums text-slate-700">{contract.multiplicadorAgosto.toString()}x</p>
+                <p className="text-sm font-medium tabular-nums text-slate-700">{contract.multiplicadorAgosto.toString()}x</p>
               </div>
             ) : null}
           </div>
@@ -281,7 +278,7 @@ export default async function ContractDetailPage({
         {/* Contacto arrendatario */}
         {contract.arrendatario.email || contract.arrendatario.telefono ? (
           <div>
-            <h4 className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">Contacto Arrendatario</h4>
+            <h4 className="mb-2 border-l-2 border-brand-300 pl-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Contacto Arrendatario</h4>
             <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">
               {contract.arrendatario.email ? (
                 <div>
@@ -305,28 +302,28 @@ export default async function ContractDetailPage({
 
         {/* Locales */}
         <div>
-          <h4 className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">Locales</h4>
+          <h4 className="mb-2 border-l-2 border-brand-300 pl-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Locales</h4>
           {units.length === 1 ? (
             <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
               <div>
                 <p className="text-slate-400">Codigo</p>
-                <p className="font-medium text-slate-700">{units[0].codigo}</p>
+                <p className="text-sm font-medium text-slate-700">{units[0].codigo}</p>
               </div>
               <div>
                 <p className="text-slate-400">Nombre</p>
-                <p className="font-medium text-slate-700">{units[0].nombre}</p>
+                <p className="text-sm font-medium text-slate-700">{units[0].nombre}</p>
               </div>
               <div>
                 <p className="text-slate-400">Superficie</p>
-                <p className="font-medium tabular-nums text-slate-700">{Number(units[0].glam2).toFixed(2)} m{"\u00b2"}</p>
+                <p className="text-sm font-medium tabular-nums text-slate-700">{Number(units[0].glam2).toFixed(2)} m{"\u00b2"}</p>
               </div>
               <div>
                 <p className="text-slate-400">Piso</p>
-                <p className="font-medium text-slate-700">{units[0].piso}</p>
+                <p className="text-sm font-medium text-slate-700">{units[0].piso}</p>
               </div>
             </div>
           ) : (
-            <UnifiedTable density="compact">
+            <UnifiedTable density="compact" className="[&_thead]:bg-brand-50 [&_thead_th]:text-brand-700">
               <table className={`${compactTableTheme.table} text-xs`}>
                 <thead className={compactTableTheme.head}>
                   <tr>
@@ -359,8 +356,8 @@ export default async function ContractDetailPage({
         {/* Tarifas */}
         {contract.tarifas.length > 0 ? (
           <div>
-            <h4 className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">Tarifas</h4>
-            <UnifiedTable density="compact">
+            <h4 className="mb-2 border-l-2 border-brand-300 pl-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Tarifas</h4>
+            <UnifiedTable density="compact" className="[&_thead]:bg-brand-50 [&_thead_th]:text-brand-700">
               <table className={`${compactTableTheme.table} text-xs`}>
                 <thead className={compactTableTheme.head}>
                   <tr>
@@ -401,8 +398,8 @@ export default async function ContractDetailPage({
         {/* Gastos Comunes (GGCC) */}
         {contract.ggcc.length > 0 ? (
           <div>
-            <h4 className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">Gastos Comunes (GGCC)</h4>
-            <UnifiedTable density="compact">
+            <h4 className="mb-2 border-l-2 border-brand-300 pl-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Gastos Comunes (GGCC)</h4>
+            <UnifiedTable density="compact" className="[&_thead]:bg-brand-50 [&_thead_th]:text-brand-700">
               <table className={`${compactTableTheme.table} text-xs`}>
                 <thead className={compactTableTheme.head}>
                   <tr>
@@ -453,7 +450,7 @@ export default async function ContractDetailPage({
         {/* Anexos */}
         {contract.anexos.length > 0 ? (
           <div>
-            <h4 className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">Anexos</h4>
+            <h4 className="mb-2 border-l-2 border-brand-300 pl-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Anexos</h4>
             <div className="space-y-1.5">
               {contract.anexos.map((anexo) => (
                 <div key={anexo.id} className="flex items-start gap-3 text-xs">
@@ -471,13 +468,15 @@ export default async function ContractDetailPage({
         {/* Notas */}
         {contract.notas ? (
           <div>
-            <h4 className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">Notas</h4>
-            <p className="whitespace-pre-wrap text-xs text-slate-600">{contract.notas}</p>
+            <h4 className="mb-2 border-l-2 border-brand-300 pl-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Notas</h4>
+            <div className="rounded bg-slate-50 p-3">
+              <p className="whitespace-pre-wrap text-xs text-slate-600">{contract.notas}</p>
+            </div>
           </div>
         ) : null}
 
         {/* Meta */}
-        <div className="flex flex-wrap gap-4 border-t border-brand-100 pt-2 text-[10px] text-slate-300">
+        <div className="flex flex-wrap gap-4 pt-2 text-[10px] text-slate-300">
           <span>Creado: {formatDate(contract.createdAt)}</span>
           <span>Actualizado: {formatDate(contract.updatedAt)}</span>
         </div>

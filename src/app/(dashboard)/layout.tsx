@@ -36,10 +36,13 @@ export default async function DashboardLayout({
               className="h-8 w-8 rounded-md object-cover ring-1 ring-white/20"
             />
             <div>
-              <p className="text-xs font-medium uppercase tracking-widest text-white/50">
-                Control de Gestion
-              </p>
-              <h1 className="text-sm font-bold text-white">Mall Sport</h1>
+              <p className="overline text-white/55">Control de Gestión</p>
+              <h1
+                className="font-serif text-title font-medium text-white"
+                style={{ fontVariationSettings: '"opsz" 28, "wght" 500' }}
+              >
+                Mall Sport
+              </h1>
             </div>
           </div>
 
@@ -48,8 +51,9 @@ export default async function DashboardLayout({
             <div className="hidden h-5 w-px bg-white/20 md:block" />
             <div className="flex items-center gap-3">
               {selectedProject ? (
-                <span className="max-w-[200px] truncate rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/80">
-                  Proyecto: {selectedProject.nombre}
+                <span className="max-w-[220px] truncate rounded-sm border border-white/15 bg-white/10 px-3 py-1 text-xs text-white/85">
+                  <span className="overline mr-1.5 text-white/50">Proyecto</span>
+                  <span className="font-medium">{selectedProject.nombre}</span>
                 </span>
               ) : null}
               <span className="max-w-[190px] truncate text-xs text-white/60 md:max-w-[220px]">

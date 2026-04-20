@@ -639,6 +639,7 @@ export function buildGapAnalysis(
         pctFondoPromocion: c.pctFondoPromocion !== null ? toNum(c.pctFondoPromocion) : null,
         periodDate,
         salesUf,
+        estado: c.estado,
       });
 
       expectedBillingUf += expected.totalUf;

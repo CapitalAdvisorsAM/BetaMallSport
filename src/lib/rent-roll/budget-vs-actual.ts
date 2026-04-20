@@ -148,6 +148,7 @@ export function buildBudgetVsActual(
           pctFondoPromocion: c.pctFondoPromocion !== null ? toNum(c.pctFondoPromocion) : null,
           periodDate,
           salesUf: salesUf ?? 0,
+          estado: c.estado,
         });
 
         totalBudgetUf += expected.totalUf;

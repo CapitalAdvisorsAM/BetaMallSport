@@ -32,6 +32,35 @@ export function formatUf(value: number, fractionDigits = 2): string {
   });
 }
 
+export function formatUfPerM2(value: number): string {
+  return value.toLocaleString("es-CL", {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4
+  });
+}
+
+export function formatPercent(value: number, fractionDigits = 1): string {
+  return `${value.toLocaleString("es-CL", {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits
+  })}%`;
+}
+
+export function formatSquareMeters(value: number): string {
+  return `${value.toLocaleString("es-CL", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })} m\u00b2`;
+}
+
+export function formatClp(value: number): string {
+  return new Intl.NumberFormat("es-CL", {
+    style: "currency",
+    currency: "CLP",
+    maximumFractionDigits: 0
+  }).format(value);
+}
+
 export function formatDateString(value: string | null): string {
   if (!value) {
     return "-";

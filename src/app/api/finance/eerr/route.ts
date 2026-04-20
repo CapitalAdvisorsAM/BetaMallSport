@@ -23,19 +23,34 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     const { desdeDate, hastaDate } = resolveMonthRange(from, to);
 
-    const records = await prisma.accountingRecord.findMany({
-      where: {
-        projectId,
-        period: { gte: desdeDate, lte: hastaDate }
-      },
-      orderBy: { period: "asc" },
-      select: {
-        group1: true,
-        group3: true,
-        period: true,
-        valueUf: true
-      }
-    });
+    const [records, expenseBudgets] = await Promise.all([
+      prisma.accountingRecord.findMany({
+        where: {
+          projectId,
+          period: { gte: desdeDate, lte: hastaDate }
+        },
+        orderBy: { period: "asc" },
+        select: {
+          group1: true,
+          group3: true,
+          period: true,
+          valueUf: true
+        }
+      }),
+      prisma.expenseBudget.findMany({
+        where: {
+          projectId,
+          periodo: { gte: desdeDate, lte: hastaDate }
+        },
+        orderBy: { periodo: "asc" },
+        select: {
+          grupo1: true,
+          grupo3: true,
+          periodo: true,
+          valorUf: true
+        }
+      })
+    ]);
 
     const legacyRecords = records.map((record) => ({
       grupo1: record.group1,
@@ -44,7 +59,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       valorUf: record.valueUf
     }));
 
-    return NextResponse.json(buildEerrData(legacyRecords));
+    return NextResponse.json(buildEerrData(legacyRecords, { budgets: expenseBudgets }));
   } catch (error) {
     return handleApiError(error);
   }

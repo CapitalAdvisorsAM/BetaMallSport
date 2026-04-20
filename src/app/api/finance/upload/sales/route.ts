@@ -6,6 +6,7 @@ import { requireWriteAccess } from "@/lib/permissions";
 import { parseVentas } from "@/lib/finance/parse-sales";
 import { similarity } from "@/lib/finance/parse-utils";
 import { getFormFieldValue } from "@/lib/finance/api-params";
+import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
@@ -117,6 +118,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         errorDetail: unmapped.length > 0 ? ({ sinMapeo: unmapped } as object) : undefined
       }
     });
+    invalidateMetricsCacheByProject(projectId);
 
     return NextResponse.json({
       periods,

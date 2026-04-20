@@ -35,6 +35,7 @@ import {
   chartMargins,
 } from "@/lib/charts/theme";
 import { formatWaltValue } from "@/lib/rent-roll/snapshot-date";
+import { formatPercent, formatSquareMeters, formatUf } from "@/lib/utils";
 import type { PeriodoMetrica } from "@/types/timeline";
 import type { FormulaConfig } from "@/lib/dashboard/custom-widget-engine";
 
@@ -261,7 +262,7 @@ export function RentRollChartsSection({
                       valueFormatter={(value, name) =>
                         String(name) === "WALT"
                           ? formatWaltValue(Number(value))
-                          : `${Number(value).toFixed(1)}%`
+                          : formatPercent(Number(value))
                       }
                     />
                   }
@@ -315,9 +316,7 @@ export function RentRollChartsSection({
                 {...chartAxisProps}
               />
               <YAxis
-                tickFormatter={(value: number) =>
-                  value.toLocaleString("es-CL", { maximumFractionDigits: 0 })
-                }
+                tickFormatter={(value: number) => formatUf(value, 0)}
                 {...chartAxisProps}
                 width={52}
               />
@@ -328,12 +327,7 @@ export function RentRollChartsSection({
                       const f = tooltipLabelFormatter(l as ReactNode);
                       return typeof f === "string" ? f : String(l);
                     }}
-                    valueFormatter={(value) =>
-                      Number(value).toLocaleString("es-CL", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      })
-                    }
+                    valueFormatter={(value) => formatUf(Number(value))}
                   />
                 }
               />
@@ -419,9 +413,7 @@ export function RentRollChartsSection({
                 {...chartAxisProps}
               />
               <YAxis
-                tickFormatter={(value: number) =>
-                  value.toLocaleString("es-CL", { maximumFractionDigits: 0 })
-                }
+                tickFormatter={(value: number) => formatUf(value, 0)}
                 {...chartAxisProps}
                 width={52}
               />
@@ -432,12 +424,7 @@ export function RentRollChartsSection({
                       const f = tooltipLabelFormatter(l as ReactNode);
                       return typeof f === "string" ? f : String(l);
                     }}
-                    valueFormatter={(value) =>
-                      `${Number(value).toLocaleString("es-CL", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      })} m2`
-                    }
+                    valueFormatter={(value) => formatSquareMeters(Number(value))}
                   />
                 }
               />
@@ -552,9 +539,7 @@ export function RentRollChartsSection({
                 {...chartAxisProps}
               />
               <YAxis
-                tickFormatter={(value: number) =>
-                  value.toLocaleString("es-CL", { maximumFractionDigits: 0 })
-                }
+                tickFormatter={(value: number) => formatUf(value, 0)}
                 {...chartAxisProps}
                 width={52}
               />
@@ -572,10 +557,7 @@ export function RentRollChartsSection({
                         bodegaEspacio: "Bodega / Espacio"
                       };
                       const prefix = labels[String(name)] ?? String(name);
-                      return `${prefix}: ${Number(value).toLocaleString("es-CL", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      })}`;
+                      return `${prefix}: ${formatUf(Number(value))}`;
                     }}
                   />
                 }

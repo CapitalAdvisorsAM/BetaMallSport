@@ -52,7 +52,7 @@ function toDate(value: Date | string): Date {
   return new Date(value);
 }
 
-export function ContractExpiryTable({ rows, proyectoId }: ContractExpiryTableProps): JSX.Element {
+export function ContractExpiryTable({ rows }: ContractExpiryTableProps): JSX.Element {
   const rowsSorted = [...rows].sort((left, right) => left.diasRestantes - right.diasRestantes);
   const visibleRows = rowsSorted.slice(0, CONTRACT_EXPIRY_EXECUTIVE_LIMIT);
   const totalCount = rowsSorted.length;

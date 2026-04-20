@@ -6,6 +6,7 @@ import { requireWriteAccess } from "@/lib/permissions";
 import { parseVentasPresupuestadas } from "@/lib/finance/parse-budgeted-sales";
 import { similarity } from "@/lib/finance/parse-utils";
 import { getFormFieldValue } from "@/lib/finance/api-params";
+import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -120,6 +121,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         errorDetail: unmapped.length > 0 ? ({ sinMapeo: unmapped } as object) : undefined
       }
     });
+    invalidateMetricsCacheByProject(projectId);
 
     return NextResponse.json({
       periods,

@@ -34,6 +34,12 @@ describe("parse-utils", () => {
       expect(num("67.89")).toBeCloseTo(67.89);
     });
 
+    it("parses thousands separators and accounting negatives", () => {
+      expect(num("2,305,296")).toBe(2305296);
+      expect(num("54.027.239,50")).toBeCloseTo(54027239.5);
+      expect(num("(145,497)")).toBe(-145497);
+    });
+
     it("returns 0 for invalid numbers", () => {
       expect(num("no-numero")).toBe(0);
       expect(num(undefined)).toBe(0);

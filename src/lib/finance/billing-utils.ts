@@ -225,8 +225,14 @@ export function calcExpectedIncome(params: {
   pctFondoPromocion: number | null;
   periodDate: Date;
   salesUf?: number;
+  estado?: ContractStatus;
 }): ExpectedIncomeResult {
-  const { tarifas, ggcc, glam2, multiplicadorDiciembre, multiplicadorJunio, multiplicadorJulio, multiplicadorAgosto, pctFondoPromocion, periodDate, salesUf } = params;
+  const { tarifas, ggcc, glam2, multiplicadorDiciembre, multiplicadorJunio, multiplicadorJulio, multiplicadorAgosto, pctFondoPromocion, periodDate, salesUf, estado } = params;
+
+  if (estado === ContractStatus.GRACIA) {
+    return { fixedRentUf: 0, ggccUf: 0, fondoUf: 0, variableRentUf: 0, totalUf: 0 };
+  }
+
   const monthIndex = periodDate.getUTCMonth();
   const multiplier =
     monthIndex === 5 ? multiplicadorJunio :

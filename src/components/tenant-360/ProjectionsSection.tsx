@@ -25,7 +25,7 @@ import {
   chartLegendProps,
   chartMargins,
 } from "@/lib/charts/theme";
-import { formatUf, cn } from "@/lib/utils";
+import { cn, formatPercent, formatUf } from "@/lib/utils";
 import type { Tenant360Projection, GapAnalysisRow } from "@/types/tenant-360";
 
 type ProjectionsSectionProps = {
@@ -44,10 +44,6 @@ const RISK_LABEL: Record<string, string> = {
   medium: "Medio",
   low: "Bajo"
 };
-
-function fmtUf(value: number): string {
-  return value.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 export function ProjectionsSection({ projections, gapAnalysis }: ProjectionsSectionProps): JSX.Element {
   const hasExpiring = projections.expiringContracts.length > 0;
@@ -154,21 +150,21 @@ export function ProjectionsSection({ projections, gapAnalysis }: ProjectionsSect
                 <YAxis
                   yAxisId="left"
                   {...chartAxisProps}
-                  tickFormatter={(v: number) => fmtUf(v)}
+                  tickFormatter={(v: number) => formatUf(v)}
                 />
                 <YAxis
                   yAxisId="right"
                   orientation="right"
                   {...chartAxisProps}
-                  tickFormatter={(v: number) => `${v.toFixed(0)}%`}
+                  tickFormatter={(v: number) => formatPercent(v, 0)}
                 />
                 <Tooltip
                   content={
                     <ChartTooltip
                       valueFormatter={(value, name) => {
                         const v = typeof value === "number" ? value : Number(value ?? 0);
-                        if (String(name) === "Brecha %") return `${v.toFixed(1)}%`;
-                        return `${fmtUf(v)} UF`;
+                        if (String(name) === "Brecha %") return formatPercent(v);
+                        return `${formatUf(v)} UF`;
                       }}
                     />
                   }
@@ -261,7 +257,7 @@ export function ProjectionsSection({ projections, gapAnalysis }: ProjectionsSect
                           "px-3 py-1.5 text-right text-xs font-semibold tabular-nums",
                           isPositiveGap ? "text-rose-600" : isNegativeGap ? "text-emerald-600" : "text-slate-500"
                         )}>
-                          {isPositiveGap ? "+" : ""}{displayGapPct.toFixed(1)}%
+                          {isPositiveGap ? "+" : ""}{formatPercent(displayGapPct)}
                         </td>
                       </tr>
                     );

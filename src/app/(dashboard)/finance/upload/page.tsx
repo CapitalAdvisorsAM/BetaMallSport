@@ -1,4 +1,4 @@
-﻿import { redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { DataUploadType } from "@prisma/client";
 import { FinanceUploadClient } from "@/components/finance/FinanceUploadClient";
 import { requireSession } from "@/lib/permissions";
@@ -13,11 +13,15 @@ export default async function FinanceUploadPage(): Promise<JSX.Element> {
     redirect("/");
   }
 
-  const [accountingHistory, salesHistory, budgetedSalesHistory] = await Promise.all([
-    getUploadHistory(selectedProjectId, DataUploadType.ACCOUNTING, "created"),
-    getUploadHistory(selectedProjectId, DataUploadType.SALES, "updated"),
-    getUploadHistory(selectedProjectId, DataUploadType.BUDGETED_SALES, "updated")
-  ]);
+  const [accountingHistory, salesHistory, budgetedSalesHistory, expenseBudgetHistory, balancesHistory, bankHistory] =
+    await Promise.all([
+      getUploadHistory(selectedProjectId, DataUploadType.ACCOUNTING, "created"),
+      getUploadHistory(selectedProjectId, DataUploadType.SALES, "updated"),
+      getUploadHistory(selectedProjectId, DataUploadType.BUDGETED_SALES, "updated"),
+      getUploadHistory(selectedProjectId, DataUploadType.EXPENSE_BUDGET, "created"),
+      getUploadHistory(selectedProjectId, DataUploadType.BALANCES, "created"),
+      getUploadHistory(selectedProjectId, DataUploadType.BANK, "created")
+    ]);
 
   return (
     <FinanceUploadClient
@@ -25,6 +29,9 @@ export default async function FinanceUploadPage(): Promise<JSX.Element> {
       accountingHistory={accountingHistory}
       salesHistory={salesHistory}
       budgetedSalesHistory={budgetedSalesHistory}
+      expenseBudgetHistory={expenseBudgetHistory}
+      balancesHistory={balancesHistory}
+      bankHistory={bankHistory}
     />
   );
 }

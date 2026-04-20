@@ -1,6 +1,7 @@
 import { DataUploadType, ContractRateType } from "@prisma/client";
 import { ApiError } from "@/lib/api-error";
 import { parseRentRollPreviewPayload } from "@/lib/upload/data-payload";
+import { recalculateBillingAlerts } from "@/lib/finance/billing-alerts";
 import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 import { prisma } from "@/lib/prisma";
 import {
@@ -247,6 +248,9 @@ export async function runContratosApplyJob(input: {
       }
     });
     invalidateMetricsCacheByProject(carga.projectId);
+    if (created + updated > 0) {
+      void recalculateBillingAlerts(carga.projectId);
+    }
 
     return { cargaId: carga.id, projectId: carga.projectId, report };
   } catch (error) {

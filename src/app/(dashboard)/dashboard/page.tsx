@@ -3,12 +3,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AlertBar } from "@/components/dashboard/AlertBar";
 import { KpiCard } from "@/components/dashboard/KpiCard";
+import { BillingAlertsTable, type BillingAlertRow } from "@/components/dashboard/BillingAlertsTable";
 import { ExpirationsByYearTable } from "@/components/dashboard/ExpirationsByYearTable";
 import {
   OCCUPANCY_HIGH_THRESHOLD,
-  OCCUPANCY_LOW_THRESHOLD,
-  MS_PER_DAY,
-  UF_STALENESS_DAYS
+  OCCUPANCY_LOW_THRESHOLD
 } from "@/lib/constants";
 import {
   buildAlertCounts,
@@ -263,6 +262,16 @@ export default async function DashboardPage({
     valorUf: energy.valorUf
   }));
 
+  const billingAlertRows: BillingAlertRow[] = billingAlerts.map((alert) => ({
+    id: alert.id,
+    severity: alert.severity,
+    consecutiveMonths: alert.consecutiveMonths,
+    avgGapPct: Number(alert.avgGapPct),
+    latestPeriod: alert.latestPeriod,
+    arrendatarioId: alert.arrendatario.id,
+    arrendatarioNombre: alert.arrendatario.nombreComercial,
+  }));
+
   const widgetConfigs = resolveWidgetConfigs(dashboardConfigRows);
   const configMap = new Map<string, ResolvedWidgetConfig>(widgetConfigs.map((c) => [c.widgetId, c]));
 
@@ -423,11 +432,6 @@ export default async function DashboardPage({
       .map((local) => local.id)
   ).size;
 
-  const ufAgeDays =
-    latestValorUf === null
-      ? null
-      : Math.floor((today.getTime() - startOfDay(latestValorUf.fecha).getTime()) / MS_PER_DAY);
-  const isUfStale = ufAgeDays !== null && ufAgeDays > UF_STALENESS_DAYS;
   const ingresoMensualClp = latestValorUf ? ingresos.totalUf * Number(latestValorUf.valor) : 0;
 
   const bodegaEspacioUf = ingresos.arriendoBodegaUf + ingresos.arriendoEspacioUf;
@@ -620,65 +624,21 @@ export default async function DashboardPage({
         </div>
       </section>
 
-      {billingAlerts.length > 0 && (
+      {billingAlertRows.length > 0 && (
         <section className="overflow-hidden rounded-md bg-white shadow-sm">
           <div className="border-b border-slate-200 px-4 py-3">
-            <h3 className="text-base font-semibold text-brand-700">Alertas de Facturacion</h3>
+            <h3 className="text-base font-semibold text-brand-700">Alertas de Facturación</h3>
             <p className="mt-1 text-sm text-slate-600">
-              Arrendatarios con sub-facturacion persistente (brecha &gt;5% por 3+ meses consecutivos).
+              Arrendatarios con sub-facturación persistente (brecha &gt;5% por 3+ meses consecutivos).
             </p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-brand-700 text-xs uppercase text-white">
-                <tr>
-                  <th className="px-4 py-2">Arrendatario</th>
-                  <th className="px-3 py-2 text-center">Severidad</th>
-                  <th className="px-3 py-2 text-right">Meses</th>
-                  <th className="px-3 py-2 text-right">Brecha Prom.</th>
-                  <th className="px-3 py-2">Ultimo Periodo</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {billingAlerts.map((alert) => (
-                  <tr key={alert.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-2 font-medium text-slate-800">
-                      <Link
-                        href={`/tenants/${alert.arrendatario.id}`}
-                        className="text-brand-500 underline underline-offset-2 hover:text-brand-700"
-                      >
-                        {alert.arrendatario.nombreComercial}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                        alert.severity === "CRITICAL"
-                          ? "border border-rose-200 bg-rose-50 text-rose-700"
-                          : "border border-amber-200 bg-amber-50 text-amber-700"
-                      }`}>
-                        {alert.severity === "CRITICAL" ? "Critico" : "Alerta"}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-slate-600">
-                      {alert.consecutiveMonths}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-rose-600">
-                      {Number(alert.avgGapPct).toFixed(1)}%
-                    </td>
-                    <td className="px-3 py-2 tabular-nums text-slate-600">
-                      {alert.latestPeriod}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <BillingAlertsTable rows={billingAlertRows} />
           <div className="border-t border-slate-200 px-4 py-3 text-right text-sm">
             <Link
               href="/finance/reconciliation"
               className="text-brand-500 underline hover:text-brand-700"
             >
-              Ver reconciliacion completa -&gt;
+              Ver reconciliación completa -&gt;
             </Link>
           </div>
         </section>

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/DataTable";
 import { useDataTable } from "@/hooks/useDataTable";
-import { formatDecimal } from "@/lib/utils";
+import { formatDecimal, formatUfPerM2 } from "@/lib/utils";
 import { type GapSeverity, getGapSeverity } from "@/lib/shared/gap-utils";
 
 export type RentRollDashboardTableRow = {
@@ -286,7 +286,7 @@ export function RentRollDashboardTable({
           <p className="mt-1 text-xs text-slate-500">
             Contratos ocupados o en gracia vigentes al {snapshotDate}.
             {weightedAvgUfM2 !== null && (
-              <> · Tarifa ponderada: <span className="font-medium text-slate-700">{weightedAvgUfM2.toLocaleString("es-CL", { minimumFractionDigits: 4, maximumFractionDigits: 4 })} UF/m²</span></>
+              <> · Tarifa ponderada: <span className="font-medium text-slate-700">{formatUfPerM2(weightedAvgUfM2)} UF/m²</span></>
             )}
           </p>
         </div>

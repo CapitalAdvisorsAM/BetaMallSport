@@ -5,7 +5,7 @@ import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { TableDisclosureButton } from "@/components/ui/TableDisclosureButton";
 import { getStripedRowClass, tableTheme } from "@/components/ui/table-theme";
-import { formatUf, cn } from "@/lib/utils";
+import { cn, formatSquareMeters, formatUf } from "@/lib/utils";
 import type { Tenant360Contract } from "@/types/tenant-360";
 
 type ContractDetailsSectionProps = {
@@ -63,7 +63,7 @@ export function ContractDetailsSection({ contracts }: ContractDetailsSectionProp
                         />
                         <span>{c.localCodigo}</span>
                       </div>
-                      <p className="ml-6 text-xs text-slate-400">{c.localNombre} &middot; {c.localGlam2.toFixed(2)} m\u00b2</p>
+                      <p className="ml-6 text-xs text-slate-400">{c.localNombre} &middot; {formatSquareMeters(c.localGlam2)}</p>
                     </td>
                     <td className="px-3 py-2.5 text-sm tabular-nums text-slate-600">{c.numeroContrato}</td>
                     <td className="px-3 py-2.5"><StatusBadge status={c.estado} /></td>

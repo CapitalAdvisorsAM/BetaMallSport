@@ -210,6 +210,7 @@ export function buildReconciliation(
           pctFondoPromocion: c.pctFondoPromocion !== null ? toNum(c.pctFondoPromocion) : null,
           periodDate,
           salesUf: salesUf ?? 0,
+          estado: c.estado,
         });
 
         totalExpectedUf += expected.totalUf;

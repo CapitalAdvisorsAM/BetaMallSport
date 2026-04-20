@@ -1,3 +1,5 @@
+import { createElement, Fragment, type ReactElement } from "react";
+
 // Chart theme tokens — kept in sync with tailwind.config.ts design tokens.
 // All Recharts-based charts must source colors, axis props, margins, and
 // legend config from this file. No hex literals in chart components.
@@ -84,4 +86,66 @@ export const chartHeight = {
   md: 280, // default
   lg: 320, // detailed charts
   xl: 360, // waterfall / many-series
+} as const;
+
+// Fixed ordered series palette — prefer this over indexing into chartSeriesPalette
+// when you know exactly which slot the series occupies (actual vs prior vs budget).
+export const chartSeriesColors = {
+  actual: chartColors.brandPrimary,
+  prior: chartColors.axisMuted,
+  budget: chartColors.gold,
+  ebitda: chartColors.positive,
+  overlay: chartColors.brandLight,
+} as const;
+
+// Gradient definition helper — returns a unique id and SVG defs to inject
+// inside <ComposedChart>/<AreaChart>. Use as a <linearGradient> fill ref.
+//   const grad = gradientId("ingresos");
+//   <defs>{chartGradientDefs(grad, chartColors.brandPrimary)}</defs>
+//   <Area fill={`url(#${grad})`} />
+export function gradientId(key: string): string {
+  return `chart-gradient-${key}`;
+}
+
+export type GradientStop = { offset: string; opacity: number };
+
+const DEFAULT_GRADIENT_STOPS: GradientStop[] = [
+  { offset: "0%", opacity: 0.28 },
+  { offset: "95%", opacity: 0.02 },
+];
+
+export function chartGradientDefs(
+  id: string,
+  color: string,
+  stops: GradientStop[] = DEFAULT_GRADIENT_STOPS
+): ReactElement {
+  return createElement(
+    "linearGradient",
+    { id, x1: "0", y1: "0", x2: "0", y2: "1" },
+    ...stops.map((stop) =>
+      createElement("stop", {
+        key: stop.offset,
+        offset: stop.offset,
+        stopColor: color,
+        stopOpacity: stop.opacity,
+      })
+    )
+  );
+}
+
+export function chartGradientGroup(
+  items: Array<{ id: string; color: string; stops?: GradientStop[] }>
+): ReactElement {
+  return createElement(
+    Fragment,
+    null,
+    ...items.map((item) => chartGradientDefs(item.id, item.color, item.stops))
+  );
+}
+
+// Standardized empty-chart visual — neutral frame used when a chart has no data.
+export const chartEmptyState = {
+  wrapperClass:
+    "flex h-full w-full items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50/40 text-xs text-slate-400",
+  message: "Sin datos para graficar.",
 } as const;

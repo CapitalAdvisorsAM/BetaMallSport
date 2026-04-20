@@ -44,10 +44,13 @@ export type ContractUploadRow = {
   tarifa5VigenciaDesde: string | null;
   tarifa5VigenciaHasta: string | null;
   rentaVariablePct: string | null;
+  rentaVariablePisoMinimoUf: string | null;
   rentaVariable2UmbralUf: string | null;
   rentaVariable2Pct: string | null;
+  rentaVariable2PisoMinimoUf: string | null;
   rentaVariable3UmbralUf: string | null;
   rentaVariable3Pct: string | null;
+  rentaVariable3PisoMinimoUf: string | null;
   pctFondoPromocion: string | null;
   multiplicadorDiciembre: string | null;
   multiplicadorJunio: string | null;
@@ -257,10 +260,13 @@ function emptyRow(): ContractUploadRow {
     tarifa5VigenciaDesde: null,
     tarifa5VigenciaHasta: null,
     rentaVariablePct: null,
+    rentaVariablePisoMinimoUf: null,
     rentaVariable2UmbralUf: null,
     rentaVariable2Pct: null,
+    rentaVariable2PisoMinimoUf: null,
     rentaVariable3UmbralUf: null,
     rentaVariable3Pct: null,
+    rentaVariable3PisoMinimoUf: null,
     pctFondoPromocion: null,
     multiplicadorDiciembre: null,
     multiplicadorJunio: null,
@@ -444,10 +450,13 @@ function buildPreviewRows(
     const tarifa5VigenciaDesde = parseDate(rawRow.tarifa5vigenciadesde);
     const tarifa5VigenciaHasta = parseDate(rawRow.tarifa5vigenciahasta);
     const rentaVariablePct = normalizeNullable(rawRow.rentavariablepct);
+    const rentaVariablePisoMinimoUf = normalizeNullable(rawRow.rentavariablepisominimouf);
     const rentaVariable2UmbralUf = normalizeNullable(rawRow.rentavariable2umbraluf);
     const rentaVariable2Pct = normalizeNullable(rawRow.rentavariable2pct);
+    const rentaVariable2PisoMinimoUf = normalizeNullable(rawRow.rentavariable2pisominimouf);
     const rentaVariable3UmbralUf = normalizeNullable(rawRow.rentavariable3umbraluf);
     const rentaVariable3Pct = normalizeNullable(rawRow.rentavariable3pct);
+    const rentaVariable3PisoMinimoUf = normalizeNullable(rawRow.rentavariable3pisominimouf);
     const pctFondoPromocion = normalizeNullable(rawRow.pctfondopromocion);
     const multiplicadorDiciembre = normalizeNullable(rawRow.multiplicadordiciembre);
     const multiplicadorJunio = normalizeNullable(rawRow.multiplicadorjunio);
@@ -505,10 +514,13 @@ function buildPreviewRows(
       tarifa5VigenciaDesde,
       tarifa5VigenciaHasta,
       rentaVariablePct: hasFijoType ? rentaVariablePct : null,
+      rentaVariablePisoMinimoUf: hasFijoType ? rentaVariablePisoMinimoUf : null,
       rentaVariable2UmbralUf: hasFijoType ? rentaVariable2UmbralUf : null,
       rentaVariable2Pct: hasFijoType ? rentaVariable2Pct : null,
+      rentaVariable2PisoMinimoUf: hasFijoType ? rentaVariable2PisoMinimoUf : null,
       rentaVariable3UmbralUf: hasFijoType ? rentaVariable3UmbralUf : null,
       rentaVariable3Pct: hasFijoType ? rentaVariable3Pct : null,
+      rentaVariable3PisoMinimoUf: hasFijoType ? rentaVariable3PisoMinimoUf : null,
       pctFondoPromocion,
       multiplicadorDiciembre,
       multiplicadorJunio,
@@ -820,10 +832,13 @@ function toRawRowFromPreviewData(data: Record<string, unknown>): RawRow {
     tarifa5vigenciadesde: data.tarifa5VigenciaDesde ?? "",
     tarifa5vigenciahasta: data.tarifa5VigenciaHasta ?? "",
     rentavariablepct: data.rentaVariablePct ?? "",
+    rentavariablepisominimouf: data.rentaVariablePisoMinimoUf ?? "",
     rentavariable2umbraluf: data.rentaVariable2UmbralUf ?? "",
     rentavariable2pct: data.rentaVariable2Pct ?? "",
+    rentavariable2pisominimouf: data.rentaVariable2PisoMinimoUf ?? "",
     rentavariable3umbraluf: data.rentaVariable3UmbralUf ?? "",
     rentavariable3pct: data.rentaVariable3Pct ?? "",
+    rentavariable3pisominimouf: data.rentaVariable3PisoMinimoUf ?? "",
     pctfondopromocion: data.pctFondoPromocion ?? "",
     multiplicadordiciembre: data.multiplicadorDiciembre ?? "",
     multiplicadorjunio: data.multiplicadorJunio ?? "",

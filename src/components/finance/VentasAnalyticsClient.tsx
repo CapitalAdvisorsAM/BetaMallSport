@@ -31,7 +31,7 @@ import {
   chartMargins,
   getSeriesColor,
 } from "@/lib/charts/theme";
-import { cn } from "@/lib/utils";
+import { cn, formatUf, formatUfPerM2 } from "@/lib/utils";
 import type { VentasAnalyticsResponse } from "@/types/ventas-analytics";
 
 // ---------------------------------------------------------------------------
@@ -51,10 +51,6 @@ const compactTheme = getTableTheme("compact");
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function fmtUfM2(v: number): string {
-  return v.toLocaleString("es-CL", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
-}
 
 function valueCls(v: number): string {
   if (v === 0) return "text-slate-300";
@@ -175,14 +171,14 @@ export function VentasAnalyticsClient({
               <ComposedChart data={chartData} margin={chartMargins.default}>
                 <CartesianGrid {...chartGridProps} />
                 <XAxis dataKey="mes" {...chartAxisProps} />
-                <YAxis {...chartAxisProps} tickFormatter={(v: number) => v.toFixed(1)} />
+                <YAxis {...chartAxisProps} tickFormatter={(v: number) => formatUf(v)} />
                 <Tooltip
                   content={
                     <ChartTooltip
                       labelFormatter={(l) => `Mes: ${String(l)}`}
                       valueFormatter={(value) => {
                         const v = typeof value === "number" ? value : Number(value ?? 0);
-                        return v.toFixed(3);
+                        return formatUfPerM2(v);
                       }}
                     />
                   }
@@ -244,7 +240,7 @@ export function VentasAnalyticsClient({
                       </td>
                       {s.data.map((d) => (
                         <td key={d.period} className={cn("px-2 py-1.5 text-right", valueCls(d.salesUfPerM2))}>
-                          {fmtUfM2(d.salesUfPerM2)}
+                          {formatUfPerM2(d.salesUfPerM2)}
                         </td>
                       ))}
                     </tr>
@@ -256,7 +252,7 @@ export function VentasAnalyticsClient({
                     </td>
                     {totals.map((t) => (
                       <td key={t.period} className="px-2 py-2 text-right text-xs font-bold">
-                        {fmtUfM2(t.salesUfPerM2)}
+                        {formatUfPerM2(t.salesUfPerM2)}
                       </td>
                     ))}
                   </tr>

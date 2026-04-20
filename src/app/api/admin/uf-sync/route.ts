@@ -3,6 +3,10 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
+import {
+  UF_CATCHUP_DEFAULT_DAYS,
+  UF_CATCHUP_MAX_DAYS,
+} from "@/lib/constants";
 import { logDuration } from "@/lib/observability";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -62,7 +66,29 @@ type SyncBody = {
   fecha?: string;
   desde?: string;
   hasta?: string;
+  modo?: "hoy" | "catchup";
+  dias?: number;
 };
+
+async function buildCatchupDates(days: number): Promise<Date[]> {
+  const today = todayUtc();
+  const desde = addDays(today, -(days - 1));
+  const existing = await prisma.valorUF.findMany({
+    where: { fecha: { gte: desde, lte: today } },
+    select: { fecha: true },
+  });
+  const existingSet = new Set(
+    existing.map((row) => row.fecha.toISOString().slice(0, 10))
+  );
+  const missing: Date[] = [];
+  let current = desde;
+  while (current <= today) {
+    const iso = current.toISOString().slice(0, 10);
+    if (!existingSet.has(iso)) missing.push(new Date(current));
+    current = addDays(current, 1);
+  }
+  return missing;
+}
 
 export async function POST(request: Request): Promise<NextResponse> {
   const startedAt = Date.now();
@@ -74,6 +100,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const body = (await request.json().catch(() => ({}))) as SyncBody;
 
     let dates: Date[];
+    let mode: "hoy" | "catchup" | "fecha" | "rango";
 
     if (body.desde !== undefined || body.hasta !== undefined) {
       // Modo backfill: rango de fechas
@@ -93,12 +120,36 @@ export async function POST(request: Request): Promise<NextResponse> {
         dates.push(new Date(current));
         current = addDays(current, 1);
       }
+      mode = "rango";
     } else if (body.fecha !== undefined) {
       // Modo fecha puntual
       dates = [parseDateOnly(body.fecha)];
-    } else {
-      // Default: hoy
+      mode = "fecha";
+    } else if (body.modo === "hoy") {
+      // Modo legacy explícito: solo hoy
       dates = [todayUtc()];
+      mode = "hoy";
+    } else {
+      // Default (body vacío o modo=catchup): catch-up últimos N días — rellena huecos.
+      const requested = body.dias ?? UF_CATCHUP_DEFAULT_DAYS;
+      if (!Number.isInteger(requested) || requested < 1 || requested > UF_CATCHUP_MAX_DAYS) {
+        throw new ApiError(
+          400,
+          `'dias' debe ser un entero entre 1 y ${UF_CATCHUP_MAX_DAYS}.`
+        );
+      }
+      dates = await buildCatchupDates(requested);
+      mode = "catchup";
+      if (dates.length === 0) {
+        logDuration("uf_sync", startedAt, { synced: 0, skipped: 0, mode, upToDate: true });
+        return NextResponse.json({
+          synced: 0,
+          skipped: 0,
+          records: [],
+          upToDate: true,
+          mode,
+        });
+      }
     }
 
     const records: { fecha: string; valor: string }[] = [];
@@ -121,8 +172,8 @@ export async function POST(request: Request): Promise<NextResponse> {
       });
     }
 
-    logDuration("uf_sync", startedAt, { synced: records.length, skipped });
-    return NextResponse.json({ synced: records.length, skipped, records });
+    logDuration("uf_sync", startedAt, { synced: records.length, skipped, mode });
+    return NextResponse.json({ synced: records.length, skipped, records, mode });
   } catch (error) {
     return handleApiError(error);
   }

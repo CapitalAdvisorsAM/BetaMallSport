@@ -324,6 +324,11 @@ export const METRIC_FORMULAS = {
     formula: "Deficit = Recuperacion GGCC - Costos operacionales; Deficit % = Deficit / Recuperacion * 100",
     detail: "Compara la recuperacion de gastos comunes vs costos reales de operacion."
   },
+  chart_finance_cash_flow: {
+    title: "Flujo de caja mensual",
+    formula: "Serie mensual de movimientos bancarios netos y saldo acumulado por periodo",
+    detail: "Consolida cargos y abonos de Data Bco para visualizar la evolucion mensual del flujo de caja."
+  },
   kpi_tenants_total_periodo: {
     title: "Total arrendatarios en período",
     formula: "COUNT(tenants con contratos OCUPADO o GRACIA en el período seleccionado)",

@@ -13,6 +13,7 @@ import { statusBadgeColumn } from "@/components/ui/data-table-columns";
 import { useCrudResource } from "@/hooks/useCrudResource";
 import { useDataTable } from "@/hooks/useDataTable";
 import { extractApiErrorMessage } from "@/lib/http/client-errors";
+import { formatUf } from "@/lib/utils";
 
 type ProjectRecord = {
   id: string;
@@ -177,7 +178,7 @@ export function ProjectCrudPanel({ canEdit, initialProjects }: ProjectCrudPanelP
         enableColumnFilter: false,
         cell: ({ row }) => (
           <span className="whitespace-nowrap text-slate-700">
-            {row.original.glaTotal !== null ? Number(row.original.glaTotal).toLocaleString("es-CL") : "—"}
+            {row.original.glaTotal !== null ? formatUf(Number(row.original.glaTotal), 0) : "—"}
           </span>
         )
       },

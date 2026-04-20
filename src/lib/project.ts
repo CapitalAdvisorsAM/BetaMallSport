@@ -10,7 +10,7 @@ const getCachedProjects = unstable_cache(
     prisma.project.findMany({
       where: { activo: true },
       orderBy: { nombre: "asc" },
-      select: { id: true, nombre: true, slug: true }
+      select: { id: true, nombre: true, slug: true, reportDate: true }
     }),
   [ACTIVE_PROJECTS_TAG],
   { revalidate: 60, tags: [ACTIVE_PROJECTS_TAG] }

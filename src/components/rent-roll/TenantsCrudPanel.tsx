@@ -67,7 +67,8 @@ function toTenantRecord(value: Partial<TenantRecord>): TenantRecord {
 }
 
 async function createTenant(form: TenantForm): Promise<TenantRecord> {
-  const response = await fetch("/api/tenants", {
+  const query = new URLSearchParams({ projectId: form.proyectoId }).toString();
+  const response = await fetch(`/api/tenants?${query}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(form)

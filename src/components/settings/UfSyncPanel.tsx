@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { formatUf } from "@/lib/utils";
 
 type UfRow = { fecha: string; valor: string };
 
@@ -34,7 +35,7 @@ function TrendBadge({ current, previous }: { current: string; previous?: string 
   const up = diff > 0;
   return (
     <span className={`ml-1.5 text-[10px] font-bold tabular-nums ${up ? "text-emerald-500" : "text-rose-500"}`}>
-      {up ? "▲" : "▼"} {Math.abs(diff).toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      {up ? "▲" : "▼"} {formatUf(Math.abs(diff))}
     </span>
   );
 }
@@ -121,7 +122,7 @@ export function UfSyncPanel({ currentUf, isStale, isAdmin, ufValues }: UfSyncPan
           {currentUf ? (
             <p className="mt-1 flex items-baseline gap-2">
               <span className="text-2xl font-bold tabular-nums text-slate-900">
-                {Number(currentUf.valor).toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {formatUf(Number(currentUf.valor))}
               </span>
               <span className="text-sm text-slate-400">UF · {currentUf.fecha}</span>
             </p>
@@ -270,10 +271,7 @@ export function UfSyncPanel({ currentUf, isStale, isAdmin, ufValues }: UfSyncPan
                     <tr key={row.fecha} className="group transition-colors hover:bg-brand-50">
                       <td className="px-4 py-2 tabular-nums text-slate-500">{row.fecha}</td>
                       <td className="px-4 py-2 text-right tabular-nums font-semibold text-slate-800">
-                        {Number(row.valor).toLocaleString("es-CL", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
+                        {formatUf(Number(row.valor))}
                       </td>
                       <td className="px-4 py-2 text-right">
                         <TrendBadge current={row.valor} previous={prev?.valor} />

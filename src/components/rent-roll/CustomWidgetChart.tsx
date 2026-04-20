@@ -29,6 +29,7 @@ import {
   type FormulaConfig,
   type DisplayFormat,
 } from "@/lib/dashboard/custom-widget-engine";
+import { formatPercent, formatSquareMeters, formatUf } from "@/lib/utils";
 import type { PeriodoMetrica } from "@/types/timeline";
 import type { ReactNode } from "react";
 
@@ -49,18 +50,18 @@ type Props = {
   tooltipLabelFormatter: (label: ReactNode) => ReactNode;
 };
 
-function formatValue(value: number, format: DisplayFormat): string {
+function formatWidgetValue(value: number, format: DisplayFormat): string {
   switch (format) {
     case "percent":
-      return `${value.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+      return formatPercent(value);
     case "uf":
-      return `${value.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} UF`;
+      return `${formatUf(value)} UF`;
     case "m2":
-      return `${value.toLocaleString("es-CL", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} m²`;
+      return formatSquareMeters(value);
     case "months":
       return value >= 12 ? `${(value / 12).toFixed(1)}a` : `${value.toFixed(1)}m`;
     default:
-      return value.toLocaleString("es-CL", { maximumFractionDigits: 2 });
+      return formatUf(value);
   }
 }
 
@@ -70,10 +71,10 @@ function getFormat(config: FormulaConfig): DisplayFormat {
 
 function yAxisFormatter(value: number, format: DisplayFormat): string {
   switch (format) {
-    case "percent":  return `${value.toFixed(0)}%`;
-    case "m2":       return value.toLocaleString("es-CL", { maximumFractionDigits: 0 });
+    case "percent":  return formatPercent(value, 0);
+    case "m2":       return formatUf(value, 0);
     case "months":   return value >= 12 ? `${Math.round(value / 12)}a` : `${Math.round(value)}m`;
-    default:         return value.toLocaleString("es-CL", { maximumFractionDigits: 0 });
+    default:         return formatUf(value, 0);
   }
 }
 
@@ -120,7 +121,7 @@ export function CustomWidgetChart({
               return typeof formatted === "string" ? formatted : String(l);
             }}
             valueFormatter={(value) =>
-              typeof value === "number" ? formatValue(value, format) : "—"
+              typeof value === "number" ? formatWidgetValue(value, format) : "—"
             }
           />
         }

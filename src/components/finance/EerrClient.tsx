@@ -9,7 +9,7 @@ import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolba
 import { TableDisclosureButton } from "@/components/ui/TableDisclosureButton";
 import { BELOW_EBITDA_GROUPS, calculateEbitdaMargin, formatEerr } from "@/lib/finance/eerr";
 import { getValueTone, getVarianceTone, TONE_TEXT_CLASS } from "@/lib/finance/value-tone";
-import { cn, formatUf } from "@/lib/utils";
+import { cn, formatPercent, formatUf, formatUfPerM2 } from "@/lib/utils";
 import type { EerrData, EerrDetalleResponse } from "@/types/finance";
 
 type BillingLine = { grupo1: string; grupo3: string; porPeriodo: Record<string, number>; total: number };
@@ -193,10 +193,10 @@ export function EerrClient({
           <p className="text-sm text-slate-600">
             Ingreso mensual promedio:{" "}
             <span className="font-semibold text-slate-900">
-              {ingresoUfM2.toLocaleString("es-CL", { minimumFractionDigits: 4, maximumFractionDigits: 4 })} UF/m²
+              {formatUfPerM2(ingresoUfM2)} UF/m²
             </span>
             <span className="ml-2 text-xs text-slate-400">
-              ({ingresos!.total.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} UF total ÷ {data!.periodos.length} períodos ÷ {glaTotal!.toLocaleString("es-CL")} m² GLA)
+              ({formatUf(ingresos!.total)} UF total ÷ {data!.periodos.length} períodos ÷ {formatUf(glaTotal!, 0)} m² GLA)
             </span>
           </p>
         </div>
@@ -272,7 +272,7 @@ export function EerrClient({
                         )}
                         {hasBudgets && (
                           <td className={cn("px-3 py-2.5 text-right tabular-nums font-semibold", TONE_TEXT_CLASS[getVarianceTone(section.tipo, section.varianzaPct ?? null)])}>
-                            {section.varianzaPct != null ? `${formatUf(section.varianzaPct, 1)}%` : "—"}
+                            {section.varianzaPct != null ? formatPercent(section.varianzaPct) : "—"}
                           </td>
                         )}
                       </tr>
@@ -326,7 +326,7 @@ export function EerrClient({
                               )}
                               {hasBudgets && (
                                 <td className={cn("px-3 py-1.5 text-right tabular-nums", TONE_TEXT_CLASS[getVarianceTone(line.tipo, line.varianzaPct ?? null)])}>
-                                  {line.varianzaPct != null ? `${formatUf(line.varianzaPct, 1)}%` : "—"}
+                                  {line.varianzaPct != null ? formatPercent(line.varianzaPct) : "—"}
                                 </td>
                               )}
                             </tr>
@@ -436,7 +436,7 @@ export function EerrClient({
                       : null;
                     return (
                       <td className={cn("px-3 py-3 text-right text-[12px] font-bold tabular-nums", TONE_TEXT_CLASS[getVarianceTone("ingreso", varianzaPct)])}>
-                        {varianzaPct != null ? `${formatUf(varianzaPct, 1)}%` : "—"}
+                        {varianzaPct != null ? formatPercent(varianzaPct) : "—"}
                       </td>
                     );
                   })()}
@@ -454,7 +454,7 @@ export function EerrClient({
                       const mg = calculateEbitdaMargin(ing, data.ebitda.porPeriodo[p] ?? 0);
                       return (
                         <td key={p} className="px-3 py-1 text-right text-[10px] italic tabular-nums text-slate-500">
-                          {mg !== null ? `${mg.toFixed(1)}%` : "—"}
+                          {mg !== null ? formatPercent(mg) : "—"}
                         </td>
                       );
                     })}
@@ -500,7 +500,7 @@ export function EerrClient({
                         )}
                         {hasBudgets && (
                           <td className={cn("px-3 py-2.5 text-right tabular-nums font-semibold", TONE_TEXT_CLASS[getVarianceTone(section.tipo, section.varianzaPct ?? null)])}>
-                            {section.varianzaPct != null ? `${formatUf(section.varianzaPct, 1)}%` : "—"}
+                            {section.varianzaPct != null ? formatPercent(section.varianzaPct) : "—"}
                           </td>
                         )}
                       </tr>
@@ -525,7 +525,7 @@ export function EerrClient({
                           )}
                           {hasBudgets && (
                             <td className={cn("px-3 py-1.5 text-right tabular-nums", TONE_TEXT_CLASS[getVarianceTone(line.tipo, line.varianzaPct ?? null)])}>
-                              {line.varianzaPct != null ? `${formatUf(line.varianzaPct, 1)}%` : "—"}
+                              {line.varianzaPct != null ? formatPercent(line.varianzaPct) : "—"}
                             </td>
                           )}
                         </tr>

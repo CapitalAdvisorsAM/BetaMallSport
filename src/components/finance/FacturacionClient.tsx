@@ -31,7 +31,7 @@ import {
   chartMargins,
   getSeriesColor,
 } from "@/lib/charts/theme";
-import { cn } from "@/lib/utils";
+import { cn, formatUf, formatUfPerM2 } from "@/lib/utils";
 import type { FacturacionResponse } from "@/types/facturacion";
 
 // ---------------------------------------------------------------------------
@@ -51,10 +51,6 @@ const compactTheme = getTableTheme("compact");
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function fmtUfM2(v: number): string {
-  return v.toLocaleString("es-CL", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
-}
 
 function valueCls(v: number): string {
   if (v === 0) return "text-slate-300";
@@ -189,14 +185,14 @@ export function FacturacionClient({
               <ComposedChart data={chartData} margin={chartMargins.default}>
                 <CartesianGrid {...chartGridProps} />
                 <XAxis dataKey="mes" {...chartAxisProps} />
-                <YAxis {...chartAxisProps} tickFormatter={(v: number) => v.toFixed(2)} />
+                <YAxis {...chartAxisProps} tickFormatter={(v: number) => formatUf(v)} />
                 <Tooltip
                   content={
                     <ChartTooltip
                       labelFormatter={(l) => `Mes: ${String(l)}`}
                       valueFormatter={(value) => {
                         const v = typeof value === "number" ? value : Number(value ?? 0);
-                        return v.toFixed(4);
+                        return formatUfPerM2(v);
                       }}
                     />
                   }
@@ -258,7 +254,7 @@ export function FacturacionClient({
                       </td>
                       {s.data.map((d) => (
                         <td key={d.period} className={cn("px-2 py-1.5 text-right", valueCls(d.ufPerM2))}>
-                          {fmtUfM2(d.ufPerM2)}
+                          {formatUfPerM2(d.ufPerM2)}
                         </td>
                       ))}
                     </tr>
@@ -270,7 +266,7 @@ export function FacturacionClient({
                     </td>
                     {totals.map((t) => (
                       <td key={t.period} className="px-2 py-2 text-right text-xs font-bold">
-                        {fmtUfM2(t.ufPerM2)}
+                        {formatUfPerM2(t.ufPerM2)}
                       </td>
                     ))}
                   </tr>

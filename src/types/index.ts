@@ -37,6 +37,22 @@ export type {
   CostoOcupacionRow
 } from "./costo-ocupacion";
 export type {
+  PanelCdgCell,
+  PanelCdgKpi,
+  PanelCdgResponse,
+  PanelCdgUnit
+} from "./panel-cdg";
+export type {
+  EeffCategory,
+  EeffGroup,
+  EeffLine,
+  EeffResponse,
+  CashFlowResponse,
+  CashFlowSection,
+  BalanceUploadResult,
+  BankUploadResult
+} from "./finance";
+export type {
   GgccCostBreakdown,
   GgccDeficitByDimension,
   GgccDeficitPeriodRow,

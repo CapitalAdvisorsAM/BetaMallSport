@@ -1,27 +1,13 @@
 "use client";
 
 import { KpiCard } from "@/components/dashboard/KpiCard";
-import { formatUf } from "@/lib/utils";
+import { formatPercent, formatSquareMeters, formatUf } from "@/lib/utils";
 import type { RentRollKpis, RentRollRow } from "@/types/rent-roll";
 
 type RentRollKpiHeaderProps = {
   kpis: RentRollKpis;
   rows: RentRollRow[];
 };
-
-function formatM2(value: number): string {
-  return value.toLocaleString("es-CL", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
-}
-
-function formatPct(value: number): string {
-  return `${value.toLocaleString("es-CL", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1
-  })}%`;
-}
 
 function getOcupacionAccent(pctOcupacion: number): "green" | "yellow" | "red" {
   if (pctOcupacion >= 85) {
@@ -55,14 +41,14 @@ export function RentRollKpiHeader({ kpis, rows }: RentRollKpiHeaderProps): JSX.E
         <KpiCard
           metricId="kpi_rent_roll_header_gla_total_m2"
           title="GLA total (m2)"
-          value={formatM2(kpis.glaTotal)}
+          value={formatSquareMeters(kpis.glaTotal)}
           accent="slate"
         />
         <KpiCard
           metricId="kpi_rent_roll_header_ocupacion_pct"
           title="% ocupacion"
-          value={formatPct(kpis.pctOcupacion)}
-          subtitle={`GLA ocupada: ${formatM2(kpis.glaCupado)} m2`}
+          value={formatPercent(kpis.pctOcupacion)}
+          subtitle={`GLA ocupada: ${formatSquareMeters(kpis.glaCupado)}`}
           accent={getOcupacionAccent(kpis.pctOcupacion)}
         />
         <KpiCard
@@ -84,8 +70,8 @@ export function RentRollKpiHeader({ kpis, rows }: RentRollKpiHeaderProps): JSX.E
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-slate-600">
           <span>Distribucion operacional por GLA</span>
           <span>
-            Ocupado {formatPct(pctOcupado)} | Gracia {formatPct(pctGracia)} | Vacante{" "}
-            {formatPct(pctVacante)}
+            Ocupado {formatPercent(pctOcupado)} | Gracia {formatPercent(pctGracia)} | Vacante{" "}
+            {formatPercent(pctVacante)}
           </span>
         </div>
         <div className="h-3 overflow-hidden rounded-full bg-slate-100">

@@ -121,8 +121,30 @@ export const contractPayloadSchema = z
       keys.add(key);
     }
 
+    const contractStart = new Date(payload.fechaInicio).getTime();
+    const contractEnd = new Date(payload.fechaTermino).getTime();
+
     for (let i = 0; i < payload.tarifas.length; i += 1) {
       const tarifa = payload.tarifas[i];
+
+      const tarifaDesde = new Date(tarifa.vigenciaDesde).getTime();
+      if (tarifaDesde < contractStart) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "vigenciaDesde de la tarifa no puede ser anterior a fechaInicio del contrato.",
+          path: ["tarifas", i, "vigenciaDesde"]
+        });
+      }
+      if (tarifa.vigenciaHasta !== null) {
+        const tarifaHasta = new Date(tarifa.vigenciaHasta).getTime();
+        if (tarifaHasta > contractEnd) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "vigenciaHasta de la tarifa no puede ser posterior a fechaTermino del contrato.",
+            path: ["tarifas", i, "vigenciaHasta"]
+          });
+        }
+      }
 
       if (tarifa.descuentoTipo !== null) {
         if (tarifa.descuentoValor === null) {
@@ -218,14 +240,21 @@ export const contractPayloadSchema = z
       }
     }
 
-    for (const item of payload.ggcc) {
+    for (let i = 0; i < payload.ggcc.length; i += 1) {
+      const item = payload.ggcc[i];
       if (item.mesesReajuste !== null && item.pctReajuste === null) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "pctReajuste es obligatorio cuando GGCC tiene mesesReajuste.",
-          path: ["ggcc"]
+          path: ["ggcc", i, "pctReajuste"]
         });
-        break;
+      }
+      if (item.mesesReajuste !== null && item.proximoReajuste === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "proximoReajuste es obligatorio cuando GGCC tiene mesesReajuste.",
+          path: ["ggcc", i, "proximoReajuste"]
+        });
       }
     }
 

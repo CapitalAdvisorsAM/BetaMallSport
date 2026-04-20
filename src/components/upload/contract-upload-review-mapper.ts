@@ -93,16 +93,19 @@ export function previewRowToUploadDraft(
 
   const rentaVariable: ContractDraftPayload["rentaVariable"] = [];
   if (basePct) {
-    rentaVariable.push({ _key: createDraftKey(), pctRentaVariable: basePct, umbralVentasUf: "0", vigenciaDesde: fechaInicioStr, vigenciaHasta: fechaTerminoStr });
+    const rv1PisoMin = asNullableString(row.data.rentaVariablePisoMinimoUf);
+    rentaVariable.push({ _key: createDraftKey(), pctRentaVariable: basePct, umbralVentasUf: "0", pisoMinimoUf: rv1PisoMin, vigenciaDesde: fechaInicioStr, vigenciaHasta: fechaTerminoStr });
     const rv2Umbral = asNullableString(row.data.rentaVariable2UmbralUf);
     const rv2Pct = asNullableString(row.data.rentaVariable2Pct);
     if (rv2Umbral && rv2Pct) {
-      rentaVariable.push({ _key: createDraftKey(), pctRentaVariable: rv2Pct, umbralVentasUf: rv2Umbral, vigenciaDesde: fechaInicioStr, vigenciaHasta: fechaTerminoStr });
+      const rv2PisoMin = asNullableString(row.data.rentaVariable2PisoMinimoUf);
+      rentaVariable.push({ _key: createDraftKey(), pctRentaVariable: rv2Pct, umbralVentasUf: rv2Umbral, pisoMinimoUf: rv2PisoMin, vigenciaDesde: fechaInicioStr, vigenciaHasta: fechaTerminoStr });
     }
     const rv3Umbral = asNullableString(row.data.rentaVariable3UmbralUf);
     const rv3Pct = asNullableString(row.data.rentaVariable3Pct);
     if (rv3Umbral && rv3Pct) {
-      rentaVariable.push({ _key: createDraftKey(), pctRentaVariable: rv3Pct, umbralVentasUf: rv3Umbral, vigenciaDesde: fechaInicioStr, vigenciaHasta: fechaTerminoStr });
+      const rv3PisoMin = asNullableString(row.data.rentaVariable3PisoMinimoUf);
+      rentaVariable.push({ _key: createDraftKey(), pctRentaVariable: rv3Pct, umbralVentasUf: rv3Umbral, pisoMinimoUf: rv3PisoMin, vigenciaDesde: fechaInicioStr, vigenciaHasta: fechaTerminoStr });
     }
   }
 

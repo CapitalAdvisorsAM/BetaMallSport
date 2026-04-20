@@ -30,7 +30,7 @@ import {
   chartMargins,
   getSeriesColor,
 } from "@/lib/charts/theme";
-import { cn } from "@/lib/utils";
+import { cn, formatPercent, formatUf } from "@/lib/utils";
 import type {
   OccupancyDimensionRow,
   OccupancyTimeSeriesResponse
@@ -54,16 +54,6 @@ const compactTheme = getTableTheme("compact");
 // Helpers
 // ---------------------------------------------------------------------------
 
-function fmtNum(v: number, decimals = 2): string {
-  return v.toLocaleString("es-CL", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
-  });
-}
-
-function fmtPct(v: number): string {
-  return `${fmtNum(v, 1)}%`;
-}
 
 function vacancyColorCls(pct: number): string {
   if (pct <= 5) return "text-emerald-700";
@@ -207,12 +197,12 @@ export function OccupancyClient({
               <ComposedChart data={chartData} margin={chartMargins.default}>
                 <CartesianGrid {...chartGridProps} />
                 <XAxis dataKey="mes" {...chartAxisProps} />
-                <YAxis yAxisId="left" {...chartAxisProps} tickFormatter={(v: number) => v.toLocaleString("es-CL")} />
+                <YAxis yAxisId="left" {...chartAxisProps} tickFormatter={(v: number) => formatUf(v, 0)} />
                 <YAxis
                   yAxisId="right"
                   orientation="right"
                   {...chartAxisProps}
-                  tickFormatter={(v: number) => `${v.toFixed(1)}%`}
+                  tickFormatter={(v: number) => formatPercent(v)}
                   domain={[0, "auto"]}
                 />
                 <Tooltip
@@ -221,9 +211,7 @@ export function OccupancyClient({
                       labelFormatter={(l) => `Mes: ${String(l)}`}
                       valueFormatter={(value, name) => {
                         const v = typeof value === "number" ? value : Number(value ?? 0);
-                        return String(name) === "Vacancia %"
-                          ? `${v.toFixed(1)}%`
-                          : v.toLocaleString("es-CL", { maximumFractionDigits: 0 });
+                        return String(name) === "Vacancia %" ? formatPercent(v) : formatUf(v, 0);
                       }}
                     />
                   }
@@ -283,11 +271,11 @@ export function OccupancyClient({
                       <td className="sticky left-0 bg-inherit py-1.5 pl-4 pr-3 font-medium text-slate-700">
                         {row.dimension}
                       </td>
-                      <td className="px-2 py-1.5 text-right text-slate-600">{fmtNum(row.glaTotal)}</td>
-                      <td className="px-2 py-1.5 text-right text-slate-600">{fmtNum(row.glaOcupada)}</td>
-                      <td className="px-2 py-1.5 text-right text-slate-600">{fmtNum(row.glaVacante)}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-600">{formatUf(row.glaTotal)}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-600">{formatUf(row.glaOcupada)}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-600">{formatUf(row.glaVacante)}</td>
                       <td className={cn("px-2 py-1.5 text-right font-semibold", vacancyColorCls(row.pctVacancia))}>
-                        {fmtPct(row.pctVacancia)}
+                        {formatPercent(row.pctVacancia)}
                       </td>
                     </tr>
                   ))}
@@ -296,10 +284,10 @@ export function OccupancyClient({
                       <td className="sticky left-0 bg-brand-700 py-2 pl-4 pr-3 text-xs font-bold uppercase tracking-wide">
                         Total
                       </td>
-                      <td className="px-2 py-2 text-right text-xs font-bold">{fmtNum(totals.glaTotal)}</td>
-                      <td className="px-2 py-2 text-right text-xs font-bold">{fmtNum(totals.glaOcupada)}</td>
-                      <td className="px-2 py-2 text-right text-xs font-bold">{fmtNum(totals.glaVacante)}</td>
-                      <td className="px-2 py-2 text-right text-xs font-bold">{fmtPct(totals.pctVacancia)}</td>
+                      <td className="px-2 py-2 text-right text-xs font-bold">{formatUf(totals.glaTotal)}</td>
+                      <td className="px-2 py-2 text-right text-xs font-bold">{formatUf(totals.glaOcupada)}</td>
+                      <td className="px-2 py-2 text-right text-xs font-bold">{formatUf(totals.glaVacante)}</td>
+                      <td className="px-2 py-2 text-right text-xs font-bold">{formatPercent(totals.pctVacancia)}</td>
                     </tr>
                   ) : null}
                 </tbody>

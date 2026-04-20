@@ -7,6 +7,8 @@
     "build": "prisma generate && next build",
     "start": "next start -p 3000",
     "lint": "next lint",
+    "audit:db": "node scripts/db-audit/run.mjs",
+    "audit:db:prod": "node scripts/db-audit/run.mjs --target production",
     "check:naming-core": "node scripts/check-core-naming.mjs",
     "check:metric-formulas": "node scripts/check-metric-formulas.mjs",
     "test": "vitest run",

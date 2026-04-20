@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { requireSessionMock, listContractsPageMock } = vi.hoisted(() => ({
+const { requireSessionMock, listContractsPageMock, prismaMock } = vi.hoisted(() => ({
   requireSessionMock: vi.fn(),
-  listContractsPageMock: vi.fn()
+  listContractsPageMock: vi.fn(),
+  prismaMock: {
+    project: {
+      findFirst: vi.fn()
+    }
+  }
 }));
 
 vi.mock("@/lib/permissions", () => ({
@@ -19,9 +24,16 @@ vi.mock("@/lib/contracts/contract-command-service", () => ({
   createContractCommand: vi.fn()
 }));
 
+vi.mock("@/lib/prisma", () => ({
+  prisma: prismaMock
+}));
+
 describe("GET /api/contracts", () => {
   beforeEach(() => {
     requireSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    prismaMock.project.findFirst.mockImplementation(async ({ where }: { where: { id: string } }) => ({
+      id: where.id
+    }));
     listContractsPageMock.mockResolvedValue({
       data: [],
       nextCursor: null,

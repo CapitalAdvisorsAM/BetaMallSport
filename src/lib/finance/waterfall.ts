@@ -185,6 +185,7 @@ export function buildWaterfall(
         c.pctFondoPromocion !== null ? toNum(c.pctFondoPromocion) : null,
       periodDate: currentDate,
       salesUf,
+      estado: c.estado,
     });
     newContractsDelta += expected.totalUf;
   }
@@ -218,6 +219,7 @@ export function buildWaterfall(
         c.pctFondoPromocion !== null ? toNum(c.pctFondoPromocion) : null,
       periodDate: previousDate,
       salesUf,
+      estado: c.estado,
     });
     lostContractsDelta -= expected.totalUf;
   }

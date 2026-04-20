@@ -2,8 +2,35 @@ export function str(v: unknown): string {
   return String(v ?? "").trim();
 }
 
+function normalizeNumericString(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed === "-" || trimmed === "–" || trimmed === "—") {
+    return "0";
+  }
+
+  const negative = trimmed.startsWith("(") && trimmed.endsWith(")");
+  let normalized = negative ? trimmed.slice(1, -1) : trimmed;
+  normalized = normalized.replace(/\s+/g, "");
+
+  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(normalized)) {
+    normalized = normalized.replace(/\./g, "").replace(",", ".");
+  } else if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(normalized)) {
+    normalized = normalized.replace(/,/g, "");
+  } else if (/^-?\d+,\d+$/.test(normalized)) {
+    normalized = normalized.replace(",", ".");
+  } else if (normalized.includes(",") && !normalized.includes(".")) {
+    normalized = normalized.replace(/,/g, "");
+  }
+
+  return negative ? `-${normalized}` : normalized;
+}
+
 export function num(v: unknown): number {
-  const n = parseFloat(String(v ?? "0").replace(",", "."));
+  if (typeof v === "number") {
+    return Number.isFinite(v) ? v : 0;
+  }
+
+  const n = parseFloat(normalizeNumericString(String(v ?? "0")));
   return isNaN(n) ? 0 : n;
 }
 

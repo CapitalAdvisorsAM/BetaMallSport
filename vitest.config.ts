@@ -1,11 +1,12 @@
 import path from "node:path";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
     environment: "node",
     clearMocks: true,
-    restoreMocks: true
+    restoreMocks: true,
+    exclude: [...configDefaults.exclude, ".claude/**"]
   },
   resolve: {
     alias: {

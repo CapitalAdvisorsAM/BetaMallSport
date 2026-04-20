@@ -24,7 +24,7 @@ import {
   chartHeight,
   chartMargins,
 } from "@/lib/charts/theme";
-import { formatDecimal, cn } from "@/lib/utils";
+import { formatDecimal, formatUfPerM2, cn } from "@/lib/utils";
 import type { WaterfallBar, WaterfallMode, WaterfallResponse } from "@/types/finance";
 
 type WaterfallClientProps = {
@@ -174,7 +174,7 @@ export function WaterfallClient({
               value={`${formatDecimal(data.previousTotal)} UF`}
               subtitle={
                 data.glaArrendadaPrevious > 0
-                  ? `${(data.previousTotal / data.glaArrendadaPrevious).toLocaleString("es-CL", { minimumFractionDigits: 4, maximumFractionDigits: 4 })} UF/m² · ${data.previousPeriod}`
+                  ? `${formatUfPerM2(data.previousTotal / data.glaArrendadaPrevious)} UF/m² · ${data.previousPeriod}`
                   : data.previousPeriod
               }
               accent="slate"
@@ -185,7 +185,7 @@ export function WaterfallClient({
               value={`${formatDecimal(data.currentTotal)} UF`}
               subtitle={
                 data.glaArrendadaCurrent > 0
-                  ? `${(data.currentTotal / data.glaArrendadaCurrent).toLocaleString("es-CL", { minimumFractionDigits: 4, maximumFractionDigits: 4 })} UF/m² · ${data.currentPeriod}`
+                  ? `${formatUfPerM2(data.currentTotal / data.glaArrendadaCurrent)} UF/m² · ${data.currentPeriod}`
                   : data.currentPeriod
               }
               accent="slate"

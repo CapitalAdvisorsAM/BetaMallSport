@@ -4,7 +4,14 @@ import {
   CONTRACT_EXPIRY_WINDOWS as CONTRACT_EXPIRY_WINDOWS_VALUE,
   MS_PER_DAY
 } from "@/lib/constants";
-import { startOfDay, startOfUtcDay } from "@/lib/utils";
+import {
+  formatClp as formatClpCanonical,
+  formatPercent as formatPercentCanonical,
+  formatSquareMeters as formatSquareMetersCanonical,
+  formatUf as formatUfCanonical,
+  startOfDay,
+  startOfUtcDay
+} from "@/lib/utils";
 
 type DecimalLike = number | string | { toString(): string };
 
@@ -127,54 +134,24 @@ function diffMonths(dateA: Date, dateB: Date): number {
 }
 
 /**
- * Formats a UF value with four decimal places.
- * @param value - UF value to format
- * @returns UF value as a fixed-decimal string or em dash when invalid
+ * @deprecated Import from "@/lib/utils" instead. Re-exported here for one migration pass.
  */
-export function formatUf(value: number | { toString(): string } | null | undefined): string {
-  if (value === null || value === undefined) {
-    return "\u2014";
-  }
-  const n = typeof value === "number" ? value : Number(value.toString());
-  return Number.isNaN(n) ? "\u2014" : n.toFixed(4);
-}
+export const formatUf = formatUfCanonical;
 
 /**
- * Formats a square-meter value for UI display.
- * @param value - Area value in square meters
- * @returns Localized square-meter string
+ * @deprecated Import from "@/lib/utils" instead. Re-exported here for one migration pass.
  */
-export function formatSquareMeters(value: number): string {
-  return `${value.toLocaleString("es-CL", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })} m\u00b2`;
-}
+export const formatSquareMeters = formatSquareMetersCanonical;
 
 /**
- * Formats a percentage with one decimal place.
- * @param value - Percentage value
- * @returns Localized percentage string
+ * @deprecated Import from "@/lib/utils" instead. Re-exported here for one migration pass.
  */
-export function formatPercent(value: number): string {
-  return `${value.toLocaleString("es-CL", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1
-  })}%`;
-}
+export const formatPercent = formatPercentCanonical;
 
 /**
- * Formats a numeric amount as Chilean pesos.
- * @param value - Monetary amount in CLP
- * @returns CLP-formatted currency string
+ * @deprecated Import from "@/lib/utils" instead. Re-exported here for one migration pass.
  */
-export function formatClp(value: number): string {
-  return new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0
-  }).format(value);
-}
+export const formatClp = formatClpCanonical;
 
 /**
  * Formats a date in short Chilean format.

@@ -22,19 +22,12 @@ import {
   chartMargins,
   getSeriesColor,
 } from "@/lib/charts/theme";
+import { formatClp, formatUf } from "@/lib/utils";
 import type { Tenant360SalesPoint } from "@/types/tenant-360";
 
 type SalesPerformanceSectionProps = {
   data: Tenant360SalesPoint[];
 };
-
-function fmtUf(value: number): string {
-  return value.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function fmtClp(value: number): string {
-  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
-}
 
 export function SalesPerformanceSection({ data }: SalesPerformanceSectionProps): JSX.Element {
   if (data.length === 0) return <></>;
@@ -55,13 +48,13 @@ export function SalesPerformanceSection({ data }: SalesPerformanceSectionProps):
           <YAxis
             yAxisId="left"
             {...chartAxisProps}
-            tickFormatter={(v: number) => fmtUf(v)}
+            tickFormatter={(v: number) => formatUf(v)}
           />
           <YAxis
             yAxisId="right"
             orientation="right"
             {...chartAxisProps}
-            tickFormatter={(v: number) => fmtUf(v)}
+            tickFormatter={(v: number) => formatUf(v)}
           />
           <Tooltip
             content={
@@ -70,10 +63,10 @@ export function SalesPerformanceSection({ data }: SalesPerformanceSectionProps):
                   const v = typeof value === "number" ? value : Number(value ?? 0);
                   if (String(name) === "Ventas (UF)") {
                     const payload = entry as Tenant360SalesPoint | undefined;
-                    const clpLine = payload?.salesClp != null ? ` (${fmtClp(payload.salesClp)})` : "";
-                    return `${fmtUf(v)} UF${clpLine}`;
+                    const clpLine = payload?.salesClp != null ? ` (${formatClp(payload.salesClp)})` : "";
+                    return `${formatUf(v)} UF${clpLine}`;
                   }
-                  return `${fmtUf(v)} UF`;
+                  return `${formatUf(v)} UF`;
                 }}
               />
             }

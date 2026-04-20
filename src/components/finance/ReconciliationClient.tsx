@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import type { ColumnDef, CellContext, Row } from "@tanstack/react-table";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { ModuleEmptyState } from "@/components/dashboard/ModuleEmptyState";
 import { ModuleHeader } from "@/components/dashboard/ModuleHeader";

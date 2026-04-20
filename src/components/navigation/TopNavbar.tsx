@@ -24,10 +24,11 @@ export function TopNavbar(): JSX.Element {
             key={item.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "whitespace-nowrap rounded-md border-b-2 px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400",
+              "relative whitespace-nowrap px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] transition-colors duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400",
+              "after:absolute after:inset-x-3 after:bottom-0 after:h-[2px] after:origin-left after:scale-x-0 after:bg-gold-400 after:transition-transform after:duration-200 after:ease-out",
               active
-                ? "border-b-gold-400 bg-white/10 font-semibold text-white"
-                : "border-b-transparent font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white",
+                ? "font-semibold text-white after:scale-x-100"
+                : "font-medium text-white/70 hover:text-white hover:after:scale-x-100",
               isPending && "pointer-events-none opacity-60"
             )}
             href={item.href}

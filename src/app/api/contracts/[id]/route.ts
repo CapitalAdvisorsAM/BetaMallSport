@@ -6,8 +6,8 @@ import { ZodError } from "zod";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { applyEstadoComputado } from "@/lib/contracts/contract-query-service";
 import {
-  getRequiredProjectIdFromRequest,
-  withNormalizedProjectId
+  getRequiredActiveProjectIdFromRequest,
+  withCanonicalProjectId
 } from "@/lib/http/request";
 import {
   assertNoOverlappingContracts,
@@ -36,7 +36,7 @@ export async function GET(
 ): Promise<NextResponse> {
   try {
     await requireSession();
-    const projectId = getRequiredProjectIdFromRequest(request);
+    const projectId = await getRequiredActiveProjectIdFromRequest(request);
 
     const item = await prisma.contract.findFirst({
       where: { id: context.params.id, proyectoId: projectId },
@@ -295,7 +295,8 @@ export async function PUT(
 ): Promise<NextResponse> {
   try {
     const session = await requireWriteAccess();
-    const payload = validateContractInput(withNormalizedProjectId(await request.json()));
+    const projectId = await getRequiredActiveProjectIdFromRequest(request);
+    const payload = validateContractInput(withCanonicalProjectId(await request.json(), projectId));
     const contractId = context.params.id;
     const localIds = normalizedLocalIds(payload);
 
@@ -391,7 +392,7 @@ export async function DELETE(
 ): Promise<NextResponse> {
   try {
     await requireWriteAccess();
-    const projectId = getRequiredProjectIdFromRequest(request);
+    const projectId = await getRequiredActiveProjectIdFromRequest(request);
 
     const deleted = await prisma.contract.deleteMany({
       where: { id: context.params.id, proyectoId: projectId }

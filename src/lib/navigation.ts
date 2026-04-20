@@ -87,8 +87,20 @@ export const FINANZAS_SUB_NAV_ITEMS: NavItem[] = [
     match: "startsWith"
   },
   {
+    label: "Flujo Caja",
+    href: "/finance/cash-flow",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
     label: "EE.RR",
     href: "/finance/eerr",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
+    label: "EE.FF.",
+    href: "/finance/eeff",
     enabled: true,
     match: "startsWith"
   },

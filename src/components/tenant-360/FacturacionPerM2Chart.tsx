@@ -21,6 +21,7 @@ import {
   chartLegendProps,
   chartMargins,
 } from "@/lib/charts/theme";
+import { formatUf } from "@/lib/utils";
 import type { Tenant360MonthlyPoint, Tenant360SalesPoint } from "@/types/tenant-360";
 
 type FacturacionPerM2ChartProps = {
@@ -33,10 +34,6 @@ type ChartPoint = {
   billingUfM2: number | null;
   salesPerM2: number;
 };
-
-function fmtUf(value: number): string {
-  return value.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 export function FacturacionPerM2Chart({ monthlyData, salesData }: FacturacionPerM2ChartProps): JSX.Element {
   const chartData = useMemo<ChartPoint[]>(() => {
@@ -70,13 +67,13 @@ export function FacturacionPerM2Chart({ monthlyData, salesData }: FacturacionPer
           />
           <YAxis
             {...chartAxisProps}
-            tickFormatter={(v: number) => fmtUf(v)}
+            tickFormatter={(v: number) => formatUf(v)}
           />
           <Tooltip
             content={
               <ChartTooltip
                 valueFormatter={(value) =>
-                  `${fmtUf(typeof value === "number" ? value : Number(value ?? 0))} UF/m\u00b2`
+                  `${formatUf(typeof value === "number" ? value : Number(value ?? 0))} UF/m\u00b2`
                 }
               />
             }
