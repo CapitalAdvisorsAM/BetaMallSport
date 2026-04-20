@@ -1,7 +1,7 @@
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { UF_STALENESS_DAYS, MS_PER_DAY } from "@/lib/constants";
-import { startOfDay } from "@/lib/utils";
+import { UF_STALENESS_DAYS } from "@/lib/constants";
+import { isUfStale } from "@/lib/utils";
 import { UfSyncPanel } from "@/components/settings/UfSyncPanel";
 
 export default async function SistemaConfigPage(): Promise<JSX.Element> {
@@ -21,12 +21,7 @@ export default async function SistemaConfigPage(): Promise<JSX.Element> {
 
   const currentUf = ufValues[0] ?? null;
 
-  const today = startOfDay(new Date());
-  const latestFecha = ufRows[0]?.fecha ?? null;
-  const ufAgeDays = latestFecha
-    ? Math.floor((today.getTime() - startOfDay(latestFecha).getTime()) / MS_PER_DAY)
-    : null;
-  const isStale = ufAgeDays !== null && ufAgeDays > UF_STALENESS_DAYS;
+  const isStale = isUfStale(ufRows[0]?.fecha ?? null);
 
   return (
     <main className="space-y-6">

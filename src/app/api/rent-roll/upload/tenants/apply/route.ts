@@ -92,7 +92,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       where: {
         proyectoId: carga.projectId,
         contratos: {
-          some: { estado: "VIGENTE" }
+          some: { estado: { in: ["VIGENTE", "GRACIA"] } }
         }
       },
       select: { rut: true }

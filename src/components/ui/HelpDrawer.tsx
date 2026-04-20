@@ -115,7 +115,11 @@ const HELP_CONTENT: Record<DrawerSection, HelpContent> = {
       },
       {
         term: "EN GRACIA",
-        definition: "Contrato firmado cuyo periodo de gracia aun no termina; no genera ingreso real."
+        definition: "Contrato firmado, ya iniciado, cuyo periodo de gracia aun no termina; ocupa el local pero no factura."
+      },
+      {
+        term: "NO INICIADO",
+        definition: "Contrato firmado cuya fecha de inicio es posterior a hoy; aun no entrega el local ni factura."
       },
       {
         term: "VACANTE",
@@ -283,6 +287,10 @@ const HELP_CONTENT: Record<DrawerSection, HelpContent> = {
       {
         term: "GRACIA",
         definition: "Contrato firmado que aun no paga renta por periodo de instalacion o mejoras."
+      },
+      {
+        term: "NO INICIADO",
+        definition: "Contrato firmado cuya fecha de inicio es posterior a hoy; aun no ocupa el local ni factura."
       }
     ],
     commonIssues: [

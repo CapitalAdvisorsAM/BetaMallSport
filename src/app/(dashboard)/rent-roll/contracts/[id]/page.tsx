@@ -7,6 +7,7 @@ import { UnifiedTable } from "@/components/ui/UnifiedTable";
 import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
 import { Button } from "@/components/ui/button";
 import { ContractDetailEditButton } from "@/components/contracts/ContractDetailEditButton";
+import { ContractDetailDeleteButton } from "@/components/contracts/ContractDetailDeleteButton";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
@@ -106,12 +107,16 @@ export default async function ContractDetailPage({
     pdfUrl: contract.pdfUrl,
     fechaInicio: contract.fechaInicio.toISOString(),
     fechaTermino: contract.fechaTermino.toISOString(),
+    fechaEntrega: contract.fechaEntrega?.toISOString().slice(0, 10) ?? null,
+    fechaApertura: contract.fechaApertura?.toISOString().slice(0, 10) ?? null,
     pctFondoPromocion: contract.pctFondoPromocion?.toString() ?? null,
     pctAdministracionGgcc: contract.pctAdministracionGgcc?.toString() ?? null,
     multiplicadorDiciembre: contract.multiplicadorDiciembre?.toString() ?? null,
     multiplicadorJunio: contract.multiplicadorJunio?.toString() ?? null,
     multiplicadorJulio: contract.multiplicadorJulio?.toString() ?? null,
     multiplicadorAgosto: contract.multiplicadorAgosto?.toString() ?? null,
+    codigoCC: contract.codigoCC,
+    notas: contract.notas,
     local: { id: contract.local.id, codigo: contract.local.codigo, nombre: contract.local.nombre },
     locales: getAssociatedLocales(contract).map((l) => ({ id: l.id, codigo: l.codigo, nombre: l.nombre })),
     arrendatario: {
@@ -182,6 +187,12 @@ export default async function ContractDetailPage({
                 proyectoId={selectedProjectId}
                 locals={allUnits.map((u) => ({ id: u.id, label: u.codigo }))}
                 arrendatarios={allTenants.map((t) => ({ id: t.id, label: t.nombreComercial }))}
+              />
+            ) : null}
+            {canEdit ? (
+              <ContractDetailDeleteButton
+                contractId={contract.id}
+                proyectoId={selectedProjectId}
               />
             ) : null}
           </div>
@@ -354,46 +365,96 @@ export default async function ContractDetailPage({
         </div>
 
         {/* Tarifas */}
-        {contract.tarifas.length > 0 ? (
-          <div>
-            <h4 className="mb-2 border-l-2 border-brand-300 pl-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Tarifas</h4>
-            <UnifiedTable density="compact" className="[&_thead]:bg-brand-50 [&_thead_th]:text-brand-700">
-              <table className={`${compactTableTheme.table} text-xs`}>
-                <thead className={compactTableTheme.head}>
-                  <tr>
-                    <th className={compactTableTheme.compactHeadCell}>Tipo</th>
-                    <th className={`${compactTableTheme.compactHeadCell} text-right`}>Valor</th>
-                    <th className={compactTableTheme.compactHeadCell}>Vigencia desde</th>
-                    <th className={compactTableTheme.compactHeadCell}>Vigencia hasta</th>
-                    <th className={`${compactTableTheme.compactHeadCell} text-center`}>Diciembre</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {contract.tarifas.map((tarifa, index) => (
-                    <tr
-                      key={`${tarifa.tipo}-${tarifa.vigenciaDesde.toISOString()}-${index}`}
-                      className={`${getStripedRowClass(index, "compact")} ${compactTableTheme.rowHover}`}
-                    >
-                      <td className={`${compactTableTheme.compactCell} font-medium text-slate-800`}>{rateLabel(tarifa.tipo)}</td>
-                      <td className={`${compactTableTheme.compactCell} text-right tabular-nums`}>
-                        {formatUf(Number(tarifa.valor))}
-                      </td>
-                      <td className={`${compactTableTheme.compactCell} tabular-nums`}>
-                        {formatDate(tarifa.vigenciaDesde)}
-                      </td>
-                      <td className={`${compactTableTheme.compactCell} tabular-nums`}>
-                        {tarifa.vigenciaHasta ? formatDate(tarifa.vigenciaHasta) : "\u2014"}
-                      </td>
-                      <td className={`${compactTableTheme.compactCell} text-center`}>
-                        {tarifa.esDiciembre ? "Si" : "No"}
-                      </td>
+        {contract.tarifas.length > 0 ? (() => {
+          const hasVariable = contract.tarifas.some((t) => t.tipo === "PORCENTAJE");
+          const hasDescuento = contract.tarifas.some((t) => t.descuentoTipo !== null);
+          return (
+            <div>
+              <h4 className="mb-2 border-l-2 border-brand-300 pl-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Tarifas</h4>
+              <UnifiedTable density="compact" className="[&_thead]:bg-brand-50 [&_thead_th]:text-brand-700">
+                <table className={`${compactTableTheme.table} text-xs`}>
+                  <thead className={compactTableTheme.head}>
+                    <tr>
+                      <th className={compactTableTheme.compactHeadCell}>Tipo</th>
+                      <th className={`${compactTableTheme.compactHeadCell} text-right`}>Valor</th>
+                      {hasVariable ? (
+                        <>
+                          <th className={`${compactTableTheme.compactHeadCell} text-right`}>Umbral UF</th>
+                          <th className={`${compactTableTheme.compactHeadCell} text-right`}>Piso UF</th>
+                        </>
+                      ) : null}
+                      <th className={compactTableTheme.compactHeadCell}>Vigencia desde</th>
+                      <th className={compactTableTheme.compactHeadCell}>Vigencia hasta</th>
+                      <th className={`${compactTableTheme.compactHeadCell} text-center`}>Diciembre</th>
+                      {hasDescuento ? (
+                        <>
+                          <th className={compactTableTheme.compactHeadCell}>Dto. tipo</th>
+                          <th className={`${compactTableTheme.compactHeadCell} text-right`}>Dto. valor</th>
+                          <th className={compactTableTheme.compactHeadCell}>Dto. desde</th>
+                          <th className={compactTableTheme.compactHeadCell}>Dto. hasta</th>
+                        </>
+                      ) : null}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </UnifiedTable>
-          </div>
-        ) : null}
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {contract.tarifas.map((tarifa, index) => (
+                      <tr
+                        key={`${tarifa.tipo}-${tarifa.vigenciaDesde.toISOString()}-${index}`}
+                        className={`${getStripedRowClass(index, "compact")} ${compactTableTheme.rowHover}`}
+                      >
+                        <td className={`${compactTableTheme.compactCell} font-medium text-slate-800`}>{rateLabel(tarifa.tipo)}</td>
+                        <td className={`${compactTableTheme.compactCell} text-right tabular-nums`}>
+                          {tarifa.tipo === "PORCENTAJE"
+                            ? `${tarifa.valor.toString()}%`
+                            : formatUf(Number(tarifa.valor))}
+                        </td>
+                        {hasVariable ? (
+                          <>
+                            <td className={`${compactTableTheme.compactCell} text-right tabular-nums`}>
+                              {tarifa.umbralVentasUf ? formatUf(Number(tarifa.umbralVentasUf)) : "\u2014"}
+                            </td>
+                            <td className={`${compactTableTheme.compactCell} text-right tabular-nums`}>
+                              {tarifa.pisoMinimoUf ? formatUf(Number(tarifa.pisoMinimoUf)) : "\u2014"}
+                            </td>
+                          </>
+                        ) : null}
+                        <td className={`${compactTableTheme.compactCell} tabular-nums`}>
+                          {formatDate(tarifa.vigenciaDesde)}
+                        </td>
+                        <td className={`${compactTableTheme.compactCell} tabular-nums`}>
+                          {tarifa.vigenciaHasta ? formatDate(tarifa.vigenciaHasta) : "\u2014"}
+                        </td>
+                        <td className={`${compactTableTheme.compactCell} text-center`}>
+                          {tarifa.esDiciembre ? "Si" : "No"}
+                        </td>
+                        {hasDescuento ? (
+                          <>
+                            <td className={compactTableTheme.compactCell}>
+                              {tarifa.descuentoTipo ?? "\u2014"}
+                            </td>
+                            <td className={`${compactTableTheme.compactCell} text-right tabular-nums`}>
+                              {tarifa.descuentoValor
+                                ? tarifa.descuentoTipo === "PORCENTAJE"
+                                  ? `${tarifa.descuentoValor.toString()}%`
+                                  : formatUf(Number(tarifa.descuentoValor))
+                                : "\u2014"}
+                            </td>
+                            <td className={`${compactTableTheme.compactCell} tabular-nums`}>
+                              {tarifa.descuentoDesde ? formatDate(tarifa.descuentoDesde) : "\u2014"}
+                            </td>
+                            <td className={`${compactTableTheme.compactCell} tabular-nums`}>
+                              {tarifa.descuentoHasta ? formatDate(tarifa.descuentoHasta) : "\u2014"}
+                            </td>
+                          </>
+                        ) : null}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </UnifiedTable>
+            </div>
+          );
+        })() : null}
 
         {/* Gastos Comunes (GGCC) */}
         {contract.ggcc.length > 0 ? (

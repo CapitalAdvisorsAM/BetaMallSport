@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle, AlertTriangle, Building2, Clock, TrendingDown } from "lucide-react";
+import { AlertCircle, AlertTriangle, Building2, CalendarClock, Clock, TrendingDown } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { AlertCounts } from "@/lib/kpi";
 
@@ -16,6 +16,7 @@ export function AlertBar({
   vencen30,
   vencen90,
   enGracia,
+  noIniciados,
   vacantes,
   brechaFacturacion
 }: AlertCounts): JSX.Element | null {
@@ -45,6 +46,14 @@ export function AlertBar({
       label: `${enGracia} en período de gracia`,
       className: "bg-amber-100 text-amber-800",
       Icon: Clock,
+      href
+    },
+    {
+      key: "noIniciados",
+      visible: noIniciados > 0,
+      label: `${noIniciados} contratos no iniciados`,
+      className: "bg-sky-100 text-sky-800",
+      Icon: CalendarClock,
       href
     },
     {

@@ -39,7 +39,7 @@ export function ContractDetailsSection({ contracts }: ContractDetailsSectionProp
           <thead className={tableTheme.head}>
             <tr>
               <th className={tableTheme.compactHeadCell}>Local</th>
-              <th className={tableTheme.compactHeadCell}>N\u00b0 Contrato</th>
+              <th className={tableTheme.compactHeadCell}>N° Contrato</th>
               <th className={tableTheme.compactHeadCell}>Estado</th>
               <th className={`${tableTheme.compactHeadCell} text-right`}>Tarifa</th>
               <th className={tableTheme.compactHeadCell}>Inicio</th>
@@ -124,7 +124,7 @@ export function ContractDetailsSection({ contracts }: ContractDetailsSectionProp
                               <h4 className="mb-1.5 text-xs font-bold uppercase tracking-widest text-slate-400">Gastos Comunes</h4>
                               <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
                                 <div>
-                                  <p className="text-slate-400">Base UF/m\u00b2</p>
+                                  <p className="text-slate-400">Base UF/m²</p>
                                   <p className="font-medium tabular-nums text-slate-700">{formatUf(c.ggccActual.tarifaBaseUfM2)}</p>
                                 </div>
                                 <div>

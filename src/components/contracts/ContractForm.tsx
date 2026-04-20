@@ -379,7 +379,68 @@ function ContractCommercialSection({
             className="w-full"
           />
         </FormField>
+        <FormField label="Codigo CC" htmlFor="codigo-cc" helperText="Opcional">
+          <Input
+            id="codigo-cc"
+            placeholder="Ej: CC-001"
+            value={payload.codigoCC ?? ""}
+            onChange={(event) =>
+              setPayload((previous) => ({
+                ...previous,
+                codigoCC: event.target.value.trim() ? event.target.value : null
+              }))
+            }
+            disabled={!canEdit}
+            className="w-full"
+          />
+        </FormField>
+        <FormField label="Fecha entrega" htmlFor="fecha-entrega" helperText="Opcional">
+          <Input
+            id="fecha-entrega"
+            type="date"
+            value={payload.fechaEntrega ?? ""}
+            onChange={(event) =>
+              setPayload((previous) => ({
+                ...previous,
+                fechaEntrega: event.target.value || null
+              }))
+            }
+            disabled={!canEdit}
+            className="w-full"
+          />
+        </FormField>
+        <FormField label="Fecha apertura" htmlFor="fecha-apertura" helperText="Opcional">
+          <Input
+            id="fecha-apertura"
+            type="date"
+            value={payload.fechaApertura ?? ""}
+            onChange={(event) =>
+              setPayload((previous) => ({
+                ...previous,
+                fechaApertura: event.target.value || null
+              }))
+            }
+            disabled={!canEdit}
+            className="w-full"
+          />
+        </FormField>
       </div>
+      <FormField label="Notas" htmlFor="notas" helperText="Opcional">
+        <textarea
+          id="notas"
+          rows={3}
+          placeholder="Observaciones o comentarios del contrato"
+          value={payload.notas ?? ""}
+          onChange={(event) =>
+            setPayload((previous) => ({
+              ...previous,
+              notas: event.target.value.trim() ? event.target.value : null
+            }))
+          }
+          disabled={!canEdit}
+          className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:cursor-not-allowed disabled:opacity-50"
+        />
+      </FormField>
 
       <TarifaListEditor
         tarifas={payload.tarifas}

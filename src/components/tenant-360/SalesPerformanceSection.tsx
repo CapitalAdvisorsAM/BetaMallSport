@@ -84,7 +84,7 @@ export function SalesPerformanceSection({ data }: SalesPerformanceSectionProps):
             yAxisId="right"
             type="monotone"
             dataKey="salesPerM2"
-            name="Ventas/m\u00b2 (UF)"
+            name="Ventas/m² (UF)"
             stroke={chartColors.gold}
             strokeWidth={2}
             dot={{ r: 3, fill: chartColors.gold }}

@@ -52,14 +52,14 @@ export function TenantKpiRow({ kpis, peerComparison }: TenantKpiRowProps): JSX.E
       />
       <KpiCard
         metricId="kpi_tenant360_facturacion_uf_m2"
-        title="Facturacion (UF/m\u00b2)"
+        title="Facturacion (UF/m²)"
         value={kpis.facturacionUfM2 !== null ? `${formatUf(kpis.facturacionUfM2)} UF/m\u00b2` : "\u2014"}
         subtitle={benchmarkSubtitle(kpis.facturacionUfM2, peer?.avgFacturacionUfM2 ?? null, "UF/m\u00b2")}
         accent="slate"
       />
       <KpiCard
         metricId="kpi_tenant360_ventas_uf_m2"
-        title="Ventas (UF/m\u00b2)"
+        title="Ventas (UF/m²)"
         value={kpis.ventasUfM2 !== null ? `${formatUf(kpis.ventasUfM2)} UF/m\u00b2` : "\u2014"}
         subtitle={benchmarkSubtitle(kpis.ventasUfM2, peer?.avgVentasUfM2 ?? null, "UF/m\u00b2")}
         accent="slate"

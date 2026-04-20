@@ -110,14 +110,14 @@ export function VentasAnalyticsClient({
     for (const s of series) {
       entry[s.dimension] = s.data[i]?.salesUfPerM2 ?? 0;
     }
-    entry["Total UF/m\u00B2"] = totals[i]?.salesUfPerM2 ?? 0;
+    entry["Total UF/m²"] = totals[i]?.salesUfPerM2 ?? 0;
     return entry;
   });
 
   return (
     <main className="space-y-4">
       <ModuleHeader
-        title="Ventas Mensuales (UF/m\u00B2)"
+        title="Ventas Mensuales (UF/m²)"
         description="Ventas por dimension de local. Replica la hoja 'Ventas' del CDG."
         actions={
           <ProjectPeriodToolbar
@@ -163,9 +163,9 @@ export function VentasAnalyticsClient({
         <>
           {/* Chart */}
           <MetricChartCard
-            title={`Ventas (UF/m\u00B2) por ${DIMENSION_LABELS[dimension]}`}
+            title={`Ventas (UF/m²) por ${DIMENSION_LABELS[dimension]}`}
             metricId="chart_finance_ventas"
-            description="Barras: ventas UF/m\u00B2 por dimension. Linea: total UF/m\u00B2."
+            description="Barras: ventas UF/m² por dimension. Linea: total UF/m²."
           >
             <ResponsiveContainer width="100%" height={chartHeight.lg}>
               <ComposedChart data={chartData} margin={chartMargins.default}>
@@ -195,8 +195,8 @@ export function VentasAnalyticsClient({
                 ))}
                 <Line
                   type="monotone"
-                  dataKey="Total UF/m\u00B2"
-                  name="Total UF/m\u00B2"
+                  dataKey="Total UF/m²"
+                  name="Total UF/m²"
                   stroke={chartColors.axisMuted}
                   strokeDasharray="4 2"
                   dot={false}

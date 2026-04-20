@@ -1,5 +1,11 @@
 import type { ContractDayStatus } from "@prisma/client";
 
+export type {
+  BudgetedSalesMatrixResponse,
+  BudgetedSalesMatrixRow,
+  BudgetedSalesMatrixSummary,
+} from "@/lib/rent-roll/budgeted-sales-matrix";
+
 export type EstadoLocal = ContractDayStatus;
 
 export type RentRollRow = {

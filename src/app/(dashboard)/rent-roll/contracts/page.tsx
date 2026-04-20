@@ -8,6 +8,7 @@ import { UploadHistory } from "@/components/upload/UploadHistory";
 import { UploadSection } from "@/components/upload/UploadSection";
 import { Button } from "@/components/ui/button";
 import type { RentRollMode } from "@/lib/navigation";
+import { applyEstadoComputado } from "@/lib/contracts/contract-query-service";
 import { buildExportExcelUrl } from "@/lib/export/shared";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -144,6 +145,7 @@ export default async function ContractsPage({
     }) as Promise<ContractRow[]>
 
   ]);
+  const contractsWithComputedState = applyEstadoComputado(contracts);
   const nextCursor = contracts.length === 50 ? contracts[contracts.length - 1]?.id : undefined;
 
   const uploadHistory =
@@ -160,7 +162,7 @@ export default async function ContractsPage({
     projectId: selectedProjectId
   });
 
-  const contractViewRows = contracts.map((contract) => ({
+  const contractViewRows = contractsWithComputedState.map((contract) => ({
     id: contract.id,
     numeroContrato: contract.numeroContrato,
     locales: getAssociatedLocales(contract)
@@ -232,7 +234,7 @@ export default async function ContractsPage({
           locals={units.map((unit) => ({ id: unit.id, label: unit.codigo }))}
           arrendatarios={tenants.map((tenant) => ({ id: tenant.id, label: tenant.nombreComercial }))}
           nextCursor={nextCursor}
-          contracts={contracts.map((contract) => ({
+          contracts={contractsWithComputedState.map((contract) => ({
             id: contract.id,
             numeroContrato: contract.numeroContrato,
             diasGracia: contract.diasGracia,

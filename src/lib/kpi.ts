@@ -9,8 +9,10 @@ import {
   formatPercent as formatPercentCanonical,
   formatSquareMeters as formatSquareMetersCanonical,
   formatUf as formatUfCanonical,
+  isUfStale,
   startOfDay,
-  startOfUtcDay
+  startOfUtcDay,
+  ufAgeInDays
 } from "@/lib/utils";
 
 type DecimalLike = number | string | { toString(): string };
@@ -77,6 +79,7 @@ export type ContractExpiryBuckets = Record<ExpiryWindow, ContractExpiryRow[]>;
 
 const CONTRACT_STATES: ContractStatus[] = [
   "VIGENTE",
+  "NO_INICIADO",
   "GRACIA",
   "TERMINADO_ANTICIPADO",
   "TERMINADO"
@@ -271,19 +274,27 @@ export function calculateFixedRentUf(contracts: KpiContractInput[]): number {
  */
 export function buildFixedRentClpMetric(
   rentaFijaUf: number,
-  valorUf: ValorUfInput | null
-): { value: string; subtitle: string } {
+  valorUf: ValorUfInput | null,
+  today: Date = startOfDay(new Date())
+): { value: string; subtitle: string; stale: boolean } {
   if (!valorUf) {
     return {
       value: "Sin valor UF",
-      subtitle: "No hay valor UF registrado"
+      subtitle: "No hay valor UF registrado",
+      stale: true
     };
   }
 
   const uf = toNumber(valorUf.valor);
+  const stale = isUfStale(valorUf.fecha, today);
+  const ageDays = ufAgeInDays(valorUf.fecha, today);
+  const subtitle = stale && ageDays !== null
+    ? `UF desactualizada (${ageDays}d) al ${formatShortDate(valorUf.fecha)}: ${formatClp(uf)}`
+    : `UF al ${formatShortDate(valorUf.fecha)}: ${formatClp(uf)}`;
   return {
     value: formatClp(rentaFijaUf * uf),
-    subtitle: `UF al ${formatShortDate(valorUf.fecha)}: ${formatClp(uf)}`
+    subtitle,
+    stale
   };
 }
 
@@ -423,6 +434,7 @@ export type AlertCounts = {
   vencen30: number;
   vencen90: number;
   enGracia: number;
+  noIniciados: number;
   vacantes: number;
   brechaFacturacion?: number;
 };
@@ -454,6 +466,9 @@ export function buildAlertCounts(
       if (contrato.estado === ContractStatus.GRACIA) {
         acc.enGracia += 1;
       }
+      if (contrato.estado === ContractStatus.NO_INICIADO) {
+        acc.noIniciados += 1;
+      }
 
       if (endDate >= start && endDate <= day30) {
         acc.vencen30 += 1;
@@ -467,6 +482,7 @@ export function buildAlertCounts(
       vencen30: 0,
       vencen90: 0,
       enGracia: 0,
+      noIniciados: 0,
       vacantes: localesVacantes.length
     }
   );

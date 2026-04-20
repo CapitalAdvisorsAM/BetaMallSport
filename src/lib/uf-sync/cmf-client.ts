@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { ApiError } from "@/lib/api-error";
 import { logError, logDuration, logInfo } from "@/lib/observability";
 
 // Documentación: https://api.cmfchile.cl/documentacion/UF.html
@@ -34,7 +35,7 @@ export async function fetchUfValue(
 ): Promise<{ fecha: Date; valor: Prisma.Decimal } | null> {
   const apiKey = process.env.CMF_API_KEY;
   if (!apiKey) {
-    throw new Error("CMF_API_KEY no está configurada.");
+    throw new ApiError(500, "CMF_API_KEY no está configurada en el servidor.");
   }
 
   const iso = date.toISOString().slice(0, 10); // YYYY-MM-DD

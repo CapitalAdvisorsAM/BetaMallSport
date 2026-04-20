@@ -108,6 +108,11 @@ export const METRIC_FORMULAS = {
     formula: "COUNT(contratos con estado GRACIA)",
     detail: "Conteo de contratos en estado GRACIA."
   },
+  kpi_dashboard_cartera_no_iniciado: {
+    title: "Cartera No Iniciados",
+    formula: "COUNT(contratos con estado NO_INICIADO)",
+    detail: "Conteo de contratos firmados cuya fecha de inicio es posterior a hoy."
+  },
   kpi_dashboard_cartera_terminado_anticipado: {
     title: "Cartera Terminados Anticipadamente",
     formula: "COUNT(contratos con estado TERMINADO_ANTICIPADO)",

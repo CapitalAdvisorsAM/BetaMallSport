@@ -116,8 +116,8 @@ export function fromContract(
     arrendatarioId: contract.arrendatario.id,
     fechaInicio: contract.fechaInicio.slice(0, 10),
     fechaTermino: contract.fechaTermino.slice(0, 10),
-    fechaEntrega: null,
-    fechaApertura: null,
+    fechaEntrega: contract.fechaEntrega,
+    fechaApertura: contract.fechaApertura,
     diasGracia: contract.diasGracia,
     rentaVariable: toAllRentaVariableItems(
       contract.tarifas
@@ -136,9 +136,9 @@ export function fromContract(
     multiplicadorJunio: contract.multiplicadorJunio,
     multiplicadorJulio: contract.multiplicadorJulio,
     multiplicadorAgosto: contract.multiplicadorAgosto,
-    codigoCC: null,
+    codigoCC: contract.codigoCC,
     pdfUrl: contract.pdfUrl,
-    notas: null,
+    notas: contract.notas,
     tarifas:
       contract.tarifas.filter((tarifa) => tarifa.tipo !== "PORCENTAJE").length > 0
         ? contract.tarifas.filter((tarifa) => tarifa.tipo !== "PORCENTAJE").map(toDraftTarifa)
