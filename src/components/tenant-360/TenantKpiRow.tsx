@@ -60,8 +60,8 @@ export function TenantKpiRow({ kpis, peerComparison }: TenantKpiRowProps): JSX.E
       <KpiCard
         metricId="kpi_tenant360_ventas_uf_m2"
         title="Ventas (UF/m²)"
-        value={kpis.ventasUfM2 !== null ? `${formatUf(kpis.ventasUfM2)} UF/m\u00b2` : "\u2014"}
-        subtitle={benchmarkSubtitle(kpis.ventasUfM2, peer?.avgVentasUfM2 ?? null, "UF/m\u00b2")}
+        value={kpis.ventasPesosM2 !== null ? `${formatUf(kpis.ventasPesosM2)} UF/m\u00b2` : "\u2014"}
+        subtitle={benchmarkSubtitle(kpis.ventasPesosM2, peer?.avgVentasPesosM2 ?? null, "UF/m\u00b2")}
         accent="slate"
       />
       <KpiCard
@@ -91,7 +91,7 @@ export function TenantKpiRow({ kpis, peerComparison }: TenantKpiRowProps): JSX.E
       <KpiCard
         metricId="kpi_tenant360_ventas_promedio_uf"
         title="Ventas Prom/Mes"
-        value={`${formatUf(kpis.ventasPromedioMensualUf)} UF`}
+        value={`${formatUf(kpis.ventasPromedioMensualPesos)} UF`}
         accent="slate"
       />
     </div>

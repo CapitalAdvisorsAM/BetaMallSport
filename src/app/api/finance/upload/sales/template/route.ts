@@ -13,7 +13,7 @@ const instruccionesGenerales = [
   "La fecha puede venir como 'Fecha' (serial Excel o YYYY-MM-DD) o como 'Mes' (ej: 'enero') + 'Año'.",
   "Las ventas se agregan por 'ID CA' y mes: si hay varias filas diarias para un mismo local y mes, se suman.",
   "'ID CA' es el identificador externo del arrendatario (ID Capital Advisors); los no mapeados se ven en Mapeos.",
-  "'Valor UF' es el monto en UF. Deben ser valores positivos (ventas)."
+  "'Valor Pesos' es el monto en pesos (CLP). Deben ser valores positivos (ventas)."
 ];
 
 const columns: ColumnDef[] = [
@@ -84,12 +84,12 @@ const columns: ColumnDef[] = [
     width: 10
   },
   {
-    key: "Valor UF",
-    label: "Valor UF",
+    key: "Valor Pesos",
+    label: "Valor Pesos",
     required: true,
-    description: "Venta en UF del periodo. Positivo.",
+    description: "Venta en pesos (CLP) del periodo. Positivo.",
     format: "number",
-    width: 14,
+    width: 16,
     headerPalette: "gold"
   },
   {
@@ -118,7 +118,7 @@ export async function GET(): Promise<NextResponse> {
           Fecha: "2026-01-31",
           Mes: "enero",
           "Año": "2026",
-          "Valor UF": "3250.00",
+          "Valor Pesos": "115000000",
           "Categoría (Tamaño)": "LOCAL GRANDE"
         },
         {
@@ -128,7 +128,7 @@ export async function GET(): Promise<NextResponse> {
           Fecha: "2026-01-31",
           Mes: "enero",
           "Año": "2026",
-          "Valor UF": "820.45",
+          "Valor Pesos": "28500000",
           "Categoría (Tamaño)": "LOCAL CHICO"
         }
       ],

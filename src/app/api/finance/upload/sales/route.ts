@@ -96,8 +96,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const period = new Date(Date.UTC(row.mes.getFullYear(), row.mes.getMonth(), 1));
         return prisma.tenantSale.upsert({
           where: { tenantId_period: { tenantId, period } },
-          update: { salesUf: row.ventasUf, updatedAt: new Date() },
-          create: { projectId, tenantId, period, salesUf: row.ventasUf },
+          update: { salesPesos: row.ventasPesos, updatedAt: new Date() },
+          create: { projectId, tenantId, period, salesPesos: row.ventasPesos },
         });
       });
 

@@ -12,7 +12,7 @@ function tenant(id: string, nombreComercial: string, rut = `rut-${id}`): TenantI
 }
 
 function sale(tenantId: string, period: string, salesUf: number): BudgetedSaleMatrixInput {
-  return { tenantId, period: periodToDate(period), salesUf };
+  return { tenantId, period: periodToDate(period), salesPesos: salesUf };
 }
 
 describe("buildPeriodRange", () => {
@@ -63,7 +63,7 @@ describe("buildBudgetedSalesMatrix", () => {
     expect(row.total).toBe(180);
     expect(row.glam2).toBe(100);
     expect(row.missingPeriods).toEqual([]);
-    expect(result.summary.totalBudgetUf).toBe(180);
+    expect(result.summary.totalBudgetPesos).toBe(180);
     expect(result.summary.tenantsWithData).toBe(1);
     expect(result.summary.tenantsWithMissing).toBe(0);
   });

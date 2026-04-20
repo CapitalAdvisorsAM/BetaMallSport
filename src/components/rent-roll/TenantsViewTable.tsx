@@ -127,7 +127,7 @@ export function TenantsViewTable({
         ),
       },
     ],
-    [proyectoId]
+    []
   );
 
   const { table } = useDataTable(rows, columns, { expandable: true });

@@ -19,21 +19,20 @@ const salesUpsertSchema = z.object({
     .string()
     .trim()
     .refine(isPeriodoValido, "period debe tener formato YYYY-MM."),
-  salesUf: z
+  salesPesos: z
     .coerce
     .string()
     .trim()
-    .min(1, "salesUf es obligatorio.")
+    .min(1, "salesPesos es obligatorio.")
     .refine((value) => {
       try {
-        // Decimal constructor throws when input is invalid.
         // eslint-disable-next-line no-new
         new Prisma.Decimal(value);
         return true;
       } catch {
         return false;
       }
-    }, "salesUf debe ser decimal valido.")
+    }, "salesPesos debe ser decimal valido.")
 });
 
 function normalizeBody(record: Record<string, unknown>) {
@@ -56,11 +55,11 @@ function normalizeBody(record: Record<string, unknown>) {
         : typeof record.periodo === "string"
           ? record.periodo
           : "",
-    salesUf:
-      typeof record.salesUf === "string" || typeof record.salesUf === "number"
-        ? record.salesUf
-        : typeof record.ventasUf === "string" || typeof record.ventasUf === "number"
-          ? record.ventasUf
+    salesPesos:
+      typeof record.salesPesos === "string" || typeof record.salesPesos === "number"
+        ? record.salesPesos
+        : typeof record.ventasPesos === "string" || typeof record.ventasPesos === "number"
+          ? record.ventasPesos
           : ""
   };
 }
@@ -98,7 +97,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         proyectoId: sale.projectId,
         tenantId: sale.tenantId,
         periodo: sale.period.toISOString().slice(0, 7),
-        ventasUf: sale.salesUf
+        ventasPesos: sale.salesPesos
       })),
       { status: 200 }
     );
@@ -134,13 +133,13 @@ export async function POST(request: Request): Promise<NextResponse> {
       },
       update: {
         projectId: parsed.data.projectId,
-        salesUf: new Prisma.Decimal(parsed.data.salesUf)
+        salesPesos: new Prisma.Decimal(parsed.data.salesPesos)
       },
       create: {
         projectId: parsed.data.projectId,
         tenantId: parsed.data.tenantId,
         period: periodDate,
-        salesUf: new Prisma.Decimal(parsed.data.salesUf)
+        salesPesos: new Prisma.Decimal(parsed.data.salesPesos)
       }
     });
     invalidateMetricsCacheByProject(parsed.data.projectId);
@@ -152,7 +151,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         proyectoId: saved.projectId,
         tenantId: saved.tenantId,
         periodo: saved.period.toISOString().slice(0, 7),
-        ventasUf: saved.salesUf
+        ventasPesos: saved.salesPesos
       },
       { status: 200 }
     );

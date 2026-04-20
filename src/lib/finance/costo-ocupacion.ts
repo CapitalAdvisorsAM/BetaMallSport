@@ -29,7 +29,7 @@ export type CostoRecordInput = {
 export type CostoSaleInput = {
   tenantId: string;
   period: Date;
-  salesUf: DecimalLike;
+  salesPesos: DecimalLike;
 };
 
 // ---------------------------------------------------------------------------
@@ -74,7 +74,7 @@ export function buildCostoOcupacionTable(
   for (const s of sales) {
     const p = pKey(s.period);
     const tMap = salesByTenant.get(s.tenantId) ?? new Map<string, number>();
-    tMap.set(p, (tMap.get(p) ?? 0) + toNum(s.salesUf));
+    tMap.set(p, (tMap.get(p) ?? 0) + toNum(s.salesPesos));
     salesByTenant.set(s.tenantId, tMap);
   }
 

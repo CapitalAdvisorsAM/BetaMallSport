@@ -9,7 +9,7 @@ type PeerComparisonSectionProps = {
 
 export function PeerComparisonSection({ data }: PeerComparisonSectionProps): JSX.Element {
   const diffFacturacion = data.currentFacturacionUfM2 - data.avgFacturacionUfM2;
-  const diffVentas = data.currentVentasUfM2 - data.avgVentasUfM2;
+  const diffVentas = data.currentVentasPesosM2 - data.avgVentasPesosM2;
 
   return (
     <section className="rounded-md bg-white shadow-sm">
@@ -32,8 +32,8 @@ export function PeerComparisonSection({ data }: PeerComparisonSectionProps): JSX
         />
         <MetricCard
           label="Ventas (UF/m²)"
-          current={data.currentVentasUfM2}
-          average={data.avgVentasUfM2}
+          current={data.currentVentasPesosM2}
+          average={data.avgVentasPesosM2}
           diff={diffVentas}
           higherIsBetter={true}
         />
@@ -81,7 +81,7 @@ export function PeerComparisonSection({ data }: PeerComparisonSectionProps): JSX
                   {formatDecimal(peer.facturacionUfM2)}
                 </td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
-                  {formatDecimal(peer.ventasUfM2)}
+                  {formatDecimal(peer.ventasPesosM2)}
                 </td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
                   {peer.costoOcupacionPct !== null ? `${formatDecimal(peer.costoOcupacionPct)}%` : "—"}

@@ -92,7 +92,7 @@ export async function buildPeerComparison(
         tenantId: { in: allTenantIds },
         period: { gte: desdeDate, lte: hastaDate }
       },
-      select: { tenantId: true, salesUf: true }
+      select: { tenantId: true, salesPesos: true }
     })
   ]);
 
@@ -106,26 +106,26 @@ export async function buildPeerComparison(
     );
   }
 
-  // Aggregate sales by tenant (sales are already tenant-based)
+  // Aggregate sales (in pesos) by tenant
   const salesByTenant = new Map<string, number>();
   for (const s of salesRecords) {
     if (!s.tenantId) continue;
-    salesByTenant.set(s.tenantId, (salesByTenant.get(s.tenantId) ?? 0) + toNum(s.salesUf));
+    salesByTenant.set(s.tenantId, (salesByTenant.get(s.tenantId) ?? 0) + toNum(s.salesPesos));
   }
 
   // Build peer rows
   const peers: PeerComparisonRow[] = [];
   for (const [tid, entry] of tenantMap) {
     const totalBilling = billingByTenant.get(tid) ?? 0;
-    const totalSales = salesByTenant.get(tid) ?? 0;
+    const totalSalesPesos = salesByTenant.get(tid) ?? 0;
     const glam2 = entry.glam2;
 
     peers.push({
       tenantName: entry.name,
       glam2,
       facturacionUfM2: glam2 > 0 ? totalBilling / glam2 : 0,
-      ventasUfM2: glam2 > 0 ? totalSales / glam2 : 0,
-      costoOcupacionPct: totalSales > 0 ? (totalBilling / totalSales) * 100 : null,
+      ventasPesosM2: glam2 > 0 ? totalSalesPesos / glam2 : 0,
+      costoOcupacionPct: totalSalesPesos > 0 ? (totalBilling / totalSalesPesos) * 100 : null,
       isCurrent: entry.isCurrent
     });
   }
@@ -146,7 +146,7 @@ export async function buildPeerComparison(
       : 0;
   const avgVentas =
     otherPeers.length > 0
-      ? otherPeers.reduce((acc, p) => acc + p.ventasUfM2, 0) / otherPeers.length
+      ? otherPeers.reduce((acc, p) => acc + p.ventasPesosM2, 0) / otherPeers.length
       : 0;
   const peersWithCosto = otherPeers.filter((p) => p.costoOcupacionPct !== null);
   const avgCosto =
@@ -158,10 +158,10 @@ export async function buildPeerComparison(
     categoria: normalizedCategoria,
     peerCount: otherPeers.length,
     avgFacturacionUfM2: avgFacturacion,
-    avgVentasUfM2: avgVentas,
+    avgVentasPesosM2: avgVentas,
     avgCostoOcupacionPct: avgCosto,
     currentFacturacionUfM2: currentPeer?.facturacionUfM2 ?? 0,
-    currentVentasUfM2: currentPeer?.ventasUfM2 ?? 0,
+    currentVentasPesosM2: currentPeer?.ventasPesosM2 ?? 0,
     currentCostoOcupacionPct: currentPeer?.costoOcupacionPct ?? null,
     peers
   };

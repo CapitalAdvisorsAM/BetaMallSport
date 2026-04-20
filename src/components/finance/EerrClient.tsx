@@ -88,7 +88,7 @@ export function EerrClient({
       const params = new URLSearchParams({ projectId: selectedProjectId });
       if (desde) params.set("from", desde);
       if (hasta) params.set("to", hasta);
-      const res = await fetch(`/api/finance/eerr?${params}`);
+      const res = await fetch(`/api/finance/income-statement?${params}`);
       const payload = (await res.json()) as EerrData;
       setRawData(payload);
       setExpandedSections(new Set(payload.secciones?.map((s) => s.grupo1) ?? []));
@@ -122,7 +122,7 @@ export function EerrClient({
       const params = new URLSearchParams({ projectId: selectedProjectId, grupo1: g1, grupo3: g3 });
       if (desde) params.set("from", desde);
       if (hasta) params.set("to", hasta);
-      const res = await fetch(`/api/finance/eerr/detail?${params}`);
+      const res = await fetch(`/api/finance/income-statement/detail?${params}`);
       const d = (await res.json()) as EerrDetalleResponse;
       setDetalleCache((p) => new Map(p).set(key, d));
     } finally {

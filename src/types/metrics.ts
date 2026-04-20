@@ -11,7 +11,7 @@ export type RentRollMetricRow = {
   tarifaUfM2: number;
   rentaFijaUf: number;
   ggccUf: number;
-  ventasUf: number | null;
+  ventasPesos: number | null;
   rentaVariableUf: number | null;
   ingresoBrutoUf: number;
   fechaTermino: string;
@@ -26,7 +26,7 @@ export type RentRollSummary = {
   tasaOcupacion: number;
   rentaFijaTotalUf: number;
   ggccTotalUf: number;
-  ventasTotalUf: number | null;
+  ventasTotalPesos: number | null;
   rentaVariableTotalUf: number | null;
   ingresoBrutoTotalUf: number;
   contratosVigentes: number;

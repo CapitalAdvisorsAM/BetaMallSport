@@ -578,7 +578,7 @@ type IngresoLocalInput = {
 type VentaLocalPeriodoInput = {
   arrendatarioId: string;
   periodo: string;
-  ventasUf: DecimalLike;
+  ventasPesos: DecimalLike;
 };
 
 type IngresoEnergiaInput = {
@@ -699,17 +699,19 @@ export function buildIngresoDesglosado(
   locales: IngresoLocalInput[],
   ventasLocales: VentaLocalPeriodoInput[],
   ingresoEnergia: IngresoEnergiaInput[],
-  periodo: string
+  periodo: string,
+  ufRate = 0
 ): IngresoDesglosado {
   const localById = new Map(locales.map((local) => [local.id, local]));
-  const ventasByTenant = new Map<string, number>();
+  // Accumulate sales in pesos per tenant, then convert to UF for variable-rent math.
+  const ventasPesosByTenant = new Map<string, number>();
   for (const venta of ventasLocales) {
     if (venta.periodo !== periodo) {
       continue;
     }
-    ventasByTenant.set(
+    ventasPesosByTenant.set(
       venta.arrendatarioId,
-      (ventasByTenant.get(venta.arrendatarioId) ?? 0) + toFiniteNumber(venta.ventasUf)
+      (ventasPesosByTenant.get(venta.arrendatarioId) ?? 0) + toFiniteNumber(venta.ventasPesos)
     );
   }
 
@@ -736,8 +738,11 @@ export function buildIngresoDesglosado(
       arriendoFijoUf += fixedAmount;
     }
 
+    // Convert pesos → UF for variable-rent threshold comparisons.
+    const ventasPesos = ventasPesosByTenant.get(contrato.arrendatarioId ?? "") ?? 0;
+    const ventasUf = ufRate > 0 ? ventasPesos / ufRate : 0;
+
     if (contrato.variableRentTiers && contrato.variableRentTiers.length > 0 && contrato.arrendatarioId) {
-      const ventasUf = ventasByTenant.get(contrato.arrendatarioId) ?? 0;
       const sorted = [...contrato.variableRentTiers].sort((a, b) => b.umbralVentasUf - a.umbralVentasUf);
       const tier = sorted.find((t) => ventasUf >= t.umbralVentasUf);
       if (tier) {
@@ -746,7 +751,6 @@ export function buildIngresoDesglosado(
     } else {
       const porcentajeVariable = toFiniteNumber(contrato.tarifaVariablePct);
       if (porcentajeVariable > 0 && contrato.arrendatarioId) {
-        const ventasUf = ventasByTenant.get(contrato.arrendatarioId) ?? 0;
         arriendoVariableUf += ventasUf * (porcentajeVariable / 100);
       }
     }

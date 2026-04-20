@@ -19,7 +19,7 @@ export type RentRollRow = {
   tarifaUfM2: number | null;
   rentaFijaUf: number | null;
   ggccUf: number | null;
-  ventasUf: number | null;
+  ventasPesos: number | null;
   fechaTermino: string | null;
   diasParaVencimiento: number | null;
 };
@@ -36,11 +36,11 @@ export type BudgetedSaleCellPayload = {
   projectId: string;
   tenantId: string;
   period: string;
-  salesUf: string | null;
+  salesPesos: string | null;
 };
 
 export type BudgetedSaleCellResponse = {
   tenantId: string;
   period: string;
-  salesUf: string | null;
+  salesPesos: string | null;
 };

@@ -27,17 +27,17 @@ export type Tenant360Kpis = {
   rentaFijaMensualUf: number;
   rentaFijaClp: number;
   ggccEstimadoUf: number;
-  ventasPromedioMensualUf: number;
+  ventasPromedioMensualPesos: number;
   waltMeses: number;
   facturacionUfM2: number | null;
-  ventasUfM2: number | null;
+  ventasPesosM2: number | null;
 };
 
 // --- Financial Timeline (chart data) ---
 export type Tenant360MonthlyPoint = {
   period: string;
   billingUf: number;
-  salesUf: number;
+  salesPesos: number;
   costoOcupacionPct: number | null;
   billingUfM2: number | null;
 };
@@ -110,7 +110,7 @@ export type BillingCategory = {
 // --- Sales Performance ---
 export type Tenant360SalesPoint = {
   period: string;
-  salesUf: number;
+  salesPesos: number;
   salesPerM2: number;
   variableRentUf: number;
   salesClp: number | null;
@@ -158,7 +158,7 @@ export type PeerComparisonRow = {
   tenantName: string;
   glam2: number;
   facturacionUfM2: number;
-  ventasUfM2: number;
+  ventasPesosM2: number;
   costoOcupacionPct: number | null;
   isCurrent: boolean;
 };
@@ -167,10 +167,10 @@ export type PeerComparison = {
   categoria: string;
   peerCount: number;
   avgFacturacionUfM2: number;
-  avgVentasUfM2: number;
+  avgVentasPesosM2: number;
   avgCostoOcupacionPct: number | null;
   currentFacturacionUfM2: number;
-  currentVentasUfM2: number;
+  currentVentasPesosM2: number;
   currentCostoOcupacionPct: number | null;
   peers: PeerComparisonRow[];
 };

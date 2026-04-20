@@ -68,7 +68,7 @@ export type WfAccountingRecord = {
 export type WfTenantSale = {
   tenantId: string;
   period: Date;
-  salesUf: DecimalLike;
+  salesPesos: DecimalLike;
 };
 
 // ---------------------------------------------------------------------------
@@ -126,7 +126,7 @@ export function buildWaterfall(
     const p = periodKey(s.period);
     const tenantMap =
       salesByTenantPeriod.get(s.tenantId) ?? new Map<string, number>();
-    tenantMap.set(p, (tenantMap.get(p) ?? 0) + toNum(s.salesUf));
+    tenantMap.set(p, (tenantMap.get(p) ?? 0) + toNum(s.salesPesos));
     salesByTenantPeriod.set(s.tenantId, tenantMap);
   }
 

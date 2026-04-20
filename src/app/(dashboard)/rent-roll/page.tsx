@@ -17,8 +17,7 @@ import {
   parseDateParam,
   resolveSnapshotDate
 } from "@/lib/rent-roll/snapshot-date";
-import { buildActualBillingByUnit } from "@/lib/shared/gap-utils";
-import { formatDecimal } from "@/lib/utils";
+import { formatClp, formatDecimal } from "@/lib/utils";
 
 type RentRollPageProps = {
   searchParams: {
@@ -52,7 +51,7 @@ export default async function RentRollPage({
 
   const periodoVentasVariable = shiftPeriod(periodoVentas, -VARIABLE_RENT_LAG_MONTHS);
 
-  const [contracts, unitSalesRaw, budgetedSalesRaw, localesActivos, accountingRaw] = await Promise.all([
+  const [contracts, unitSalesRaw, budgetedSalesRaw, localesActivos, latestValorUf] = await Promise.all([
     prisma.contract.findMany({
       where: {
         proyectoId: selectedProjectId,
@@ -112,7 +111,7 @@ export default async function RentRollPage({
       },
       select: {
         tenantId: true,
-        salesUf: true,
+        salesPesos: true,
         createdAt: true
       },
       orderBy: [{ createdAt: "desc" }]
@@ -124,7 +123,7 @@ export default async function RentRollPage({
       },
       select: {
         tenantId: true,
-        salesUf: true
+        salesPesos: true
       }
     }),
     prisma.unit.findMany({
@@ -140,42 +139,24 @@ export default async function RentRollPage({
         zona: { select: { nombre: true } }
       }
     }),
-    prisma.accountingRecord.findMany({
-      where: {
-        projectId: selectedProjectId,
-        period: new Date(`${periodoVentas}-01`),
-        group1: "INGRESOS DE EXPLOTACION"
-      },
-      select: {
-        unitId: true,
-        valueUf: true,
-        group1: true
-      }
-    })
+    prisma.valorUF.findFirst({ orderBy: { fecha: "desc" }, select: { valor: true } })
   ]);
+
+  const ufRate = latestValorUf ? Number(latestValorUf.valor.toString()) : 0;
 
   const ventasByTenantId = new Map<string, number>();
   for (const sale of unitSalesRaw) {
     if (!ventasByTenantId.has(sale.tenantId)) {
-      ventasByTenantId.set(sale.tenantId, Number(sale.salesUf));
+      ventasByTenantId.set(sale.tenantId, Number(sale.salesPesos));
     }
   }
 
   const budgetedByTenantId = new Map<string, number>();
   for (const row of budgetedSalesRaw) {
     if (!budgetedByTenantId.has(row.tenantId)) {
-      budgetedByTenantId.set(row.tenantId, Number(row.salesUf));
+      budgetedByTenantId.set(row.tenantId, Number(row.salesPesos));
     }
   }
-
-  const actualBillingByUnit = buildActualBillingByUnit(
-    accountingRaw.map((r) => ({
-      unitId: r.unitId,
-      valueUf: Number(r.valueUf),
-      group1: r.group1
-    }))
-  );
-  const hasAccountingData = accountingRaw.length > 0;
 
   const rows: RentRollDashboardTableRow[] = contracts.map((contract) => {
     const glam2 = Number(contract.local.glam2);
@@ -199,10 +180,13 @@ export default async function RentRollPage({
         (1 + Number(ggccActual.pctAdministracion) / 100)
       : 0;
 
-    const ventasUf = ventasByTenantId.has(contract.arrendatarioId)
+    const ventasPesos = ventasByTenantId.has(contract.arrendatarioId)
       ? (ventasByTenantId.get(contract.arrendatarioId) ?? null)
       : null;
-    const ventasPresupuestadasUf = budgetedByTenantId.get(contract.arrendatarioId) ?? null;
+    const ventasPresupuestadasPesos = budgetedByTenantId.get(contract.arrendatarioId) ?? null;
+    const ventasPresupuestadasUf = ventasPresupuestadasPesos !== null && ufRate > 0
+      ? ventasPresupuestadasPesos / ufRate
+      : null;
     const rentaVariableUf =
       ventasPresupuestadasUf !== null && tiers.length > 0
         ? calcTieredVariableRent(ventasPresupuestadasUf, tiers, rentaFijaUf)
@@ -210,13 +194,6 @@ export default async function RentRollPage({
     const pctRentaVariable = tiers.length > 0 ? tiers[0].pct : null;
     const pctFondoPromocion = contract.pctFondoPromocion
       ? Number(contract.pctFondoPromocion)
-      : null;
-
-    const expectedUf = rentaFijaUf + ggccUf + (rentaVariableUf ?? 0);
-    const facturadoRealUf = actualBillingByUnit.get(contract.localId) ?? null;
-    const brechaUf = facturadoRealUf !== null ? expectedUf - facturadoRealUf : null;
-    const brechaPct = facturadoRealUf !== null && expectedUf > 0
-      ? (brechaUf! / expectedUf) * 100
       : null;
 
     return {
@@ -229,14 +206,11 @@ export default async function RentRollPage({
       tarifaUfM2,
       rentaFijaUf,
       ggccUf,
-      ventasUf,
-      ventasPresupuestadasUf,
+      ventasPesos,
+      ventasPresupuestadasPesos,
       pctRentaVariable,
       rentaVariableUf,
-      pctFondoPromocion,
-      facturadoRealUf,
-      brechaUf,
-      brechaPct
+      pctFondoPromocion
     };
   });
 
@@ -245,27 +219,16 @@ export default async function RentRollPage({
       acc.glam2 += row.glam2;
       acc.rentaFijaUf += row.rentaFijaUf;
       acc.ggccUf += row.ggccUf;
-      if (row.ventasUf != null) {
-        acc.ventasUf += row.ventasUf;
+      if (row.ventasPesos != null) {
+        acc.ventasPesos += row.ventasPesos;
       }
       if (row.rentaVariableUf != null) {
         acc.rentaVariableUf += row.rentaVariableUf;
       }
-      if (row.facturadoRealUf != null) {
-        acc.facturadoRealUf += row.facturadoRealUf;
-      }
-      if (row.brechaUf != null) {
-        acc.brechaUf += row.brechaUf;
-      }
       return acc;
     },
-    { glam2: 0, rentaFijaUf: 0, ggccUf: 0, ventasUf: 0, rentaVariableUf: 0, facturadoRealUf: 0, brechaUf: 0 }
+    { glam2: 0, rentaFijaUf: 0, ggccUf: 0, ventasPesos: 0, rentaVariableUf: 0 }
   );
-
-  const totalEsperado = totals.rentaFijaUf + totals.ggccUf + totals.rentaVariableUf;
-  const totalBrechaPct = hasAccountingData && totalEsperado > 0
-    ? (totals.brechaUf / totalEsperado) * 100
-    : null;
 
   const ocupacionDetalle = buildOcupacionDetalle(
     localesActivos.map((l) => ({ ...l, zona: l.zona?.nombre ?? null })),
@@ -329,8 +292,6 @@ export default async function RentRollPage({
               <h2 className="text-base font-bold uppercase tracking-wide text-brand-700">
                 Rent Roll
               </h2>
-              <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-700">Teórico</span>
-              <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700">Efectivo</span>
             </div>
             <p className="mt-1 text-sm text-slate-600">
               Vista operacional snapshot: estado contractual actual y metricas en una fecha exacta.
@@ -364,8 +325,8 @@ export default async function RentRollPage({
         />
         <KpiCard
           metricId="kpi_rent_roll_snapshot_ventas_periodo_uf"
-          title="Ventas periodo (UF)"
-          value={formatDecimal(totals.ventasUf)}
+          title="Ventas periodo (Pesos)"
+          value={formatClp(totals.ventasPesos)}
           accent="slate"
         />
         <KpiCard
@@ -375,24 +336,6 @@ export default async function RentRollPage({
           subtitle={walt > 0 ? `Promedio ponderado al ${fecha}` : "Sin contratos activos"}
           accent="yellow"
         />
-        {hasAccountingData && (
-          <>
-            <KpiCard
-              metricId="kpi_rent_roll_snapshot_facturacion_esperada_vs_real"
-              title="Esperado vs Real (UF)"
-              value={`${formatDecimal(totalEsperado)} / ${formatDecimal(totals.facturadoRealUf)}`}
-              subtitle={`Periodo contable: ${periodoVentas}`}
-              accent={totalBrechaPct !== null && Math.abs(totalBrechaPct) >= 10 ? "red" : "green"}
-            />
-            <KpiCard
-              metricId="kpi_rent_roll_snapshot_brecha_total"
-              title="Brecha total"
-              value={`${formatDecimal(totals.brechaUf)} UF`}
-              subtitle={totalBrechaPct !== null ? `${formatDecimal(totalBrechaPct)}% del esperado` : undefined}
-              accent={totalBrechaPct !== null && Math.abs(totalBrechaPct) >= 10 ? "red" : totalBrechaPct !== null && Math.abs(totalBrechaPct) >= 2 ? "yellow" : "green"}
-            />
-          </>
-        )}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
@@ -410,7 +353,7 @@ export default async function RentRollPage({
         </article>
       </section>
 
-      <RentRollDashboardTable rows={rows} snapshotDate={fecha} proyectoId={selectedProjectId} hasAccountingData={hasAccountingData} />
+      <RentRollDashboardTable rows={rows} snapshotDate={fecha} proyectoId={selectedProjectId} />
     </main>
   );
 }

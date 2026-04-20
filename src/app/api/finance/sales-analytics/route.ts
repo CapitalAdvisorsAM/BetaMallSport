@@ -49,7 +49,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     const [rawSales, rawUnits, rawContracts] = await Promise.all([
       prisma.tenantSale.findMany({
         where: { projectId, period: { gte: desdeDate, lte: hastaDate } },
-        select: { tenantId: true, period: true, salesUf: true }
+        select: { tenantId: true, period: true, salesPesos: true }
       }),
       prisma.unit.findMany({
         where: { proyectoId: projectId, estado: "ACTIVO" },
@@ -98,7 +98,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     const sales: VentaSaleInput[] = rawSales.map((s) => ({
       tenantId: s.tenantId,
       period: s.period,
-      salesUf: s.salesUf
+      salesPesos: s.salesPesos
     }));
 
     const ventaContracts: VentaContractInput[] = rawContracts.map((c) => ({

@@ -60,7 +60,7 @@ async function buildVariableRentData(proyectoId: string): Promise<VariableRentDa
   const [ventas, contractsRaw] = await Promise.all([
     prisma.tenantSale.findMany({
       where: { projectId: proyectoId },
-      select: { tenantId: true, period: true, salesUf: true },
+      select: { tenantId: true, period: true, salesPesos: true },
     }),
     prisma.contract.findMany({
       where: { proyectoId },
@@ -94,7 +94,7 @@ async function buildVariableRentData(proyectoId: string): Promise<VariableRentDa
     );
     if (activeTarifas.length === 0) continue;
 
-    const ventasUf = venta.salesUf.toNumber();
+    const ventasUf = venta.salesPesos.toNumber();
     const tiers = activeTarifas.map((t) => ({
       umbralVentasUf: t.umbralVentasUf?.toNumber() ?? 0,
       pct: t.valor.toNumber(),

@@ -102,7 +102,7 @@ export function OccupancyClient({
       const params = new URLSearchParams({ projectId: selectedProjectId });
       if (desde) params.set("from", desde);
       if (hasta) params.set("to", hasta);
-      const res = await fetch(`/api/finance/occupancy?${params}`);
+      const res = await fetch(`/api/rent-roll/occupancy?${params}`);
       if (res.ok) {
         setData((await res.json()) as OccupancyTimeSeriesResponse);
       }

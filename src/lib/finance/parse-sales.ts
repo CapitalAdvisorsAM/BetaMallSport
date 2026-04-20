@@ -1,11 +1,11 @@
-﻿import * as XLSX from "xlsx";
+import * as XLSX from "xlsx";
 import { num, str } from "@/lib/finance/parse-utils";
 
 export type FilaVenta = {
   idCa: number;
   tienda: string;
   mes: Date;
-  ventasUf: number;
+  ventasPesos: number;
   categoriaTamano: string;
 };
 
@@ -14,7 +14,7 @@ function serialToDate(serial: number): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
 }
 
-/** Convierte nombre de mes en español + año â†’ Date (primer día del mes) */
+/** Convierte nombre de mes en español + año → Date (primer día del mes) */
 function mesAnioToDate(mes: string, anio: number): Date | null {
   const meses: Record<string, number> = {
     enero: 0, febrero: 1, marzo: 2, abril: 3, mayo: 4, junio: 5,
@@ -49,7 +49,7 @@ export function parseVentas(buffer: Buffer): FilaVenta[] {
     idCa: number;
     tienda: string;
     mes: Date;
-    ventasUf: number;
+    ventasPesos: number;
     categoriaTamano: string;
   }>();
 
@@ -83,19 +83,18 @@ export function parseVentas(buffer: Buffer): FilaVenta[] {
     }
     if (!mes) continue;
 
-    const ventasUf = num(row["Valor UF"]);
+    const ventasPesos = num(row["Valor Pesos"] ?? row["Valor UF"]);
     const tienda = str(row["Tienda"]);
     const categoriaTamano = str(row["Categoría (Tamaño)"] ?? row["Categoria (Tamano)"] ?? "");
 
     const key: Key = `${idCa}__${mes.toISOString().slice(0, 7)}`;
     const existing = acum.get(key);
     if (existing) {
-      existing.ventasUf += ventasUf;
+      existing.ventasPesos += ventasPesos;
     } else {
-      acum.set(key, { idCa, tienda, mes, ventasUf, categoriaTamano });
+      acum.set(key, { idCa, tienda, mes, ventasPesos, categoriaTamano });
     }
   }
 
   return [...acum.values()];
 }
-

@@ -1,0 +1,2772 @@
+{
+  "mode": "dry-run",
+  "project": {
+    "id": "befc6344-a1f1-48b4-a7ff-7d7747baddb0",
+    "nombre": "Mall Sport",
+    "slug": "mall-sport"
+  },
+  "period": "2026-04",
+  "file": "G:\\Unidades compartidas\\CA\\FI CA Rentas Comerciales\\13. Mall Sport\\03. CDG\\04. Presupuesto\\2026\\20260415 Presupuesto v24.xlsb.xlsx",
+  "summary": {
+    "total": 152,
+    "keep": 117,
+    "delete": 20,
+    "terminate": 15
+  },
+  "actions": [
+    {
+      "type": "KEEP",
+      "localCodigo": "207",
+      "contractId": "9a6bb6dd-f457-48fc-b4d2-311e466d32c1",
+      "numeroContrato": "8E7DDD53",
+      "tenant": "Khapia",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "9a6bb6dd-f457-48fc-b4d2-311e466d32c1",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "135-3",
+      "contractId": "26bc5910-bed9-4d40-b543-3582efc1dd0c",
+      "numeroContrato": "10D54AB1",
+      "tenant": "Cross Mountain",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "26bc5910-bed9-4d40-b543-3582efc1dd0c",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "202",
+      "contractId": "3c0f838a-6341-4a35-b5f1-4a649d74fb98",
+      "numeroContrato": "572C8C4C",
+      "tenant": "ORX FIT (Speediance)",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "3c0f838a-6341-4a35-b5f1-4a649d74fb98",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "M12A",
+      "contractId": "775e9c68-2930-4eaa-abf2-c6a209e60785",
+      "numeroContrato": "3DACFE17",
+      "tenant": "NN",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "775e9c68-2930-4eaa-abf2-c6a209e60785",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "113/115",
+      "contractId": "3e887d21-cfb8-4a33-a2be-a0ba14ed1427",
+      "numeroContrato": "67B13542",
+      "tenant": "Trek",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "3e887d21-cfb8-4a33-a2be-a0ba14ed1427",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "225",
+      "contractId": "5c5192be-8662-4513-9316-7cbd6b25283f",
+      "numeroContrato": "C-52",
+      "tenant": "Patagonia",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "5c5192be-8662-4513-9316-7cbd6b25283f",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "124/125",
+      "contractId": "149529d1-5ec7-43d0-947c-e060a3d96d56",
+      "numeroContrato": "D07C67F1",
+      "tenant": "The North Face",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "149529d1-5ec7-43d0-947c-e060a3d96d56",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "BODEGA ESC-01",
+      "contractId": "c9795ded-6d28-4d41-9b5d-5e9da8752b68",
+      "numeroContrato": "90",
+      "tenant": "Bodega Pedal City",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "c9795ded-6d28-4d41-9b5d-5e9da8752b68",
+          "numeroContrato": "90",
+          "tenant": "Bodega Pedal City",
+          "score": 205
+        },
+        {
+          "contractId": "f66fe6f5-1859-4a85-8c9c-d35f3e45008c",
+          "numeroContrato": "C59501EB",
+          "tenant": "Pedal City",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "BODEGA ESC-01",
+      "contractId": "f66fe6f5-1859-4a85-8c9c-d35f3e45008c",
+      "numeroContrato": "C59501EB",
+      "tenant": "Pedal City",
+      "keeperContractId": "c9795ded-6d28-4d41-9b5d-5e9da8752b68",
+      "keeperNumeroContrato": "90",
+      "keeperTenant": "Bodega Pedal City",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "c9795ded-6d28-4d41-9b5d-5e9da8752b68",
+          "numeroContrato": "90",
+          "tenant": "Bodega Pedal City",
+          "score": 205
+        },
+        {
+          "contractId": "f66fe6f5-1859-4a85-8c9c-d35f3e45008c",
+          "numeroContrato": "C59501EB",
+          "tenant": "Pedal City",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "126A",
+      "contractId": "61b7b03c-022b-4020-8ce1-9ebae5ec39e7",
+      "numeroContrato": "81",
+      "tenant": "Volkanica",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "61b7b03c-022b-4020-8ce1-9ebae5ec39e7",
+          "numeroContrato": "81",
+          "tenant": "Volkanica",
+          "score": 205
+        },
+        {
+          "contractId": "28e9295c-72e8-4647-bd7a-ee1cb1152de6",
+          "numeroContrato": "EEEF3B50",
+          "tenant": "Volkanica 2",
+          "score": 60
+        }
+      ]
+    },
+    {
+      "type": "TERMINATE",
+      "localCodigo": "126A",
+      "contractId": "28e9295c-72e8-4647-bd7a-ee1cb1152de6",
+      "numeroContrato": "EEEF3B50",
+      "tenant": "Volkanica 2",
+      "keeperContractId": "61b7b03c-022b-4020-8ce1-9ebae5ec39e7",
+      "keeperNumeroContrato": "81",
+      "keeperTenant": "Volkanica",
+      "cutoffDate": "2026-03-31",
+      "reason": "active_conflict_budget_prefers_other",
+      "ranking": [
+        {
+          "contractId": "61b7b03c-022b-4020-8ce1-9ebae5ec39e7",
+          "numeroContrato": "81",
+          "tenant": "Volkanica",
+          "score": 205
+        },
+        {
+          "contractId": "28e9295c-72e8-4647-bd7a-ee1cb1152de6",
+          "numeroContrato": "EEEF3B50",
+          "tenant": "Volkanica 2",
+          "score": 60
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "210",
+      "contractId": "8684356b-f344-4272-9441-a7a3778c66db",
+      "numeroContrato": "C-54",
+      "tenant": "Proutdoor",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "8684356b-f344-4272-9441-a7a3778c66db",
+          "numeroContrato": "C-54",
+          "tenant": "Proutdoor",
+          "score": 205
+        },
+        {
+          "contractId": "d0f96cb7-404a-4691-ac34-2b7e53cc9647",
+          "numeroContrato": "0273D752",
+          "tenant": "Proutdoor",
+          "score": 130
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "210",
+      "contractId": "d0f96cb7-404a-4691-ac34-2b7e53cc9647",
+      "numeroContrato": "0273D752",
+      "tenant": "Proutdoor",
+      "keeperContractId": "8684356b-f344-4272-9441-a7a3778c66db",
+      "keeperNumeroContrato": "C-54",
+      "keeperTenant": "Proutdoor",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "8684356b-f344-4272-9441-a7a3778c66db",
+          "numeroContrato": "C-54",
+          "tenant": "Proutdoor",
+          "score": 205
+        },
+        {
+          "contractId": "d0f96cb7-404a-4691-ac34-2b7e53cc9647",
+          "numeroContrato": "0273D752",
+          "tenant": "Proutdoor",
+          "score": 130
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "136",
+      "contractId": "ed2c5ed7-20db-4214-8795-b7f2ee450aba",
+      "numeroContrato": "276FDE16",
+      "tenant": "Starbucks Coffee",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "ed2c5ed7-20db-4214-8795-b7f2ee450aba",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "1S-18",
+      "contractId": "e2205286-5cd6-4748-99e5-d32c7b5d87df",
+      "numeroContrato": "9A64B42A",
+      "tenant": "Tabatiere",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "e2205286-5cd6-4748-99e5-d32c7b5d87df",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "118",
+      "contractId": "9ac63615-ba50-4e97-981b-02e7b4dfdb37",
+      "numeroContrato": "A8157055",
+      "tenant": "Full Bike",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "9ac63615-ba50-4e97-981b-02e7b4dfdb37",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "M9A",
+      "contractId": "7ecadc49-4c62-4946-b555-6573317c42aa",
+      "numeroContrato": "104",
+      "tenant": "Plaza Música",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "7ecadc49-4c62-4946-b555-6573317c42aa",
+          "numeroContrato": "104",
+          "tenant": "Plaza Música",
+          "score": 205
+        },
+        {
+          "contractId": "9ed3dae8-cc67-40bc-bd79-012c9632fa31",
+          "numeroContrato": "9289D61F",
+          "tenant": "Plaza Música",
+          "score": 130
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "M9A",
+      "contractId": "9ed3dae8-cc67-40bc-bd79-012c9632fa31",
+      "numeroContrato": "9289D61F",
+      "tenant": "Plaza Música",
+      "keeperContractId": "7ecadc49-4c62-4946-b555-6573317c42aa",
+      "keeperNumeroContrato": "104",
+      "keeperTenant": "Plaza Música",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "7ecadc49-4c62-4946-b555-6573317c42aa",
+          "numeroContrato": "104",
+          "tenant": "Plaza Música",
+          "score": 205
+        },
+        {
+          "contractId": "9ed3dae8-cc67-40bc-bd79-012c9632fa31",
+          "numeroContrato": "9289D61F",
+          "tenant": "Plaza Música",
+          "score": 130
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "214",
+      "contractId": "36d8164c-1995-4512-906f-2fab1545c56c",
+      "numeroContrato": "C-33",
+      "tenant": "Ibikes",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "36d8164c-1995-4512-906f-2fab1545c56c",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "107",
+      "contractId": "78fd5cdf-c44e-43ca-9abf-ef0421b8db0b",
+      "numeroContrato": "C-92",
+      "tenant": "Trail",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "78fd5cdf-c44e-43ca-9abf-ef0421b8db0b",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "135-1",
+      "contractId": "ee14a86c-0667-4d52-a799-9640f87ec848",
+      "numeroContrato": "5758A7F3",
+      "tenant": "Asics",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "ee14a86c-0667-4d52-a799-9640f87ec848",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "140",
+      "contractId": "933df729-2c62-434b-9f6e-b1651a91bb89",
+      "numeroContrato": "E63E8993",
+      "tenant": "New Balance",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "933df729-2c62-434b-9f6e-b1651a91bb89",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "112",
+      "contractId": "1971f0d9-deff-40dd-94cf-becdfa00c228",
+      "numeroContrato": "C-72",
+      "tenant": "Tatoo",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "1971f0d9-deff-40dd-94cf-becdfa00c228",
+          "numeroContrato": "C-72",
+          "tenant": "Tatoo",
+          "score": 205
+        },
+        {
+          "contractId": "ddf40304-0296-46a7-9868-a2701b2d449f",
+          "numeroContrato": "7B510BE2",
+          "tenant": "Tatoo",
+          "score": 160
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "112",
+      "contractId": "ddf40304-0296-46a7-9868-a2701b2d449f",
+      "numeroContrato": "7B510BE2",
+      "tenant": "Tatoo",
+      "keeperContractId": "1971f0d9-deff-40dd-94cf-becdfa00c228",
+      "keeperNumeroContrato": "C-72",
+      "keeperTenant": "Tatoo",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "1971f0d9-deff-40dd-94cf-becdfa00c228",
+          "numeroContrato": "C-72",
+          "tenant": "Tatoo",
+          "score": 205
+        },
+        {
+          "contractId": "ddf40304-0296-46a7-9868-a2701b2d449f",
+          "numeroContrato": "7B510BE2",
+          "tenant": "Tatoo",
+          "score": 160
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "L107",
+      "contractId": "4d03deed-b24c-49b3-aefe-a3846103fd95",
+      "numeroContrato": "111",
+      "tenant": "Kayak Chile",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "4d03deed-b24c-49b3-aefe-a3846103fd95",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "120",
+      "contractId": "cce29e3e-600d-487f-b03d-edb764da0604",
+      "numeroContrato": "69F3C920",
+      "tenant": "Thule",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "cce29e3e-600d-487f-b03d-edb764da0604",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "B2-T",
+      "contractId": "949c4e3b-46d5-499d-af15-9d3174752699",
+      "numeroContrato": "121",
+      "tenant": "Bodega Taringuita",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "949c4e3b-46d5-499d-af15-9d3174752699",
+          "numeroContrato": "121",
+          "tenant": "Bodega Taringuita",
+          "score": 205
+        },
+        {
+          "contractId": "0f664e51-9228-46a0-9f38-9a0be1b45e01",
+          "numeroContrato": "C21E351C",
+          "tenant": "Taringuita",
+          "score": 65
+        }
+      ]
+    },
+    {
+      "type": "TERMINATE",
+      "localCodigo": "B2-T",
+      "contractId": "0f664e51-9228-46a0-9f38-9a0be1b45e01",
+      "numeroContrato": "C21E351C",
+      "tenant": "Taringuita",
+      "keeperContractId": "949c4e3b-46d5-499d-af15-9d3174752699",
+      "keeperNumeroContrato": "121",
+      "keeperTenant": "Bodega Taringuita",
+      "cutoffDate": "2026-03-31",
+      "reason": "active_conflict_budget_prefers_other",
+      "ranking": [
+        {
+          "contractId": "949c4e3b-46d5-499d-af15-9d3174752699",
+          "numeroContrato": "121",
+          "tenant": "Bodega Taringuita",
+          "score": 205
+        },
+        {
+          "contractId": "0f664e51-9228-46a0-9f38-9a0be1b45e01",
+          "numeroContrato": "C21E351C",
+          "tenant": "Taringuita",
+          "score": 65
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "122",
+      "contractId": "98296c72-e5d4-4ad6-865e-59686ab01b42",
+      "numeroContrato": "FBFF4C3A",
+      "tenant": "Salomon",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "98296c72-e5d4-4ad6-865e-59686ab01b42",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "B4B",
+      "contractId": "6472db38-c486-4b0b-8fea-d0491a44f6a7",
+      "numeroContrato": "100",
+      "tenant": "Bodega Urban Go",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "6472db38-c486-4b0b-8fea-d0491a44f6a7",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "EV-02-01",
+      "contractId": "0c2887b5-4537-4895-b9bd-71eb3feda3c2",
+      "numeroContrato": "C1ACF78F",
+      "tenant": "Rally Kart",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "0c2887b5-4537-4895-b9bd-71eb3feda3c2",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "AC06A",
+      "contractId": "2f4ed920-094b-48b7-9268-8f3a9c981aab",
+      "numeroContrato": "8E0BE1BE",
+      "tenant": "Madera Consciente",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "2f4ed920-094b-48b7-9268-8f3a9c981aab",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "108",
+      "contractId": "0d7d5ea9-739d-4b27-b1a3-96f7401e48dc",
+      "numeroContrato": "B03603B4",
+      "tenant": "Sport House",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "0d7d5ea9-739d-4b27-b1a3-96f7401e48dc",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "135-2",
+      "contractId": "eefd4fce-adbf-4d85-aa70-19d571a5b1ea",
+      "numeroContrato": "9D428B94",
+      "tenant": "Under Armour",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "eefd4fce-adbf-4d85-aa70-19d571a5b1ea",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "227",
+      "contractId": "ec7d7766-0ed8-4597-beb7-c60b03cd7ff7",
+      "numeroContrato": "22",
+      "tenant": "Dmoov",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "ec7d7766-0ed8-4597-beb7-c60b03cd7ff7",
+          "numeroContrato": "22",
+          "tenant": "Dmoov",
+          "score": 205
+        },
+        {
+          "contractId": "10a95b6a-ba02-4a5d-a537-adf589349d0a",
+          "numeroContrato": "C-22",
+          "tenant": "Dmoov",
+          "score": 175
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "227",
+      "contractId": "10a95b6a-ba02-4a5d-a537-adf589349d0a",
+      "numeroContrato": "C-22",
+      "tenant": "Dmoov",
+      "keeperContractId": "ec7d7766-0ed8-4597-beb7-c60b03cd7ff7",
+      "keeperNumeroContrato": "22",
+      "keeperTenant": "Dmoov",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "ec7d7766-0ed8-4597-beb7-c60b03cd7ff7",
+          "numeroContrato": "22",
+          "tenant": "Dmoov",
+          "score": 205
+        },
+        {
+          "contractId": "10a95b6a-ba02-4a5d-a537-adf589349d0a",
+          "numeroContrato": "C-22",
+          "tenant": "Dmoov",
+          "score": 175
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "B2",
+      "contractId": "e728a3b6-6595-4fcc-b12d-37bbd168c05b",
+      "numeroContrato": "112",
+      "tenant": "Bodega Macaix",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "e728a3b6-6595-4fcc-b12d-37bbd168c05b",
+          "numeroContrato": "112",
+          "tenant": "Bodega Macaix",
+          "score": 205
+        },
+        {
+          "contractId": "81428f52-e3ab-4142-a3d9-32bdeb2d3c79",
+          "numeroContrato": "7721DC69",
+          "tenant": "Macaix",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "B2",
+      "contractId": "81428f52-e3ab-4142-a3d9-32bdeb2d3c79",
+      "numeroContrato": "7721DC69",
+      "tenant": "Macaix",
+      "keeperContractId": "e728a3b6-6595-4fcc-b12d-37bbd168c05b",
+      "keeperNumeroContrato": "112",
+      "keeperTenant": "Bodega Macaix",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "e728a3b6-6595-4fcc-b12d-37bbd168c05b",
+          "numeroContrato": "112",
+          "tenant": "Bodega Macaix",
+          "score": 205
+        },
+        {
+          "contractId": "81428f52-e3ab-4142-a3d9-32bdeb2d3c79",
+          "numeroContrato": "7721DC69",
+          "tenant": "Macaix",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "121",
+      "contractId": "b8c7fef3-0478-4ac3-958b-88b796dca432",
+      "numeroContrato": "DFAC6EAD",
+      "tenant": "Extremezone",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "b8c7fef3-0478-4ac3-958b-88b796dca432",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "135-4",
+      "contractId": "2de241c6-06c3-406f-aa39-7639e31df310",
+      "numeroContrato": "26342EBB",
+      "tenant": "Arena",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "2de241c6-06c3-406f-aa39-7639e31df310",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "L109",
+      "contractId": "39bec19d-f242-4b21-a206-e9023b901e7e",
+      "numeroContrato": "0884EC74",
+      "tenant": "Chile Climbers",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "39bec19d-f242-4b21-a206-e9023b901e7e",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "M18A",
+      "contractId": "fad8de2c-3c22-427e-8344-9d59ca6c2129",
+      "numeroContrato": "3D35C7FD",
+      "tenant": "Chaleco Lopez",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "fad8de2c-3c22-427e-8344-9d59ca6c2129",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "L108",
+      "contractId": "951d4e57-eda0-4514-a529-d856870aa9f3",
+      "numeroContrato": "EB73EE62",
+      "tenant": "Krossbar",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "951d4e57-eda0-4514-a529-d856870aa9f3",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "STAND 12 POWERSPORTS",
+      "contractId": "0b8bbb11-e35c-477a-8a8c-8a7e22fc2c97",
+      "numeroContrato": "2794B858",
+      "tenant": "Chaleco Lopez",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "0b8bbb11-e35c-477a-8a8c-8a7e22fc2c97",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "102",
+      "contractId": "3bdef6c7-5d4f-4ecd-9a24-f5d21e54aafa",
+      "numeroContrato": "277AC519",
+      "tenant": "Mountain Hardware",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "3bdef6c7-5d4f-4ecd-9a24-f5d21e54aafa",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "L102",
+      "contractId": "65a2806d-83c3-46ae-9090-bb0f9ea8bf9e",
+      "numeroContrato": "278261FE",
+      "tenant": "MIT Burger",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "65a2806d-83c3-46ae-9090-bb0f9ea8bf9e",
+          "numeroContrato": "278261FE",
+          "tenant": "MIT Burger",
+          "score": 160
+        },
+        {
+          "contractId": "87604e88-fe14-4546-9d1e-4b6ea16cf2bb",
+          "numeroContrato": "5B6F6BFD",
+          "tenant": "Mountain Hardware",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "TERMINATE",
+      "localCodigo": "L102",
+      "contractId": "87604e88-fe14-4546-9d1e-4b6ea16cf2bb",
+      "numeroContrato": "5B6F6BFD",
+      "tenant": "Mountain Hardware",
+      "keeperContractId": "65a2806d-83c3-46ae-9090-bb0f9ea8bf9e",
+      "keeperNumeroContrato": "278261FE",
+      "keeperTenant": "MIT Burger",
+      "cutoffDate": "2026-03-31",
+      "reason": "active_conflict_budget_prefers_other",
+      "ranking": [
+        {
+          "contractId": "65a2806d-83c3-46ae-9090-bb0f9ea8bf9e",
+          "numeroContrato": "278261FE",
+          "tenant": "MIT Burger",
+          "score": 160
+        },
+        {
+          "contractId": "87604e88-fe14-4546-9d1e-4b6ea16cf2bb",
+          "numeroContrato": "5B6F6BFD",
+          "tenant": "Mountain Hardware",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "216",
+      "contractId": "19433cb2-7792-4281-9c38-0bc09777227c",
+      "numeroContrato": "C-06",
+      "tenant": "Austral Tactical",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "19433cb2-7792-4281-9c38-0bc09777227c",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "209",
+      "contractId": "498bfb47-d993-4af7-bcd9-3b5971064ab3",
+      "numeroContrato": "4D98CE2B",
+      "tenant": "Helly Hansen",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "498bfb47-d993-4af7-bcd9-3b5971064ab3",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "109",
+      "contractId": "6800eaa0-c0cb-41d1-8d4e-1a012ea88e6b",
+      "numeroContrato": "D76EEDAB",
+      "tenant": "Kuhl",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "6800eaa0-c0cb-41d1-8d4e-1a012ea88e6b",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "208",
+      "contractId": "2ed95f2f-c04d-491d-87ae-0fe5bc48d697",
+      "numeroContrato": "525D4AFE",
+      "tenant": "Fly Shop",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "2ed95f2f-c04d-491d-87ae-0fe5bc48d697",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "135-5",
+      "contractId": "8f8eaecb-7ffa-47c7-bbd1-c1d198e8ad39",
+      "numeroContrato": "8181F6D2",
+      "tenant": "Todo Trail Running",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "8f8eaecb-7ffa-47c7-bbd1-c1d198e8ad39",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "TERMINATE",
+      "localCodigo": "211A",
+      "contractId": "35c7fdca-d348-44d7-b7ea-425858c1cf25",
+      "numeroContrato": "6B51153C",
+      "tenant": "Biking",
+      "cutoffDate": "2026-03-31",
+      "reason": "budget_has_no_valid_active_row"
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "2S-30 B3",
+      "contractId": "25e18251-f661-497b-b5b0-982977bb9078",
+      "numeroContrato": "98",
+      "tenant": "Bodega Gumo",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "25e18251-f661-497b-b5b0-982977bb9078",
+          "numeroContrato": "98",
+          "tenant": "Bodega Gumo",
+          "score": 205
+        },
+        {
+          "contractId": "cb6cefd3-cf4e-4272-a64b-4068dd40aba2",
+          "numeroContrato": "07A81291",
+          "tenant": "Gumo",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "2S-30 B3",
+      "contractId": "cb6cefd3-cf4e-4272-a64b-4068dd40aba2",
+      "numeroContrato": "07A81291",
+      "tenant": "Gumo",
+      "keeperContractId": "25e18251-f661-497b-b5b0-982977bb9078",
+      "keeperNumeroContrato": "98",
+      "keeperTenant": "Bodega Gumo",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "25e18251-f661-497b-b5b0-982977bb9078",
+          "numeroContrato": "98",
+          "tenant": "Bodega Gumo",
+          "score": 205
+        },
+        {
+          "contractId": "cb6cefd3-cf4e-4272-a64b-4068dd40aba2",
+          "numeroContrato": "07A81291",
+          "tenant": "Gumo",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "212A/ 213A",
+      "contractId": "c417e4b4-02cd-4d40-88b8-c4ba75c4dd70",
+      "numeroContrato": "AF7AA9ED",
+      "tenant": "Andes Gear",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "c417e4b4-02cd-4d40-88b8-c4ba75c4dd70",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "E1",
+      "contractId": "ae0111a1-b6cb-4ece-bd7b-825754512640",
+      "numeroContrato": "C-93",
+      "tenant": "Vending SOS",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "ae0111a1-b6cb-4ece-bd7b-825754512640",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "L105",
+      "contractId": "ddd44df5-76c5-45f0-a6e2-d43406f61876",
+      "numeroContrato": "82BBEB21",
+      "tenant": "D Barbers",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "ddd44df5-76c5-45f0-a6e2-d43406f61876",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "138/139",
+      "contractId": "617c2c38-2de0-46b5-87cf-7641330c2216",
+      "numeroContrato": "30",
+      "tenant": "Haka Honu",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "617c2c38-2de0-46b5-87cf-7641330c2216",
+          "numeroContrato": "30",
+          "tenant": "Haka Honu",
+          "score": 205
+        },
+        {
+          "contractId": "c16daa54-91bc-493a-ad81-76d2386c5b75",
+          "numeroContrato": "D4A922BC",
+          "tenant": "Lippi",
+          "score": 60
+        }
+      ]
+    },
+    {
+      "type": "TERMINATE",
+      "localCodigo": "138/139",
+      "contractId": "c16daa54-91bc-493a-ad81-76d2386c5b75",
+      "numeroContrato": "D4A922BC",
+      "tenant": "Lippi",
+      "keeperContractId": "617c2c38-2de0-46b5-87cf-7641330c2216",
+      "keeperNumeroContrato": "30",
+      "keeperTenant": "Haka Honu",
+      "cutoffDate": "2026-03-31",
+      "reason": "active_conflict_budget_prefers_other",
+      "ranking": [
+        {
+          "contractId": "617c2c38-2de0-46b5-87cf-7641330c2216",
+          "numeroContrato": "30",
+          "tenant": "Haka Honu",
+          "score": 205
+        },
+        {
+          "contractId": "c16daa54-91bc-493a-ad81-76d2386c5b75",
+          "numeroContrato": "D4A922BC",
+          "tenant": "Lippi",
+          "score": 60
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "215",
+      "contractId": "f2cfb931-0049-4779-a0a3-5d84a1ffa0c7",
+      "numeroContrato": "C-103",
+      "tenant": "Bianchi",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "f2cfb931-0049-4779-a0a3-5d84a1ffa0c7",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "206",
+      "contractId": "4fd578f7-916a-4f3f-aa82-000eb077a8f1",
+      "numeroContrato": "348D90B8",
+      "tenant": "Pedal City",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "4fd578f7-916a-4f3f-aa82-000eb077a8f1",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "TERMINATE",
+      "localCodigo": "B14",
+      "contractId": "f5e9d0cb-9bb0-4a6d-9a01-8b3db5e8a623",
+      "numeroContrato": "5E53DA78",
+      "tenant": "Macaix",
+      "cutoffDate": "2026-03-31",
+      "reason": "budget_marks_vacant"
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "M13A",
+      "contractId": "7e6506f8-6087-4b8a-8015-a86214d45340",
+      "numeroContrato": "C72BBE61",
+      "tenant": "Victorinox",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "7e6506f8-6087-4b8a-8015-a86214d45340",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "STAND 8 1S-30 POWESPORTS",
+      "contractId": "64127e6f-9fc7-40b9-89a8-8367f3e0228a",
+      "numeroContrato": "BD355F02",
+      "tenant": "Andes Wild Land",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "64127e6f-9fc7-40b9-89a8-8367f3e0228a",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "AC02",
+      "contractId": "d2084d7b-59f5-4d66-a5b0-783d95d7dd87",
+      "numeroContrato": "87DC13DB",
+      "tenant": "HappyLand",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "d2084d7b-59f5-4d66-a5b0-783d95d7dd87",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "203",
+      "contractId": "2065304e-f9c6-46a3-bae6-9eb233f3b161",
+      "numeroContrato": "C-64",
+      "tenant": "Speediance",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "2065304e-f9c6-46a3-bae6-9eb233f3b161",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "104/105",
+      "contractId": "db8a1197-d21c-4209-99a6-ea5170654d2c",
+      "numeroContrato": "BF93FE80",
+      "tenant": "Columbia",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "db8a1197-d21c-4209-99a6-ea5170654d2c",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "L103",
+      "contractId": "fac24d49-46ea-4413-9e90-150f7317a935",
+      "numeroContrato": "96D3B51D",
+      "tenant": "7Veinte",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "fac24d49-46ea-4413-9e90-150f7317a935",
+          "numeroContrato": "96D3B51D",
+          "tenant": "7Veinte",
+          "score": 160
+        },
+        {
+          "contractId": "ac689bb9-6870-4194-bfe7-77d4f0abc3c7",
+          "numeroContrato": "83477C5C",
+          "tenant": "Mountain Hardware",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "TERMINATE",
+      "localCodigo": "L103",
+      "contractId": "ac689bb9-6870-4194-bfe7-77d4f0abc3c7",
+      "numeroContrato": "83477C5C",
+      "tenant": "Mountain Hardware",
+      "keeperContractId": "fac24d49-46ea-4413-9e90-150f7317a935",
+      "keeperNumeroContrato": "96D3B51D",
+      "keeperTenant": "7Veinte",
+      "cutoffDate": "2026-03-31",
+      "reason": "active_conflict_budget_prefers_other",
+      "ranking": [
+        {
+          "contractId": "fac24d49-46ea-4413-9e90-150f7317a935",
+          "numeroContrato": "96D3B51D",
+          "tenant": "7Veinte",
+          "score": 160
+        },
+        {
+          "contractId": "ac689bb9-6870-4194-bfe7-77d4f0abc3c7",
+          "numeroContrato": "83477C5C",
+          "tenant": "Mountain Hardware",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "1S25/1S26",
+      "contractId": "ce88d6fb-ac18-4109-9b88-d79cd3bffde8",
+      "numeroContrato": "6A232709",
+      "tenant": "La Cochera",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "ce88d6fb-ac18-4109-9b88-d79cd3bffde8",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "1S-30 B7",
+      "contractId": "efc88fd8-21d2-4e08-989f-e85d40bb40cc",
+      "numeroContrato": "127",
+      "tenant": "Bodega Andes Wild Land",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "efc88fd8-21d2-4e08-989f-e85d40bb40cc",
+          "numeroContrato": "127",
+          "tenant": "Bodega Andes Wild Land",
+          "score": 205
+        },
+        {
+          "contractId": "f33aa325-a4af-4764-b393-875679a074ae",
+          "numeroContrato": "9A1D6EF5",
+          "tenant": "Andes Wild Land",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "1S-30 B7",
+      "contractId": "f33aa325-a4af-4764-b393-875679a074ae",
+      "numeroContrato": "9A1D6EF5",
+      "tenant": "Andes Wild Land",
+      "keeperContractId": "efc88fd8-21d2-4e08-989f-e85d40bb40cc",
+      "keeperNumeroContrato": "127",
+      "keeperTenant": "Bodega Andes Wild Land",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "efc88fd8-21d2-4e08-989f-e85d40bb40cc",
+          "numeroContrato": "127",
+          "tenant": "Bodega Andes Wild Land",
+          "score": 205
+        },
+        {
+          "contractId": "f33aa325-a4af-4764-b393-875679a074ae",
+          "numeroContrato": "9A1D6EF5",
+          "tenant": "Andes Wild Land",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "111",
+      "contractId": "54a9c503-61f0-43f3-ab39-3042cde4a084",
+      "numeroContrato": "E1F0181F",
+      "tenant": "HappyLand",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "54a9c503-61f0-43f3-ab39-3042cde4a084",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "130/135-6",
+      "contractId": "5e410466-20f0-4b64-9d6c-8f7925dbe8ce",
+      "numeroContrato": "26",
+      "tenant": "La Fuente Austral",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "5e410466-20f0-4b64-9d6c-8f7925dbe8ce",
+          "numeroContrato": "26",
+          "tenant": "La Fuente Austral",
+          "score": 205
+        },
+        {
+          "contractId": "a4702f95-abe9-4772-acc2-a627426aacba",
+          "numeroContrato": "8F7D5739",
+          "tenant": "Draft House / Fuente Austral",
+          "score": 60
+        }
+      ]
+    },
+    {
+      "type": "TERMINATE",
+      "localCodigo": "130/135-6",
+      "contractId": "a4702f95-abe9-4772-acc2-a627426aacba",
+      "numeroContrato": "8F7D5739",
+      "tenant": "Draft House / Fuente Austral",
+      "keeperContractId": "5e410466-20f0-4b64-9d6c-8f7925dbe8ce",
+      "keeperNumeroContrato": "26",
+      "keeperTenant": "La Fuente Austral",
+      "cutoffDate": "2026-03-31",
+      "reason": "active_conflict_budget_prefers_other",
+      "ranking": [
+        {
+          "contractId": "5e410466-20f0-4b64-9d6c-8f7925dbe8ce",
+          "numeroContrato": "26",
+          "tenant": "La Fuente Austral",
+          "score": 205
+        },
+        {
+          "contractId": "a4702f95-abe9-4772-acc2-a627426aacba",
+          "numeroContrato": "8F7D5739",
+          "tenant": "Draft House / Fuente Austral",
+          "score": 60
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "110",
+      "contractId": "3cb1d4bd-6cc9-44f6-88f1-57d82697d1e6",
+      "numeroContrato": "D64A8607",
+      "tenant": "Speedo",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "3cb1d4bd-6cc9-44f6-88f1-57d82697d1e6",
+          "numeroContrato": "D64A8607",
+          "tenant": "Speedo",
+          "score": 160
+        },
+        {
+          "contractId": "1af9dd34-9894-4c5f-a956-e5ae147aed22",
+          "numeroContrato": "0E6BA873",
+          "tenant": "HappyLand",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "TERMINATE",
+      "localCodigo": "110",
+      "contractId": "1af9dd34-9894-4c5f-a956-e5ae147aed22",
+      "numeroContrato": "0E6BA873",
+      "tenant": "HappyLand",
+      "keeperContractId": "3cb1d4bd-6cc9-44f6-88f1-57d82697d1e6",
+      "keeperNumeroContrato": "D64A8607",
+      "keeperTenant": "Speedo",
+      "cutoffDate": "2026-03-31",
+      "reason": "active_conflict_budget_prefers_other",
+      "ranking": [
+        {
+          "contractId": "3cb1d4bd-6cc9-44f6-88f1-57d82697d1e6",
+          "numeroContrato": "D64A8607",
+          "tenant": "Speedo",
+          "score": 160
+        },
+        {
+          "contractId": "1af9dd34-9894-4c5f-a956-e5ae147aed22",
+          "numeroContrato": "0E6BA873",
+          "tenant": "HappyLand",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "L100",
+      "contractId": "2dd02d5d-e731-4968-ac13-8a06c5be9b24",
+      "numeroContrato": "49",
+      "tenant": "Ola",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "2dd02d5d-e731-4968-ac13-8a06c5be9b24",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "2S -30",
+      "contractId": "23fac1fb-fcc9-46da-8a74-192561a1b415",
+      "numeroContrato": "44",
+      "tenant": "Museo Chaleco Lopez",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "23fac1fb-fcc9-46da-8a74-192561a1b415",
+          "numeroContrato": "44",
+          "tenant": "Museo Chaleco Lopez",
+          "score": 205
+        },
+        {
+          "contractId": "f7159a27-e904-4fb1-8ede-c35ae7ccacc4",
+          "numeroContrato": "5C68207A",
+          "tenant": "Chaleco Lopez",
+          "score": 60
+        }
+      ]
+    },
+    {
+      "type": "TERMINATE",
+      "localCodigo": "2S -30",
+      "contractId": "f7159a27-e904-4fb1-8ede-c35ae7ccacc4",
+      "numeroContrato": "5C68207A",
+      "tenant": "Chaleco Lopez",
+      "keeperContractId": "23fac1fb-fcc9-46da-8a74-192561a1b415",
+      "keeperNumeroContrato": "44",
+      "keeperTenant": "Museo Chaleco Lopez",
+      "cutoffDate": "2026-03-31",
+      "reason": "active_conflict_budget_prefers_other",
+      "ranking": [
+        {
+          "contractId": "23fac1fb-fcc9-46da-8a74-192561a1b415",
+          "numeroContrato": "44",
+          "tenant": "Museo Chaleco Lopez",
+          "score": 205
+        },
+        {
+          "contractId": "f7159a27-e904-4fb1-8ede-c35ae7ccacc4",
+          "numeroContrato": "5C68207A",
+          "tenant": "Chaleco Lopez",
+          "score": 60
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "E4",
+      "contractId": "96e5f70f-4520-4260-a56f-c9a742dce62c",
+      "numeroContrato": "9D4FAA9E",
+      "tenant": "Banco Chile",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "96e5f70f-4520-4260-a56f-c9a742dce62c",
+          "numeroContrato": "9D4FAA9E",
+          "tenant": "Banco Chile",
+          "score": 160
+        },
+        {
+          "contractId": "6ad32c50-d769-439e-9175-9f1e88cbbcb0",
+          "numeroContrato": "C-45",
+          "tenant": "Natural Vending",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "TERMINATE",
+      "localCodigo": "E4",
+      "contractId": "6ad32c50-d769-439e-9175-9f1e88cbbcb0",
+      "numeroContrato": "C-45",
+      "tenant": "Natural Vending",
+      "keeperContractId": "96e5f70f-4520-4260-a56f-c9a742dce62c",
+      "keeperNumeroContrato": "9D4FAA9E",
+      "keeperTenant": "Banco Chile",
+      "cutoffDate": "2026-03-31",
+      "reason": "active_conflict_budget_prefers_other",
+      "ranking": [
+        {
+          "contractId": "96e5f70f-4520-4260-a56f-c9a742dce62c",
+          "numeroContrato": "9D4FAA9E",
+          "tenant": "Banco Chile",
+          "score": 160
+        },
+        {
+          "contractId": "6ad32c50-d769-439e-9175-9f1e88cbbcb0",
+          "numeroContrato": "C-45",
+          "tenant": "Natural Vending",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "STAND 5-6-7 POWERSPORTS",
+      "contractId": "546efbb6-400d-4e41-aba0-cee478c2ddc2",
+      "numeroContrato": "8BF98DB4",
+      "tenant": "Palmax",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "546efbb6-400d-4e41-aba0-cee478c2ddc2",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "204",
+      "contractId": "6f83d21d-354f-44fc-872b-a5a4e5216bb3",
+      "numeroContrato": "C-12",
+      "tenant": "Caza y Armas",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "6f83d21d-354f-44fc-872b-a5a4e5216bb3",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "AC04",
+      "contractId": "ec41c76e-301b-4f03-88cd-8e8e4810b8b1",
+      "numeroContrato": "AAE25E53",
+      "tenant": "Popcorn",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "ec41c76e-301b-4f03-88cd-8e8e4810b8b1",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "B4",
+      "contractId": "0fc0b1e4-364c-48ce-a1f9-df0dd21cdea8",
+      "numeroContrato": "61",
+      "tenant": "Bodega Popcorn",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "0fc0b1e4-364c-48ce-a1f9-df0dd21cdea8",
+          "numeroContrato": "61",
+          "tenant": "Bodega Popcorn",
+          "score": 205
+        },
+        {
+          "contractId": "67bd0947-3f77-4ebd-ba0b-ed342846a85d",
+          "numeroContrato": "A8ADC225",
+          "tenant": "Popcorn",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "B4",
+      "contractId": "67bd0947-3f77-4ebd-ba0b-ed342846a85d",
+      "numeroContrato": "A8ADC225",
+      "tenant": "Popcorn",
+      "keeperContractId": "0fc0b1e4-364c-48ce-a1f9-df0dd21cdea8",
+      "keeperNumeroContrato": "61",
+      "keeperTenant": "Bodega Popcorn",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "0fc0b1e4-364c-48ce-a1f9-df0dd21cdea8",
+          "numeroContrato": "61",
+          "tenant": "Bodega Popcorn",
+          "score": 205
+        },
+        {
+          "contractId": "67bd0947-3f77-4ebd-ba0b-ed342846a85d",
+          "numeroContrato": "A8ADC225",
+          "tenant": "Popcorn",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "AC01-3",
+      "contractId": "cc982a82-f5bf-4a8d-aaf9-3e2c5d747141",
+      "numeroContrato": "A37F144F",
+      "tenant": "Chile Climbers",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "cc982a82-f5bf-4a8d-aaf9-3e2c5d747141",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "1S-30 B6",
+      "contractId": "09676667-3667-4ffd-8183-729fa1e1279d",
+      "numeroContrato": "62",
+      "tenant": "Bodega Sparta",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "09676667-3667-4ffd-8183-729fa1e1279d",
+          "numeroContrato": "62",
+          "tenant": "Bodega Sparta",
+          "score": 205
+        },
+        {
+          "contractId": "b1c35ff9-a71d-4575-829e-b1683eb6caf4",
+          "numeroContrato": "BEF97542",
+          "tenant": "Sparta",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "1S-30 B6",
+      "contractId": "b1c35ff9-a71d-4575-829e-b1683eb6caf4",
+      "numeroContrato": "BEF97542",
+      "tenant": "Sparta",
+      "keeperContractId": "09676667-3667-4ffd-8183-729fa1e1279d",
+      "keeperNumeroContrato": "62",
+      "keeperTenant": "Bodega Sparta",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "09676667-3667-4ffd-8183-729fa1e1279d",
+          "numeroContrato": "62",
+          "tenant": "Bodega Sparta",
+          "score": 205
+        },
+        {
+          "contractId": "b1c35ff9-a71d-4575-829e-b1683eb6caf4",
+          "numeroContrato": "BEF97542",
+          "tenant": "Sparta",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "E5",
+      "contractId": "c656daa6-e8de-4631-b90b-d7bc5098f506",
+      "numeroContrato": "00A52F80",
+      "tenant": "Sillones",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "c656daa6-e8de-4631-b90b-d7bc5098f506",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "101C",
+      "contractId": "b4ebbc15-12c8-4d38-a3ab-1a669dddd78d",
+      "numeroContrato": "C36D9A43",
+      "tenant": "Wilson",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "b4ebbc15-12c8-4d38-a3ab-1a669dddd78d",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "119",
+      "contractId": "a047415d-c6b3-441d-9bc0-6adb8c180cbb",
+      "numeroContrato": "790BAAAE",
+      "tenant": "Body&Soul",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "a047415d-c6b3-441d-9bc0-6adb8c180cbb",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "AC07",
+      "contractId": "235c0888-86b3-4635-91b1-47b8a437cb28",
+      "numeroContrato": "4DD6CBA4",
+      "tenant": "HappyLand",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "235c0888-86b3-4635-91b1-47b8a437cb28",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "135-7",
+      "contractId": "47a8d7ea-6773-4048-b573-aa4f7614e04e",
+      "numeroContrato": "2F23F4AA",
+      "tenant": "Subway",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "47a8d7ea-6773-4048-b573-aa4f7614e04e",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "L101",
+      "contractId": "c0252ecd-b4d0-459b-8899-44fbb382f35e",
+      "numeroContrato": "120",
+      "tenant": "Taringuita",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "c0252ecd-b4d0-459b-8899-44fbb382f35e",
+          "numeroContrato": "120",
+          "tenant": "Taringuita",
+          "score": 205
+        },
+        {
+          "contractId": "a4112b6a-64ae-48a3-a6e2-d41f072b29f2",
+          "numeroContrato": "80A4E08C",
+          "tenant": "Taringuita",
+          "score": 100
+        }
+      ]
+    },
+    {
+      "type": "TERMINATE",
+      "localCodigo": "L101",
+      "contractId": "a4112b6a-64ae-48a3-a6e2-d41f072b29f2",
+      "numeroContrato": "80A4E08C",
+      "tenant": "Taringuita",
+      "keeperContractId": "c0252ecd-b4d0-459b-8899-44fbb382f35e",
+      "keeperNumeroContrato": "120",
+      "keeperTenant": "Taringuita",
+      "cutoffDate": "2026-03-31",
+      "reason": "active_conflict_budget_prefers_other",
+      "ranking": [
+        {
+          "contractId": "c0252ecd-b4d0-459b-8899-44fbb382f35e",
+          "numeroContrato": "120",
+          "tenant": "Taringuita",
+          "score": 205
+        },
+        {
+          "contractId": "a4112b6a-64ae-48a3-a6e2-d41f072b29f2",
+          "numeroContrato": "80A4E08C",
+          "tenant": "Taringuita",
+          "score": 100
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "L104",
+      "contractId": "515334f1-9b4a-4a16-ba00-23d42ea27995",
+      "numeroContrato": "55",
+      "tenant": "KANO",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "515334f1-9b4a-4a16-ba00-23d42ea27995",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "106B",
+      "contractId": "9889277a-16e9-4e92-ab29-d34e13c14d56",
+      "numeroContrato": "56BAB218",
+      "tenant": "Sunglass Hut",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "9889277a-16e9-4e92-ab29-d34e13c14d56",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "AC01-2",
+      "contractId": "313c4a68-5767-4c35-876e-e17ade37ccad",
+      "numeroContrato": "470093C6",
+      "tenant": "Chile Climbers",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "313c4a68-5767-4c35-876e-e17ade37ccad",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "B4A",
+      "contractId": "9cfc5969-37d3-47f1-a516-4a2f6fb4f979",
+      "numeroContrato": "16",
+      "tenant": "Bodega Chile Climbers",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "9cfc5969-37d3-47f1-a516-4a2f6fb4f979",
+          "numeroContrato": "16",
+          "tenant": "Bodega Chile Climbers",
+          "score": 205
+        },
+        {
+          "contractId": "9ba403dd-ba88-4303-8a7d-1eaf7d23ae62",
+          "numeroContrato": "16B3BC6C",
+          "tenant": "Chile Climbers",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "B4A",
+      "contractId": "9ba403dd-ba88-4303-8a7d-1eaf7d23ae62",
+      "numeroContrato": "16B3BC6C",
+      "tenant": "Chile Climbers",
+      "keeperContractId": "9cfc5969-37d3-47f1-a516-4a2f6fb4f979",
+      "keeperNumeroContrato": "16",
+      "keeperTenant": "Bodega Chile Climbers",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "9cfc5969-37d3-47f1-a516-4a2f6fb4f979",
+          "numeroContrato": "16",
+          "tenant": "Bodega Chile Climbers",
+          "score": 205
+        },
+        {
+          "contractId": "9ba403dd-ba88-4303-8a7d-1eaf7d23ae62",
+          "numeroContrato": "16B3BC6C",
+          "tenant": "Chile Climbers",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "M14A",
+      "contractId": "e09143d5-f11a-4d4c-805c-a561ad852bb9",
+      "numeroContrato": "1FBE800E",
+      "tenant": "Victorinox",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "e09143d5-f11a-4d4c-805c-a561ad852bb9",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "B8",
+      "contractId": "67e23aca-3b03-4810-bdd4-17fd8a8852ab",
+      "numeroContrato": "69",
+      "tenant": "Bodega Starbucks Coffee",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "67e23aca-3b03-4810-bdd4-17fd8a8852ab",
+          "numeroContrato": "69",
+          "tenant": "Bodega Starbucks Coffee",
+          "score": 205
+        },
+        {
+          "contractId": "df006690-67ea-4252-961b-039177a18339",
+          "numeroContrato": "A2F8B0E1",
+          "tenant": "Starbucks Coffee",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "B8",
+      "contractId": "df006690-67ea-4252-961b-039177a18339",
+      "numeroContrato": "A2F8B0E1",
+      "tenant": "Starbucks Coffee",
+      "keeperContractId": "67e23aca-3b03-4810-bdd4-17fd8a8852ab",
+      "keeperNumeroContrato": "69",
+      "keeperTenant": "Bodega Starbucks Coffee",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "67e23aca-3b03-4810-bdd4-17fd8a8852ab",
+          "numeroContrato": "69",
+          "tenant": "Bodega Starbucks Coffee",
+          "score": 205
+        },
+        {
+          "contractId": "df006690-67ea-4252-961b-039177a18339",
+          "numeroContrato": "A2F8B0E1",
+          "tenant": "Starbucks Coffee",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "123",
+      "contractId": "a28bd27e-84ed-4581-af9a-c19ccc7a29fc",
+      "numeroContrato": "C-25",
+      "tenant": "Garmin",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "a28bd27e-84ed-4581-af9a-c19ccc7a29fc",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "205",
+      "contractId": "14e62e1d-f958-4192-b95d-6dded5a6829d",
+      "numeroContrato": "8E8230FA",
+      "tenant": "Nutravital SpA (Suples)",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "14e62e1d-f958-4192-b95d-6dded5a6829d",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "E6",
+      "contractId": "4d722512-8a33-4b76-9f87-6da89d966f2d",
+      "numeroContrato": "92AA756E",
+      "tenant": "Precision Fuel and Hydration",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "4d722512-8a33-4b76-9f87-6da89d966f2d",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "106A",
+      "contractId": "8072912f-b88e-4372-ba93-d7fb9527d1df",
+      "numeroContrato": "2AE8E8CB",
+      "tenant": "KINEGUN",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "8072912f-b88e-4372-ba93-d7fb9527d1df",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "116",
+      "contractId": "76541bb2-3c29-4e76-9af8-e5653d93211b",
+      "numeroContrato": "C-83",
+      "tenant": "Sparta",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "76541bb2-3c29-4e76-9af8-e5653d93211b",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "M6A",
+      "contractId": "cd6b015c-82ff-42e0-9db8-2dea8b544f6c",
+      "numeroContrato": "67335CE1",
+      "tenant": "Velopro",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "cd6b015c-82ff-42e0-9db8-2dea8b544f6c",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "B11",
+      "contractId": "55757b9d-9b03-49a4-a532-292bbfc6e2d3",
+      "numeroContrato": "41",
+      "tenant": "Bodega Extremezone",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "55757b9d-9b03-49a4-a532-292bbfc6e2d3",
+          "numeroContrato": "41",
+          "tenant": "Bodega Extremezone",
+          "score": 205
+        },
+        {
+          "contractId": "fc7f0e3c-5233-4d10-83ba-f5f5fa616cd6",
+          "numeroContrato": "89367EBD",
+          "tenant": "Extremezone",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "B11",
+      "contractId": "fc7f0e3c-5233-4d10-83ba-f5f5fa616cd6",
+      "numeroContrato": "89367EBD",
+      "tenant": "Extremezone",
+      "keeperContractId": "55757b9d-9b03-49a4-a532-292bbfc6e2d3",
+      "keeperNumeroContrato": "41",
+      "keeperTenant": "Bodega Extremezone",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "55757b9d-9b03-49a4-a532-292bbfc6e2d3",
+          "numeroContrato": "41",
+          "tenant": "Bodega Extremezone",
+          "score": 205
+        },
+        {
+          "contractId": "fc7f0e3c-5233-4d10-83ba-f5f5fa616cd6",
+          "numeroContrato": "89367EBD",
+          "tenant": "Extremezone",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "AC05",
+      "contractId": "8625b884-30c5-4947-9ddd-cd52a9c58791",
+      "numeroContrato": "2E1D6B5A",
+      "tenant": "Krispy Kreme",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "8625b884-30c5-4947-9ddd-cd52a9c58791",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "B5",
+      "contractId": "afc23975-dedc-46e7-bd04-70cb8ec3d38b",
+      "numeroContrato": "75",
+      "tenant": "Bodega Thule",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "afc23975-dedc-46e7-bd04-70cb8ec3d38b",
+          "numeroContrato": "75",
+          "tenant": "Bodega Thule",
+          "score": 205
+        },
+        {
+          "contractId": "83b7610b-ed88-4760-b419-c09ceec60577",
+          "numeroContrato": "E6068AE0",
+          "tenant": "Thule",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "B5",
+      "contractId": "83b7610b-ed88-4760-b419-c09ceec60577",
+      "numeroContrato": "E6068AE0",
+      "tenant": "Thule",
+      "keeperContractId": "afc23975-dedc-46e7-bd04-70cb8ec3d38b",
+      "keeperNumeroContrato": "75",
+      "keeperTenant": "Bodega Thule",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "afc23975-dedc-46e7-bd04-70cb8ec3d38b",
+          "numeroContrato": "75",
+          "tenant": "Bodega Thule",
+          "score": 205
+        },
+        {
+          "contractId": "83b7610b-ed88-4760-b419-c09ceec60577",
+          "numeroContrato": "E6068AE0",
+          "tenant": "Thule",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "101A",
+      "contractId": "a053a526-3a02-477f-9440-b91920ebc79a",
+      "numeroContrato": "8B6CC725",
+      "tenant": "Nimtu",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "a053a526-3a02-477f-9440-b91920ebc79a",
+          "numeroContrato": "8B6CC725",
+          "tenant": "Nimtu",
+          "score": 160
+        },
+        {
+          "contractId": "2da394e8-9de0-4f0d-928a-a2734237022b",
+          "numeroContrato": "F78BB38F",
+          "tenant": "Under Armour",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "TERMINATE",
+      "localCodigo": "101A",
+      "contractId": "2da394e8-9de0-4f0d-928a-a2734237022b",
+      "numeroContrato": "F78BB38F",
+      "tenant": "Under Armour",
+      "keeperContractId": "a053a526-3a02-477f-9440-b91920ebc79a",
+      "keeperNumeroContrato": "8B6CC725",
+      "keeperTenant": "Nimtu",
+      "cutoffDate": "2026-03-31",
+      "reason": "active_conflict_budget_prefers_other",
+      "ranking": [
+        {
+          "contractId": "a053a526-3a02-477f-9440-b91920ebc79a",
+          "numeroContrato": "8B6CC725",
+          "tenant": "Nimtu",
+          "score": 160
+        },
+        {
+          "contractId": "2da394e8-9de0-4f0d-928a-a2734237022b",
+          "numeroContrato": "F78BB38F",
+          "tenant": "Under Armour",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "218/219B",
+      "contractId": "b9e5c881-9ac2-4b6e-9a6b-a83483dd1a7e",
+      "numeroContrato": "328233A4",
+      "tenant": "Lifefitness",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "b9e5c881-9ac2-4b6e-9a6b-a83483dd1a7e",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "M2A",
+      "contractId": "a12c4d46-a8da-40d4-b875-91455231d964",
+      "numeroContrato": "FA1475D3",
+      "tenant": "Gumo",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "a12c4d46-a8da-40d4-b875-91455231d964",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "117",
+      "contractId": "73d22fd2-d37e-406f-9a95-200d4335a713",
+      "numeroContrato": "C6BF7481",
+      "tenant": "Lippi",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "73d22fd2-d37e-406f-9a95-200d4335a713",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "B6",
+      "contractId": "7239dcbc-b0a7-4c67-8b09-01fcc210f3d5",
+      "numeroContrato": "79",
+      "tenant": "Bodega Velopro",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "7239dcbc-b0a7-4c67-8b09-01fcc210f3d5",
+          "numeroContrato": "79",
+          "tenant": "Bodega Velopro",
+          "score": 205
+        },
+        {
+          "contractId": "e3ad7ecb-c263-459e-ab98-4b0751e6b80c",
+          "numeroContrato": "0FB02C2F",
+          "tenant": "Velopro",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "B6",
+      "contractId": "e3ad7ecb-c263-459e-ab98-4b0751e6b80c",
+      "numeroContrato": "0FB02C2F",
+      "tenant": "Velopro",
+      "keeperContractId": "7239dcbc-b0a7-4c67-8b09-01fcc210f3d5",
+      "keeperNumeroContrato": "79",
+      "keeperTenant": "Bodega Velopro",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "7239dcbc-b0a7-4c67-8b09-01fcc210f3d5",
+          "numeroContrato": "79",
+          "tenant": "Bodega Velopro",
+          "score": 205
+        },
+        {
+          "contractId": "e3ad7ecb-c263-459e-ab98-4b0751e6b80c",
+          "numeroContrato": "0FB02C2F",
+          "tenant": "Velopro",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "AC11-A",
+      "contractId": "d02723b2-60ba-42dc-bf8c-3361c6f93c52",
+      "numeroContrato": "F7E0E68B",
+      "tenant": "Palettas",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "d02723b2-60ba-42dc-bf8c-3361c6f93c52",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "1S-30 B8",
+      "contractId": "07271470-3d88-41c6-943d-cfc77eacba82",
+      "numeroContrato": "113",
+      "tenant": "Bodega Velopro",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "07271470-3d88-41c6-943d-cfc77eacba82",
+          "numeroContrato": "113",
+          "tenant": "Bodega Velopro",
+          "score": 205
+        },
+        {
+          "contractId": "a406d866-f9fa-4efa-a314-4571edb63452",
+          "numeroContrato": "2853C919",
+          "tenant": "Velopro",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "1S-30 B8",
+      "contractId": "a406d866-f9fa-4efa-a314-4571edb63452",
+      "numeroContrato": "2853C919",
+      "tenant": "Velopro",
+      "keeperContractId": "07271470-3d88-41c6-943d-cfc77eacba82",
+      "keeperNumeroContrato": "113",
+      "keeperTenant": "Bodega Velopro",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "07271470-3d88-41c6-943d-cfc77eacba82",
+          "numeroContrato": "113",
+          "tenant": "Bodega Velopro",
+          "score": 205
+        },
+        {
+          "contractId": "a406d866-f9fa-4efa-a314-4571edb63452",
+          "numeroContrato": "2853C919",
+          "tenant": "Velopro",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "BODEGA 1 POWERSPORTS",
+      "contractId": "fd834bf7-3ad5-4300-90a1-c4d4cfe19623",
+      "numeroContrato": "50",
+      "tenant": "Bodega Palmax",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "fd834bf7-3ad5-4300-90a1-c4d4cfe19623",
+          "numeroContrato": "50",
+          "tenant": "Bodega Palmax",
+          "score": 205
+        },
+        {
+          "contractId": "f0d3f28c-711d-4f60-961d-b13b45818ffe",
+          "numeroContrato": "A5C39603",
+          "tenant": "Palmax",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "BODEGA 1 POWERSPORTS",
+      "contractId": "f0d3f28c-711d-4f60-961d-b13b45818ffe",
+      "numeroContrato": "A5C39603",
+      "tenant": "Palmax",
+      "keeperContractId": "fd834bf7-3ad5-4300-90a1-c4d4cfe19623",
+      "keeperNumeroContrato": "50",
+      "keeperTenant": "Bodega Palmax",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "fd834bf7-3ad5-4300-90a1-c4d4cfe19623",
+          "numeroContrato": "50",
+          "tenant": "Bodega Palmax",
+          "score": 205
+        },
+        {
+          "contractId": "f0d3f28c-711d-4f60-961d-b13b45818ffe",
+          "numeroContrato": "A5C39603",
+          "tenant": "Palmax",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "101B",
+      "contractId": "d8d50b6d-c7be-422a-bba0-d092d0431358",
+      "numeroContrato": "19",
+      "tenant": "CandyLand",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "d8d50b6d-c7be-422a-bba0-d092d0431358",
+          "numeroContrato": "19",
+          "tenant": "CandyLand",
+          "score": 205
+        },
+        {
+          "contractId": "2f665ae3-f25a-4749-b273-a915e1d34dcd",
+          "numeroContrato": "CA5FAB11",
+          "tenant": "CandyLand",
+          "score": 130
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "101B",
+      "contractId": "2f665ae3-f25a-4749-b273-a915e1d34dcd",
+      "numeroContrato": "CA5FAB11",
+      "tenant": "CandyLand",
+      "keeperContractId": "d8d50b6d-c7be-422a-bba0-d092d0431358",
+      "keeperNumeroContrato": "19",
+      "keeperTenant": "CandyLand",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "d8d50b6d-c7be-422a-bba0-d092d0431358",
+          "numeroContrato": "19",
+          "tenant": "CandyLand",
+          "score": 205
+        },
+        {
+          "contractId": "2f665ae3-f25a-4749-b273-a915e1d34dcd",
+          "numeroContrato": "CA5FAB11",
+          "tenant": "CandyLand",
+          "score": 130
+        }
+      ]
+    },
+    {
+      "type": "TERMINATE",
+      "localCodigo": "1S-20-21-22",
+      "contractId": "67e15887-b77f-49da-96de-71faf4347c6a",
+      "numeroContrato": "7EB6B932",
+      "tenant": "Velopro",
+      "cutoffDate": "2026-03-31",
+      "reason": "budget_marks_vacant"
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "200/201",
+      "contractId": "78115b8b-9483-4df9-b833-c9a75b76c7ec",
+      "numeroContrato": "B3F1748F",
+      "tenant": "Adidas",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "78115b8b-9483-4df9-b833-c9a75b76c7ec",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "1S-19",
+      "contractId": "b109f178-a349-48d5-b659-786136d0ec26",
+      "numeroContrato": "959246D8",
+      "tenant": "PINK RABBIT",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "b109f178-a349-48d5-b659-786136d0ec26",
+          "numeroContrato": "959246D8",
+          "tenant": "PINK RABBIT",
+          "score": 160
+        },
+        {
+          "contractId": "1205b78e-9c05-4c5a-b91f-0dd76b33280e",
+          "numeroContrato": "E6ADCEA1",
+          "tenant": "Dmoov",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "TERMINATE",
+      "localCodigo": "1S-19",
+      "contractId": "1205b78e-9c05-4c5a-b91f-0dd76b33280e",
+      "numeroContrato": "E6ADCEA1",
+      "tenant": "Dmoov",
+      "keeperContractId": "b109f178-a349-48d5-b659-786136d0ec26",
+      "keeperNumeroContrato": "959246D8",
+      "keeperTenant": "PINK RABBIT",
+      "cutoffDate": "2026-03-31",
+      "reason": "active_conflict_budget_prefers_other",
+      "ranking": [
+        {
+          "contractId": "b109f178-a349-48d5-b659-786136d0ec26",
+          "numeroContrato": "959246D8",
+          "tenant": "PINK RABBIT",
+          "score": 160
+        },
+        {
+          "contractId": "1205b78e-9c05-4c5a-b91f-0dd76b33280e",
+          "numeroContrato": "E6ADCEA1",
+          "tenant": "Dmoov",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "217",
+      "contractId": "f9c6a100-e011-4866-b422-ff69ff9780da",
+      "numeroContrato": "3852CD4C",
+      "tenant": "100% Futbol",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "f9c6a100-e011-4866-b422-ff69ff9780da",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "AC01",
+      "contractId": "56b5b110-5e0b-4302-a0b5-cf33facefa2a",
+      "numeroContrato": "965AF56E",
+      "tenant": "Chile Climbers",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "56b5b110-5e0b-4302-a0b5-cf33facefa2a",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "M8A",
+      "contractId": "dcb576af-2c5e-4975-a1d8-f23498b34762",
+      "numeroContrato": "387622D5",
+      "tenant": "Safaria",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "dcb576af-2c5e-4975-a1d8-f23498b34762",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "219A",
+      "contractId": "9831baf8-dc66-4a21-8516-ae557fe9d778",
+      "numeroContrato": "D2823479",
+      "tenant": "Bestway",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "9831baf8-dc66-4a21-8516-ae557fe9d778",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "BODEGA 53",
+      "contractId": "3117901a-965e-45cc-bceb-08099ad86ba6",
+      "numeroContrato": "B96FD228",
+      "tenant": "Bodega Palettas",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "3117901a-965e-45cc-bceb-08099ad86ba6",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "M5A",
+      "contractId": "f977d479-693d-46ac-800a-5caff71b3289",
+      "numeroContrato": "7C27C86F",
+      "tenant": "iHelp",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "f977d479-693d-46ac-800a-5caff71b3289",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "127 A",
+      "contractId": "05436b9b-2d17-4ffa-a91e-e9f5604505b2",
+      "numeroContrato": "F93183E7",
+      "tenant": "Volkanica 2",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "05436b9b-2d17-4ffa-a91e-e9f5604505b2",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "M11A",
+      "contractId": "5e58de25-3980-4182-a9a4-06ad168b2591",
+      "numeroContrato": "FF3532D7",
+      "tenant": "Macaix",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "5e58de25-3980-4182-a9a4-06ad168b2591",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "220A/221A",
+      "contractId": "b35b8e4a-3530-4e3e-a2d5-261bb6fafbd2",
+      "numeroContrato": "5ACEF4DD",
+      "tenant": "Saltyco",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "b35b8e4a-3530-4e3e-a2d5-261bb6fafbd2",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "103",
+      "contractId": "c0a0c993-4a13-48a5-ad84-0e9ba04e32f2",
+      "numeroContrato": "D220BD7F",
+      "tenant": "Todo Triatlon",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "c0a0c993-4a13-48a5-ad84-0e9ba04e32f2",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "1S-30 B5",
+      "contractId": "680d3819-59f5-4c82-a6a5-718eeaae23ac",
+      "numeroContrato": "63",
+      "tenant": "Bodega Trek",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "680d3819-59f5-4c82-a6a5-718eeaae23ac",
+          "numeroContrato": "63",
+          "tenant": "Bodega Trek",
+          "score": 205
+        },
+        {
+          "contractId": "0fe1de61-2826-433b-9e83-4e3d0d8c1a2a",
+          "numeroContrato": "B9366467",
+          "tenant": "Trek",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "1S-30 B5",
+      "contractId": "0fe1de61-2826-433b-9e83-4e3d0d8c1a2a",
+      "numeroContrato": "B9366467",
+      "tenant": "Trek",
+      "keeperContractId": "680d3819-59f5-4c82-a6a5-718eeaae23ac",
+      "keeperNumeroContrato": "63",
+      "keeperTenant": "Bodega Trek",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "680d3819-59f5-4c82-a6a5-718eeaae23ac",
+          "numeroContrato": "63",
+          "tenant": "Bodega Trek",
+          "score": 205
+        },
+        {
+          "contractId": "0fe1de61-2826-433b-9e83-4e3d0d8c1a2a",
+          "numeroContrato": "B9366467",
+          "tenant": "Trek",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "M16A",
+      "contractId": "79eaaafc-62e0-4856-9aed-48df56c3cab5",
+      "numeroContrato": "CA41A850",
+      "tenant": "Autopista 84",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "79eaaafc-62e0-4856-9aed-48df56c3cab5",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "AC00",
+      "contractId": "22bbec02-1034-406c-bf40-500998a294a6",
+      "numeroContrato": "062EB352",
+      "tenant": "HappyLand",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "22bbec02-1034-406c-bf40-500998a294a6",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "LAGUNA",
+      "contractId": "23f6691b-2fe2-44a0-a3b8-184609e95993",
+      "numeroContrato": "115",
+      "tenant": "Aquabol",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "23f6691b-2fe2-44a0-a3b8-184609e95993",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "type": "KEEP",
+      "localCodigo": "1S-30 B1",
+      "contractId": "8237092e-77dc-4f3d-bbf0-5904b6c11d28",
+      "numeroContrato": "07",
+      "tenant": "Bodega Autopista 84",
+      "reason": "matches_budget_active",
+      "ranking": [
+        {
+          "contractId": "8237092e-77dc-4f3d-bbf0-5904b6c11d28",
+          "numeroContrato": "07",
+          "tenant": "Bodega Autopista 84",
+          "score": 205
+        },
+        {
+          "contractId": "a415bc03-2d4f-4220-a0db-fb349ed4a931",
+          "numeroContrato": "3BC2CB9A",
+          "tenant": "Autopista 84",
+          "score": 95
+        }
+      ]
+    },
+    {
+      "type": "DELETE",
+      "localCodigo": "1S-30 B1",
+      "contractId": "a415bc03-2d4f-4220-a0db-fb349ed4a931",
+      "numeroContrato": "3BC2CB9A",
+      "tenant": "Autopista 84",
+      "keeperContractId": "8237092e-77dc-4f3d-bbf0-5904b6c11d28",
+      "keeperNumeroContrato": "07",
+      "keeperTenant": "Bodega Autopista 84",
+      "cutoffDate": "2026-03-31",
+      "reason": "duplicate_active_same_origin",
+      "ranking": [
+        {
+          "contractId": "8237092e-77dc-4f3d-bbf0-5904b6c11d28",
+          "numeroContrato": "07",
+          "tenant": "Bodega Autopista 84",
+          "score": 205
+        },
+        {
+          "contractId": "a415bc03-2d4f-4220-a0db-fb349ed4a931",
+          "numeroContrato": "3BC2CB9A",
+          "tenant": "Autopista 84",
+          "score": 95
+        }
+      ]
+    }
+  ],
+  "applied": null
+}

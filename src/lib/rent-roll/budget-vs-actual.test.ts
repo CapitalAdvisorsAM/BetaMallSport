@@ -75,10 +75,10 @@ describe("buildBudgetVsActual — variable rent lag", () => {
       })
     ];
     const sales: BvaBudgetedSale[] = [
-      { tenantId: "t1", period: new Date("2026-05-01"), salesUf: "5000" }
+      { tenantId: "t1", period: new Date("2026-05-01"), salesPesos: "5000" }
     ];
-    const result = buildBudgetVsActual(contracts, [], sales, ["2026-06"]);
-    // fixed = 1 * 100 = 100; variable = max(0, 5000 * 10/100 - 100) = 400
+    const result = buildBudgetVsActual(contracts, [], sales, ["2026-06"], new Map([["2026-05", 1]]));
+    // fixed = 1 * 100 = 100; variable = max(0, 5000/1 * 10/100 - 100) = 400
     // total = 500
     expect(result.rows[0].budgetUf).toBe(500);
   });

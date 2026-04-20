@@ -11,7 +11,7 @@ export type TenantInfo = {
 export type BudgetedSaleMatrixInput = {
   tenantId: string;
   period: Date;
-  salesUf: DecimalLike;
+  salesPesos: DecimalLike;
 };
 
 export type BudgetedSalesMatrixRow = {
@@ -25,7 +25,7 @@ export type BudgetedSalesMatrixRow = {
 };
 
 export type BudgetedSalesMatrixSummary = {
-  totalBudgetUf: number;
+  totalBudgetPesos: number;
   tenantsWithData: number;
   tenantsWithMissing: number;
 };
@@ -66,12 +66,12 @@ export function buildBudgetedSalesMatrix(params: {
     const pKey = periodKey(sale.period);
     if (!periodSet.has(pKey)) continue;
     const tenantMap = byTenantPeriod.get(sale.tenantId) ?? new Map<string, number>();
-    tenantMap.set(pKey, (tenantMap.get(pKey) ?? 0) + toNum(sale.salesUf));
+    tenantMap.set(pKey, (tenantMap.get(pKey) ?? 0) + toNum(sale.salesPesos));
     byTenantPeriod.set(sale.tenantId, tenantMap);
   }
 
   const rows: BudgetedSalesMatrixRow[] = [];
-  let totalBudgetUf = 0;
+  let totalBudgetPesos = 0;
   let tenantsWithData = 0;
   let tenantsWithMissing = 0;
 
@@ -97,7 +97,7 @@ export function buildBudgetedSalesMatrix(params: {
 
     if (filledCount > 0) tenantsWithData += 1;
     if (filledCount > 0 && missingPeriods.length > 0) tenantsWithMissing += 1;
-    totalBudgetUf += total;
+    totalBudgetPesos += total;
 
     rows.push({
       tenantId: info.id,
@@ -116,7 +116,7 @@ export function buildBudgetedSalesMatrix(params: {
     periods,
     rows,
     summary: {
-      totalBudgetUf,
+      totalBudgetPesos,
       tenantsWithData,
       tenantsWithMissing,
     },
@@ -130,7 +130,7 @@ export async function fetchBudgetedSalesMatrix(
 ): Promise<BudgetedSalesMatrixResponse> {
   const periods = buildPeriodRange(desde, hasta);
   if (periods.length === 0) {
-    return { periods: [], rows: [], summary: { totalBudgetUf: 0, tenantsWithData: 0, tenantsWithMissing: 0 } };
+    return { periods: [], rows: [], summary: { totalBudgetPesos: 0, tenantsWithData: 0, tenantsWithMissing: 0 } };
   }
 
   const rangeStart = periodToDate(desde);
@@ -142,7 +142,7 @@ export async function fetchBudgetedSalesMatrix(
         projectId,
         period: { gte: rangeStart, lt: rangeEndExclusive },
       },
-      select: { tenantId: true, period: true, salesUf: true },
+      select: { tenantId: true, period: true, salesPesos: true },
     }),
     prisma.tenant.findMany({
       where: { proyectoId: projectId },

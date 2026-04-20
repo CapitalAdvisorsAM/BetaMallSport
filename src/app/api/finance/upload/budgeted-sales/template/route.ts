@@ -10,28 +10,20 @@ export const runtime = "nodejs";
 const instruccionesGenerales = [
   "La hoja del archivo debe llamarse 'Data Presupuesto' o 'Presupuesto Ventas'.",
   "La fecha puede venir como 'Fecha' (serial Excel o YYYY-MM-DD) o como 'Mes' (ej: 'enero') + 'Año'.",
-  "Las ventas presupuestadas se agregan por 'ID CA' y mes: multiples filas se suman.",
-  "'ID CA' es el identificador externo del arrendatario (ID Capital Advisors).",
-  "'Valor UF' es el monto en UF presupuestado. Debe ser positivo.",
+  "Las ventas presupuestadas se agregan por 'Tienda' y mes: multiples filas se suman.",
+  "'Tienda' es el nombre comercial del local y se usa para identificar al arrendatario.",
+  "'Valor Pesos' es el monto en pesos (CLP) presupuestado. Debe ser positivo.",
   "Se utiliza para calcular la renta variable esperada por local y periodo."
 ];
 
 const columns: ColumnDef[] = [
   {
-    key: "ID CA",
-    label: "ID CA",
-    required: true,
-    description: "Identificador numerico del arrendatario (Capital Advisors). Ej: 10234.",
-    format: "number",
-    width: 12,
-    headerPalette: "navy"
-  },
-  {
     key: "Tienda",
     label: "Tienda",
-    required: false,
-    description: "Nombre comercial del local. Usado como apoyo al mapeo.",
-    width: 28
+    required: true,
+    description: "Nombre comercial del local. Se usa para identificar al arrendatario.",
+    width: 28,
+    headerPalette: "navy"
   },
   {
     key: "Fecha",
@@ -75,12 +67,12 @@ const columns: ColumnDef[] = [
     width: 10
   },
   {
-    key: "Valor UF",
-    label: "Valor UF",
+    key: "Valor Pesos",
+    label: "Valor Pesos",
     required: true,
-    description: "Venta presupuestada en UF. Positivo.",
+    description: "Venta presupuestada en pesos (CLP). Positivo.",
     format: "number",
-    width: 14,
+    width: 16,
     headerPalette: "gold"
   }
 ];
@@ -96,20 +88,18 @@ export async function GET(): Promise<NextResponse> {
       columns,
       exampleRows: [
         {
-          "ID CA": "10234",
           Tienda: "Mountain Hardwear",
           Fecha: "2026-01-01",
           Mes: "enero",
           "Año": "2026",
-          "Valor UF": "3500.00"
+          "Valor Pesos": "120000000"
         },
         {
-          "ID CA": "10489",
           Tienda: "Cafe Urbano",
           Fecha: "2026-01-01",
           Mes: "enero",
           "Año": "2026",
-          "Valor UF": "900.00"
+          "Valor Pesos": "30000000"
         }
       ],
       instrucciones: instruccionesGenerales

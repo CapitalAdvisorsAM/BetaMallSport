@@ -26,56 +26,32 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     if (rows.length === 0) throw new ApiError(400, "No se encontraron filas de presupuesto.");
 
-    const [tenants, existingMappings] = await Promise.all([
-      prisma.tenant.findMany({
-        where: { proyectoId: projectId },
-        select: { id: true, rut: true, nombreComercial: true },
-      }),
-      prisma.salesTenantMapping.findMany({
-        where: { projectId },
-        select: { salesAccountId: true, tenantId: true },
-      }),
-    ]);
-    const tenantBySalesAccountId = new Map(existingMappings.map((m) => [m.salesAccountId, m.tenantId]));
+    const tenants = await prisma.tenant.findMany({
+      where: { proyectoId: projectId },
+      select: { id: true, rut: true, nombreComercial: true },
+    });
 
-    const uniqueSalesAccountIds = [...new Set(rows.map((row) => row.idCa))];
+    const uniqueTiendas = [...new Set(rows.map((row) => row.tienda).filter(Boolean))];
+    const tenantByTienda = new Map<string, string>();
     const unmapped: Array<{
-      idCa: number;
       tienda: string;
       sugerencias: Array<{ nombre: string; rut: string; score: number }>;
     }> = [];
-    const newMappings: Array<{
-      projectId: string;
-      salesAccountId: number;
-      storeName: string;
-      tenantId: string;
-      createdBy: string;
-    }> = [];
 
-    for (const salesAccountId of uniqueSalesAccountIds) {
-      if (tenantBySalesAccountId.has(salesAccountId)) continue;
-
-      const store = rows.find((row) => row.idCa === salesAccountId)?.tienda ?? "";
+    for (const tienda of uniqueTiendas) {
+      const key = tienda.toLowerCase();
       const scored = tenants
         .map((tenant) => ({
           ...tenant,
-          score: similarity(store, tenant.nombreComercial)
+          score: similarity(tienda, tenant.nombreComercial)
         }))
         .sort((a, b) => b.score - a.score);
 
       if (scored[0] && scored[0].score >= 0.7) {
-        tenantBySalesAccountId.set(salesAccountId, scored[0].id);
-        newMappings.push({
-          projectId,
-          salesAccountId,
-          storeName: store,
-          tenantId: scored[0].id,
-          createdBy: session.user.id
-        });
+        tenantByTienda.set(key, scored[0].id);
       } else {
         unmapped.push({
-          idCa: salesAccountId,
-          tienda: store,
+          tienda,
           sugerencias: scored.slice(0, 3).map((tenant) => ({
             nombre: tenant.nombreComercial,
             rut: tenant.rut,
@@ -85,22 +61,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
     }
 
-    if (newMappings.length > 0) {
-      await prisma.salesTenantMapping.createMany({ data: newMappings, skipDuplicates: true });
-    }
-
     const periods = [...new Set(rows.map((row) => row.mes.toISOString().slice(0, 7)))];
 
     const BATCH_SIZE = 100;
     const upsertOps = rows
-      .filter((row) => tenantBySalesAccountId.has(row.idCa))
+      .filter((row) => tenantByTienda.has(row.tienda.toLowerCase()))
       .map((row) => {
-        const tenantId = tenantBySalesAccountId.get(row.idCa)!;
+        const tenantId = tenantByTienda.get(row.tienda.toLowerCase())!;
         const period = new Date(Date.UTC(row.mes.getFullYear(), row.mes.getMonth(), 1));
         return prisma.tenantBudgetedSale.upsert({
           where: { tenantId_period: { tenantId, period } },
-          update: { salesUf: row.ventasUf, updatedAt: new Date() },
-          create: { projectId, tenantId, period, salesUf: row.ventasUf },
+          update: { salesPesos: row.ventasPesos, updatedAt: new Date() },
+          create: { projectId, tenantId, period, salesPesos: row.ventasPesos },
         });
       });
 
@@ -129,8 +101,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       totalFilas: rows.length,
       recordsUpserted: upserted,
       registrosUpserted: upserted,
-      automaticMatches: newMappings.length,
-      matchesAutomaticos: newMappings.length,
+      automaticMatches: uniqueTiendas.length - unmapped.length,
+      matchesAutomaticos: uniqueTiendas.length - unmapped.length,
       sinMapeo: unmapped
     });
   } catch (error) {
