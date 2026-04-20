@@ -2,26 +2,13 @@
 
 import { Badge } from "@/components/ui/badge";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
-import { formatUf } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { cn, formatClp, formatSquareMeters, formatUf } from "@/lib/utils";
 import type { Tenant360Profile, Tenant360QuickStats } from "@/types/tenant-360";
 
 type TenantProfileHeaderProps = {
   profile: Tenant360Profile;
   quickStats: Tenant360QuickStats;
 };
-
-function formatClp(value: number): string {
-  return new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0
-  }).format(value);
-}
-
-function formatM2(value: number): string {
-  return `${value.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m\u00b2`;
-}
 
 export function TenantProfileHeader({ profile, quickStats }: TenantProfileHeaderProps): JSX.Element {
   return (
@@ -55,20 +42,13 @@ export function TenantProfileHeader({ profile, quickStats }: TenantProfileHeader
 
         {/* Quick stats row */}
         <div className="mt-4 flex flex-wrap gap-6 border-t border-slate-100 pt-4">
-          <QuickStat label="GLA arrendada" value={formatM2(quickStats.totalLeasedM2)} />
+          <QuickStat label="GLA arrendada" value={formatSquareMeters(quickStats.totalLeasedM2)} />
           <QuickStat label="Contratos activos" value={String(quickStats.activeContractCount)} />
           <QuickStat
             label="Renta fija mensual"
             value={`${formatUf(quickStats.monthlyFixedRentUf)} UF`}
             sub={formatClp(quickStats.monthlyFixedRentClp)}
           />
-          {quickStats.ufDate ? (
-            <QuickStat
-              label="Valor UF"
-              value={formatClp(quickStats.ufValue)}
-              sub={`al ${quickStats.ufDate}`}
-            />
-          ) : null}
         </div>
       </div>
     </ModuleSectionCard>

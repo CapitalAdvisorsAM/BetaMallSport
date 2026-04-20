@@ -10,7 +10,6 @@ import { UnifiedTable } from "@/components/ui/UnifiedTable";
 import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
 import { formatEerr } from "@/lib/finance/eerr";
 import type { AnalisisFila, AnalisisResponse } from "@/app/api/finance/analysis/route";
-import type { ProjectOption } from "@/types/finance";
 
 type DimensionType = "arrendatario" | "local" | "categoria" | "seccion" | "piso";
 type OrdenType = "nombre" | "total_desc" | "total_asc";
@@ -31,7 +30,6 @@ const ORDEN_LABELS: Record<OrdenType, string> = {
 const compactTableTheme = getTableTheme("compact");
 
 type Props = {
-  projects: ProjectOption[];
   selectedProjectId: string;
   defaultDesde?: string;
   defaultHasta?: string;
@@ -43,7 +41,6 @@ function valueCls(v: number): string {
 }
 
 export function FinanceAnalysisClient({
-  projects,
   selectedProjectId,
   defaultDesde,
   defaultHasta
@@ -115,9 +112,7 @@ export function FinanceAnalysisClient({
       <ModuleHeader
         title="Análisis de Facturación"
         description="Vista flexible de los registros contables. Elige dimensión, tipo de cobro y periodo."
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        preserve={{ desde, hasta }}
+        valueBadges={["efectivo"]}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <ProjectPeriodToolbar desde={desde} hasta={hasta} onDesdeChange={setDesde} onHastaChange={setHasta} />
@@ -205,7 +200,7 @@ export function FinanceAnalysisClient({
         ) : !data || filas.length === 0 ? (
           <ModuleEmptyState
             message="Sin datos para los filtros seleccionados."
-            actionHref={`/finance/upload?project=${selectedProjectId}`}
+            actionHref="/finance/upload"
             actionLabel="Cargar datos contables"
           />
         ) : (

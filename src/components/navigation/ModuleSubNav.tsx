@@ -40,7 +40,7 @@ export function ModuleSubNav({
   const [isPending, startTransition] = useTransition();
 
   return (
-    <nav className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
+    <nav className="flex flex-wrap items-center gap-x-1 border-b border-slate-200 pb-0">
       {items.filter((item) => item.enabled).map((item) => {
         const active = isNavItemActive(pathname, item.href, item.match);
         const href = buildHref(item.href, searchParams, preserveQueryKeys);
@@ -50,10 +50,10 @@ export function ModuleSubNav({
             key={item.href}
             href={href}
             className={cn(
-              "rounded-md px-3 py-1.5 text-sm",
+              "relative -mb-px border-b-2 px-3 py-3 text-sm transition-colors",
               active
-                ? "bg-brand-500 font-semibold text-white"
-                : "bg-slate-100 font-medium text-slate-700 hover:bg-slate-200",
+                ? "border-b-brand-500 font-semibold text-brand-700"
+                : "border-b-transparent font-medium text-slate-500 hover:border-b-slate-300 hover:text-slate-700",
               isPending && !active && "pointer-events-none opacity-60"
             )}
             onClick={(e) => {
@@ -67,7 +67,7 @@ export function ModuleSubNav({
         );
       })}
       {isPending && (
-        <div className="ml-1 h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-brand-500" />
+        <div className="ml-2 h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-brand-500" />
       )}
     </nav>
   );

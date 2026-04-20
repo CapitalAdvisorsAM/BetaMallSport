@@ -1,7 +1,7 @@
 "use client";
 
 import { KpiCard } from "@/components/dashboard/KpiCard";
-import { formatUf } from "@/lib/utils";
+import { formatClp, formatPercent, formatUf } from "@/lib/utils";
 import type { Tenant360Kpis, PeerComparison } from "@/types/tenant-360";
 
 type TenantKpiRowProps = {
@@ -9,21 +9,9 @@ type TenantKpiRowProps = {
   peerComparison?: PeerComparison | null;
 };
 
-function formatClp(value: number): string {
-  return new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0
-  }).format(value);
-}
-
-function formatPct(value: number | null): string {
+function formatPctOrDash(value: number | null): string {
   if (value === null) return "\u2014";
-  return `${value.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
-}
-
-function formatMonths(value: number): string {
-  return `${value.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} meses`;
+  return formatPercent(value);
 }
 
 function costoAccent(pct: number | null): "green" | "yellow" | "red" {
@@ -54,10 +42,10 @@ export function TenantKpiRow({ kpis, peerComparison }: TenantKpiRowProps): JSX.E
       <KpiCard
         metricId="kpi_tenant360_costo_ocupacion_pct"
         title="Costo Ocupacion"
-        value={formatPct(kpis.costoOcupacionPct)}
+        value={formatPctOrDash(kpis.costoOcupacionPct)}
         subtitle={
           peer && peer.avgCostoOcupacionPct !== null && kpis.costoOcupacionPct !== null
-            ? `Prom. pares: ${formatPct(peer.avgCostoOcupacionPct)}`
+            ? `Prom. pares: ${formatPctOrDash(peer.avgCostoOcupacionPct)}`
             : undefined
         }
         accent={costoAccent(kpis.costoOcupacionPct)}
@@ -79,7 +67,7 @@ export function TenantKpiRow({ kpis, peerComparison }: TenantKpiRowProps): JSX.E
       <KpiCard
         metricId="kpi_tenant360_walt_meses"
         title="WALT"
-        value={formatMonths(kpis.waltMeses)}
+        value={`${kpis.waltMeses.toFixed(1)} meses`}
         accent={waltAccent(kpis.waltMeses)}
       />
       <KpiCard

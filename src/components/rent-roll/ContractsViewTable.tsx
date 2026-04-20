@@ -44,7 +44,7 @@ export function ContractsViewTable({
         filterFn: "includesString",
         cell: ({ row }) => (
           <Link
-            href={`/rent-roll/contracts/${row.original.id}?project=${proyectoId}`}
+            href={`/rent-roll/contracts/${row.original.id}`}
             className="whitespace-nowrap font-medium text-brand-500 underline underline-offset-2 transition-colors hover:text-brand-700"
           >
             {row.original.numeroContrato}
@@ -63,7 +63,7 @@ export function ContractsViewTable({
         filterFn: "includesString",
         cell: ({ row }) => (
           <Link
-            href={`/tenants/${row.original.arrendatarioId}?project=${proyectoId}`}
+            href={`/tenants/${row.original.arrendatarioId}`}
             className="whitespace-nowrap text-brand-500 underline underline-offset-2 font-medium transition-colors hover:text-brand-700"
           >
             {row.original.arrendatario}

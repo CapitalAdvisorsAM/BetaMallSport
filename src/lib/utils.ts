@@ -32,6 +32,35 @@ export function formatUf(value: number, fractionDigits = 2): string {
   });
 }
 
+export function formatUfPerM2(value: number): string {
+  return value.toLocaleString("es-CL", {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4
+  });
+}
+
+export function formatPercent(value: number, fractionDigits = 1): string {
+  return `${value.toLocaleString("es-CL", {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits
+  })}%`;
+}
+
+export function formatSquareMeters(value: number): string {
+  return `${value.toLocaleString("es-CL", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })} m\u00b2`;
+}
+
+export function formatClp(value: number): string {
+  return new Intl.NumberFormat("es-CL", {
+    style: "currency",
+    currency: "CLP",
+    maximumFractionDigits: 0
+  }).format(value);
+}
+
 export function formatDateString(value: string | null): string {
   if (!value) {
     return "-";
@@ -81,6 +110,14 @@ export function computeEstadoContrato(
     return ContractStatus.GRACIA;
   }
   return ContractStatus.VIGENTE;
+}
+
+const MESES_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+export function formatPeriodo(periodo: string): string {
+  const [year, month] = periodo.split("-");
+  if (!year || !month) return periodo;
+  return `${MESES_ES[parseInt(month, 10) - 1] ?? month} ${year}`;
 }
 
 export function slugify(value: string): string {

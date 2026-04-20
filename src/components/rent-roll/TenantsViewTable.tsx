@@ -2,10 +2,12 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { type ColumnDef } from "@tanstack/react-table";
+import { type ColumnDef, type Row } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/DataTable";
-import { numberFilterColumn, statusBadgeColumn } from "@/components/ui/data-table-columns";
+import { statusBadgeColumn } from "@/components/ui/data-table-columns";
+import { TableDisclosureButton } from "@/components/ui/TableDisclosureButton";
 import { useDataTable } from "@/hooks/useDataTable";
+import { TenantContractSubRow, type ContractDetail } from "@/components/rent-roll/TenantContractSubRow";
 
 type TenantsViewRow = {
   id: string;
@@ -15,6 +17,7 @@ type TenantsViewRow = {
   contratosAsociados: number;
   contratosVigentes: number;
   contratosVigentesNumeros: string;
+  contratos: ContractDetail[];
 };
 
 type TenantsViewTableProps = {
@@ -26,6 +29,10 @@ type TenantsViewTableProps = {
 
 const VIGENTE_OPTIONS = ["Si", "No"];
 
+function renderSubRow(row: Row<TenantsViewRow>): React.ReactNode {
+  return <TenantContractSubRow contratos={row.original.contratos} />;
+}
+
 export function TenantsViewTable({
   rows,
   selectedDetailId,
@@ -34,13 +41,28 @@ export function TenantsViewTable({
   const columns = useMemo<ColumnDef<TenantsViewRow, unknown>[]>(
     () => [
       {
+        id: "_expand",
+        header: "",
+        enableSorting: false,
+        enableColumnFilter: false,
+        size: 32,
+        cell: ({ row }) =>
+          row.original.contratos.length > 0 ? (
+            <TableDisclosureButton
+              expanded={row.getIsExpanded()}
+              label={row.getIsExpanded() ? "Contraer contratos" : "Ver contratos"}
+              onToggle={() => row.toggleExpanded()}
+            />
+          ) : null,
+      },
+      {
         accessorKey: "nombreComercial",
         header: "Arrendatario",
         filterFn: "includesString",
         cell: ({ row }) => (
           <Link
-            href={`/tenants/${row.original.id}?project=${proyectoId}`}
-            className="text-brand-500 underline underline-offset-2 font-medium transition-colors hover:text-brand-700"
+            href={`/tenants/${row.original.id}`}
+            className="font-medium text-brand-500 underline underline-offset-2 transition-colors hover:text-brand-700"
           >
             {row.original.nombreComercial}
           </Link>
@@ -50,7 +72,11 @@ export function TenantsViewTable({
         accessorKey: "rut",
         header: "RUT",
         filterFn: "includesString",
-        cell: ({ row }) => <span className="whitespace-nowrap">{row.original.rut}</span>
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap font-mono text-[11px] text-slate-500">
+            {row.original.rut}
+          </span>
+        ),
       },
       statusBadgeColumn<TenantsViewRow>({
         id: "vigente",
@@ -61,36 +87,57 @@ export function TenantsViewTable({
         getClassName: (value) =>
           value === "Si"
             ? "rounded-full border-emerald-200 bg-emerald-100 text-emerald-700"
-            : "rounded-full border-slate-200 bg-slate-100 text-slate-700"
-      }),
-      numberFilterColumn<TenantsViewRow>({
-        accessorKey: "contratosAsociados",
-        header: "Contratos asociados",
-        cell: (row) => <span className="whitespace-nowrap">{row.contratosAsociados}</span>,
-        meta: { isNumeric: true },
-      }),
-      numberFilterColumn<TenantsViewRow>({
-        accessorKey: "contratosVigentes",
-        header: "Contratos vigentes",
-        cell: (row) => <span className="whitespace-nowrap">{row.contratosVigentes}</span>,
-        meta: { isNumeric: true },
+            : "rounded-full border-slate-200 bg-slate-100 text-slate-700",
       }),
       {
+        accessorKey: "contratosAsociados",
+        header: "Contratos",
+        meta: {
+          isNumeric: true,
+          align: "right",
+          summary: { type: "sum" },
+        },
+        cell: ({ row }) => (
+          <span className="tabular-nums">{row.original.contratosAsociados}</span>
+        ),
+      },
+      {
+        accessorKey: "contratosVigentes",
+        header: "Activos período",
+        meta: {
+          isNumeric: true,
+          align: "right",
+          summary: { type: "sum" },
+        },
+        cell: ({ row }) => (
+          <span className="tabular-nums font-semibold text-brand-700">
+            {row.original.contratosVigentes}
+          </span>
+        ),
+      },
+      {
         accessorKey: "contratosVigentesNumeros",
-        header: "N contrato vigente",
+        header: "N° contrato",
         filterFn: "includesString",
         enableSorting: false,
-        cell: ({ row }) => <span>{row.original.contratosVigentesNumeros || "-"}</span>
-      }
+        cell: ({ row }) => (
+          <span className="block border-l border-slate-200 pl-3 font-mono text-[11px] text-slate-500">
+            {row.original.contratosVigentesNumeros || "—"}
+          </span>
+        ),
+      },
     ],
     [proyectoId]
   );
 
-  const { table } = useDataTable(rows, columns);
+  const { table } = useDataTable(rows, columns, { expandable: true });
 
   return (
     <DataTable
       table={table}
+      density="compact"
+      summaryRow={{ enabled: true, label: "Totales" }}
+      renderSubRow={renderSubRow}
       emptyMessage="No se encontraron arrendatarios con contratos activos para los filtros aplicados."
       selectedId={selectedDetailId}
     />

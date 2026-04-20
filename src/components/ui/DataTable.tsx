@@ -9,7 +9,8 @@ import {
   type RowData,
   type Table as TanStackTable
 } from "@tanstack/react-table";
-import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { ChevronDown, ChevronUp, Inbox, Search, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useRouter } from "next/navigation";
 import {
@@ -49,6 +50,7 @@ declare module "@tanstack/react-table" {
     filterType?: DataTableFilterType; // "text" = free search; "string"/"enum" = checklist; "number" = range
     isNumeric?: boolean;
     isCritical?: boolean;
+    sticky?: boolean; // pin column to left edge (sticky left-0)
     summary?: DataTableSummaryMeta;
     linkTo?: {
       path?: string;
@@ -57,6 +59,14 @@ declare module "@tanstack/react-table" {
     };
   }
 }
+
+const VIRTUALIZATION_THRESHOLD = 100;
+
+const DENSITY_ROW_HEIGHT: Record<TableDensity, number> = {
+  compact: 33,
+  default: 41,
+  comfortable: 49,
+};
 
 interface DataTableProps<TData> {
   table: TanStackTable<TData>;
@@ -67,6 +77,7 @@ interface DataTableProps<TData> {
   getRowClassName?: (row: Row<TData>, index: number) => string | undefined;
   renderSubRow?: (row: Row<TData>) => React.ReactNode;
   selectedId?: string;
+  virtualize?: boolean;
 }
 
 function getColumnAlign<TData>(column: Column<TData, unknown>): DataTableAlign {
@@ -420,11 +431,13 @@ export function DataTable<TData>({
   density = "default",
   getRowClassName,
   renderSubRow,
-  selectedId
+  selectedId,
+  virtualize = true,
 }: DataTableProps<TData>): JSX.Element {
   const router = useRouter();
   const [selectedRecord, setSelectedRecord] = React.useState<TData | null>(null);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   const theme = getTableTheme(density);
   const rows = table.getRowModel().rows;
@@ -433,6 +446,15 @@ export function DataTable<TData>({
   const hasActiveFilters = table.getState().columnFilters.length > 0;
   const visibleColumns = table.getVisibleLeafColumns();
   const columnCount = visibleColumns.length;
+
+  const shouldVirtualize = virtualize && rows.length > VIRTUALIZATION_THRESHOLD;
+
+  const rowVirtualizer = useVirtualizer({
+    count: shouldVirtualize ? rows.length : 0,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => DENSITY_ROW_HEIGHT[density],
+    overscan: 10,
+  });
 
 
   const summaryEnabled = summaryRow?.enabled ?? false;
@@ -470,11 +492,88 @@ export function DataTable<TData>({
       ? firstSummaryMeta.formatter(firstSummaryValue)
       : firstSummaryValue;
 
+  function renderRowContent(row: Row<TData>, index: number) {
+    return (
+      <React.Fragment key={row.id}>
+        <TableRow
+          className={cn(
+            getStripedRowClass(index, density),
+            theme.rowHover,
+            getRowClassName?.(row, index),
+            (row.original as { id: string }).id === selectedId && "bg-brand-50 border-l-4 border-brand-500"
+          )}
+        >
+          {row.getVisibleCells().map((cell) => {
+            const linkTo = cell.column.columnDef.meta?.linkTo;
+            const value = cell.getValue();
+            const recordId = linkTo?.idKey
+              ? (row.original as Record<string, unknown>)[linkTo.idKey]
+              : (row.original as Record<string, unknown>).id;
+
+            const handleLinkClick = (e: React.MouseEvent) => {
+              if (!linkTo) return;
+              e.stopPropagation();
+
+              if (linkTo.triggerDetail || !linkTo.path) {
+                setSelectedRecord(row.original);
+                setIsModalOpen(true);
+              } else {
+                router.push(`${linkTo.path}?id=${recordId}`);
+              }
+            };
+
+            return (
+              <TableCell
+                key={cell.id}
+                className={cn(
+                  theme.cell,
+                  getCellAlignClass(getColumnAlign(cell.column)),
+                  (cell.column.columnDef.meta?.isNumeric || getColumnAlign(cell.column) === "right") && "tabular-nums",
+                  cell.column.columnDef.meta?.isNumeric && "text-right",
+                  cell.column.columnDef.meta?.isCritical && "font-mono font-semibold",
+                  cell.column.columnDef.meta?.sticky && "sticky left-0 z-10 bg-inherit"
+                )}
+              >
+                {linkTo ? (
+                  <span
+                    onClick={handleLinkClick}
+                    className="cursor-pointer text-brand-500 hover:text-brand-700 underline underline-offset-2 font-medium transition-colors"
+                    >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext()) ??
+                      String(value ?? "")}
+                  </span>
+                ) : (
+                  <>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext()) ??
+                      String(value ?? "")}
+                  </>
+                )}
+              </TableCell>
+            );
+          })}
+        </TableRow>
+        {renderSubRow && row.getIsExpanded() ? (
+          <TableRow className="bg-slate-50/40 hover:bg-slate-50/40">
+            <TableCell colSpan={columnCount} className={theme.cell}>
+              {renderSubRow(row)}
+            </TableCell>
+          </TableRow>
+        ) : null}
+      </React.Fragment>
+    );
+  }
+
   return (
     <>
-      <div className={cn(theme.surface)}>
+      <div
+        ref={scrollContainerRef}
+        className={cn(
+          theme.surface,
+          shouldVirtualize && "max-h-[600px] overflow-auto"
+        )}
+      >
         <Table density={density} className={theme.table}>
-          <TableHeader className={theme.head}>
+          <TableHeader className={cn(theme.head, shouldVirtualize && "sticky top-0 z-10")}>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="hover:bg-transparent">
                   {headerGroup.headers.map((header) => (
@@ -487,7 +586,8 @@ export function DataTable<TData>({
                       }
                       className={cn(
                         theme.headCell,
-                        getCellAlignClass(getColumnAlign(header.column))
+                        getCellAlignClass(getColumnAlign(header.column)),
+                        header.column.columnDef.meta?.sticky && "sticky left-0 z-10 bg-brand-700"
                       )}
                     >
                       {renderHeader(header)}
@@ -498,79 +598,38 @@ export function DataTable<TData>({
             </TableHeader>
             <TableBody>
               {rows.length > 0 ? (
-                rows.map((row, index) => (
-                  <React.Fragment key={row.id}>
-                    <TableRow
-                      className={cn(
-                        getStripedRowClass(index, density),
-                        theme.rowHover,
-                        getRowClassName?.(row, index),
-                        (row.original as { id: string }).id === selectedId && "bg-brand-50 border-l-4 border-brand-500"
-                      )}
-                    >
-                      {row.getVisibleCells().map((cell) => {
-                        const linkTo = cell.column.columnDef.meta?.linkTo;
-                        const value = cell.getValue();
-                        const recordId = linkTo?.idKey
-                          ? (row.original as Record<string, unknown>)[linkTo.idKey]
-                          : (row.original as Record<string, unknown>).id;
-
-                        const handleLinkClick = (e: React.MouseEvent) => {
-                          if (!linkTo) return;
-                          e.stopPropagation();
-
-                          if (linkTo.triggerDetail || !linkTo.path) {
-                            setSelectedRecord(row.original);
-                            setIsModalOpen(true);
-                          } else {
-                            router.push(`${linkTo.path}?id=${recordId}`);
-                          }
-                        };
-
-                        return (
-                          <TableCell
-                            key={cell.id}
-                            className={cn(
-                              theme.cell,
-                              getCellAlignClass(getColumnAlign(cell.column)),
-                              cell.column.columnDef.meta?.isNumeric && "tabular-nums text-right",
-                              cell.column.columnDef.meta?.isCritical && "font-mono font-semibold"
-                            )}
-                          >
-                            {linkTo ? (
-                              <span
-                                onClick={handleLinkClick}
-                                className="cursor-pointer text-brand-500 hover:text-brand-700 underline underline-offset-2 font-medium transition-colors"
-                                >
-                                {flexRender(cell.column.columnDef.cell, cell.getContext()) ??
-                                  String(value ?? "")}
-                              </span>
-                            ) : (
-                              <>
-                                {flexRender(cell.column.columnDef.cell, cell.getContext()) ??
-                                  String(value ?? "")}
-                              </>
-                            )}
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                    {renderSubRow && row.getIsExpanded() ? (
-                      <TableRow className="bg-slate-50/40 hover:bg-slate-50/40">
-                        <TableCell colSpan={columnCount} className={theme.cell}>
-                          {renderSubRow(row)}
-                        </TableCell>
-                      </TableRow>
-                    ) : null}
-                  </React.Fragment>
-                ))
+                shouldVirtualize ? (
+                  <>
+                    {rowVirtualizer.getVirtualItems().length > 0 && (
+                      <tr style={{ height: rowVirtualizer.getVirtualItems()[0].start }} />
+                    )}
+                    {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                      const row = rows[virtualRow.index];
+                      return renderRowContent(row, virtualRow.index);
+                    })}
+                    {rowVirtualizer.getVirtualItems().length > 0 && (
+                      <tr
+                        style={{
+                          height:
+                            rowVirtualizer.getTotalSize() -
+                            (rowVirtualizer.getVirtualItems().at(-1)?.end ?? 0),
+                        }}
+                      />
+                    )}
+                  </>
+                ) : (
+                  rows.map((row, index) => renderRowContent(row, index))
+                )
               ) : (
                 <TableRow className="bg-white hover:bg-white">
                   <TableCell
                     colSpan={columnCount}
-                    className={cn(theme.cell, "py-6 text-center text-sm text-slate-500")}
+                    className={cn(theme.cell, "py-8 text-center")}
                   >
-                    {emptyMessage}
+                    <div className="flex flex-col items-center gap-2">
+                      <Inbox className="h-8 w-8 text-slate-300" aria-hidden />
+                      <p className="text-sm text-slate-500">{emptyMessage}</p>
+                    </div>
                   </TableCell>
                 </TableRow>
               )}
@@ -581,7 +640,9 @@ export function DataTable<TData>({
                 {hasActiveFilters ? (
                   <TableRow className="border-t border-slate-200 bg-white hover:bg-white">
                     <TableCell colSpan={columnCount} className={cn(theme.cell, "py-2 text-right text-xs text-slate-500")}>
-                      {filteredRows} de {totalRows} filas
+                      <span aria-live="polite" aria-atomic="true">
+                        {filteredRows} de {totalRows} filas
+                      </span>
                     </TableCell>
                   </TableRow>
                 ) : null}
@@ -613,7 +674,7 @@ export function DataTable<TData>({
                         <TableCell
                           key={`summary-${column.id}`}
                           className={cn(
-                            `whitespace-nowrap ${theme.cell}`,
+                            `whitespace-nowrap tabular-nums ${theme.cell}`,
                             getCellAlignClass(getColumnAlign(column))
                           )}
                         >

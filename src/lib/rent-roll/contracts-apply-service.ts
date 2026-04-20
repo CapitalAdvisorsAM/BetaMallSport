@@ -37,6 +37,9 @@ export type ContratoApplyRow = {
   rentaVariablePct: string | null;
   pctFondoPromocion: string | null;
   multiplicadorDiciembre: string | null;
+  multiplicadorJunio: string | null;
+  multiplicadorJulio: string | null;
+  multiplicadorAgosto: string | null;
   codigoCC: string | null;
   ggccPctAdministracion: string | null;
   ggccPctReajuste: string | null;
@@ -228,6 +231,9 @@ export function normalizeContratoRow(
   const rentaVariablePct = normalizeNullable(data.rentaVariablePct)?.replace(",", ".") ?? null;
   const pctFondoPromocion = normalizeNullable(data.pctFondoPromocion);
   const multiplicadorDiciembre = normalizeNullable(data.multiplicadorDiciembre);
+  const multiplicadorJunio = normalizeNullable(data.multiplicadorJunio);
+  const multiplicadorJulio = normalizeNullable(data.multiplicadorJulio);
+  const multiplicadorAgosto = normalizeNullable(data.multiplicadorAgosto);
   const codigoCC = normalizeNullable(data.codigoCC);
   const ggccPctAdministracion = normalizeNullable(data.ggccPctAdministracion);
   const ggccPctReajuste = normalizeNullable(data.ggccPctReajuste);
@@ -264,6 +270,15 @@ export function normalizeContratoRow(
     return null;
   }
   if (!isValidDecimalOrNull(multiplicadorDiciembre)) {
+    return null;
+  }
+  if (!isValidDecimalOrNull(multiplicadorJunio)) {
+    return null;
+  }
+  if (!isValidDecimalOrNull(multiplicadorJulio)) {
+    return null;
+  }
+  if (!isValidDecimalOrNull(multiplicadorAgosto)) {
     return null;
   }
   if (
@@ -328,6 +343,9 @@ export function normalizeContratoRow(
     rentaVariablePct,
     pctFondoPromocion,
     multiplicadorDiciembre,
+    multiplicadorJunio,
+    multiplicadorJulio,
+    multiplicadorAgosto,
     codigoCC,
     ggccPctAdministracion,
     ggccPctReajuste,
@@ -413,6 +431,9 @@ export async function applyContrato(
           ),
           pctFondoPromocion: decimalOrNull(row.pctFondoPromocion),
           multiplicadorDiciembre: decimalOrNull(row.multiplicadorDiciembre),
+          multiplicadorJunio: decimalOrNull(row.multiplicadorJunio),
+          multiplicadorJulio: decimalOrNull(row.multiplicadorJulio),
+          multiplicadorAgosto: decimalOrNull(row.multiplicadorAgosto),
           codigoCC: row.codigoCC,
           notas: row.notas
         }
@@ -436,6 +457,9 @@ export async function applyContrato(
           ),
           pctFondoPromocion: decimalOrNull(row.pctFondoPromocion),
           multiplicadorDiciembre: decimalOrNull(row.multiplicadorDiciembre),
+          multiplicadorJunio: decimalOrNull(row.multiplicadorJunio),
+          multiplicadorJulio: decimalOrNull(row.multiplicadorJulio),
+          multiplicadorAgosto: decimalOrNull(row.multiplicadorAgosto),
           codigoCC: row.codigoCC,
           notas: row.notas
         }

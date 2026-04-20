@@ -2,9 +2,10 @@ export const dynamic = "force-dynamic";
 
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { ApiError, handleApiError } from "@/lib/api-error";
-import { SLUG_MAX_ATTEMPTS } from "@/lib/constants";
+import { PERIODO_REGEX, SLUG_MAX_ATTEMPTS } from "@/lib/constants";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { ACTIVE_PROJECTS_TAG } from "@/lib/project";
@@ -18,8 +19,33 @@ const projectUpdateSchema = z.object({
     .string()
     .trim()
     .regex(/^#[0-9a-fA-F]{6}$/, "Color invalido. Usa formato hexadecimal #RRGGBB."),
-  activo: z.boolean()
+  activo: z.boolean(),
+  glaTotal: z
+    .string()
+    .trim()
+    .refine((v) => v === "" || !isNaN(Number(v)), "GLA invalido.")
+    .optional()
+    .nullable()
 });
+
+const reportDatePatchSchema = z.object({
+  reportDate: z
+    .string()
+    .regex(PERIODO_REGEX, "Formato debe ser YYYY-MM.")
+    .nullable()
+});
+
+function periodoToDate(periodo: string): Date {
+  const [year, month] = periodo.split("-").map((part) => Number(part));
+  return new Date(Date.UTC(year, month - 1, 1));
+}
+
+function dateToPeriodo(date: Date | null): string | null {
+  if (!date) return null;
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
 
 async function buildUniqueSlug(baseSlug: string, excludeId: string): Promise<string> {
   let candidate = baseSlug;
@@ -46,12 +72,16 @@ export async function GET(
     await requireSession();
     const item = await prisma.project.findUnique({
       where: { id: context.params.id },
-      select: { id: true, nombre: true, slug: true, color: true, activo: true }
+      select: { id: true, nombre: true, slug: true, color: true, activo: true, glaTotal: true, reportDate: true }
     });
     if (!item) {
       throw new ApiError(404, "No encontrado.");
     }
-    return NextResponse.json(item);
+    return NextResponse.json({
+      ...item,
+      glaTotal: item.glaTotal?.toString() ?? null,
+      reportDate: dateToPeriodo(item.reportDate)
+    });
   } catch (error) {
     return handleApiError(error);
   }
@@ -87,19 +117,58 @@ export async function PUT(
         ? undefined
         : await buildUniqueSlug(slugify(payload.nombre), projectId);
 
+    const glaTotalRaw = payload.glaTotal;
     const updated = await prisma.project.update({
       where: { id: projectId },
       data: {
         nombre: payload.nombre,
         color: payload.color,
         activo: payload.activo,
+        glaTotal: glaTotalRaw && glaTotalRaw !== "" ? new Prisma.Decimal(glaTotalRaw) : null,
         ...(slug ? { slug } : {})
       },
-      select: { id: true, nombre: true, slug: true, color: true, activo: true }
+      select: { id: true, nombre: true, slug: true, color: true, activo: true, glaTotal: true }
     });
 
     revalidateTag(ACTIVE_PROJECTS_TAG);
-    return NextResponse.json(updated);
+    return NextResponse.json({ ...updated, glaTotal: updated.glaTotal?.toString() ?? null });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+export async function PATCH(
+  request: Request,
+  context: { params: { id: string } }
+): Promise<NextResponse> {
+  try {
+    await requireWriteAccess();
+    const projectId = context.params.id;
+
+    const existing = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { id: true }
+    });
+    if (!existing) {
+      return NextResponse.json({ message: "Proyecto no encontrado." }, { status: 404 });
+    }
+
+    const result = reportDatePatchSchema.safeParse(await request.json());
+    if (!result.success) {
+      return NextResponse.json(
+        { message: result.error.issues[0]?.message ?? "Payload invalido.", issues: result.error.issues },
+        { status: 400 }
+      );
+    }
+
+    const updated = await prisma.project.update({
+      where: { id: projectId },
+      data: { reportDate: result.data.reportDate ? periodoToDate(result.data.reportDate) : null },
+      select: { id: true, reportDate: true }
+    });
+
+    revalidateTag(ACTIVE_PROJECTS_TAG);
+    return NextResponse.json({ id: updated.id, reportDate: dateToPeriodo(updated.reportDate) });
   } catch (error) {
     return handleApiError(error);
   }

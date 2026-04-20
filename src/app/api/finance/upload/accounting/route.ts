@@ -7,6 +7,7 @@ import { parseContable } from "@/lib/finance/parse-accounting";
 import { similarity } from "@/lib/finance/parse-utils";
 import { getFormFieldValue } from "@/lib/finance/api-params";
 import { recalculateBillingAlerts } from "@/lib/finance/billing-alerts";
+import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
@@ -163,6 +164,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         errorDetail: unmapped.length > 0 ? ({ sinMapeo: unmapped } as object) : undefined
       }
     });
+    invalidateMetricsCacheByProject(projectId);
 
     // Recalculate billing alerts in the background (fire-and-forget)
     void recalculateBillingAlerts(projectId);

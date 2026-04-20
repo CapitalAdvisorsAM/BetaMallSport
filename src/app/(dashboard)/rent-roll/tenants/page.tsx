@@ -8,7 +8,6 @@ import { UploadHistory } from "@/components/upload/UploadHistory";
 import { UploadSection } from "@/components/upload/UploadSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import {
   Select,
   SelectContent,
@@ -27,17 +26,21 @@ import {
 } from "@/lib/rent-roll/tenants";
 import { getUploadHistory } from "@/lib/rent-roll/upload-history";
 import { prisma } from "@/lib/prisma";
-import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
-import { appendProjectQuery, buildProjectQueryString } from "@/lib/project-query";
+import { getProjectContext } from "@/lib/project";
+import { toPeriodKey } from "@/lib/finance/period-range";
+import { isPeriodoValido } from "@/lib/validators";
+import { formatPeriodo } from "@/lib/utils";
+import { TenantsPeriodPicker } from "@/components/rent-roll/TenantsPeriodPicker";
+import { KpiCard } from "@/components/dashboard/KpiCard";
 
 type TenantsPageProps = {
   searchParams: {
-    project?: string;
     q?: string;
     vigente?: string;
     seccion?: string;
     page?: string;
     detalle?: string;
+    periodo?: string;
   };
 };
 
@@ -72,21 +75,10 @@ export default async function TenantsPage({
   searchParams
 }: TenantsPageProps): Promise<JSX.Element> {
   const session = await requireSession();
-  const projectParam = resolveProjectIdFromSearchParams(searchParams);
 
-  const { selectedProjectId } = await getProjectContext(projectParam);
+  const { selectedProjectId } = await getProjectContext();
   if (!selectedProjectId) {
-    return (
-      <ProjectCreationPanel
-        title="Arrendatarios"
-        description="No hay proyectos activos. Crea uno para habilitar el CRUD de arrendatarios."
-        canEdit={canWrite(session.user.role)}
-      />
-    );
-  }
-
-  if (!projectParam) {
-    redirect(`/rent-roll/tenants?${buildProjectQueryString(selectedProjectId)}`);
+    redirect("/");
   }
 
   const q = searchParams.q?.trim() ?? "";
@@ -99,8 +91,13 @@ export default async function TenantsPage({
   const mode = resolveMode(searchParams.seccion);
   const currentPage = parsePage(searchParams.page);
   const canEdit = canWrite(session.user.role);
-  const today = new Date();
-  const { start, nextMonthStart } = getMonthBounds(today);
+
+  const periodo = isPeriodoValido(searchParams.periodo ?? "")
+    ? (searchParams.periodo as string)
+    : toPeriodKey(new Date());
+  const [yearStr, monthStr] = periodo.split("-");
+  const periodDate = new Date(Date.UTC(Number(yearStr), Number(monthStr) - 1, 1));
+  const { start, nextMonthStart } = getMonthBounds(periodDate);
   const activeContractWhere = buildTenantsActiveContractWhere({ start, nextMonthStart });
   const tenantsWhere = buildTenantsWhere(
     selectedProjectId,
@@ -124,9 +121,15 @@ export default async function TenantsPage({
     contratos: Array<{
       id: string;
       numeroContrato: string;
+      fechaInicio: Date;
+      fechaTermino: Date | null;
+      local: { codigo: string; nombre: string } | null;
     }>;
   }> = [];
   let totalTenants = 0;
+  let totalPeriodo = 0;
+  let totalVigentesPeriodo = 0;
+  let totalContratosPeriodo = 0;
   let tenantsCrud: Array<{
     id: string;
     proyectoId: string;
@@ -140,30 +143,45 @@ export default async function TenantsPage({
   }> = [];
 
   if (mode === "ver") {
-    [tenantsList, totalTenants] = await Promise.all([
-      prisma.tenant.findMany({
-        where: tenantsWhere,
-        include: {
-          _count: {
-            select: {
-              contratos: true
+    const baseTenantsWhere = buildTenantsWhere(
+      selectedProjectId,
+      { start, nextMonthStart },
+      { q: "" }
+    );
+
+    [tenantsList, totalTenants, totalPeriodo, totalVigentesPeriodo, totalContratosPeriodo] =
+      await Promise.all([
+        prisma.tenant.findMany({
+          where: tenantsWhere,
+          include: {
+            _count: {
+              select: {
+                contratos: true
+              }
+            },
+            contratos: {
+              where: activeContractWhere,
+              orderBy: { fechaInicio: "desc" },
+              select: {
+                id: true,
+                numeroContrato: true,
+                fechaInicio: true,
+                fechaTermino: true,
+                local: { select: { codigo: true, nombre: true } }
+              }
             }
           },
-          contratos: {
-            where: activeContractWhere,
-            orderBy: { fechaInicio: "desc" },
-            select: {
-              id: true,
-              numeroContrato: true
-            }
-          }
-        },
-        orderBy: { nombreComercial: "asc" },
-        skip: (currentPage - 1) * PAGE_SIZE,
-        take: PAGE_SIZE
-      }),
-      prisma.tenant.count({ where: tenantsWhere })
-    ]);
+          orderBy: { nombreComercial: "asc" },
+          skip: (currentPage - 1) * PAGE_SIZE,
+          take: PAGE_SIZE
+        }),
+        prisma.tenant.count({ where: tenantsWhere }),
+        prisma.tenant.count({ where: baseTenantsWhere }),
+        prisma.tenant.count({ where: { ...baseTenantsWhere, vigente: true } }),
+        prisma.contract.count({
+          where: { proyectoId: selectedProjectId, ...activeContractWhere }
+        })
+      ]);
   } else if (mode === "cargar") {
     tenantsCrud = await prisma.tenant.findMany({
       where: { proyectoId: selectedProjectId },
@@ -178,7 +196,7 @@ export default async function TenantsPage({
   const nextPage = Math.min(totalPages, currentPage + 1);
 
   const buildPageHref = (page: number): string => {
-    const params = appendProjectQuery(new URLSearchParams(), selectedProjectId);
+    const params = new URLSearchParams();
     params.set("seccion", "ver");
     if (q) {
       params.set("q", q);
@@ -186,12 +204,13 @@ export default async function TenantsPage({
     if (searchParams.vigente === "vigente" || searchParams.vigente === "no-vigente") {
       params.set("vigente", searchParams.vigente);
     }
+    params.set("periodo", periodo);
     params.set("page", String(page));
     return `/rent-roll/tenants?${params.toString()}`;
   };
 
   const buildDetailHref = (id: string | null): string => {
-    const params = appendProjectQuery(new URLSearchParams(), selectedProjectId);
+    const params = new URLSearchParams();
     params.set("seccion", "ver");
     if (q) {
       params.set("q", q);
@@ -199,6 +218,7 @@ export default async function TenantsPage({
     if (searchParams.vigente === "vigente" || searchParams.vigente === "no-vigente") {
       params.set("vigente", searchParams.vigente);
     }
+    params.set("periodo", periodo);
     params.set("page", String(currentPage));
     if (id) {
       params.set("detalle", id);
@@ -253,12 +273,13 @@ export default async function TenantsPage({
             </div>
             <p className="text-sm text-slate-600">
               {mode === "ver"
-                ? "Arrendatarios con contratos en estado OCUPADO o GRACIA del periodo actual. La informacion de local, fechas y tarifas se administra en Contratos."
+                ? `Arrendatarios con contratos en estado OCUPADO o GRACIA. Período: ${formatPeriodo(periodo)}.`
                 : mode === "cargar"
                   ? "Alta y mantenimiento manual de arrendatarios."
                   : "Sube archivo, valida el preview y aplica los cambios en lote."}
             </p>
           </div>
+          {mode === "ver" && <TenantsPeriodPicker currentPeriodo={periodo} />}
         </div>
       </section>
 
@@ -266,6 +287,34 @@ export default async function TenantsPage({
 
       {mode === "ver" ? (
         <>
+          <section className="grid gap-4 sm:grid-cols-3">
+            <KpiCard
+              metricId="kpi_tenants_total_periodo"
+              title="Total en período"
+              value={totalPeriodo}
+              subtitle={formatPeriodo(periodo)}
+              accent="slate"
+            />
+            <KpiCard
+              metricId="kpi_tenants_vigentes_periodo"
+              title="Arrendatarios vigentes"
+              value={totalVigentesPeriodo}
+              subtitle={
+                totalPeriodo > 0
+                  ? `${Math.round((totalVigentesPeriodo / totalPeriodo) * 100)}% del total`
+                  : "—"
+              }
+              accent="green"
+            />
+            <KpiCard
+              metricId="kpi_tenants_contratos_activos"
+              title="Contratos activos"
+              value={totalContratosPeriodo}
+              subtitle={formatPeriodo(periodo)}
+              accent="slate"
+            />
+          </section>
+
           <section className="rounded-md bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm font-semibold text-slate-800">Exportar arrendatarios</p>
@@ -322,8 +371,6 @@ export default async function TenantsPage({
 
           <section className="rounded-md bg-white p-4 shadow-sm">
             <form className="grid gap-3 md:grid-cols-[1fr_220px_auto]">
-              <input type="hidden" name="project" value={selectedProjectId} />
-              <input type="hidden" name="proyecto" value={selectedProjectId} />
               <input type="hidden" name="seccion" value="ver" />
               <input type="hidden" name="page" value="1" />
               <Input
@@ -368,7 +415,14 @@ export default async function TenantsPage({
                   vigente: tenant.vigente,
                   contratosAsociados: tenant._count.contratos,
                   contratosVigentes: contratosVigentes.length,
-                  contratosVigentesNumeros: contratosVigentes.join(", ")
+                  contratosVigentesNumeros: contratosVigentes.join(", "),
+                  contratos: tenant.contratos.map((c) => ({
+                    id: c.id,
+                    numeroContrato: c.numeroContrato,
+                    fechaInicio: c.fechaInicio.toISOString().slice(0, 10),
+                    fechaTermino: c.fechaTermino?.toISOString().slice(0, 10) ?? null,
+                    local: c.local
+                  }))
                 };
               })}
               detailBaseHref={buildDetailHref(null)}

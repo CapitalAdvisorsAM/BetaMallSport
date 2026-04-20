@@ -6,6 +6,9 @@ const { requireSessionMock, requireWriteAccessMock, prismaMock } = vi.hoisted(()
   requireSessionMock: vi.fn(),
   requireWriteAccessMock: vi.fn(),
   prismaMock: {
+    project: {
+      findFirst: vi.fn()
+    },
     unit: {
       findFirst: vi.fn(),
       findMany: vi.fn()
@@ -71,6 +74,7 @@ function makePayload(): ContractFormPayload {
       {
         pctRentaVariable: "5",
         umbralVentasUf: "0",
+        pisoMinimoUf: null,
         vigenciaDesde: "2026-01-01",
         vigenciaHasta: null
       }
@@ -78,6 +82,9 @@ function makePayload(): ContractFormPayload {
     pctFondoPromocion: "2",
     pctAdministracionGgcc: null,
     multiplicadorDiciembre: null,
+    multiplicadorJunio: null,
+    multiplicadorJulio: null,
+    multiplicadorAgosto: null,
     diasGracia: 0,
     codigoCC: "CC-1",
     pdfUrl: "https://example.com/contract.pdf",
@@ -88,7 +95,11 @@ function makePayload(): ContractFormPayload {
         valor: "12.5",
         vigenciaDesde: "2026-01-01",
         vigenciaHasta: null,
-        esDiciembre: false
+        esDiciembre: false,
+        descuentoTipo: null,
+        descuentoValor: null,
+        descuentoDesde: null,
+        descuentoHasta: null
       }
     ],
     ggcc: [
@@ -119,6 +130,9 @@ function makeExistingContract() {
     pctFondoPromocion: new Prisma.Decimal("2"),
     pctAdministracionGgcc: null,
     multiplicadorDiciembre: null,
+    multiplicadorJunio: null,
+    multiplicadorJulio: null,
+    multiplicadorAgosto: null,
     codigoCC: "CC-1",
     pdfUrl: "https://example.com/contract.pdf",
     notas: "Notas",
@@ -181,6 +195,7 @@ function setupTransaction(options: {
   finalContract: unknown;
 }) {
   const contract = {
+    findMany: vi.fn().mockResolvedValue([]),
     update: vi.fn().mockResolvedValue({ id: "contract-1" }),
     findUnique: vi.fn().mockResolvedValue(options.finalContract)
   };
@@ -225,6 +240,9 @@ function setupTransaction(options: {
 beforeEach(() => {
   requireSessionMock.mockResolvedValue({ user: { id: "u1" } });
   requireWriteAccessMock.mockResolvedValue({ user: { id: "u1" } });
+  prismaMock.project.findFirst.mockImplementation(async ({ where }: { where: { id: string } }) => ({
+    id: where.id
+  }));
   prismaMock.unit.findFirst.mockResolvedValue({ id: "l1" });
   prismaMock.unit.findMany.mockResolvedValue([{ id: "l1" }]);
   prismaMock.tenant.findFirst.mockResolvedValue({ id: "a1" });
@@ -261,7 +279,7 @@ describe("PUT /api/contracts/[id]", () => {
     });
 
     const response = await callPut(
-      new Request("http://localhost/api/contracts/contract-1", {
+      new Request("http://localhost/api/contracts/contract-1?projectId=p1", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -292,7 +310,7 @@ describe("PUT /api/contracts/[id]", () => {
     });
 
     const response = await callPut(
-      new Request("http://localhost/api/contracts/contract-1", {
+      new Request("http://localhost/api/contracts/contract-1?projectId=p1", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -310,7 +328,7 @@ describe("PUT /api/contracts/[id]", () => {
     const invalidPayload = { foo: "bar" };
 
     const response = await callPut(
-      new Request("http://localhost/api/contracts/contract-1", {
+      new Request("http://localhost/api/contracts/contract-1?projectId=p1", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(invalidPayload)
@@ -332,13 +350,14 @@ describe("PUT /api/contracts/[id]", () => {
       {
         pctRentaVariable: "6",
         umbralVentasUf: "0",
+        pisoMinimoUf: null,
         vigenciaDesde: payload.rentaVariable[0].vigenciaDesde,
         vigenciaHasta: null
       }
     ];
 
     const response = await callPut(
-      new Request("http://localhost/api/contracts/contract-1", {
+      new Request("http://localhost/api/contracts/contract-1?projectId=p1", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -356,7 +375,7 @@ describe("PUT /api/contracts/[id]", () => {
     prismaMock.contract.findFirst.mockResolvedValue(null);
 
     const response = await callPut(
-      new Request("http://localhost/api/contracts/contract-1", {
+      new Request("http://localhost/api/contracts/contract-1?projectId=other-project", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -387,7 +406,7 @@ describe("PUT /api/contracts/[id]", () => {
     });
 
     await callPut(
-      new Request("http://localhost/api/contracts/contract-1", {
+      new Request("http://localhost/api/contracts/contract-1?projectId=p1", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -422,7 +441,7 @@ describe("PUT /api/contracts/[id]", () => {
     });
 
     await callPut(
-      new Request("http://localhost/api/contracts/contract-1", {
+      new Request("http://localhost/api/contracts/contract-1?projectId=p1", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -446,7 +465,7 @@ describe("PUT /api/contracts/[id]", () => {
     ] as unknown as ContractFormPayload["ggcc"];
 
     const response = await callPut(
-      new Request("http://localhost/api/contracts/contract-1", {
+      new Request("http://localhost/api/contracts/contract-1?projectId=p1", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -465,6 +484,7 @@ describe("PUT /api/contracts/[id]", () => {
       {
         ...(payload.ggcc[0] as unknown as Record<string, unknown>),
         pctReajuste: "5",
+        proximoReajuste: "2027-01-01",
         mesesReajuste: 12
       }
     ] as unknown as ContractFormPayload["ggcc"];
@@ -475,6 +495,7 @@ describe("PUT /api/contracts/[id]", () => {
         {
           ...existing.ggcc[0],
           pctReajuste: new Prisma.Decimal("4"),
+          proximoReajuste: new Date("2027-01-01"),
           mesesReajuste: 12
         }
       ]
@@ -489,7 +510,7 @@ describe("PUT /api/contracts/[id]", () => {
     });
 
     await callPut(
-      new Request("http://localhost/api/contracts/contract-1", {
+      new Request("http://localhost/api/contracts/contract-1?projectId=p1", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -499,6 +520,22 @@ describe("PUT /api/contracts/[id]", () => {
 
     const anexoPayload = tx.contractAmendment.create.mock.calls[0][0].data as { camposModificados: string[] };
     expect(anexoPayload.camposModificados).toContain("ggcc");
+  });
+
+  it("returns 400 when request and payload project ids differ", async () => {
+    const payload = makePayload();
+
+    const response = await callPut(
+      new Request("http://localhost/api/contracts/contract-1?projectId=other-project", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }),
+      { id: "contract-1" }
+    );
+
+    expect(response.status).toBe(400);
+    expect(prismaMock.contract.findFirst).not.toHaveBeenCalled();
   });
 });
 

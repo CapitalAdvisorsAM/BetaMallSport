@@ -8,16 +8,18 @@ import { prisma } from "@/lib/prisma";
 export default async function ProjectsPage(): Promise<JSX.Element> {
   const session = await requireSession();
 
-  const projects = await prisma.project.findMany({
+  const projectsRaw = await prisma.project.findMany({
     orderBy: [{ activo: "desc" }, { nombre: "asc" }],
     select: {
       id: true,
       nombre: true,
       slug: true,
       color: true,
-      activo: true
+      activo: true,
+      glaTotal: true
     }
   });
+  const projects = projectsRaw.map((p) => ({ ...p, glaTotal: p.glaTotal?.toString() ?? null }));
 
   const filteredExportHref = buildExportExcelUrl({
     dataset: "proyectos",

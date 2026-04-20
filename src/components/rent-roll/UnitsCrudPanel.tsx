@@ -17,7 +17,7 @@ import { useCrudResource } from "@/hooks/useCrudResource";
 import { useDataTable } from "@/hooks/useDataTable";
 import { extractApiErrorMessage } from "@/lib/http/client-errors";
 import { formatCalculatedLocalSize, getCalculatedLocalSize } from "@/lib/units/size";
-import { buildProjectIdQueryString } from "@/lib/project-query";
+import { unitTypeBadge } from "@/lib/units/unit-type-badge";
 import { cn, formatDecimal } from "@/lib/utils";
 
 type LocalTipo =
@@ -26,6 +26,8 @@ type LocalTipo =
   | "MODULO"
   | "ESPACIO"
   | "BODEGA"
+  | "OLA"
+  | "MAQUINA_EXPENDEDORA"
   | "OTRO";
 type MasterStatus = "ACTIVO" | "INACTIVO";
 
@@ -92,7 +94,8 @@ function parseDecimal(value: string): number | undefined {
 }
 
 async function createUnit(form: LocalForm): Promise<LocalRecord> {
-  const response = await fetch("/api/units", {
+  const query = new URLSearchParams({ projectId: form.proyectoId }).toString();
+  const response = await fetch(`/api/units?${query}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(form)
@@ -105,7 +108,7 @@ async function createUnit(form: LocalForm): Promise<LocalRecord> {
 }
 
 async function updateUnit(id: string, form: LocalForm): Promise<LocalRecord> {
-  const query = buildProjectIdQueryString(form.proyectoId);
+  const query = new URLSearchParams({ projectId: form.proyectoId }).toString();
   const response = await fetch(`/api/units/${id}?${query}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -119,7 +122,7 @@ async function updateUnit(id: string, form: LocalForm): Promise<LocalRecord> {
 }
 
 async function removeUnit(id: string, projectId: string): Promise<void> {
-  const query = buildProjectIdQueryString(projectId);
+  const query = new URLSearchParams({ projectId }).toString();
   const response = await fetch(`/api/units/${id}?${query}`, { method: "DELETE" });
   if (!response.ok) {
     throw new Error(await extractApiErrorMessage(response, "No se pudo eliminar el local."));
@@ -189,8 +192,21 @@ export function UnitsCrudPanel({
       enumFilterColumn<LocalRecord>({
         accessorKey: "tipo",
         header: "Tipo",
-        options: ["LOCAL_COMERCIAL", "SIMULADOR", "MODULO", "ESPACIO", "BODEGA", "OTRO"],
-        cell: (row) => <span className="whitespace-nowrap">{row.tipo}</span>
+        options: ["LOCAL_COMERCIAL", "SIMULADOR", "MODULO", "ESPACIO", "BODEGA", "OLA", "MAQUINA_EXPENDEDORA", "OTRO"],
+        cell: (row) => {
+          const badge = unitTypeBadge(row.tipo);
+          return (
+            <span
+              className={cn(
+                "inline-flex items-center rounded-sm border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest",
+                badge.className
+              )}
+              title={row.tipo}
+            >
+              {badge.label}
+            </span>
+          );
+        }
       }),
       {
         accessorKey: "piso",
@@ -432,6 +448,8 @@ export function UnitsCrudPanel({
                     <SelectItem value="MODULO">MODULO</SelectItem>
                     <SelectItem value="ESPACIO">ESPACIO</SelectItem>
                     <SelectItem value="BODEGA">BODEGA</SelectItem>
+                    <SelectItem value="OLA">OLA</SelectItem>
+                    <SelectItem value="MAQUINA_EXPENDEDORA">MAQUINA EXPENDEDORA</SelectItem>
                     <SelectItem value="OTRO">OTRO</SelectItem>
                   </SelectContent>
                 </Select>

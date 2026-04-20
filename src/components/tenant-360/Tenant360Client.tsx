@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { ModuleHeader } from "@/components/dashboard/ModuleHeader";
 import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
 import { ModuleEmptyState } from "@/components/dashboard/ModuleEmptyState";
@@ -17,11 +18,9 @@ import { OccupancyTimeline } from "@/components/tenant-360/OccupancyTimeline";
 import { ProjectionsSection } from "@/components/tenant-360/ProjectionsSection";
 import { PeerComparisonSection } from "@/components/tenant-360/PeerComparisonSection";
 import type { Tenant360Data } from "@/types/tenant-360";
-import type { ProjectOption } from "@/types/finance";
 
 type Tenant360ClientProps = {
   tenantId: string;
-  projects: ProjectOption[];
   selectedProjectId: string;
   defaultDesde?: string;
   defaultHasta?: string;
@@ -40,7 +39,6 @@ async function readErrorMessage(response: Response, fallback: string): Promise<s
 
 export function Tenant360Client({
   tenantId,
-  projects,
   selectedProjectId,
   defaultDesde,
   defaultHasta
@@ -86,23 +84,27 @@ export function Tenant360Client({
       <ModuleHeader
         title="Detalle Arrendatario"
         description="Vista 360 del arrendatario: contratos, facturacion, ventas y proyecciones."
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        preserve={{ desde, hasta }}
         actions={
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-50"
-            >
-              &larr; Volver
-            </button>
+            <Breadcrumb items={[
+              { label: "Arrendatarios", href: "/rent-roll/tenants" },
+              { label: data?.profile?.nombreComercial ?? "Detalle" },
+            ]} />
             <ProjectPeriodToolbar
               desde={desde}
               hasta={hasta}
-              onDesdeChange={setDesde}
-              onHastaChange={setHasta}
+              onDesdeChange={(value) => {
+                setDesde(value);
+                const params = new URLSearchParams(window.location.search);
+                if (value) params.set("desde", value); else params.delete("desde");
+                router.replace(`?${params.toString()}`, { scroll: false });
+              }}
+              onHastaChange={(value) => {
+                setHasta(value);
+                const params = new URLSearchParams(window.location.search);
+                if (value) params.set("hasta", value); else params.delete("hasta");
+                router.replace(`?${params.toString()}`, { scroll: false });
+              }}
             />
           </div>
         }

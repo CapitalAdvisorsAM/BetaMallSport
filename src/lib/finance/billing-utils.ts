@@ -3,7 +3,7 @@
  * reconciliation (reconciliation.ts). Extracted to avoid duplication.
  */
 
-import { ContractRateType, ContractStatus } from "@prisma/client";
+import { ContractRateType, ContractStatus, ContractDiscountType } from "@prisma/client";
 
 // ---------------------------------------------------------------------------
 // Shared types
@@ -15,9 +15,14 @@ export type RateEntry = {
   tipo: ContractRateType;
   valor: DecimalLike;
   umbralVentasUf?: DecimalLike | null;
+  pisoMinimoUf?: DecimalLike | null;
   vigenciaDesde: Date;
   vigenciaHasta: Date | null;
   esDiciembre: boolean;
+  descuentoTipo?: ContractDiscountType | null;
+  descuentoValor?: DecimalLike | null;
+  descuentoDesde?: Date | null;
+  descuentoHasta?: Date | null;
 };
 
 export type GgccEntry = {
@@ -77,6 +82,37 @@ export function findDecemberRate<T extends RateEntry>(tarifas: T[], periodDate: 
   return decRates[0] ?? null;
 }
 
+/**
+ * Compute effective tariff value for a period, applying discount if the period
+ * falls within the discount window.
+ * - PORCENTAJE: valor * (1 - descuentoValor)
+ * - MONTO_UF:   valor - descuentoValor
+ * Returns the base valor when no discount applies.
+ */
+export function computeEffectiveRate(rate: RateEntry, periodDate: Date): number {
+  const baseValor = toNum(rate.valor);
+
+  if (!rate.descuentoTipo || rate.descuentoValor === null || rate.descuentoValor === undefined) {
+    return baseValor;
+  }
+
+  if (rate.descuentoDesde && periodDate < rate.descuentoDesde) {
+    return baseValor;
+  }
+  if (rate.descuentoHasta && periodDate > rate.descuentoHasta) {
+    return baseValor;
+  }
+
+  const descValor = toNum(rate.descuentoValor);
+  if (rate.descuentoTipo === ContractDiscountType.PORCENTAJE) {
+    return baseValor * (1 - descValor);
+  }
+  if (rate.descuentoTipo === ContractDiscountType.MONTO_UF) {
+    return Math.max(0, baseValor - descValor);
+  }
+  return baseValor;
+}
+
 export function findGgccForPeriod<T extends GgccEntry>(ggccList: T[], periodDate: Date): T | null {
   const sorted = [...ggccList].sort((a, b) => b.vigenciaDesde.getTime() - a.vigenciaDesde.getTime());
 
@@ -108,19 +144,30 @@ export function shiftPeriod(period: string, months: number): string {
  * Find the HIGHEST threshold that sales exceed, then apply that tier's
  * percentage to ALL sales. Subtract fixed rent.
  *
+ * When the selected tier has `pisoMinimoUf`, guarantee that the tenant pays at least
+ * `pisoMinimoUf` in total each month:
+ *   totalRent = max(fixedRent + variable, pisoMinimoUf)
+ *   => minVariable = max(0, pisoMinimoUf - fixedRent)
+ *   => return max(variableOverFixed, minVariable)
+ *
  * Example: tiers = [{umbralVentasUf: 0, pct: 5}, {umbralVentasUf: 1000, pct: 7}]
  * Sales 1500 → 7% × 1500 - fixedRent
  */
 export function calcTieredVariableRent(
   salesUf: number,
-  tiers: Array<{ umbralVentasUf: number; pct: number }>,
+  tiers: Array<{ umbralVentasUf: number; pct: number; pisoMinimoUf?: number | null }>,
   fixedRentUf: number,
 ): number {
   if (tiers.length === 0) return 0;
   const sorted = [...tiers].sort((a, b) => b.umbralVentasUf - a.umbralVentasUf);
   const tier = sorted.find((t) => salesUf >= t.umbralVentasUf);
   if (!tier) return 0;
-  return Math.max(0, salesUf * (tier.pct / 100) - fixedRentUf);
+  const variableOverFixed = Math.max(0, salesUf * (tier.pct / 100) - fixedRentUf);
+  if (tier.pisoMinimoUf !== null && tier.pisoMinimoUf !== undefined && tier.pisoMinimoUf > 0) {
+    const minVariable = Math.max(0, tier.pisoMinimoUf - fixedRentUf);
+    return Math.max(variableOverFixed, minVariable);
+  }
+  return variableOverFixed;
 }
 
 /**
@@ -140,12 +187,14 @@ export function calcVariableRent(
  */
 export function extractVariableRentTiers(
   tarifas: RateEntry[],
-): Array<{ umbralVentasUf: number; pct: number }> {
+): Array<{ umbralVentasUf: number; pct: number; pisoMinimoUf: number | null }> {
   return tarifas
     .filter((t) => t.tipo === ContractRateType.PORCENTAJE)
     .map((t) => ({
       umbralVentasUf: toNum(t.umbralVentasUf),
       pct: toNum(t.valor),
+      pisoMinimoUf:
+        t.pisoMinimoUf === null || t.pisoMinimoUf === undefined ? null : toNum(t.pisoMinimoUf),
     }));
 }
 
@@ -170,32 +219,60 @@ export function calcExpectedIncome(params: {
   ggcc: GgccEntry[];
   glam2: number;
   multiplicadorDiciembre: number | null;
+  multiplicadorJunio: number | null;
+  multiplicadorJulio: number | null;
+  multiplicadorAgosto: number | null;
   pctFondoPromocion: number | null;
   periodDate: Date;
   salesUf?: number;
+  estado?: ContractStatus;
 }): ExpectedIncomeResult {
-  const { tarifas, ggcc, glam2, multiplicadorDiciembre, pctFondoPromocion, periodDate, salesUf } = params;
-  const isDecember = periodDate.getUTCMonth() === 11;
+  const { tarifas, ggcc, glam2, multiplicadorDiciembre, multiplicadorJunio, multiplicadorJulio, multiplicadorAgosto, pctFondoPromocion, periodDate, salesUf, estado } = params;
+
+  if (estado === ContractStatus.GRACIA) {
+    return { fixedRentUf: 0, ggccUf: 0, fondoUf: 0, variableRentUf: 0, totalUf: 0 };
+  }
+
+  const monthIndex = periodDate.getUTCMonth();
+  const multiplier =
+    monthIndex === 5 ? multiplicadorJunio :
+    monthIndex === 6 ? multiplicadorJulio :
+    monthIndex === 7 ? multiplicadorAgosto :
+    monthIndex === 11 ? multiplicadorDiciembre :
+    null;
+  const isDecember = monthIndex === 11;
 
   // Fixed rent
   let fixedRentUf = 0;
-  if (isDecember && multiplicadorDiciembre !== null) {
+  if (isDecember && multiplier !== null) {
+    // December: check for esDiciembre-specific tariff first
     const decRate = findDecemberRate(tarifas, periodDate);
     if (decRate) {
-      if (decRate.tipo === ContractRateType.FIJO_UF_M2) fixedRentUf = toNum(decRate.valor) * glam2;
-      else if (decRate.tipo === ContractRateType.FIJO_UF) fixedRentUf = toNum(decRate.valor);
+      const effective = computeEffectiveRate(decRate, periodDate);
+      if (decRate.tipo === ContractRateType.FIJO_UF_M2) fixedRentUf = effective * glam2;
+      else if (decRate.tipo === ContractRateType.FIJO_UF) fixedRentUf = effective;
     } else {
       const regularRate = findRateForPeriod(tarifas, periodDate);
       if (regularRate) {
-        if (regularRate.tipo === ContractRateType.FIJO_UF_M2) fixedRentUf = toNum(regularRate.valor) * glam2 * multiplicadorDiciembre;
-        else if (regularRate.tipo === ContractRateType.FIJO_UF) fixedRentUf = toNum(regularRate.valor) * multiplicadorDiciembre;
+        const effective = computeEffectiveRate(regularRate, periodDate);
+        if (regularRate.tipo === ContractRateType.FIJO_UF_M2) fixedRentUf = effective * glam2 * multiplier;
+        else if (regularRate.tipo === ContractRateType.FIJO_UF) fixedRentUf = effective * multiplier;
       }
+    }
+  } else if (multiplier !== null) {
+    // June, July or August: apply multiplier to regular tariff
+    const rate = findRateForPeriod(tarifas, periodDate);
+    if (rate) {
+      const effective = computeEffectiveRate(rate, periodDate);
+      if (rate.tipo === ContractRateType.FIJO_UF_M2) fixedRentUf = effective * glam2 * multiplier;
+      else if (rate.tipo === ContractRateType.FIJO_UF) fixedRentUf = effective * multiplier;
     }
   } else {
     const rate = findRateForPeriod(tarifas, periodDate);
     if (rate) {
-      if (rate.tipo === ContractRateType.FIJO_UF_M2) fixedRentUf = toNum(rate.valor) * glam2;
-      else if (rate.tipo === ContractRateType.FIJO_UF) fixedRentUf = toNum(rate.valor);
+      const effective = computeEffectiveRate(rate, periodDate);
+      if (rate.tipo === ContractRateType.FIJO_UF_M2) fixedRentUf = effective * glam2;
+      else if (rate.tipo === ContractRateType.FIJO_UF) fixedRentUf = effective;
     }
   }
 

@@ -1,5 +1,6 @@
 import { ApiError } from "@/lib/api-error";
 import { parsePaginationParams } from "@/lib/pagination";
+import { prisma } from "@/lib/prisma";
 
 export function getRequiredSearchParam(searchParams: URLSearchParams, key: string): string {
   const value = searchParams.get(key)?.trim() ?? "";
@@ -63,21 +64,82 @@ export function getRequiredProjectIdFromRequest(request: Request): string {
   return projectId;
 }
 
-export function withNormalizedProjectId<T>(body: T): T {
+async function assertActiveProjectId(projectId: string): Promise<string> {
+  const project = await prisma.project.findFirst({
+    where: {
+      id: projectId,
+      activo: true
+    },
+    select: { id: true }
+  });
+
+  if (!project) {
+    throw new ApiError(404, "Proyecto no encontrado.");
+  }
+
+  return project.id;
+}
+
+function getBodyProjectId(record: Record<string, unknown>): {
+  projectId: string;
+  legacyProjectId: string;
+} {
+  return {
+    projectId: typeof record.projectId === "string" ? record.projectId.trim() : "",
+    legacyProjectId: typeof record.proyectoId === "string" ? record.proyectoId.trim() : ""
+  };
+}
+
+export async function getRequiredActiveProjectIdSearchParam(
+  searchParams: URLSearchParams
+): Promise<string> {
+  return assertActiveProjectId(getRequiredProjectIdSearchParam(searchParams));
+}
+
+export async function getRequiredActiveProjectIdFromRequest(request: Request): Promise<string> {
+  return assertActiveProjectId(getRequiredProjectIdFromRequest(request));
+}
+
+export function withCanonicalProjectId<T>(body: T, requestProjectId?: string): T {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
     return body;
   }
 
   const record = body as Record<string, unknown>;
-  const projectId = typeof record.projectId === "string" ? record.projectId.trim() : "";
-  const legacyProjectId = typeof record.proyectoId === "string" ? record.proyectoId.trim() : "";
+  const { projectId, legacyProjectId } = getBodyProjectId(record);
 
-  if (projectId && !legacyProjectId) {
+  if (projectId && legacyProjectId && projectId !== legacyProjectId) {
+    throw new ApiError(400, "projectId y proyectoId deben coincidir.");
+  }
+
+  if (requestProjectId) {
+    if (projectId && projectId !== requestProjectId) {
+      throw new ApiError(400, "El projectId del request no coincide con el payload.");
+    }
+    if (legacyProjectId && legacyProjectId !== requestProjectId) {
+      throw new ApiError(400, "El projectId del request no coincide con el payload.");
+    }
+
     return {
       ...record,
-      proyectoId: projectId
+      projectId: requestProjectId,
+      proyectoId: requestProjectId
     } as T;
   }
 
-  return body;
+  if (!projectId && !legacyProjectId) {
+    return body;
+  }
+
+  const canonicalProjectId = projectId || legacyProjectId;
+
+  return {
+    ...record,
+    projectId: canonicalProjectId,
+    proyectoId: canonicalProjectId
+  } as T;
+}
+
+export function withNormalizedProjectId<T>(body: T): T {
+  return withCanonicalProjectId(body);
 }

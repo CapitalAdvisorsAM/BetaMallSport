@@ -12,6 +12,16 @@ import {
   YAxis
 } from "recharts";
 import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
+import {
+  chartAxisProps,
+  chartColors,
+  chartGridProps,
+  chartHeight,
+  chartLegendProps,
+  chartMargins,
+} from "@/lib/charts/theme";
+import { formatUf } from "@/lib/utils";
 import type { Tenant360MonthlyPoint, Tenant360SalesPoint } from "@/types/tenant-360";
 
 type FacturacionPerM2ChartProps = {
@@ -24,10 +34,6 @@ type ChartPoint = {
   billingUfM2: number | null;
   salesPerM2: number;
 };
-
-function fmtUf(value: number): string {
-  return value.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 export function FacturacionPerM2Chart({ monthlyData, salesData }: FacturacionPerM2ChartProps): JSX.Element {
   const chartData = useMemo<ChartPoint[]>(() => {
@@ -52,54 +58,43 @@ export function FacturacionPerM2Chart({ monthlyData, salesData }: FacturacionPer
       metricId="kpi_tenant360_facturacion_uf_m2"
       description="Evolucion mensual normalizada por metro cuadrado arrendado."
     >
-      <ResponsiveContainer width="100%" height={280}>
-        <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+      <ResponsiveContainer width="100%" height={chartHeight.md}>
+        <LineChart data={chartData} margin={chartMargins.default}>
+          <CartesianGrid {...chartGridProps} />
           <XAxis
             dataKey="period"
-            tick={{ fontSize: 11, fill: "#64748b" }}
-            tickLine={false}
-            axisLine={{ stroke: "#e2e8f0" }}
+            {...chartAxisProps}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: "#64748b" }}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(v: number) => fmtUf(v)}
+            {...chartAxisProps}
+            tickFormatter={(v: number) => formatUf(v)}
           />
           <Tooltip
-            contentStyle={{
-              fontSize: 12,
-              borderRadius: 6,
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.08)"
-            }}
-            formatter={(value, name) => [
-              `${fmtUf(typeof value === "number" ? value : Number(value ?? 0))} UF/m\u00b2`,
-              name
-            ]}
+            content={
+              <ChartTooltip
+                valueFormatter={(value) =>
+                  `${formatUf(typeof value === "number" ? value : Number(value ?? 0))} UF/m\u00b2`
+                }
+              />
+            }
           />
-          <Legend
-            verticalAlign="top"
-            height={32}
-            wrapperStyle={{ fontSize: 11, color: "#64748b" }}
-          />
+          <Legend verticalAlign="top" height={32} {...chartLegendProps} />
           <Line
             type="monotone"
             dataKey="billingUfM2"
             name="Facturacion/m\u00b2"
-            stroke="#2563eb"
+            stroke={chartColors.brandPrimary}
             strokeWidth={2}
-            dot={{ r: 3, fill: "#2563eb" }}
+            dot={{ r: 3, fill: chartColors.brandPrimary }}
             connectNulls
           />
           <Line
             type="monotone"
             dataKey="salesPerM2"
             name="Ventas/m\u00b2"
-            stroke="#10b981"
+            stroke={chartColors.positiveLight}
             strokeWidth={2}
-            dot={{ r: 3, fill: "#10b981" }}
+            dot={{ r: 3, fill: chartColors.positiveLight }}
             connectNulls
           />
         </LineChart>

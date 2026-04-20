@@ -4,8 +4,7 @@ import { useMemo } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/DataTable";
 import { useDataTable } from "@/hooks/useDataTable";
-import { cn, formatUf } from "@/lib/utils";
-import { formatPercent } from "@/lib/kpi";
+import { cn, formatPercent, formatUf } from "@/lib/utils";
 
 type ExpirationByYearRow = {
   anio: number;

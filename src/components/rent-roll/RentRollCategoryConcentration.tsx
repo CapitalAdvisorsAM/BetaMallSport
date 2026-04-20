@@ -11,6 +11,7 @@ import {
   YAxis
 } from "recharts";
 import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
+import { chartAxisProps, chartColors, chartGridProps, chartMargins } from "@/lib/charts/theme";
 import { formatDecimal } from "@/lib/utils";
 
 export type RentRollCategoryConcentrationDatum = {
@@ -24,13 +25,16 @@ type RentRollCategoryConcentrationProps = {
   data: RentRollCategoryConcentrationDatum[];
 };
 
+// Category-specific palette: brand-forward (not the hybrid default). The chart
+// only exists to show concentration within a single project, so repeated
+// brand shades convey "these all belong together" better than contrasting hues.
 const CATEGORY_COLORS = [
-  "#011E42",
-  "#164786",
-  "#d4a84b",
-  "#93C5FD",
-  "#BFDBFE",
-  "#f0d080"
+  chartColors.brandDark,
+  chartColors.brandPrimary,
+  chartColors.gold,
+  chartColors.brandLight,
+  chartColors.brandSurface,
+  chartColors.goldLight
 ];
 
 export function RentRollCategoryConcentration({
@@ -51,26 +55,23 @@ export function RentRollCategoryConcentration({
         <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1.35fr)_320px]">
           <div className="h-[320px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 24, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+              <BarChart data={data} layout="vertical" margin={{ ...chartMargins.compact, left: 24 }}>
+                <CartesianGrid {...chartGridProps} horizontal={false} vertical />
                 <XAxis
                   type="number"
                   domain={[0, 100]}
                   tickFormatter={(value: number) => `${formatDecimal(value)}%`}
-                  tick={{ fontSize: 11, fill: "#64748b" }}
-                  tickLine={false}
-                  axisLine={false}
+                  {...chartAxisProps}
                 />
                 <YAxis
                   dataKey="categoria"
                   type="category"
                   width={100}
-                  tick={{ fontSize: 11, fill: "#334155" }}
-                  tickLine={false}
-                  axisLine={false}
+                  {...chartAxisProps}
+                  tick={{ fontSize: 11, fill: chartColors.text }}
                 />
                 <Tooltip
-                  cursor={{ fill: "#eff6ff" }}
+                  cursor={{ fill: chartColors.brandSurface }}
                   formatter={(value, name, item) => {
                     const payload = item.payload as RentRollCategoryConcentrationDatum;
                     if (name === "pct") {

@@ -1,6 +1,12 @@
 import { Prisma, ContractRateType } from "@prisma/client";
 import { ApiError } from "@/lib/api-error";
-import { generateNumeroContrato, normalizedLocalIds, toDate, toDecimal } from "@/lib/contracts/persistence";
+import {
+  assertNoOverlappingContracts,
+  generateNumeroContrato,
+  normalizedLocalIds,
+  toDate,
+  toDecimal
+} from "@/lib/contracts/persistence";
 import { prisma } from "@/lib/prisma";
 import { computeEstadoContrato, startOfDay } from "@/lib/utils";
 import type { ContractFormPayload } from "@/types";
@@ -36,6 +42,14 @@ export async function createContractCommand(input: {
   }
 
   return prisma.$transaction(async (tx) => {
+    await assertNoOverlappingContracts(tx, {
+      proyectoId: payload.proyectoId,
+      localIds,
+      fechaInicio: payload.fechaInicio,
+      fechaTermino: payload.fechaTermino,
+      diasGracia: payload.diasGracia
+    });
+
     const created = await tx.contract.create({
       data: {
         proyectoId: payload.proyectoId,
@@ -57,6 +71,9 @@ export async function createContractCommand(input: {
         pctFondoPromocion: toDecimal(payload.pctFondoPromocion),
         pctAdministracionGgcc: toDecimal(payload.pctAdministracionGgcc),
         multiplicadorDiciembre: toDecimal(payload.multiplicadorDiciembre),
+        multiplicadorJunio: toDecimal(payload.multiplicadorJunio),
+        multiplicadorJulio: toDecimal(payload.multiplicadorJulio),
+        multiplicadorAgosto: toDecimal(payload.multiplicadorAgosto),
         codigoCC: payload.codigoCC,
         pdfUrl: payload.pdfUrl,
         notas: payload.notas
@@ -76,6 +93,7 @@ export async function createContractCommand(input: {
         tipo: item.tipo as "FIJO_UF_M2" | "FIJO_UF" | "PORCENTAJE",
         valor: item.valor,
         umbralVentasUf: null as string | null,
+        pisoMinimoUf: null as string | null,
         vigenciaDesde: item.vigenciaDesde,
         vigenciaHasta: item.vigenciaHasta,
         esDiciembre: item.esDiciembre
@@ -84,6 +102,7 @@ export async function createContractCommand(input: {
         tipo: "PORCENTAJE" as const,
         valor: item.pctRentaVariable,
         umbralVentasUf: item.umbralVentasUf as string | null,
+        pisoMinimoUf: item.pisoMinimoUf ?? null,
         vigenciaDesde: item.vigenciaDesde,
         vigenciaHasta: item.vigenciaHasta,
         esDiciembre: false
@@ -104,6 +123,7 @@ export async function createContractCommand(input: {
           tipo: t.tipo as ContractRateType,
           valor: new Prisma.Decimal(t.valor),
           umbralVentasUf: t.umbralVentasUf ? new Prisma.Decimal(t.umbralVentasUf) : null,
+          pisoMinimoUf: toDecimal(t.pisoMinimoUf),
           vigenciaDesde: new Date(t.vigenciaDesde),
           vigenciaHasta: toDate(t.vigenciaHasta),
           esDiciembre: t.esDiciembre

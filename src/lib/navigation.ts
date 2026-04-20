@@ -25,9 +25,9 @@ export const RENT_ROLL_ENTITY_ITEMS: Array<{ key: RentRollEntity; label: string;
 export const TOP_NAV_ITEMS: NavItem[] = [
   {
     label: "Dashboard",
-    href: "/",
+    href: "/dashboard",
     enabled: true,
-    match: "exact"
+    match: "startsWith"
   },
   {
     label: "Rent Roll",
@@ -87,8 +87,20 @@ export const FINANZAS_SUB_NAV_ITEMS: NavItem[] = [
     match: "startsWith"
   },
   {
+    label: "Flujo Caja",
+    href: "/finance/cash-flow",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
     label: "EE.RR",
     href: "/finance/eerr",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
+    label: "EE.FF.",
+    href: "/finance/eeff",
     enabled: true,
     match: "startsWith"
   },

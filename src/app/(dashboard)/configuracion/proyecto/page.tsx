@@ -4,37 +4,29 @@ import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
 
-export default async function ProyectoConfigPage({
-  searchParams
-}: {
-  searchParams: { project?: string };
-}): Promise<JSX.Element> {
+export default async function ProyectoConfigPage(): Promise<JSX.Element> {
   const session = await requireSession();
-  const { projects, selectedProjectId } = await getProjectContext(searchParams.project);
+  const { selectedProjectId } = await getProjectContext();
 
   if (!selectedProjectId) {
     redirect("/rent-roll/projects");
   }
 
-  if (searchParams.project !== selectedProjectId) {
-    redirect(`/configuracion/proyecto?project=${selectedProjectId}`);
-  }
-
-  const project = await prisma.project.findFirst({
+  const projectRaw = await prisma.project.findFirst({
     where: { id: selectedProjectId },
-    select: { id: true, nombre: true, color: true, activo: true, slug: true }
+    select: { id: true, nombre: true, color: true, activo: true, slug: true, glaTotal: true }
   });
 
-  if (!project) {
+  if (!projectRaw) {
     redirect("/rent-roll/projects");
   }
+
+  const project = { ...projectRaw, glaTotal: projectRaw.glaTotal?.toString() ?? null };
 
   return (
     <ProjectSettingsClient
       project={project}
       canEdit={canWrite(session.user.role)}
-      projects={projects}
-      selectedProjectId={selectedProjectId}
     />
   );
 }

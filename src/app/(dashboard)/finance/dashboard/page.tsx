@@ -1,26 +1,25 @@
-﻿import { FinanceDashboardClient } from "@/components/finance/FinanceDashboardClient";
-import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
-import { canWrite, requireSession } from "@/lib/permissions";
-import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
+﻿import { redirect } from "next/navigation";
+import { FinanceDashboardClient } from "@/components/finance/FinanceDashboardClient";
+import { requireSession } from "@/lib/permissions";
+import { getProjectContext } from "@/lib/project";
 
-export default async function FinanceDashboardPage({
-  searchParams
-}: {
-  searchParams: { project?: string };
-}): Promise<JSX.Element> {
-  const session = await requireSession();
-  const projectParam = resolveProjectIdFromSearchParams(searchParams);
-  const { projects, selectedProjectId } = await getProjectContext(projectParam);
+function dateToPeriodo(date: Date | null): string | null {
+  if (!date) return null;
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+export default async function FinanceDashboardPage(): Promise<JSX.Element> {
+  await requireSession();
+  const { projects, selectedProjectId } = await getProjectContext();
 
   if (!selectedProjectId) {
-    return (
-      <ProjectCreationPanel
-        title="Finanzas"
-        description="No hay proyectos activos. Crea uno para ver el dashboard financiero."
-        canEdit={canWrite(session.user.role)}
-      />
-    );
+    redirect("/");
   }
 
-  return <FinanceDashboardClient projects={projects} selectedProjectId={selectedProjectId} />;
+  const selectedProject = projects.find((project) => project.id === selectedProjectId);
+  const reportDate = dateToPeriodo(selectedProject?.reportDate ?? null);
+
+  return <FinanceDashboardClient selectedProjectId={selectedProjectId} reportDate={reportDate} />;
 }

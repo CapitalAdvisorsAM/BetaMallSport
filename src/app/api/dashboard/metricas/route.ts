@@ -250,8 +250,7 @@ export async function GET(request: Request): Promise<NextResponse> {
             fechaTermino: contract.data.fechaTermino
           })),
           localesVacantes,
-          today,
-          proyectoId
+          today
         );
         const vencimientosPorAnio = buildVencimientosPorAnio(activeContracts);
         const cartera = calculateContractStateCounters(

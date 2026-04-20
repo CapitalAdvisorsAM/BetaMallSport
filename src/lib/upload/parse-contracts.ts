@@ -44,12 +44,18 @@ export type ContractUploadRow = {
   tarifa5VigenciaDesde: string | null;
   tarifa5VigenciaHasta: string | null;
   rentaVariablePct: string | null;
+  rentaVariablePisoMinimoUf: string | null;
   rentaVariable2UmbralUf: string | null;
   rentaVariable2Pct: string | null;
+  rentaVariable2PisoMinimoUf: string | null;
   rentaVariable3UmbralUf: string | null;
   rentaVariable3Pct: string | null;
+  rentaVariable3PisoMinimoUf: string | null;
   pctFondoPromocion: string | null;
   multiplicadorDiciembre: string | null;
+  multiplicadorJunio: string | null;
+  multiplicadorJulio: string | null;
+  multiplicadorAgosto: string | null;
   codigoCC: string | null;
   ggccPctAdministracion: string | null;
   ggccPctReajuste: string | null;
@@ -71,6 +77,9 @@ export type ExistingContractForDiff = {
   fechaApertura: string | null;
   pctFondoPromocion: string | null;
   multiplicadorDiciembre: string | null;
+  multiplicadorJunio: string | null;
+  multiplicadorJulio: string | null;
+  multiplicadorAgosto: string | null;
   codigoCC: string | null;
   ggccPctAdministracion: string | null;
   notas: string | null;
@@ -251,12 +260,18 @@ function emptyRow(): ContractUploadRow {
     tarifa5VigenciaDesde: null,
     tarifa5VigenciaHasta: null,
     rentaVariablePct: null,
+    rentaVariablePisoMinimoUf: null,
     rentaVariable2UmbralUf: null,
     rentaVariable2Pct: null,
+    rentaVariable2PisoMinimoUf: null,
     rentaVariable3UmbralUf: null,
     rentaVariable3Pct: null,
+    rentaVariable3PisoMinimoUf: null,
     pctFondoPromocion: null,
     multiplicadorDiciembre: null,
+    multiplicadorJunio: null,
+    multiplicadorJulio: null,
+    multiplicadorAgosto: null,
     codigoCC: null,
     ggccPctAdministracion: null,
     ggccPctReajuste: null,
@@ -321,6 +336,15 @@ function compareWithExisting(
   }
   if (!decimalEquals(existing.multiplicadorDiciembre, row.multiplicadorDiciembre)) {
     changed.push("multiplicadorDiciembre");
+  }
+  if (!decimalEquals(existing.multiplicadorJunio, row.multiplicadorJunio)) {
+    changed.push("multiplicadorJunio");
+  }
+  if (!decimalEquals(existing.multiplicadorJulio, row.multiplicadorJulio)) {
+    changed.push("multiplicadorJulio");
+  }
+  if (!decimalEquals(existing.multiplicadorAgosto, row.multiplicadorAgosto)) {
+    changed.push("multiplicadorAgosto");
   }
   if ((existing.codigoCC ?? null) !== row.codigoCC) {
     changed.push("codigoCC");
@@ -426,12 +450,18 @@ function buildPreviewRows(
     const tarifa5VigenciaDesde = parseDate(rawRow.tarifa5vigenciadesde);
     const tarifa5VigenciaHasta = parseDate(rawRow.tarifa5vigenciahasta);
     const rentaVariablePct = normalizeNullable(rawRow.rentavariablepct);
+    const rentaVariablePisoMinimoUf = normalizeNullable(rawRow.rentavariablepisominimouf);
     const rentaVariable2UmbralUf = normalizeNullable(rawRow.rentavariable2umbraluf);
     const rentaVariable2Pct = normalizeNullable(rawRow.rentavariable2pct);
+    const rentaVariable2PisoMinimoUf = normalizeNullable(rawRow.rentavariable2pisominimouf);
     const rentaVariable3UmbralUf = normalizeNullable(rawRow.rentavariable3umbraluf);
     const rentaVariable3Pct = normalizeNullable(rawRow.rentavariable3pct);
+    const rentaVariable3PisoMinimoUf = normalizeNullable(rawRow.rentavariable3pisominimouf);
     const pctFondoPromocion = normalizeNullable(rawRow.pctfondopromocion);
     const multiplicadorDiciembre = normalizeNullable(rawRow.multiplicadordiciembre);
+    const multiplicadorJunio = normalizeNullable(rawRow.multiplicadorjunio);
+    const multiplicadorJulio = normalizeNullable(rawRow.multiplicadorjulio);
+    const multiplicadorAgosto = normalizeNullable(rawRow.multiplicadoragosto);
     const codigoCC = normalizeNullable(rawRow.codigocc);
     const ggccPctAdministracion = normalizeNullable(rawRow.ggccpctadministracion);
     const ggccPctReajuste = normalizeNullable(rawRow.ggccpctreajuste);
@@ -484,12 +514,18 @@ function buildPreviewRows(
       tarifa5VigenciaDesde,
       tarifa5VigenciaHasta,
       rentaVariablePct: hasFijoType ? rentaVariablePct : null,
+      rentaVariablePisoMinimoUf: hasFijoType ? rentaVariablePisoMinimoUf : null,
       rentaVariable2UmbralUf: hasFijoType ? rentaVariable2UmbralUf : null,
       rentaVariable2Pct: hasFijoType ? rentaVariable2Pct : null,
+      rentaVariable2PisoMinimoUf: hasFijoType ? rentaVariable2PisoMinimoUf : null,
       rentaVariable3UmbralUf: hasFijoType ? rentaVariable3UmbralUf : null,
       rentaVariable3Pct: hasFijoType ? rentaVariable3Pct : null,
+      rentaVariable3PisoMinimoUf: hasFijoType ? rentaVariable3PisoMinimoUf : null,
       pctFondoPromocion,
       multiplicadorDiciembre,
+      multiplicadorJunio,
+      multiplicadorJulio,
+      multiplicadorAgosto,
       codigoCC,
       ggccPctAdministracion,
       ggccPctReajuste,
@@ -595,6 +631,30 @@ function buildPreviewRows(
         status: "ERROR",
         data,
         errorMessage: "multiplicadorDiciembre debe ser numerico cuando se informa."
+      };
+    }
+    if (!isValidDecimalOrNull(data.multiplicadorJunio)) {
+      return {
+        rowNumber,
+        status: "ERROR",
+        data,
+        errorMessage: "multiplicadorJunio debe ser numerico cuando se informa."
+      };
+    }
+    if (!isValidDecimalOrNull(data.multiplicadorJulio)) {
+      return {
+        rowNumber,
+        status: "ERROR",
+        data,
+        errorMessage: "multiplicadorJulio debe ser numerico cuando se informa."
+      };
+    }
+    if (!isValidDecimalOrNull(data.multiplicadorAgosto)) {
+      return {
+        rowNumber,
+        status: "ERROR",
+        data,
+        errorMessage: "multiplicadorAgosto debe ser numerico cuando se informa."
       };
     }
     if (
@@ -772,12 +832,18 @@ function toRawRowFromPreviewData(data: Record<string, unknown>): RawRow {
     tarifa5vigenciadesde: data.tarifa5VigenciaDesde ?? "",
     tarifa5vigenciahasta: data.tarifa5VigenciaHasta ?? "",
     rentavariablepct: data.rentaVariablePct ?? "",
+    rentavariablepisominimouf: data.rentaVariablePisoMinimoUf ?? "",
     rentavariable2umbraluf: data.rentaVariable2UmbralUf ?? "",
     rentavariable2pct: data.rentaVariable2Pct ?? "",
+    rentavariable2pisominimouf: data.rentaVariable2PisoMinimoUf ?? "",
     rentavariable3umbraluf: data.rentaVariable3UmbralUf ?? "",
     rentavariable3pct: data.rentaVariable3Pct ?? "",
+    rentavariable3pisominimouf: data.rentaVariable3PisoMinimoUf ?? "",
     pctfondopromocion: data.pctFondoPromocion ?? "",
     multiplicadordiciembre: data.multiplicadorDiciembre ?? "",
+    multiplicadorjunio: data.multiplicadorJunio ?? "",
+    multiplicadorjulio: data.multiplicadorJulio ?? "",
+    multiplicadoragosto: data.multiplicadorAgosto ?? "",
     codigocc: data.codigoCC ?? "",
     ggccpctadministracion: data.ggccPctAdministracion ?? "",
     ggccpctreajuste: data.ggccPctReajuste ?? "",

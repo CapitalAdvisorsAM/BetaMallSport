@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { useCrudResource } from "@/hooks/useCrudResource";
 import { useDataTable } from "@/hooks/useDataTable";
 import { extractApiErrorMessage } from "@/lib/http/client-errors";
-import { buildProjectIdQueryString } from "@/lib/project-query";
 
 type ZoneRecord = {
   id: string;
@@ -49,7 +48,7 @@ async function createZone(payload: Omit<ZoneRecord, "id">): Promise<ZoneRecord> 
 }
 
 async function updateZone(id: string, payload: Omit<ZoneRecord, "id">): Promise<ZoneRecord> {
-  const query = buildProjectIdQueryString(payload.proyectoId);
+  const query = new URLSearchParams({ projectId: payload.proyectoId }).toString();
   const response = await fetch(`/api/zones/${id}?${query}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -63,7 +62,7 @@ async function updateZone(id: string, payload: Omit<ZoneRecord, "id">): Promise<
 }
 
 async function removeZone(id: string, projectId: string): Promise<void> {
-  const query = buildProjectIdQueryString(projectId);
+  const query = new URLSearchParams({ projectId }).toString();
   const response = await fetch(`/api/zones/${id}?${query}`, { method: "DELETE" });
   if (!response.ok) {
     throw new Error(await extractApiErrorMessage(response, "No se pudo eliminar la zona."));

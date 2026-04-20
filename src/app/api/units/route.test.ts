@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { requireSessionMock, requireWriteAccessMock, listUnitsPageMock, createUnitMock } = vi.hoisted(
-  () => ({
+const { requireSessionMock, requireWriteAccessMock, listUnitsPageMock, createUnitMock, prismaMock } =
+  vi.hoisted(() => ({
     requireSessionMock: vi.fn(),
     requireWriteAccessMock: vi.fn(),
     listUnitsPageMock: vi.fn(),
-    createUnitMock: vi.fn()
-  })
-);
+    createUnitMock: vi.fn(),
+    prismaMock: {
+      project: {
+        findFirst: vi.fn()
+      }
+    }
+  }));
 
 vi.mock("@/lib/permissions", () => ({
   requireSession: requireSessionMock,
@@ -19,9 +23,16 @@ vi.mock("@/lib/units/unit-service", () => ({
   createUnit: createUnitMock
 }));
 
+vi.mock("@/lib/prisma", () => ({
+  prisma: prismaMock
+}));
+
 describe("GET /api/units", () => {
   beforeEach(() => {
     requireSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    prismaMock.project.findFirst.mockImplementation(async ({ where }: { where: { id: string } }) => ({
+      id: where.id
+    }));
     listUnitsPageMock.mockResolvedValue({
       data: [],
       nextCursor: null,
@@ -53,6 +64,9 @@ describe("GET /api/units", () => {
 describe("POST /api/units", () => {
   beforeEach(() => {
     requireWriteAccessMock.mockResolvedValue({ user: { id: "u1" } });
+    prismaMock.project.findFirst.mockImplementation(async ({ where }: { where: { id: string } }) => ({
+      id: where.id
+    }));
     createUnitMock.mockResolvedValue({
       id: "unit-1",
       proyectoId: "p1",
@@ -70,7 +84,7 @@ describe("POST /api/units", () => {
   it("returns 400 for invalid payload", async () => {
     const { POST } = await import("./route");
     const response = await POST(
-      new Request("http://localhost/api/units", {
+      new Request("http://localhost/api/units?projectId=p1", {
         method: "POST",
         body: JSON.stringify({ proyectoId: "p1" })
       })
@@ -83,7 +97,7 @@ describe("POST /api/units", () => {
   it("creates a unit with valid payload", async () => {
     const { POST } = await import("./route");
     const response = await POST(
-      new Request("http://localhost/api/units", {
+      new Request("http://localhost/api/units?projectId=p1", {
         method: "POST",
         body: JSON.stringify({
           proyectoId: "p1",
@@ -101,5 +115,28 @@ describe("POST /api/units", () => {
 
     expect(response.status).toBe(201);
     expect(createUnitMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns 400 when request and payload project ids differ", async () => {
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/units?projectId=p1", {
+        method: "POST",
+        body: JSON.stringify({
+          proyectoId: "p2",
+          codigo: "L-101",
+          nombre: "Local 101",
+          glam2: "90",
+          piso: "1",
+          tipo: "LOCAL_COMERCIAL",
+          zonaId: null,
+          esGLA: true,
+          estado: "ACTIVO"
+        })
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(createUnitMock).not.toHaveBeenCalled();
   });
 });

@@ -4,12 +4,18 @@ const {
   requireSessionMock,
   requireWriteAccessMock,
   listTenantsPageMock,
-  createTenantMock
+  createTenantMock,
+  prismaMock
 } = vi.hoisted(() => ({
   requireSessionMock: vi.fn(),
   requireWriteAccessMock: vi.fn(),
   listTenantsPageMock: vi.fn(),
-  createTenantMock: vi.fn()
+  createTenantMock: vi.fn(),
+  prismaMock: {
+    project: {
+      findFirst: vi.fn()
+    }
+  }
 }));
 
 vi.mock("@/lib/permissions", () => ({
@@ -22,9 +28,16 @@ vi.mock("@/lib/tenants/tenant-service", () => ({
   createTenant: createTenantMock
 }));
 
+vi.mock("@/lib/prisma", () => ({
+  prisma: prismaMock
+}));
+
 describe("GET /api/tenants", () => {
   beforeEach(() => {
     requireSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    prismaMock.project.findFirst.mockImplementation(async ({ where }: { where: { id: string } }) => ({
+      id: where.id
+    }));
     listTenantsPageMock.mockResolvedValue({
       data: [],
       nextCursor: null,
@@ -56,6 +69,9 @@ describe("GET /api/tenants", () => {
 describe("POST /api/tenants", () => {
   beforeEach(() => {
     requireWriteAccessMock.mockResolvedValue({ user: { id: "u1" } });
+    prismaMock.project.findFirst.mockImplementation(async ({ where }: { where: { id: string } }) => ({
+      id: where.id
+    }));
     createTenantMock.mockResolvedValue({
       id: "t1",
       proyectoId: "p1",
@@ -71,7 +87,7 @@ describe("POST /api/tenants", () => {
   it("returns 400 for invalid payload", async () => {
     const { POST } = await import("./route");
     const response = await POST(
-      new Request("http://localhost/api/tenants", {
+      new Request("http://localhost/api/tenants?projectId=p1", {
         method: "POST",
         body: JSON.stringify({ proyectoId: "p1" })
       })
@@ -84,7 +100,7 @@ describe("POST /api/tenants", () => {
   it("creates a tenant with valid payload", async () => {
     const { POST } = await import("./route");
     const response = await POST(
-      new Request("http://localhost/api/tenants", {
+      new Request("http://localhost/api/tenants?projectId=p1", {
         method: "POST",
         body: JSON.stringify({
           proyectoId: "p1",
@@ -100,5 +116,26 @@ describe("POST /api/tenants", () => {
 
     expect(response.status).toBe(201);
     expect(createTenantMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns 400 when request and payload project ids differ", async () => {
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/tenants?projectId=p1", {
+        method: "POST",
+        body: JSON.stringify({
+          proyectoId: "p2",
+          rut: "1-9",
+          razonSocial: "Tenant SA",
+          nombreComercial: "Tenant",
+          vigente: true,
+          email: null,
+          telefono: null
+        })
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(createTenantMock).not.toHaveBeenCalled();
   });
 });

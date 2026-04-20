@@ -4,9 +4,10 @@ import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { tenantSchema } from "@/lib/tenants/schema";
 import {
-  getRequiredProjectIdSearchParam,
+  getRequiredActiveProjectIdFromRequest,
+  getRequiredActiveProjectIdSearchParam,
   parseRequiredPaginationParams,
-  withNormalizedProjectId
+  withCanonicalProjectId
 } from "@/lib/http/request";
 import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
@@ -18,7 +19,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   try {
     await requireSession();
     const { searchParams } = new URL(request.url);
-    const projectId = getRequiredProjectIdSearchParam(searchParams);
+    const projectId = await getRequiredActiveProjectIdSearchParam(searchParams);
     const { limit, cursor } = parseRequiredPaginationParams(searchParams);
 
     const result = await listTenantsPage({ projectId, limit, cursor });
@@ -31,7 +32,8 @@ export async function GET(request: Request): Promise<NextResponse> {
 export async function POST(request: Request): Promise<NextResponse> {
   try {
     await requireWriteAccess();
-    const result = tenantSchema.safeParse(withNormalizedProjectId(await request.json()));
+    const projectId = await getRequiredActiveProjectIdFromRequest(request);
+    const result = tenantSchema.safeParse(withCanonicalProjectId(await request.json(), projectId));
     if (!result.success) {
       return NextResponse.json(
         { message: "Payload invalido.", issues: result.error.issues },

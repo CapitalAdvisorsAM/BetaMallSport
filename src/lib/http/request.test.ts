@@ -3,7 +3,8 @@ import { ApiError } from "@/lib/api-error";
 import {
   getOptionalBooleanSearchParam,
   getRequiredSearchParam,
-  parseRequiredPaginationParams
+  parseRequiredPaginationParams,
+  withCanonicalProjectId
 } from "@/lib/http/request";
 
 describe("http/request helpers", () => {
@@ -24,5 +25,22 @@ describe("http/request helpers", () => {
     expect(getOptionalBooleanSearchParam(new URLSearchParams("sync=true"), "sync")).toBe(true);
     expect(getOptionalBooleanSearchParam(new URLSearchParams("sync=0"), "sync")).toBe(false);
     expect(getOptionalBooleanSearchParam(new URLSearchParams(), "sync")).toBeUndefined();
+  });
+
+  it("canonicalizes legacy project id aliases", () => {
+    expect(withCanonicalProjectId({ proyectoId: "p1" })).toEqual({
+      proyectoId: "p1",
+      projectId: "p1"
+    });
+    expect(withCanonicalProjectId({ projectId: "p1" })).toEqual({
+      proyectoId: "p1",
+      projectId: "p1"
+    });
+  });
+
+  it("throws when body project ids do not match", () => {
+    expect(() =>
+      withCanonicalProjectId({ projectId: "p1", proyectoId: "p2" }, "p1")
+    ).toThrow(ApiError);
   });
 });

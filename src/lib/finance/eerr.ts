@@ -38,7 +38,7 @@ export const BELOW_EBITDA_GROUPS = new Set([
 export const COST_GROUPS = new Set([...OPERATING_COST_GROUPS, ...BELOW_EBITDA_GROUPS]);
 
 // Orden de líneas (grupo3) dentro de cada sección — igual al CDG EE.RR sheet
-const LINE_ORDER: Record<string, string[]> = {
+export const LINE_ORDER: Record<string, string[]> = {
   "INGRESOS DE EXPLOTACION": [
     "ARRIENDO DE LOCAL FIJO",
     "ARRIENDO DE LOCAL VARIABLE",
@@ -75,7 +75,7 @@ const LINE_ORDER: Record<string, string[]> = {
 };
 
 // Orden preferido de secciones para el EE.RR
-const SECTION_ORDER = [
+export const SECTION_ORDER = [
   "INGRESOS DE EXPLOTACION",
   "VACANCIA G.C. + CONTRIBUCIONES",
   "GASTOS MARKETING",
@@ -101,10 +101,35 @@ export function calculateEbitdaMargin(ingresos: number, ebitda: number): number 
   return ingresos !== 0 ? (ebitda / ingresos) * 100 : null;
 }
 
-export function buildEerrData(registros: RegistroContableBase[]): EerrData {
-  const periodos = [
-    ...new Set(registros.map((r) => r.periodo.toISOString().slice(0, 7)))
-  ].sort();
+export type BudgetRegistro = {
+  grupo1: string;
+  grupo3: string;
+  periodo: Date;
+  valorUf: NumericLike;
+};
+
+export type BuildEerrDataOptions = {
+  /** Presupuesto por grupo contable (ExpenseBudget + ingresos si se desea). */
+  budgets?: BudgetRegistro[] | null;
+};
+
+function computeVariance(real: number, ppto: number | null): { varianzaTotal: number | null; varianzaPct: number | null } {
+  if (ppto === null) return { varianzaTotal: null, varianzaPct: null };
+  const varianzaTotal = real - ppto;
+  if (ppto === 0) return { varianzaTotal, varianzaPct: null };
+  return { varianzaTotal, varianzaPct: (varianzaTotal / Math.abs(ppto)) * 100 };
+}
+
+export function buildEerrData(
+  registros: RegistroContableBase[],
+  options: BuildEerrDataOptions = {}
+): EerrData {
+  const budgets = options.budgets ?? [];
+  const periodosSet = new Set<string>(registros.map((r) => r.periodo.toISOString().slice(0, 7)));
+  for (const b of budgets) {
+    periodosSet.add(b.periodo.toISOString().slice(0, 7));
+  }
+  const periodos = [...periodosSet].sort();
 
   const sections = new Map<string, EerrSection>();
 
@@ -132,9 +157,52 @@ export function buildEerrData(registros: RegistroContableBase[]): EerrData {
     line.total += valor;
   }
 
+  // Inyectar presupuesto (sin crear lineas nuevas si el real no existe — sí se crean para que aparezcan)
+  for (const b of budgets) {
+    const tipo: "ingreso" | "costo" = COST_GROUPS.has(b.grupo1) ? "costo" : "ingreso";
+    const periodoKey = b.periodo.toISOString().slice(0, 7);
+    const valor = Number(b.valorUf);
+
+    let section = sections.get(b.grupo1);
+    if (!section) {
+      section = {
+        grupo1: b.grupo1,
+        tipo,
+        lineas: [],
+        porPeriodo: {},
+        total: 0,
+        presupuestoPorPeriodo: {},
+        presupuestoTotal: 0
+      };
+      sections.set(b.grupo1, section);
+    }
+    if (!section.presupuestoPorPeriodo) section.presupuestoPorPeriodo = {};
+    section.presupuestoPorPeriodo[periodoKey] = (section.presupuestoPorPeriodo[periodoKey] ?? 0) + valor;
+    section.presupuestoTotal = (section.presupuestoTotal ?? 0) + valor;
+
+    let line = section.lineas.find((l) => l.grupo3 === b.grupo3);
+    if (!line) {
+      line = {
+        grupo3: b.grupo3,
+        tipo,
+        porPeriodo: {},
+        total: 0,
+        presupuestoPorPeriodo: {},
+        presupuestoTotal: 0
+      };
+      section.lineas.push(line);
+    }
+    if (!line.presupuestoPorPeriodo) line.presupuestoPorPeriodo = {};
+    line.presupuestoPorPeriodo[periodoKey] = (line.presupuestoPorPeriodo[periodoKey] ?? 0) + valor;
+    line.presupuestoTotal = (line.presupuestoTotal ?? 0) + valor;
+  }
+
   // EBITDA = suma de todas las secciones SOBRE la línea (valores ya vienen con signo del CDG)
   const ebitda = { porPeriodo: {} as Record<string, number>, total: 0 };
   const ebit   = { porPeriodo: {} as Record<string, number>, total: 0 };
+  const pptoEbitda = { porPeriodo: {} as Record<string, number>, total: 0 };
+  const pptoEbit   = { porPeriodo: {} as Record<string, number>, total: 0 };
+  const hasBudgets = budgets.length > 0;
 
   sections.forEach((section) => {
     const isAbove = !BELOW_EBITDA_GROUPS.has(section.grupo1);
@@ -144,7 +212,33 @@ export function buildEerrData(registros: RegistroContableBase[]): EerrData {
     }
     if (isAbove) ebitda.total += section.total;
     ebit.total += section.total;
+
+    if (hasBudgets && section.presupuestoPorPeriodo) {
+      for (const [p, v] of Object.entries(section.presupuestoPorPeriodo)) {
+        if (isAbove) pptoEbitda.porPeriodo[p] = (pptoEbitda.porPeriodo[p] ?? 0) + v;
+        pptoEbit.porPeriodo[p] = (pptoEbit.porPeriodo[p] ?? 0) + v;
+      }
+      if (isAbove) pptoEbitda.total += section.presupuestoTotal ?? 0;
+      pptoEbit.total += section.presupuestoTotal ?? 0;
+    }
   });
+
+  // Calcular varianzas para secciones y líneas
+  if (hasBudgets) {
+    sections.forEach((section) => {
+      const sectionPpto = section.presupuestoTotal ?? null;
+      const sectionVar = computeVariance(section.total, sectionPpto);
+      section.varianzaTotal = sectionVar.varianzaTotal;
+      section.varianzaPct = sectionVar.varianzaPct;
+
+      for (const line of section.lineas) {
+        const linePpto = line.presupuestoTotal ?? null;
+        const lineVar = computeVariance(line.total, linePpto);
+        line.varianzaTotal = lineVar.varianzaTotal;
+        line.varianzaPct = lineVar.varianzaPct;
+      }
+    });
+  }
 
   // Ordenar secciones según orden preferido del EE.RR
   const secciones = [...sections.values()].sort((a, b) => {
@@ -165,7 +259,14 @@ export function buildEerrData(registros: RegistroContableBase[]): EerrData {
     }
   });
 
-  return { periodos, secciones, ebitda, ebit };
+  return {
+    periodos,
+    secciones,
+    ebitda,
+    ebit,
+    presupuestoEbitda: hasBudgets ? pptoEbitda : null,
+    presupuestoEbit: hasBudgets ? pptoEbit : null
+  };
 }
 
 export function buildEerrDetalle(registros: RegistroContableDetalle[]): EerrDetalleResponse {

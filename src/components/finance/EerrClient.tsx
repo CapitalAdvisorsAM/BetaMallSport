@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { ModuleEmptyState } from "@/components/dashboard/ModuleEmptyState";
@@ -7,19 +7,20 @@ import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolbar";
 import { TableDisclosureButton } from "@/components/ui/TableDisclosureButton";
-import { tableTheme } from "@/components/ui/table-theme";
 import { BELOW_EBITDA_GROUPS, calculateEbitdaMargin, formatEerr } from "@/lib/finance/eerr";
-import type { EerrData, EerrDetalleResponse, ProjectOption } from "@/types/finance";
+import { getValueTone, getVarianceTone, TONE_TEXT_CLASS } from "@/lib/finance/value-tone";
+import { cn, formatPercent, formatUf, formatUfPerM2 } from "@/lib/utils";
+import type { EerrData, EerrDetalleResponse } from "@/types/finance";
 
 type BillingLine = { grupo1: string; grupo3: string; porPeriodo: Record<string, number>; total: number };
 type BillingResponse = { periodos: string[]; lineas: BillingLine[]; total: number };
 type ArrendatarioPanel = { arrendatarioId: string; nombre: string; localCodigo: string };
 
 type EerrClientProps = {
-  projects: ProjectOption[];
   selectedProjectId: string;
   defaultDesde?: string;
   defaultHasta?: string;
+  glaTotal?: number | null;
 };
 
 type ModoVista = "mensual" | "anual";
@@ -44,25 +45,21 @@ function aggregateByYear(data: EerrData): EerrData {
     secciones: (data.secciones ?? []).map((s) => ({
       ...s,
       porPeriodo: agg(s.porPeriodo),
-      lineas: s.lineas.map((l) => ({ ...l, porPeriodo: agg(l.porPeriodo) }))
+      lineas: s.lineas.map((l) => ({ ...l, porPeriodo: agg(l.porPeriodo) })),
     })),
     ebitda: { total: data.ebitda.total, porPeriodo: agg(data.ebitda.porPeriodo) },
-    ebit:   { total: data.ebit.total,   porPeriodo: agg(data.ebit.porPeriodo) }
+    ebit:   { total: data.ebit.total,   porPeriodo: agg(data.ebit.porPeriodo) },
   };
 }
 
-/** All numbers dark - parentheses from formatEerr handle negatives, no traffic lights */
-function numCls(bold = false): string {
-  return bold ? "text-slate-900 font-semibold" : "text-slate-700";
-}
-
+const HEAD_CLS = "min-w-[90px] px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70";
 const CREDIT_LINES = new Set(["RECUPERACION GASTOS COMUNES", "FONDO DE PROMOCION"]);
 
 export function EerrClient({
-  projects,
   selectedProjectId,
   defaultDesde,
-  defaultHasta
+  defaultHasta,
+  glaTotal,
 }: EerrClientProps): JSX.Element {
   const [desde, setDesde] = useState(defaultDesde ?? "");
   const [hasta, setHasta] = useState(defaultHasta ?? "");
@@ -81,6 +78,9 @@ export function EerrClient({
   const billingCacheRef = useRef<Map<string, BillingResponse>>(new Map());
 
   const data = rawData && modo === "anual" ? aggregateByYear(rawData) : rawData;
+  const hasBudgets = !!(data?.presupuestoEbitda);
+  // label col + period cols + total col + (ppto + var% when budgets)
+  const colCount = 1 + (data?.periodos.length ?? 0) + 1 + (hasBudgets ? 2 : 0);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -102,26 +102,18 @@ export function EerrClient({
   useEffect(() => { void fetchData(); }, [fetchData]);
 
   function toggleSection(g1: string) {
-    setExpandedSections((previous) => {
-      const next = new Set(previous);
-      if (next.has(g1)) {
-        next.delete(g1);
-      } else {
-        next.add(g1);
-      }
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(g1)) next.delete(g1); else next.add(g1);
       return next;
     });
   }
 
   async function toggleLine(g1: string, g3: string) {
     const key = `${g1}::${g3}`;
-    setExpandedLines((previous) => {
-      const next = new Set(previous);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
+    setExpandedLines((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
       return next;
     });
     if (detalleCache.has(key)) return;
@@ -164,16 +156,17 @@ export function EerrClient({
   const aboveEbitdaSections = data?.secciones?.filter((s) => !BELOW_EBITDA_GROUPS.has(s.grupo1)) ?? [];
   const belowEbitdaSections = data?.secciones?.filter((s) => BELOW_EBITDA_GROUPS.has(s.grupo1)) ?? [];
 
-  return (
+  const ingresoUfM2 =
+    glaTotal && glaTotal > 0 && ingresos && data && data.periodos.length > 0
+      ? ingresos.total / data.periodos.length / glaTotal
+      : null;
 
+  return (
     <main className="space-y-4">
       <ModuleHeader
         title="Estado de Resultados (UF)"
         description="Resultado consolidado del proyecto por periodo."
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        showProjectSelector={false}
-        preserve={{ desde, hasta }}
+        valueBadges={["efectivo"]}
         actions={
           <div className="flex items-center gap-3">
             <div className="flex overflow-hidden rounded border border-slate-200 text-xs font-medium">
@@ -195,70 +188,96 @@ export function EerrClient({
         }
       />
 
+      {ingresoUfM2 !== null && (
+        <div className="rounded-md border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+          <p className="text-sm text-slate-600">
+            Ingreso mensual promedio:{" "}
+            <span className="font-semibold text-slate-900">
+              {formatUfPerM2(ingresoUfM2)} UF/m²
+            </span>
+            <span className="ml-2 text-xs text-slate-400">
+              ({formatUf(ingresos!.total)} UF total ÷ {data!.periodos.length} períodos ÷ {formatUf(glaTotal!, 0)} m² GLA)
+            </span>
+          </p>
+        </div>
+      )}
+
       <ModuleSectionCard>
         {loading ? (
           <ModuleLoadingState message="Cargando Estado de Resultados..." />
         ) : !data || !data.secciones?.length ? (
           <ModuleEmptyState
             message="Sin datos contables para el periodo seleccionado."
-            actionHref={`/finance/upload?project=${selectedProjectId}`}
+            actionHref="/finance/upload"
             actionLabel="Cargar datos contables"
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className={`${tableTheme.table} border-collapse font-sans text-[11px]`}>
+            <table className="min-w-full border-collapse font-sans text-[11px]">
 
-              {/* Header */}
-              <thead className={`${tableTheme.head} sticky top-0 z-20`}>
+              {/* ── Header ─────────────────────────────────────────── */}
+              <thead>
                 <tr className="border-b border-slate-200 bg-brand-700">
-                  <th className="sticky left-0 w-72 bg-brand-700 py-2.5 pl-4 pr-3 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  <th className="sticky left-0 z-10 w-72 bg-brand-700 py-2.5 pl-4 pr-3 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
                     En UF
                   </th>
                   {data.periodos.map((p) => (
-                    <th key={p} className="min-w-[90px] px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
-                      {formatPeriodo(p)}
-                    </th>
+                    <th key={p} className={HEAD_CLS}>{formatPeriodo(p)}</th>
                   ))}
-                  <th className="px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70">
-                    Total
-                  </th>
+                  <th className={HEAD_CLS}>Total</th>
+                  {hasBudgets && <th className={HEAD_CLS}>Ppto</th>}
+                  {hasBudgets && <th className={cn(HEAD_CLS, "text-amber-300")}>Var %</th>}
                 </tr>
               </thead>
 
               <tbody>
-                {/* Secciones sobre EBITDA */}
+                {/* ── Sections above EBITDA ──────────────────────── */}
                 {aboveEbitdaSections.map((section, sIdx) => {
                   const isExpanded = expandedSections.has(section.grupo1);
                   return (
                     <Fragment key={section.grupo1}>
-                      {/* Subtle spacer between sections */}
-                      {sIdx > 0 && <tr><td colSpan={data.periodos.length + 2} className="h-1 bg-slate-50" /></tr>}
+                      {sIdx > 0 && (
+                        <tr><td colSpan={colCount} className="h-1 bg-slate-50" /></tr>
+                      )}
 
-                      {/* Grupo1 header row */}
-                      <tr className="border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors">
-                        <td className="sticky left-0 bg-white py-2.5 pl-4 pr-3">
+                      {/* Section header row */}
+                      <tr className="border-b border-slate-200 bg-white transition-colors hover:bg-slate-50">
+                        <td className="sticky left-0 z-10 bg-white py-2.5 pl-4 pr-3">
                           <div className="flex items-center gap-2">
                             <TableDisclosureButton
                               expanded={isExpanded}
                               label={`${isExpanded ? "Contraer" : "Expandir"} sección ${section.grupo1}`}
                               onToggle={() => toggleSection(section.grupo1)}
                             />
-                            <span className="font-bold text-slate-900 uppercase tracking-wide text-[11px]">
+                            <span className="text-[11px] font-bold uppercase tracking-wide text-slate-900">
                               {section.grupo1}
                             </span>
                           </div>
                         </td>
-                        {data.periodos.map((p) => (
-                          <td key={p} className={`px-3 py-2.5 text-right tabular-nums ${numCls(true)}`}>
-                            {formatEerr(section.porPeriodo[p] ?? 0)}
-                          </td>
-                        ))}
-                        <td className={`px-3 py-2.5 text-right tabular-nums border-l border-slate-200 ${numCls(true)}`}>
+                        {data.periodos.map((p) => {
+                          const v = section.porPeriodo[p] ?? 0;
+                          return (
+                            <td key={p} className={cn("px-3 py-2.5 text-right tabular-nums font-semibold", TONE_TEXT_CLASS[getValueTone(section.tipo, v)])}>
+                              {formatEerr(v)}
+                            </td>
+                          );
+                        })}
+                        <td className={cn("px-3 py-2.5 text-right tabular-nums border-l border-slate-200 font-bold", TONE_TEXT_CLASS[getValueTone(section.tipo, section.total)])}>
                           {formatEerr(section.total)}
                         </td>
+                        {hasBudgets && (
+                          <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-slate-600">
+                            {section.presupuestoTotal != null ? formatEerr(section.presupuestoTotal) : "—"}
+                          </td>
+                        )}
+                        {hasBudgets && (
+                          <td className={cn("px-3 py-2.5 text-right tabular-nums font-semibold", TONE_TEXT_CLASS[getVarianceTone(section.tipo, section.varianzaPct ?? null)])}>
+                            {section.varianzaPct != null ? formatPercent(section.varianzaPct) : "—"}
+                          </td>
+                        )}
                       </tr>
 
-                      {/* Grupo3 rows */}
+                      {/* Line rows */}
                       {isExpanded && section.lineas.map((line) => {
                         const lineKey = `${section.grupo1}::${line.grupo3}`;
                         const isLineExpanded = expandedLines.has(lineKey);
@@ -268,16 +287,14 @@ export function EerrClient({
 
                         return (
                           <Fragment key={lineKey}>
-                            <tr className="border-b border-slate-100 bg-white hover:bg-slate-50/60 transition-colors">
-                              <td className="sticky left-0 bg-white py-1.5 pl-9 pr-3">
+                            <tr className="border-b border-slate-100 bg-white transition-colors hover:bg-slate-50/60">
+                              <td className="sticky left-0 z-10 bg-white py-1.5 pl-9 pr-3">
                                 <div className="flex items-center gap-2">
                                   <TableDisclosureButton
                                     expanded={isLineExpanded}
                                     loading={isLineLoading}
                                     label={`${isLineExpanded ? "Contraer" : "Expandir"} línea ${line.grupo3}`}
-                                    onToggle={() => {
-                                      void toggleLine(section.grupo1, line.grupo3);
-                                    }}
+                                    onToggle={() => { void toggleLine(section.grupo1, line.grupo3); }}
                                     className="h-5 w-5"
                                   />
                                   <span className={isCredit ? "italic text-emerald-700" : "text-slate-600"}>
@@ -285,22 +302,40 @@ export function EerrClient({
                                   </span>
                                 </div>
                               </td>
-                              {data.periodos.map((p) => (
-                                <td key={p} className={`px-3 py-1.5 text-right tabular-nums ${isCredit ? "italic text-emerald-700" : "text-slate-600"}`}>
-                                  {formatEerr(line.porPeriodo[p] ?? 0)}
-                                </td>
-                              ))}
-                              <td className={`px-3 py-1.5 text-right tabular-nums border-l border-slate-100 ${isCredit ? "italic text-emerald-700 font-medium" : numCls(true)}`}>
+                              {data.periodos.map((p) => {
+                                const v = line.porPeriodo[p] ?? 0;
+                                return (
+                                  <td key={p} className={cn(
+                                    "px-3 py-1.5 text-right tabular-nums",
+                                    isCredit ? "italic text-emerald-700" : TONE_TEXT_CLASS[getValueTone(line.tipo, v)]
+                                  )}>
+                                    {formatEerr(v)}
+                                  </td>
+                                );
+                              })}
+                              <td className={cn(
+                                "px-3 py-1.5 text-right tabular-nums border-l border-slate-100 font-medium",
+                                isCredit ? "italic text-emerald-700" : TONE_TEXT_CLASS[getValueTone(line.tipo, line.total)]
+                              )}>
                                 {formatEerr(line.total)}
                               </td>
+                              {hasBudgets && (
+                                <td className="px-3 py-1.5 text-right tabular-nums text-slate-500">
+                                  {line.presupuestoTotal != null ? formatEerr(line.presupuestoTotal) : "—"}
+                                </td>
+                              )}
+                              {hasBudgets && (
+                                <td className={cn("px-3 py-1.5 text-right tabular-nums", TONE_TEXT_CLASS[getVarianceTone(line.tipo, line.varianzaPct ?? null)])}>
+                                  {line.varianzaPct != null ? formatPercent(line.varianzaPct) : "—"}
+                                </td>
+                              )}
                             </tr>
 
-                            {/* Detalle: categoría como header, tiendas directas (sin clic extra) */}
+                            {/* Category + tenant drill-down rows */}
                             {isLineExpanded && detalle?.categorias.map((cat) => (
                               <Fragment key={cat.categoriaTipo}>
-                                {/* Header de categoría — no interactivo */}
                                 <tr className="border-b border-slate-100 bg-slate-50">
-                                  <td className="sticky left-0 bg-inherit py-1.5 pl-14 pr-3">
+                                  <td className="sticky left-0 z-10 bg-inherit py-1.5 pl-14 pr-3">
                                     <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                                       {cat.categoriaTipo}
                                     </span>
@@ -313,17 +348,20 @@ export function EerrClient({
                                   <td className="px-3 py-1.5 text-right tabular-nums text-[11px] font-medium text-slate-600 border-l border-slate-100">
                                     {formatEerr(cat.total)}
                                   </td>
+                                  {hasBudgets && <td colSpan={2} />}
                                 </tr>
 
-                                {/* Tiendas directas */}
                                 {cat.locales.map((loc) => {
                                   const isActive = loc.arrendatarioId != null && arrendatarioPanel?.arrendatarioId === loc.arrendatarioId;
                                   return (
                                     <tr
                                       key={loc.localId}
-                                      className={`border-b border-slate-50 transition-colors ${isActive ? "bg-brand-50/60" : "bg-white hover:bg-brand-50/30"}`}
+                                      className={cn(
+                                        "border-b border-slate-50 transition-colors",
+                                        isActive ? "bg-brand-50/60" : "bg-white hover:bg-brand-50/30"
+                                      )}
                                     >
-                                      <td className="sticky left-0 bg-inherit py-1.5 pl-[72px] pr-3">
+                                      <td className="sticky left-0 z-10 bg-inherit py-1.5 pl-[72px] pr-3">
                                         <span className="font-mono text-[10px] text-slate-400">[{loc.localCodigo}]</span>
                                         {loc.arrendatarioId ? (
                                           <button
@@ -332,15 +370,16 @@ export function EerrClient({
                                               void openArrendatarioPanel({
                                                 arrendatarioId: loc.arrendatarioId!,
                                                 nombre: loc.arrendatarioNombre ?? loc.localNombre,
-                                                localCodigo: loc.localCodigo
+                                                localCodigo: loc.localCodigo,
                                               });
                                             }}
-                                            className={`ml-2 inline-flex items-center gap-1 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:ring-offset-1 ${
+                                            className={cn(
+                                              "ml-2 inline-flex items-center gap-1 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:ring-offset-1",
                                               isActive ? "font-semibold text-brand-700" : "text-slate-600 hover:text-brand-700"
-                                            }`}
+                                            )}
                                           >
                                             {loc.arrendatarioNombre ?? loc.localNombre}
-                                            <span className="text-[10px] text-brand-400">{"\u2197"}</span>
+                                            <span className="text-[10px] text-brand-400">↗</span>
                                           </button>
                                         ) : (
                                           <span className="ml-2 text-[11px] text-slate-600">
@@ -356,6 +395,7 @@ export function EerrClient({
                                       <td className="px-3 py-1.5 text-right tabular-nums text-[11px] font-medium text-slate-700 border-l border-slate-100">
                                         {formatEerr(loc.total)}
                                       </td>
+                                      {hasBudgets && <td colSpan={2} />}
                                     </tr>
                                   );
                                 })}
@@ -368,28 +408,45 @@ export function EerrClient({
                   );
                 })}
 
-                {/* EBITDA */}
+                {/* ── EBITDA ─────────────────────────────────────── */}
                 <tr className="border-t-[3px] border-b-[3px] border-slate-800 bg-white">
-                  <td className="sticky left-0 bg-white py-3 pl-4 pr-3">
-                    <span className="font-bold text-slate-900 uppercase tracking-widest text-[12px]">EBITDA</span>
+                  <td className="sticky left-0 z-10 bg-white py-3 pl-4 pr-3">
+                    <span className="text-[12px] font-bold uppercase tracking-widest text-slate-900">EBITDA</span>
                   </td>
                   {data.periodos.map((p) => {
                     const v = data.ebitda.porPeriodo[p] ?? 0;
                     return (
-                      <td key={p} className="px-3 py-3 text-right text-[12px] font-bold tabular-nums text-slate-900">
+                      <td key={p} className={cn("px-3 py-3 text-right text-[12px] font-bold tabular-nums", TONE_TEXT_CLASS[getValueTone("ingreso", v)])}>
                         {formatEerr(v)}
                       </td>
                     );
                   })}
-                  <td className="px-3 py-3 text-right text-[12px] font-bold tabular-nums text-slate-900 border-l border-slate-300">
+                  <td className={cn("px-3 py-3 text-right text-[12px] font-bold tabular-nums border-l border-slate-300", TONE_TEXT_CLASS[getValueTone("ingreso", data.ebitda.total)])}>
                     {formatEerr(data.ebitda.total)}
                   </td>
+                  {hasBudgets && data.presupuestoEbitda && (
+                    <td className="px-3 py-3 text-right text-[12px] font-bold tabular-nums text-slate-600">
+                      {formatEerr(data.presupuestoEbitda.total)}
+                    </td>
+                  )}
+                  {hasBudgets && data.presupuestoEbitda && (() => {
+                    const pptoTotal = data.presupuestoEbitda!.total;
+                    const varianzaPct = pptoTotal !== 0
+                      ? ((data.ebitda.total - pptoTotal) / Math.abs(pptoTotal)) * 100
+                      : null;
+                    return (
+                      <td className={cn("px-3 py-3 text-right text-[12px] font-bold tabular-nums", TONE_TEXT_CLASS[getVarianceTone("ingreso", varianzaPct)])}>
+                        {varianzaPct != null ? formatPercent(varianzaPct) : "—"}
+                      </td>
+                    );
+                  })()}
+                  {hasBudgets && !data.presupuestoEbitda && <td colSpan={2} />}
                 </tr>
 
-                {/* Margen EBITDA */}
+                {/* EBITDA margin row */}
                 {ingresos && (
                   <tr className="border-b border-slate-200 bg-slate-50/60">
-                    <td className="sticky left-0 bg-inherit py-1 pl-4 pr-3 italic text-slate-400 text-[10px]">
+                    <td className="sticky left-0 z-10 bg-inherit py-1 pl-4 pr-3 text-[10px] italic text-slate-400">
                       Margen EBITDA
                     </td>
                     {data.periodos.map((p) => {
@@ -397,76 +454,104 @@ export function EerrClient({
                       const mg = calculateEbitdaMargin(ing, data.ebitda.porPeriodo[p] ?? 0);
                       return (
                         <td key={p} className="px-3 py-1 text-right text-[10px] italic tabular-nums text-slate-500">
-                          {mg !== null ? `${mg.toFixed(1)}%` : "\u2014"}
+                          {mg !== null ? formatPercent(mg) : "—"}
                         </td>
                       );
                     })}
-                    <td className="px-3 py-1 text-right text-[10px] italic text-slate-400 border-l border-slate-200">{"\u2014"}</td>
+                    <td className="px-3 py-1 text-right text-[10px] italic text-slate-400 border-l border-slate-200">—</td>
+                    {hasBudgets && <td colSpan={2} />}
                   </tr>
                 )}
 
-                {/* Secciones bajo EBITDA */}
+                {/* ── Sections below EBITDA ──────────────────────── */}
                 {belowEbitdaSections.map((section) => {
                   const isExpanded = expandedSections.has(section.grupo1);
                   return (
                     <Fragment key={section.grupo1}>
-                      <tr><td colSpan={data.periodos.length + 2} className="h-1 bg-slate-50" /></tr>
-                      <tr className="border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors">
-                        <td className="sticky left-0 bg-white py-2.5 pl-4 pr-3">
+                      <tr><td colSpan={colCount} className="h-1 bg-slate-50" /></tr>
+                      <tr className="border-b border-slate-200 bg-white transition-colors hover:bg-slate-50">
+                        <td className="sticky left-0 z-10 bg-white py-2.5 pl-4 pr-3">
                           <div className="flex items-center gap-2">
                             <TableDisclosureButton
                               expanded={isExpanded}
                               label={`${isExpanded ? "Contraer" : "Expandir"} sección ${section.grupo1}`}
                               onToggle={() => toggleSection(section.grupo1)}
                             />
-                            <span className="font-bold text-slate-700 uppercase tracking-wide text-[11px]">
+                            <span className="text-[11px] font-bold uppercase tracking-wide text-slate-700">
                               {section.grupo1}
                             </span>
                           </div>
                         </td>
-                        {data.periodos.map((p) => (
-                          <td key={p} className="px-3 py-2.5 text-right tabular-nums text-slate-700 font-semibold">
-                            {formatEerr(section.porPeriodo[p] ?? 0)}
-                          </td>
-                        ))}
-                        <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-slate-700 border-l border-slate-200">
+                        {data.periodos.map((p) => {
+                          const v = section.porPeriodo[p] ?? 0;
+                          return (
+                            <td key={p} className={cn("px-3 py-2.5 text-right tabular-nums font-semibold", TONE_TEXT_CLASS[getValueTone(section.tipo, v)])}>
+                              {formatEerr(v)}
+                            </td>
+                          );
+                        })}
+                        <td className={cn("px-3 py-2.5 text-right tabular-nums font-semibold border-l border-slate-200", TONE_TEXT_CLASS[getValueTone(section.tipo, section.total)])}>
                           {formatEerr(section.total)}
                         </td>
+                        {hasBudgets && (
+                          <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-slate-600">
+                            {section.presupuestoTotal != null ? formatEerr(section.presupuestoTotal) : "—"}
+                          </td>
+                        )}
+                        {hasBudgets && (
+                          <td className={cn("px-3 py-2.5 text-right tabular-nums font-semibold", TONE_TEXT_CLASS[getVarianceTone(section.tipo, section.varianzaPct ?? null)])}>
+                            {section.varianzaPct != null ? formatPercent(section.varianzaPct) : "—"}
+                          </td>
+                        )}
                       </tr>
                       {isExpanded && section.lineas.map((line) => (
                         <tr key={line.grupo3} className="border-b border-slate-100 bg-white">
-                          <td className="sticky left-0 bg-white py-1.5 pl-9 pr-3 text-slate-600">{line.grupo3}</td>
-                          {data.periodos.map((p) => (
-                            <td key={p} className="px-3 py-1.5 text-right tabular-nums text-slate-600">
-                              {formatEerr(line.porPeriodo[p] ?? 0)}
-                            </td>
-                          ))}
-                          <td className="px-3 py-1.5 text-right tabular-nums font-medium text-slate-700 border-l border-slate-100">
+                          <td className="sticky left-0 z-10 bg-white py-1.5 pl-9 pr-3 text-slate-600">{line.grupo3}</td>
+                          {data.periodos.map((p) => {
+                            const v = line.porPeriodo[p] ?? 0;
+                            return (
+                              <td key={p} className={cn("px-3 py-1.5 text-right tabular-nums", TONE_TEXT_CLASS[getValueTone(line.tipo, v)])}>
+                                {formatEerr(v)}
+                              </td>
+                            );
+                          })}
+                          <td className={cn("px-3 py-1.5 text-right tabular-nums font-medium border-l border-slate-100", TONE_TEXT_CLASS[getValueTone(line.tipo, line.total)])}>
                             {formatEerr(line.total)}
                           </td>
+                          {hasBudgets && (
+                            <td className="px-3 py-1.5 text-right tabular-nums text-slate-500">
+                              {line.presupuestoTotal != null ? formatEerr(line.presupuestoTotal) : "—"}
+                            </td>
+                          )}
+                          {hasBudgets && (
+                            <td className={cn("px-3 py-1.5 text-right tabular-nums", TONE_TEXT_CLASS[getVarianceTone(line.tipo, line.varianzaPct ?? null)])}>
+                              {line.varianzaPct != null ? formatPercent(line.varianzaPct) : "—"}
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </Fragment>
                   );
                 })}
 
-                {/* EBIT */}
+                {/* ── EBIT ───────────────────────────────────────── */}
                 {belowEbitdaSections.length > 0 && (
                   <tr className="border-t-[3px] border-b border-slate-800 bg-white">
-                    <td className="sticky left-0 bg-white py-3 pl-4 pr-3">
-                      <span className="font-bold text-slate-900 uppercase tracking-widest text-[12px]">EBIT</span>
+                    <td className="sticky left-0 z-10 bg-white py-3 pl-4 pr-3">
+                      <span className="text-[12px] font-bold uppercase tracking-widest text-slate-900">EBIT</span>
                     </td>
                     {data.periodos.map((p) => {
                       const v = data.ebit.porPeriodo[p] ?? 0;
                       return (
-                        <td key={p} className="px-3 py-3 text-right text-[12px] font-bold tabular-nums text-slate-900">
+                        <td key={p} className={cn("px-3 py-3 text-right text-[12px] font-bold tabular-nums", TONE_TEXT_CLASS[getValueTone("ingreso", v)])}>
                           {formatEerr(v)}
                         </td>
                       );
                     })}
-                    <td className="px-3 py-3 text-right text-[12px] font-bold tabular-nums text-slate-900 border-l border-slate-300">
+                    <td className={cn("px-3 py-3 text-right text-[12px] font-bold tabular-nums border-l border-slate-300", TONE_TEXT_CLASS[getValueTone("ingreso", data.ebit.total)])}>
                       {formatEerr(data.ebit.total)}
                     </td>
+                    {hasBudgets && <td colSpan={2} />}
                   </tr>
                 )}
               </tbody>
@@ -475,26 +560,25 @@ export function EerrClient({
         )}
       </ModuleSectionCard>
 
-      {/* Panel detalle arrendatario */}
+      {/* ── Billing detail panel ───────────────────────────────────── */}
       {arrendatarioPanel && (
         <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col bg-white shadow-2xl ring-1 ring-black/10">
-          {/* Header */}
-          <div className="flex items-start justify-between border-b-2 border-slate-200 px-5 py-4 bg-white">
+          <div className="flex items-start justify-between border-b-2 border-slate-200 bg-white px-5 py-4">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">{"Detalle de Facturaci\u00f3n"}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Detalle de Facturación</p>
               <p className="mt-1 text-base font-bold text-slate-900">{arrendatarioPanel.nombre}</p>
               <div className="mt-1 flex items-center gap-2">
                 <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-500">
                   Local {arrendatarioPanel.localCodigo}
                 </span>
                 <span className="text-[10px] text-slate-400">
-                  {desde ? formatPeriodo(desde.slice(0, 7)) : "inicio"} {"\u2014"} {hasta ? formatPeriodo(hasta.slice(0, 7)) : "hoy"}
+                  {desde ? formatPeriodo(desde.slice(0, 7)) : "inicio"} — {hasta ? formatPeriodo(hasta.slice(0, 7)) : "hoy"}
                 </span>
               </div>
             </div>
             <button
               onClick={() => { setArrendatarioPanel(null); setBillingData(null); }}
-              className="ml-4 mt-1 rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+              className="ml-4 mt-1 rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
               aria-label="Cerrar"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -503,15 +587,14 @@ export function EerrClient({
             </button>
           </div>
 
-          {/* Body */}
           <div className="flex-1 overflow-auto">
             {loadingBilling ? (
-              <div className="flex items-center justify-center py-20 text-slate-400 text-sm">Cargando...</div>
+              <div className="flex items-center justify-center py-20 text-sm text-slate-400">Cargando...</div>
             ) : !billingData || billingData.lineas.length === 0 ? (
-              <div className="flex items-center justify-center py-20 text-slate-400 text-sm">Sin registros para el periodo.</div>
+              <div className="flex items-center justify-center py-20 text-sm text-slate-400">Sin registros para el periodo.</div>
             ) : (
-              <table className={`${tableTheme.table} border-collapse text-[11px]`}>
-                <thead className={`${tableTheme.head} sticky top-0 z-10`}>
+              <table className="min-w-full border-collapse text-[11px]">
+                <thead>
                   <tr className="border-b border-slate-200 bg-brand-700">
                     <th className="py-2.5 pl-4 pr-3 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
                       Partida
@@ -545,15 +628,13 @@ export function EerrClient({
                       <Fragment key={g1}>
                         {gIdx > 0 && <tr><td colSpan={billingData.periodos.length + 2} className="h-1 bg-slate-50" /></tr>}
                         <tr className="border-b border-slate-200 bg-white">
-                          <td className="py-2 pl-4 pr-3 font-bold text-slate-900 uppercase text-[10px] tracking-wide">
-                            {g1}
-                          </td>
+                          <td className="py-2 pl-4 pr-3 text-[10px] font-bold uppercase tracking-wide text-slate-900">{g1}</td>
                           {billingData.periodos.map((p) => (
                             <td key={p} className="px-3 py-2 text-right font-bold tabular-nums text-slate-900">
                               {formatEerr(g1PorPeriodo[p] ?? 0)}
                             </td>
                           ))}
-                          <td className="px-3 py-2 text-right font-bold tabular-nums text-slate-900 border-l border-slate-200">
+                          <td className="border-l border-slate-200 px-3 py-2 text-right font-bold tabular-nums text-slate-900">
                             {formatEerr(g1Total)}
                           </td>
                         </tr>
@@ -565,7 +646,7 @@ export function EerrClient({
                                 {formatEerr(l.porPeriodo[p] ?? 0)}
                               </td>
                             ))}
-                            <td className="px-3 py-1.5 text-right tabular-nums text-slate-700 font-medium border-l border-slate-100">
+                            <td className="border-l border-slate-100 px-3 py-1.5 text-right font-medium tabular-nums text-slate-700">
                               {formatEerr(l.total)}
                             </td>
                           </tr>
@@ -574,11 +655,8 @@ export function EerrClient({
                     );
                   })}
 
-                  {/* Total general */}
                   <tr className="border-t-[3px] border-slate-800 bg-white">
-                    <td className="py-3 pl-4 pr-3 font-bold uppercase tracking-widest text-[11px] text-slate-900">
-                      Total
-                    </td>
+                    <td className="py-3 pl-4 pr-3 text-[11px] font-bold uppercase tracking-widest text-slate-900">Total</td>
                     {billingData.periodos.map((p) => {
                       const v = billingData.lineas.reduce((s, l) => s + (l.porPeriodo[p] ?? 0), 0);
                       return (
@@ -587,7 +665,7 @@ export function EerrClient({
                         </td>
                       );
                     })}
-                    <td className="px-3 py-3 text-right font-bold tabular-nums text-slate-900 border-l border-slate-300">
+                    <td className="border-l border-slate-300 px-3 py-3 text-right font-bold tabular-nums text-slate-900">
                       {formatEerr(billingData.total)}
                     </td>
                   </tr>
@@ -600,7 +678,3 @@ export function EerrClient({
     </main>
   );
 }
-
-
-
-

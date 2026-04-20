@@ -5,7 +5,7 @@ import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { TableDisclosureButton } from "@/components/ui/TableDisclosureButton";
 import { getStripedRowClass, tableTheme } from "@/components/ui/table-theme";
-import { formatUf, cn } from "@/lib/utils";
+import { cn, formatSquareMeters, formatUf } from "@/lib/utils";
 import type { Tenant360Contract } from "@/types/tenant-360";
 
 type ContractDetailsSectionProps = {
@@ -63,7 +63,7 @@ export function ContractDetailsSection({ contracts }: ContractDetailsSectionProp
                         />
                         <span>{c.localCodigo}</span>
                       </div>
-                      <p className="ml-6 text-xs text-slate-400">{c.localNombre} &middot; {c.localGlam2.toFixed(2)} m\u00b2</p>
+                      <p className="ml-6 text-xs text-slate-400">{c.localNombre} &middot; {formatSquareMeters(c.localGlam2)}</p>
                     </td>
                     <td className="px-3 py-2.5 text-sm tabular-nums text-slate-600">{c.numeroContrato}</td>
                     <td className="px-3 py-2.5"><StatusBadge status={c.estado} /></td>
@@ -170,6 +170,9 @@ export function ContractDetailsSection({ contracts }: ContractDetailsSectionProp
                             {c.codigoCC ? <span>CC: {c.codigoCC}</span> : null}
                             {c.diasGracia > 0 ? <span>Gracia: {c.diasGracia}d</span> : null}
                             {c.multiplicadorDiciembre !== null ? <span>Mult. dic: {c.multiplicadorDiciembre}x</span> : null}
+                            {c.multiplicadorJunio !== null ? <span>Mult. jun: {c.multiplicadorJunio}x</span> : null}
+                            {c.multiplicadorJulio !== null ? <span>Mult. jul: {c.multiplicadorJulio}x</span> : null}
+                            {c.multiplicadorAgosto !== null ? <span>Mult. ago: {c.multiplicadorAgosto}x</span> : null}
                             {c.pctFondoPromocion !== null ? <span>Fondo prom: {c.pctFondoPromocion}%</span> : null}
                             {c.pdfUrl ? (
                               <a href={c.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-brand-500 underline underline-offset-2 hover:text-brand-700">

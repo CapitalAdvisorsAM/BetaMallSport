@@ -18,10 +18,19 @@ import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolbar";
 import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { UnifiedTable } from "@/components/ui/UnifiedTable";
 import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
-import { cn } from "@/lib/utils";
-import type { ProjectOption } from "@/types/finance";
+import {
+  chartAxisProps,
+  chartBarRadius,
+  chartColors,
+  chartGridProps,
+  chartHeight,
+  chartLegendProps,
+  chartMargins,
+} from "@/lib/charts/theme";
+import { cn, formatPercent, formatUf } from "@/lib/utils";
 import type { GgccDeficitResponse, GgccDeficitPeriodRow } from "@/types/ggcc-deficit";
 
 // ---------------------------------------------------------------------------
@@ -34,13 +43,6 @@ const compactTheme = getTableTheme("compact");
 // Helpers
 // ---------------------------------------------------------------------------
 
-function fmtUf(v: number): string {
-  return v.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function fmtPct(v: number): string {
-  return `${v.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
-}
 
 function deficitColorCls(v: number): string {
   if (v >= 0) return "text-emerald-700 font-semibold";
@@ -58,14 +60,12 @@ function deficitUfCls(v: number): string {
 // ---------------------------------------------------------------------------
 
 type Props = {
-  projects: ProjectOption[];
   selectedProjectId: string;
   defaultDesde?: string;
   defaultHasta?: string;
 };
 
 export function GgccDeficitClient({
-  projects,
   selectedProjectId,
   defaultDesde,
   defaultHasta
@@ -111,9 +111,6 @@ export function GgccDeficitClient({
       <ModuleHeader
         title="Gastos Comunes (GG.CC.)"
         description="Recuperacion vs costos operacionales. Replica la hoja 'GG.CC.' del CDG."
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        preserve={{ desde, hasta }}
         actions={
           <ProjectPeriodToolbar
             desde={desde}
@@ -130,7 +127,7 @@ export function GgccDeficitClient({
       ) : !data || overall.length === 0 ? (
         <ModuleEmptyState
           message="Sin datos de gastos comunes para el rango seleccionado."
-          actionHref={`/finance/upload?project=${selectedProjectId}`}
+          actionHref="/finance/upload"
           actionLabel="Cargar datos contables"
         />
       ) : (
@@ -141,11 +138,11 @@ export function GgccDeficitClient({
               const lastRow = overall[overall.length - 1];
               if (!lastRow) return null;
               const items = [
-                { label: "Recuperacion", value: fmtUf(lastRow.recoveryUf), cls: "text-slate-800" },
-                { label: "Costo Total", value: fmtUf(lastRow.costUf), cls: "text-slate-800" },
-                { label: "Deficit UF", value: fmtUf(lastRow.deficitUf), cls: deficitUfCls(lastRow.deficitUf) },
-                { label: "Deficit %", value: fmtPct(lastRow.deficitPct), cls: deficitColorCls(lastRow.deficitPct) },
-                { label: "MdO / Ingresos", value: fmtPct(manoDeObraRatio[lastRow.period] ?? 0), cls: "text-slate-800" }
+                { label: "Recuperacion", value: formatUf(lastRow.recoveryUf), cls: "text-slate-800" },
+                { label: "Costo Total", value: formatUf(lastRow.costUf), cls: "text-slate-800" },
+                { label: "Deficit UF", value: formatUf(lastRow.deficitUf), cls: deficitUfCls(lastRow.deficitUf) },
+                { label: "Deficit %", value: formatPercent(lastRow.deficitPct), cls: deficitColorCls(lastRow.deficitPct) },
+                { label: "MdO / Ingresos", value: formatPercent(manoDeObraRatio[lastRow.period] ?? 0), cls: "text-slate-800" }
               ];
               return items.map((item) => (
                 <div key={item.label} className="rounded-md border border-slate-200 bg-white p-3">
@@ -163,35 +160,39 @@ export function GgccDeficitClient({
             metricId="chart_finance_ggcc"
             description="Barras: recuperacion y costo en UF. Linea: deficit %."
           >
-            <ResponsiveContainer width="100%" height={300}>
-              <ComposedChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
-                <YAxis yAxisId="left" tick={{ fontSize: 11 }} tickFormatter={(v: number) => v.toLocaleString("es-CL")} />
+            <ResponsiveContainer width="100%" height={chartHeight.lg}>
+              <ComposedChart data={chartData} margin={chartMargins.default}>
+                <CartesianGrid {...chartGridProps} />
+                <XAxis dataKey="mes" {...chartAxisProps} />
+                <YAxis yAxisId="left" {...chartAxisProps} tickFormatter={(v: number) => formatUf(v, 0)} />
                 <YAxis
                   yAxisId="right"
                   orientation="right"
-                  tick={{ fontSize: 11 }}
-                  tickFormatter={(v: number) => `${v.toFixed(0)}%`}
+                  {...chartAxisProps}
+                  tickFormatter={(v: number) => formatPercent(v, 0)}
                 />
                 <Tooltip
-                  formatter={(value, name) => {
-                    const v = typeof value === "number" ? value : Number(value ?? 0);
-                    const label = String(name ?? "");
-                    if (label.includes("%")) return [`${v.toFixed(1)}%`, label];
-                    return [v.toLocaleString("es-CL", { maximumFractionDigits: 2 }), label];
-                  }}
-                  labelFormatter={(l) => `Mes: ${String(l)}`}
+                  content={
+                    <ChartTooltip
+                      labelFormatter={(l) => `Mes: ${String(l)}`}
+                      valueFormatter={(value, name) => {
+                        const v = typeof value === "number" ? value : Number(value ?? 0);
+                        const label = String(name ?? "");
+                        if (label.includes("%")) return formatPercent(v);
+                        return formatUf(v);
+                      }}
+                    />
+                  }
                 />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar yAxisId="left" dataKey="Recuperacion" name="Recuperacion" fill="#059669" radius={[2, 2, 0, 0]} />
-                <Bar yAxisId="left" dataKey="Costo" name="Costo" fill="#dc2626" radius={[2, 2, 0, 0]} />
+                <Legend {...chartLegendProps} />
+                <Bar yAxisId="left" dataKey="Recuperacion" name="Recuperacion" fill={chartColors.positive} radius={chartBarRadius} />
+                <Bar yAxisId="left" dataKey="Costo" name="Costo" fill={chartColors.negative} radius={chartBarRadius} />
                 <Line
                   yAxisId="right"
                   type="monotone"
                   dataKey="Deficit %"
                   name="Deficit %"
-                  stroke="#1e40af"
+                  stroke={chartColors.brandPrimary}
                   strokeWidth={2}
                   dot={false}
                 />
@@ -268,7 +269,7 @@ export function GgccDeficitClient({
                       </td>
                       {overall.map((r) => (
                         <td key={r.period} className="px-2 py-2 text-right text-xs font-bold">
-                          {fmtUf(r.costUf)}
+                          {formatUf(r.costUf)}
                         </td>
                       ))}
                     </tr>
@@ -342,7 +343,7 @@ export function GgccDeficitClient({
                         </td>
                         {periods.map((p) => (
                           <td key={p} className="px-2 py-1.5 text-right text-slate-700">
-                            {fmtPct(manoDeObraRatio[p] ?? 0)}
+                            {formatPercent(manoDeObraRatio[p] ?? 0)}
                           </td>
                         ))}
                       </tr>
@@ -383,7 +384,7 @@ function renderConceptRow(
         if (isDeficitPct) cls = deficitColorCls(v);
         return (
           <td key={r.period} className={cn("px-2 py-1.5 text-right", cls)}>
-            {isDeficitPct ? fmtPct(v) : fmtUf(v)}
+            {isDeficitPct ? formatPercent(v) : formatUf(v)}
           </td>
         );
       })}
@@ -404,7 +405,7 @@ function renderBreakdownRow(
       </td>
       {rows.map((r) => (
         <td key={r.period} className="px-2 py-1.5 text-right text-slate-600">
-          {fmtUf(getValue(r))}
+          {formatUf(getValue(r))}
         </td>
       ))}
     </tr>

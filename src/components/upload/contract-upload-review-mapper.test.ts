@@ -60,6 +60,9 @@ describe("contract-upload-review-mapper", () => {
       pctFondoPromocion: null,
       pctAdministracionGgcc: null,
       multiplicadorDiciembre: null,
+      multiplicadorJunio: null,
+      multiplicadorJulio: null,
+      multiplicadorAgosto: null,
       codigoCC: null,
       pdfUrl: null,
       diasGracia: 0,
@@ -71,7 +74,11 @@ describe("contract-upload-review-mapper", () => {
           valor: "4.2",
           vigenciaDesde: "2027-01-01",
           vigenciaHasta: null,
-          esDiciembre: false
+          esDiciembre: false,
+          descuentoTipo: null,
+          descuentoValor: null,
+          descuentoDesde: null,
+          descuentoHasta: null
         }
       ],
       ggcc: [
@@ -115,6 +122,9 @@ describe("contract-upload-review-mapper", () => {
       pctFondoPromocion: null,
       pctAdministracionGgcc: null,
       multiplicadorDiciembre: null,
+      multiplicadorJunio: null,
+      multiplicadorJulio: null,
+      multiplicadorAgosto: null,
       codigoCC: null,
       pdfUrl: null,
       diasGracia: 0,

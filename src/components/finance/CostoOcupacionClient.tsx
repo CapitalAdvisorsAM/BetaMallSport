@@ -7,8 +7,7 @@ import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { UnifiedTable } from "@/components/ui/UnifiedTable";
 import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
-import { cn } from "@/lib/utils";
-import type { ProjectOption } from "@/types/finance";
+import { cn, formatPercent, formatUf, formatUfPerM2 } from "@/lib/utils";
 import type { CostoOcupacionResponse, CostoOcupacionRow } from "@/types/costo-ocupacion";
 
 // ---------------------------------------------------------------------------
@@ -21,13 +20,9 @@ const compactTheme = getTableTheme("compact");
 // Helpers
 // ---------------------------------------------------------------------------
 
-function fmtUfM2(v: number): string {
-  return v.toLocaleString("es-CL", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
-}
-
-function fmtPct(v: number | null): string {
+function formatPctOrDash(v: number | null): string {
   if (v === null) return "-";
-  return `${v.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+  return formatPercent(v);
 }
 
 function costColorCls(pct: number | null): string {
@@ -49,13 +44,11 @@ function getCurrentYearMonth(): string {
 // ---------------------------------------------------------------------------
 
 type Props = {
-  projects: ProjectOption[];
   selectedProjectId: string;
   defaultPeriod?: string;
 };
 
 export function CostoOcupacionClient({
-  projects,
   selectedProjectId,
   defaultPeriod
 }: Props): JSX.Element {
@@ -89,9 +82,6 @@ export function CostoOcupacionClient({
       <ModuleHeader
         title="Costo de Ocupacion (%)"
         description="Facturacion vs ventas por arrendatario. Replica la hoja 'Costo Ocupacion' del CDG."
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        preserve={{}}
         actions={
           <div className="flex items-center gap-2">
             <label className="text-xs text-slate-500">Periodo</label>
@@ -111,7 +101,7 @@ export function CostoOcupacionClient({
       ) : !data || rows.length === 0 ? (
         <ModuleEmptyState
           message="Sin datos de costo de ocupacion para el periodo seleccionado."
-          actionHref={`/finance/upload?project=${selectedProjectId}`}
+          actionHref="/finance/upload"
           actionLabel="Cargar datos contables"
         />
       ) : (
@@ -156,25 +146,25 @@ export function CostoOcupacionClient({
                         {row.locales.map((l) => l.codigo).join(", ")}
                       </td>
                       <td className="px-2 py-1.5 text-right text-slate-600">
-                        {row.glaM2.toLocaleString("es-CL", { maximumFractionDigits: 0 })}
+                        {formatUf(row.glaM2, 0)}
                       </td>
                       <td className="px-2 py-1.5 text-right text-slate-700">
-                        {fmtUfM2(row.facturacionUfM2)}
+                        {formatUfPerM2(row.facturacionUfM2)}
                       </td>
                       <td className="px-2 py-1.5 text-right text-slate-700">
-                        {fmtUfM2(row.ventasUfM2)}
+                        {formatUfPerM2(row.ventasUfM2)}
                       </td>
                       <td className={cn("px-2 py-1.5 text-right", costColorCls(row.costoOcupacionPct))}>
-                        {fmtPct(row.costoOcupacionPct)}
+                        {formatPctOrDash(row.costoOcupacionPct)}
                       </td>
                       <td className="px-2 py-1.5 text-right text-slate-700">
-                        {fmtUfM2(row.facturacionYtdUfM2)}
+                        {formatUfPerM2(row.facturacionYtdUfM2)}
                       </td>
                       <td className="px-2 py-1.5 text-right text-slate-700">
-                        {fmtUfM2(row.ventasYtdUfM2)}
+                        {formatUfPerM2(row.ventasYtdUfM2)}
                       </td>
                       <td className={cn("px-2 py-1.5 text-right", costColorCls(row.costoOcupacionYtdPct))}>
-                        {fmtPct(row.costoOcupacionYtdPct)}
+                        {formatPctOrDash(row.costoOcupacionYtdPct)}
                       </td>
                     </tr>
                   ))}

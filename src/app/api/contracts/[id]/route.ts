@@ -6,10 +6,11 @@ import { ZodError } from "zod";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { applyEstadoComputado } from "@/lib/contracts/contract-query-service";
 import {
-  getRequiredProjectIdFromRequest,
-  withNormalizedProjectId
+  getRequiredActiveProjectIdFromRequest,
+  withCanonicalProjectId
 } from "@/lib/http/request";
 import {
+  assertNoOverlappingContracts,
   normalizedLocalIds,
   payloadTarifas,
   persistContratoLocales,
@@ -35,7 +36,7 @@ export async function GET(
 ): Promise<NextResponse> {
   try {
     await requireSession();
-    const projectId = getRequiredProjectIdFromRequest(request);
+    const projectId = await getRequiredActiveProjectIdFromRequest(request);
 
     const item = await prisma.contract.findFirst({
       where: { id: context.params.id, proyectoId: projectId },
@@ -87,6 +88,10 @@ function normalizedTarifas(
     vigenciaDesde: Date | string;
     vigenciaHasta: Date | string | null;
     esDiciembre: boolean;
+    descuentoTipo?: string | null;
+    descuentoValor?: Prisma.Decimal | string | null;
+    descuentoDesde?: Date | string | null;
+    descuentoHasta?: Date | string | null;
   }>
 ): string {
   return JSON.stringify(
@@ -97,7 +102,11 @@ function normalizedTarifas(
         valor: toDecimalString(item.valor),
         vigenciaDesde: toDateOnly(item.vigenciaDesde),
         vigenciaHasta: toDateOnly(item.vigenciaHasta),
-        esDiciembre: item.esDiciembre
+        esDiciembre: item.esDiciembre,
+        descuentoTipo: item.descuentoTipo ?? null,
+        descuentoValor: toDecimalString(item.descuentoValor ?? null),
+        descuentoDesde: toDateOnly(item.descuentoDesde ?? null),
+        descuentoHasta: toDateOnly(item.descuentoHasta ?? null)
       }))
       .sort((a, b) => a.key.localeCompare(b.key))
   );
@@ -184,6 +193,21 @@ function computeCamposModificados(
       toDecimalString(existing.multiplicadorDiciembre),
       toDecimalString(payload.multiplicadorDiciembre)
     ],
+    [
+      "multiplicadorJunio",
+      toDecimalString(existing.multiplicadorJunio),
+      toDecimalString(payload.multiplicadorJunio)
+    ],
+    [
+      "multiplicadorJulio",
+      toDecimalString(existing.multiplicadorJulio),
+      toDecimalString(payload.multiplicadorJulio)
+    ],
+    [
+      "multiplicadorAgosto",
+      toDecimalString(existing.multiplicadorAgosto),
+      toDecimalString(payload.multiplicadorAgosto)
+    ],
     ["codigoCC", existing.codigoCC, payload.codigoCC],
     ["pdfUrl", existing.pdfUrl, payload.pdfUrl],
     ["notas", existing.notas, payload.notas]
@@ -256,6 +280,9 @@ function buildContratoPayload(
     pctFondoPromocion: toDecimal(parsed.pctFondoPromocion),
     pctAdministracionGgcc: toDecimal(parsed.pctAdministracionGgcc),
     multiplicadorDiciembre: toDecimal(parsed.multiplicadorDiciembre),
+    multiplicadorJunio: toDecimal(parsed.multiplicadorJunio),
+    multiplicadorJulio: toDecimal(parsed.multiplicadorJulio),
+    multiplicadorAgosto: toDecimal(parsed.multiplicadorAgosto),
     codigoCC: parsed.codigoCC,
     pdfUrl: parsed.pdfUrl,
     notas: parsed.notas
@@ -268,7 +295,8 @@ export async function PUT(
 ): Promise<NextResponse> {
   try {
     const session = await requireWriteAccess();
-    const payload = validateContractInput(withNormalizedProjectId(await request.json()));
+    const projectId = await getRequiredActiveProjectIdFromRequest(request);
+    const payload = validateContractInput(withCanonicalProjectId(await request.json(), projectId));
     const contractId = context.params.id;
     const localIds = normalizedLocalIds(payload);
 
@@ -304,6 +332,15 @@ export async function PUT(
     const camposModificados = computeCamposModificados(existing, payload, localIds);
 
     const updated = await prisma.$transaction(async (tx) => {
+      await assertNoOverlappingContracts(tx, {
+        proyectoId: payload.proyectoId,
+        localIds,
+        fechaInicio: payload.fechaInicio,
+        fechaTermino: payload.fechaTermino,
+        diasGracia: payload.diasGracia,
+        excludeContractId: contractId
+      });
+
       await tx.contract.update({
         where: { id: contractId },
         data: buildContratoPayload(payload, existing.numeroContrato, localIds)
@@ -321,15 +358,15 @@ export async function PUT(
         throw new Error("Contrato no encontrado.");
       }
 
-      if (payload.anexo) {
+      if (camposModificados.length > 0) {
         await tx.contractAmendment.create({
           data: {
             contratoId: contractId,
-            fecha: new Date(payload.anexo.fecha),
-            descripcion: payload.anexo.descripcion,
+            fecha: payload.anexo ? new Date(payload.anexo.fecha) : new Date(),
+            descripcion: payload.anexo?.descripcion ?? "Edicion de contrato",
             camposModificados,
-            snapshotAntes: existing,
-            snapshotDespues,
+            snapshotAntes: existing as unknown as Prisma.InputJsonValue,
+            snapshotDespues: snapshotDespues as unknown as Prisma.InputJsonValue,
             usuarioId: session.user.id
           }
         });
@@ -355,7 +392,7 @@ export async function DELETE(
 ): Promise<NextResponse> {
   try {
     await requireWriteAccess();
-    const projectId = getRequiredProjectIdFromRequest(request);
+    const projectId = await getRequiredActiveProjectIdFromRequest(request);
 
     const deleted = await prisma.contract.deleteMany({
       where: { id: context.params.id, proyectoId: projectId }

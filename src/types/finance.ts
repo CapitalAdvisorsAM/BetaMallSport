@@ -60,6 +60,10 @@ export type EerrLine = {
   tipo: "ingreso" | "costo";
   porPeriodo: Record<string, number>;
   total: number;
+  presupuestoPorPeriodo?: Record<string, number>;
+  presupuestoTotal?: number | null;
+  varianzaTotal?: number | null;
+  varianzaPct?: number | null;
 };
 
 export type EerrSection = {
@@ -68,6 +72,10 @@ export type EerrSection = {
   lineas: EerrLine[];
   porPeriodo: Record<string, number>;
   total: number;
+  presupuestoPorPeriodo?: Record<string, number>;
+  presupuestoTotal?: number | null;
+  varianzaTotal?: number | null;
+  varianzaPct?: number | null;
 };
 
 export type EerrData = {
@@ -75,6 +83,8 @@ export type EerrData = {
   secciones: EerrSection[];
   ebitda: { porPeriodo: Record<string, number>; total: number };
   ebit:   { porPeriodo: Record<string, number>; total: number };
+  presupuestoEbitda?: { porPeriodo: Record<string, number>; total: number } | null;
+  presupuestoEbit?: { porPeriodo: Record<string, number>; total: number } | null;
 };
 
 export type ContableSuggestion = {
@@ -111,6 +121,40 @@ export type VentasUploadResult = {
   sinMapeo: VentasUnmapped[];
 };
 
+export type ExpenseBudgetUnrecognized = {
+  rowNumber: number;
+  periodo: string | null;
+  grupo1: string;
+  grupo3: string;
+  reason: string;
+};
+
+export type ExpenseBudgetUploadResult = {
+  recordsInserted: number;
+  unrecognized: ExpenseBudgetUnrecognized[];
+  summary: { total: number; periodos: string[] };
+};
+
+export type BalanceUploadResult = {
+  recordsInserted: number;
+  unrecognized: Array<{
+    rowNumber: number;
+    accountCode: string;
+    reason: string;
+  }>;
+  summary: { total: number; periodos: string[] };
+};
+
+export type BankUploadResult = {
+  recordsInserted: number;
+  unrecognized: Array<{
+    rowNumber: number;
+    operationNumber: string;
+    reason: string;
+  }>;
+  summary: { total: number; periodos: string[] };
+};
+
 export type BudgetVsActualMonthly = {
   period: string;
   budgetUf: number;
@@ -131,6 +175,8 @@ export type BudgetVsActualTenantRow = {
   varianceUf: number;
   variancePct: number;
   achievementPct: number;
+  /** Periods (YYYY-MM) where the contract has a PORCENTAJE tarifa but no sales were reported for the lagged period. */
+  missingSalesPeriods: string[];
 };
 
 export type BudgetVsActualSummary = {
@@ -180,4 +226,48 @@ export type WaterfallResponse = {
   previousTotal: number;
   netChange: number;
   netChangePct: number;
+  glaArrendadaCurrent: number;
+  glaArrendadaPrevious: number;
+};
+
+export type EeffLine = {
+  accountCode: string;
+  accountName: string;
+  byPeriod: Record<string, number>;
+  total: number;
+};
+
+export type EeffCategory = {
+  category: string;
+  byPeriod: Record<string, number>;
+  total: number;
+  lines: EeffLine[];
+};
+
+export type EeffGroup = {
+  group: string;
+  byPeriod: Record<string, number>;
+  total: number;
+  categories: EeffCategory[];
+};
+
+export type EeffResponse = {
+  periods: string[];
+  groups: EeffGroup[];
+  totalsByPeriod: Record<string, number>;
+  liquidityByPeriod: Record<string, number>;
+};
+
+export type CashFlowSection = {
+  classification: string;
+  byPeriod: Record<string, number>;
+  total: number;
+};
+
+export type CashFlowResponse = {
+  periods: string[];
+  sections: CashFlowSection[];
+  inflowsByPeriod: Record<string, number>;
+  netByPeriod: Record<string, number>;
+  cumulativeByPeriod: Record<string, number>;
 };

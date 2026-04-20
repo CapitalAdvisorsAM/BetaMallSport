@@ -37,6 +37,9 @@ export type WfContract = {
   fechaInicio: Date;
   fechaTermino: Date;
   multiplicadorDiciembre: DecimalLike | null;
+  multiplicadorJunio: DecimalLike | null;
+  multiplicadorJulio: DecimalLike | null;
+  multiplicadorAgosto: DecimalLike | null;
   pctFondoPromocion: DecimalLike | null;
   local: { id: string; glam2: DecimalLike };
   tarifas: {
@@ -166,10 +169,23 @@ export function buildWaterfall(
         c.multiplicadorDiciembre !== null
           ? toNum(c.multiplicadorDiciembre)
           : null,
+      multiplicadorJunio:
+        c.multiplicadorJunio !== null
+          ? toNum(c.multiplicadorJunio)
+          : null,
+      multiplicadorJulio:
+        c.multiplicadorJulio !== null
+          ? toNum(c.multiplicadorJulio)
+          : null,
+      multiplicadorAgosto:
+        c.multiplicadorAgosto !== null
+          ? toNum(c.multiplicadorAgosto)
+          : null,
       pctFondoPromocion:
         c.pctFondoPromocion !== null ? toNum(c.pctFondoPromocion) : null,
       periodDate: currentDate,
       salesUf,
+      estado: c.estado,
     });
     newContractsDelta += expected.totalUf;
   }
@@ -187,10 +203,23 @@ export function buildWaterfall(
         c.multiplicadorDiciembre !== null
           ? toNum(c.multiplicadorDiciembre)
           : null,
+      multiplicadorJunio:
+        c.multiplicadorJunio !== null
+          ? toNum(c.multiplicadorJunio)
+          : null,
+      multiplicadorJulio:
+        c.multiplicadorJulio !== null
+          ? toNum(c.multiplicadorJulio)
+          : null,
+      multiplicadorAgosto:
+        c.multiplicadorAgosto !== null
+          ? toNum(c.multiplicadorAgosto)
+          : null,
       pctFondoPromocion:
         c.pctFondoPromocion !== null ? toNum(c.pctFondoPromocion) : null,
       periodDate: previousDate,
       salesUf,
+      estado: c.estado,
     });
     lostContractsDelta -= expected.totalUf;
   }
@@ -340,6 +369,12 @@ export function buildWaterfall(
   const netChange = endingIncome - startingIncome;
   const netChangePct = startingIncome !== 0 ? (netChange / startingIncome) * 100 : 0;
 
+  // GLA occupied in each period
+  const glaArrendadaCurrent = [...newContracts, ...continuingContracts]
+    .reduce((sum, c) => sum + toNum(c.local.glam2), 0);
+  const glaArrendadaPrevious = [...lostContracts, ...continuingContracts]
+    .reduce((sum, c) => sum + toNum(c.local.glam2), 0);
+
   return {
     mode,
     currentPeriod,
@@ -349,5 +384,7 @@ export function buildWaterfall(
     previousTotal: startingIncome,
     netChange,
     netChangePct,
+    glaArrendadaCurrent,
+    glaArrendadaPrevious,
   };
 }

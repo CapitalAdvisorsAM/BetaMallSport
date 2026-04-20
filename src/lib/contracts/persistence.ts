@@ -1,4 +1,6 @@
-import { Prisma, ContractRateType } from "@prisma/client";
+import { Prisma, ContractRateType, ContractDiscountType, ContractStatus } from "@prisma/client";
+import { ApiError } from "@/lib/api-error";
+import { MS_PER_DAY } from "@/lib/constants";
 
 export type ContractsPayloadShape = {
   localId: string;
@@ -9,10 +11,15 @@ export type ContractsPayloadShape = {
     vigenciaDesde: string;
     vigenciaHasta: string | null;
     esDiciembre: boolean;
+    descuentoTipo?: "PORCENTAJE" | "MONTO_UF" | null;
+    descuentoValor?: string | null;
+    descuentoDesde?: string | null;
+    descuentoHasta?: string | null;
   }>;
   rentaVariable: Array<{
     pctRentaVariable: string;
     umbralVentasUf: string;
+    pisoMinimoUf?: string | null;
     vigenciaDesde: string;
     vigenciaHasta: string | null;
   }>;
@@ -86,26 +93,41 @@ export function payloadTarifas(payload: ContractsPayloadShape): Array<{
   tipo: "FIJO_UF_M2" | "FIJO_UF" | "PORCENTAJE";
   valor: string;
   umbralVentasUf: string | null;
+  pisoMinimoUf: string | null;
   vigenciaDesde: string;
   vigenciaHasta: string | null;
   esDiciembre: boolean;
+  descuentoTipo: "PORCENTAJE" | "MONTO_UF" | null;
+  descuentoValor: string | null;
+  descuentoDesde: string | null;
+  descuentoHasta: string | null;
 }> {
   const merged = [
     ...payload.tarifas.map((item) => ({
       tipo: item.tipo as "FIJO_UF_M2" | "FIJO_UF" | "PORCENTAJE",
       valor: item.valor,
       umbralVentasUf: null as string | null,
+      pisoMinimoUf: null as string | null,
       vigenciaDesde: item.vigenciaDesde,
       vigenciaHasta: item.vigenciaHasta,
-      esDiciembre: item.esDiciembre
+      esDiciembre: item.esDiciembre,
+      descuentoTipo: item.descuentoTipo ?? null,
+      descuentoValor: item.descuentoValor ?? null,
+      descuentoDesde: item.descuentoDesde ?? null,
+      descuentoHasta: item.descuentoHasta ?? null
     })),
     ...payload.rentaVariable.map((item) => ({
       tipo: ContractRateType.PORCENTAJE,
       valor: item.pctRentaVariable,
       umbralVentasUf: item.umbralVentasUf as string | null,
+      pisoMinimoUf: item.pisoMinimoUf ?? null,
       vigenciaDesde: item.vigenciaDesde,
       vigenciaHasta: item.vigenciaHasta,
-      esDiciembre: false
+      esDiciembre: false,
+      descuentoTipo: null as "PORCENTAJE" | "MONTO_UF" | null,
+      descuentoValor: null as string | null,
+      descuentoDesde: null as string | null,
+      descuentoHasta: null as string | null
     }))
   ];
 
@@ -159,8 +181,13 @@ export async function persistTarifas(
         data: {
           valor: new Prisma.Decimal(item.payloadItem.valor),
           umbralVentasUf: item.payloadItem.umbralVentasUf ? new Prisma.Decimal(item.payloadItem.umbralVentasUf) : null,
+          pisoMinimoUf: toDecimal(item.payloadItem.pisoMinimoUf),
           vigenciaHasta: toDate(item.payloadItem.vigenciaHasta),
-          esDiciembre: item.payloadItem.esDiciembre
+          esDiciembre: item.payloadItem.esDiciembre,
+          descuentoTipo: item.payloadItem.descuentoTipo as ContractDiscountType | null,
+          descuentoValor: toDecimal(item.payloadItem.descuentoValor),
+          descuentoDesde: toDate(item.payloadItem.descuentoDesde),
+          descuentoHasta: toDate(item.payloadItem.descuentoHasta)
         }
       })
     )
@@ -173,9 +200,14 @@ export async function persistTarifas(
         tipo: item.tipo as ContractRateType,
         valor: new Prisma.Decimal(item.valor),
         umbralVentasUf: item.umbralVentasUf ? new Prisma.Decimal(item.umbralVentasUf) : null,
+        pisoMinimoUf: toDecimal(item.pisoMinimoUf),
         vigenciaDesde: new Date(item.vigenciaDesde),
         vigenciaHasta: toDate(item.vigenciaHasta),
-        esDiciembre: item.esDiciembre
+        esDiciembre: item.esDiciembre,
+        descuentoTipo: item.descuentoTipo as ContractDiscountType | null,
+        descuentoValor: toDecimal(item.descuentoValor),
+        descuentoDesde: toDate(item.descuentoDesde),
+        descuentoHasta: toDate(item.descuentoHasta)
       }))
     });
   }
@@ -209,6 +241,76 @@ export async function persistContratoLocales(
       })),
       skipDuplicates: true
     });
+  }
+}
+
+/**
+ * Verify that no active/grace contract shares a local with the candidate
+ * contract within its effective date range. Throws ApiError(409) on overlap.
+ *
+ * Effective end date = fechaTermino + diasGracia.
+ * Two intervals overlap iff: startA < endB AND startB < endA.
+ */
+export async function assertNoOverlappingContracts(
+  tx: Pick<Prisma.TransactionClient, "contract">,
+  params: {
+    proyectoId: string;
+    localIds: string[];
+    fechaInicio: string;
+    fechaTermino: string;
+    diasGracia: number;
+    excludeContractId?: string | null;
+  }
+): Promise<void> {
+  const { proyectoId, localIds, fechaInicio, fechaTermino, diasGracia, excludeContractId } = params;
+  if (localIds.length === 0) {
+    return;
+  }
+
+  const newStart = new Date(fechaInicio);
+  const newEnd = new Date(new Date(fechaTermino).getTime() + diasGracia * MS_PER_DAY);
+
+  const candidates = await tx.contract.findMany({
+    where: {
+      proyectoId,
+      ...(excludeContractId ? { id: { not: excludeContractId } } : {}),
+      estado: { in: [ContractStatus.VIGENTE, ContractStatus.GRACIA] },
+      OR: [
+        { localId: { in: localIds } },
+        { locales: { some: { localId: { in: localIds } } } }
+      ]
+    },
+    select: {
+      id: true,
+      numeroContrato: true,
+      localId: true,
+      fechaInicio: true,
+      fechaTermino: true,
+      diasGracia: true,
+      local: { select: { codigo: true } },
+      locales: {
+        select: {
+          localId: true,
+          local: { select: { codigo: true } }
+        }
+      }
+    }
+  });
+
+  for (const candidate of candidates) {
+    const candidateEnd = new Date(candidate.fechaTermino.getTime() + candidate.diasGracia * MS_PER_DAY);
+    const overlaps = newStart < candidateEnd && candidate.fechaInicio < newEnd;
+    if (!overlaps) {
+      continue;
+    }
+    const overlappingLocalCodigo =
+      candidate.locales.find((item) => localIds.includes(item.localId))?.local.codigo ??
+      (localIds.includes(candidate.localId) ? candidate.local.codigo : null);
+    const localLabel = overlappingLocalCodigo ? ` ${overlappingLocalCodigo}` : "";
+    throw new ApiError(
+      409,
+      `El local${localLabel} ya tiene un contrato vigente (${candidate.numeroContrato}) en el rango indicado.`
+    );
   }
 }
 

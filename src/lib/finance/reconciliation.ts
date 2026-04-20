@@ -26,6 +26,9 @@ export type ReconContract = {
   fechaInicio: Date;
   fechaTermino: Date;
   multiplicadorDiciembre: DecimalLike | null;
+  multiplicadorJunio: DecimalLike | null;
+  multiplicadorJulio: DecimalLike | null;
+  multiplicadorAgosto: DecimalLike | null;
   pctFondoPromocion: DecimalLike | null;
   local: {
     id: string;
@@ -85,6 +88,8 @@ export type ReconciliationTenantRow = {
   gapPct: number;
   gapGgccUf: number;
   gapGgccPct: number;
+  /** Periods (YYYY-MM) where the tenant has a PORCENTAJE tarifa but no sales were reported for the lagged period. */
+  missingSalesPeriods: string[];
 };
 
 export type ReconciliationSummary = {
@@ -171,11 +176,13 @@ export function buildReconciliation(
     let totalExpectedGgccUf = 0;
     let totalActualUf = 0;
     let totalActualGgccUf = 0;
+    const missingSalesPeriods = new Set<string>();
 
     for (const c of tenantContracts) {
       localesMap.set(c.localId, { codigo: c.local.codigo, nombre: c.local.nombre });
       const glam2 = toNum(c.local.glam2);
       totalGlam2 += glam2;
+      const hasPercentageRate = c.tarifas.some((t) => t.tipo === ContractRateType.PORCENTAJE);
 
       // Sum actual billing for this unit
       totalActualUf += actualByUnit.get(c.localId) ?? 0;
@@ -188,15 +195,22 @@ export function buildReconciliation(
 
         const lagPeriod = shiftPeriod(period, -VARIABLE_RENT_LAG_MONTHS);
         const salesUf = salesByTenantPeriod.get(c.arrendatarioId)?.get(lagPeriod);
+        if (hasPercentageRate && salesUf === undefined) {
+          missingSalesPeriods.add(period);
+        }
 
         const expected = calcExpectedIncome({
           tarifas: c.tarifas,
           ggcc: c.ggcc,
           glam2,
           multiplicadorDiciembre: c.multiplicadorDiciembre !== null ? toNum(c.multiplicadorDiciembre) : null,
+          multiplicadorJunio: c.multiplicadorJunio !== null ? toNum(c.multiplicadorJunio) : null,
+          multiplicadorJulio: c.multiplicadorJulio !== null ? toNum(c.multiplicadorJulio) : null,
+          multiplicadorAgosto: c.multiplicadorAgosto !== null ? toNum(c.multiplicadorAgosto) : null,
           pctFondoPromocion: c.pctFondoPromocion !== null ? toNum(c.pctFondoPromocion) : null,
           periodDate,
           salesUf: salesUf ?? 0,
+          estado: c.estado,
         });
 
         totalExpectedUf += expected.totalUf;
@@ -222,7 +236,8 @@ export function buildReconciliation(
       gapUf,
       gapPct,
       gapGgccUf,
-      gapGgccPct
+      gapGgccPct,
+      missingSalesPeriods: [...missingSalesPeriods].sort()
     });
   }
 

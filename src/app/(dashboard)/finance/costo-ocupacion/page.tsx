@@ -1,30 +1,22 @@
+import { redirect } from "next/navigation";
 import { CostoOcupacionClient } from "@/components/finance/CostoOcupacionClient";
-import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
-import { canWrite, requireSession } from "@/lib/permissions";
-import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
+import { requireSession } from "@/lib/permissions";
+import { getProjectContext } from "@/lib/project";
 
 export default async function FinanceCostoOcupacionPage({
   searchParams
 }: {
-  searchParams: { project?: string; to?: string; hasta?: string };
+  searchParams: { to?: string; hasta?: string };
 }): Promise<JSX.Element> {
-  const session = await requireSession();
-  const projectParam = resolveProjectIdFromSearchParams(searchParams);
-  const { projects, selectedProjectId } = await getProjectContext(projectParam);
+  await requireSession();
+  const { selectedProjectId } = await getProjectContext();
 
   if (!selectedProjectId) {
-    return (
-      <ProjectCreationPanel
-        title="Finanzas"
-        description="No hay proyectos activos. Crea uno para ver el costo de ocupacion."
-        canEdit={canWrite(session.user.role)}
-      />
-    );
+    redirect("/");
   }
 
   return (
     <CostoOcupacionClient
-      projects={projects}
       selectedProjectId={selectedProjectId}
       defaultPeriod={searchParams.to ?? searchParams.hasta}
     />

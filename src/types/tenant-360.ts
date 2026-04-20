@@ -86,6 +86,9 @@ export type Tenant360Contract = {
   diasGracia: number;
   diasRestantes: number;
   multiplicadorDiciembre: number | null;
+  multiplicadorJunio: number | null;
+  multiplicadorJulio: number | null;
+  multiplicadorAgosto: number | null;
   pctFondoPromocion: number | null;
   codigoCC: string | null;
   pdfUrl: string | null;

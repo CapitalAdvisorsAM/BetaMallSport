@@ -100,6 +100,9 @@ export type RawContract = {
   fechaApertura: Date | null;
   diasGracia: number;
   multiplicadorDiciembre: DecimalLike | null;
+  multiplicadorJunio: DecimalLike | null;
+  multiplicadorJulio: DecimalLike | null;
+  multiplicadorAgosto: DecimalLike | null;
   pctFondoPromocion: DecimalLike | null;
   codigoCC: string | null;
   pdfUrl: string | null;
@@ -415,6 +418,9 @@ function serializeContracts(contracts: RawContract[]): Tenant360Contract[] {
       diasGracia: c.diasGracia,
       diasRestantes,
       multiplicadorDiciembre: c.multiplicadorDiciembre !== null ? toNum(c.multiplicadorDiciembre) : null,
+      multiplicadorJunio: c.multiplicadorJunio !== null ? toNum(c.multiplicadorJunio) : null,
+      multiplicadorJulio: c.multiplicadorJulio !== null ? toNum(c.multiplicadorJulio) : null,
+      multiplicadorAgosto: c.multiplicadorAgosto !== null ? toNum(c.multiplicadorAgosto) : null,
       pctFondoPromocion: c.pctFondoPromocion !== null ? toNum(c.pctFondoPromocion) : null,
       codigoCC: c.codigoCC,
       pdfUrl: c.pdfUrl,
@@ -627,9 +633,13 @@ export function buildGapAnalysis(
         ggcc: c.ggcc,
         glam2: toNum(c.local.glam2),
         multiplicadorDiciembre: c.multiplicadorDiciembre !== null ? toNum(c.multiplicadorDiciembre) : null,
+        multiplicadorJunio: c.multiplicadorJunio !== null ? toNum(c.multiplicadorJunio) : null,
+        multiplicadorJulio: c.multiplicadorJulio !== null ? toNum(c.multiplicadorJulio) : null,
+        multiplicadorAgosto: c.multiplicadorAgosto !== null ? toNum(c.multiplicadorAgosto) : null,
         pctFondoPromocion: c.pctFondoPromocion !== null ? toNum(c.pctFondoPromocion) : null,
         periodDate,
         salesUf,
+        estado: c.estado,
       });
 
       expectedBillingUf += expected.totalUf;

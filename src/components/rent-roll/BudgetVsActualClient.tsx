@@ -21,12 +21,20 @@ import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolbar";
 import { getStripedRowClass, tableTheme } from "@/components/ui/table-theme";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
+import {
+  chartAxisProps,
+  chartBarRadius,
+  chartColors,
+  chartGridProps,
+  chartHeight,
+  chartLegendProps,
+  chartMargins,
+} from "@/lib/charts/theme";
 import { formatDecimal, formatUf, cn } from "@/lib/utils";
-import type { ProjectOption } from "@/types/finance";
 import type { BudgetVsActualResponse } from "@/types/finance";
 
 type BudgetVsActualClientProps = {
-  projects: ProjectOption[];
   selectedProjectId: string;
   defaultDesde?: string;
   defaultHasta?: string;
@@ -52,7 +60,6 @@ function varianceColor(value: number): string {
 }
 
 export function BudgetVsActualClient({
-  projects,
   selectedProjectId,
   defaultDesde,
   defaultHasta,
@@ -95,9 +102,7 @@ export function BudgetVsActualClient({
       <ModuleHeader
         title="Presupuesto vs Real"
         description="Ingreso esperado (contratos + ventas presupuestadas) vs facturacion real por arrendatario."
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        preserve={{ desde, hasta }}
+        valueBadges={["teorico", "efectivo"]}
         actions={
           <ProjectPeriodToolbar
             desde={desde}
@@ -114,7 +119,7 @@ export function BudgetVsActualClient({
         <ModuleSectionCard>
           <ModuleEmptyState
             message="Sin datos de presupuesto para el rango seleccionado."
-            actionHref={`/finance/upload?project=${selectedProjectId}`}
+            actionHref="/finance/upload"
             actionLabel="Cargar datos"
           />
         </ModuleSectionCard>
@@ -155,23 +160,27 @@ export function BudgetVsActualClient({
           {/* Chart */}
           {chartData.length > 0 && (
             <MetricChartCard title="Presupuesto vs Real mensual" metricId="chart_bva_mensual">
-              <ResponsiveContainer width="100%" height={300}>
-                <ComposedChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                  <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
-                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} domain={[0, "auto"]} />
+              <ResponsiveContainer width="100%" height={chartHeight.lg}>
+                <ComposedChart data={chartData} margin={chartMargins.default}>
+                  <CartesianGrid {...chartGridProps} />
+                  <XAxis dataKey="label" {...chartAxisProps} />
+                  <YAxis yAxisId="left" {...chartAxisProps} />
+                  <YAxis yAxisId="right" orientation="right" {...chartAxisProps} domain={[0, "auto"]} />
                   <Tooltip
-                    formatter={(value, name) => {
-                      const v = Number(value);
-                      if (name === "Cumplimiento (%)") return [`${formatUf(v, 1)}%`, name];
-                      return [formatUf(v), name];
-                    }}
+                    content={
+                      <ChartTooltip
+                        valueFormatter={(value, name) => {
+                          const v = Number(value);
+                          if (String(name) === "Cumplimiento (%)") return `${formatUf(v, 1)}%`;
+                          return formatUf(v);
+                        }}
+                      />
+                    }
                   />
-                  <Legend verticalAlign="top" />
-                  <Bar yAxisId="left" dataKey="budgetUf" name="Presupuesto (UF)" fill="#60a5fa" radius={[3, 3, 0, 0]} />
-                  <Bar yAxisId="left" dataKey="actualUf" name="Real (UF)" fill="#34d399" radius={[3, 3, 0, 0]} />
-                  <Line yAxisId="right" dataKey="achievementPct" name="Cumplimiento (%)" stroke="#eab308" strokeWidth={2} dot={{ r: 3 }} />
+                  <Legend {...chartLegendProps} verticalAlign="top" />
+                  <Bar yAxisId="left" dataKey="budgetUf" name="Presupuesto (UF)" fill={chartColors.brandLight} radius={chartBarRadius} />
+                  <Bar yAxisId="left" dataKey="actualUf" name="Real (UF)" fill={chartColors.positiveLight} radius={chartBarRadius} />
+                  <Line yAxisId="right" dataKey="achievementPct" name="Cumplimiento (%)" stroke={chartColors.warning} strokeWidth={2} dot={{ r: 3, fill: chartColors.warning }} />
                 </ComposedChart>
               </ResponsiveContainer>
             </MetricChartCard>
@@ -199,12 +208,22 @@ export function BudgetVsActualClient({
                     return (
                       <tr key={row.tenantId} className={`${getStripedRowClass(index)} ${tableTheme.rowHover}`}>
                         <td className="sticky left-0 bg-inherit px-4 py-3 font-medium text-slate-800">
-                          <Link
-                            href={`/tenants/${row.tenantId}?project=${selectedProjectId}`}
-                            className="text-brand-500 underline underline-offset-2 transition-colors hover:text-brand-700"
-                          >
-                            {row.nombreComercial}
-                          </Link>
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={`/tenants/${row.tenantId}`}
+                              className="text-brand-500 underline underline-offset-2 transition-colors hover:text-brand-700"
+                            >
+                              {row.nombreComercial}
+                            </Link>
+                            {row.missingSalesPeriods.length > 0 && (
+                              <span
+                                className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
+                                title={`Sin ventas presupuestadas en ${row.missingSalesPeriods.length} periodo(s): ${row.missingSalesPeriods.join(", ")}`}
+                              >
+                                Sin ventas ({row.missingSalesPeriods.length})
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-slate-400">{row.rut}</p>
                         </td>
                         <td className="px-3 py-3 text-sm text-slate-500">

@@ -6,9 +6,10 @@ import { createContractCommand } from "@/lib/contracts/contract-command-service"
 import { applyEstadoComputado, listContractsPage } from "@/lib/contracts/contract-query-service";
 import { contractPayloadSchema } from "@/lib/contracts/schema";
 import {
-  getRequiredProjectIdSearchParam,
+  getRequiredActiveProjectIdFromRequest,
+  getRequiredActiveProjectIdSearchParam,
   parseRequiredPaginationParams,
-  withNormalizedProjectId
+  withCanonicalProjectId
 } from "@/lib/http/request";
 import { invalidateMetricsCacheByProject } from "@/lib/metrics-cache";
 import { requireSession, requireWriteAccess } from "@/lib/permissions";
@@ -19,7 +20,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   try {
     await requireSession();
     const { searchParams } = new URL(request.url);
-    const projectId = getRequiredProjectIdSearchParam(searchParams);
+    const projectId = await getRequiredActiveProjectIdSearchParam(searchParams);
 
     const { limit, cursor } = parseRequiredPaginationParams(searchParams);
     const result = await listContractsPage({ projectId, limit, cursor });
@@ -32,7 +33,10 @@ export async function GET(request: Request): Promise<NextResponse> {
 export async function POST(request: Request): Promise<NextResponse> {
   try {
     const session = await requireWriteAccess();
-    const parsed = contractPayloadSchema.safeParse(withNormalizedProjectId(await request.json()));
+    const projectId = await getRequiredActiveProjectIdFromRequest(request);
+    const parsed = contractPayloadSchema.safeParse(
+      withCanonicalProjectId(await request.json(), projectId)
+    );
     if (!parsed.success) {
       return NextResponse.json(
         { message: parsed.error.issues[0].message, issues: parsed.error.issues },

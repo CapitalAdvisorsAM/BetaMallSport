@@ -46,11 +46,14 @@ type ContractGroup = {
   fechaApertura: string | null;
   pctFondoPromocion: string | null;
   multiplicadorDiciembre: string | null;
+  multiplicadorJunio: string | null;
+  multiplicadorJulio: string | null;
+  multiplicadorAgosto: string | null;
   codigoCC: string | null;
   pctAdministracionGgcc: string | null;
   notas: string | null;
   tarifas: TarifaRow[];
-  rentaVariable: Array<{ pctRentaVariable: string; umbralVentasUf: string }>;
+  rentaVariable: Array<{ pctRentaVariable: string; umbralVentasUf: string; pisoMinimoUf: string | null }>;
   ggcc: GgccRow[];
   anexoFecha: string | null;
   anexoDescripcion: string | null;
@@ -143,6 +146,9 @@ export async function POST(request: Request): Promise<NextResponse> {
           fechaApertura: parseDate(row.fechaapertura),
           pctFondoPromocion: nullableStr(row.pctfondopromocion),
           multiplicadorDiciembre: nullableStr(row.multiplicadordiciembre),
+          multiplicadorJunio: nullableStr(row.multiplicadorjunio),
+          multiplicadorJulio: nullableStr(row.multiplicadorjulio),
+          multiplicadorAgosto: nullableStr(row.multiplicadoragosto),
           codigoCC: nullableStr(row.codigocc),
           pctAdministracionGgcc: nullableStr(row.ggccpctadministracion),
           notas: nullableStr(row.notas),
@@ -158,10 +164,13 @@ export async function POST(request: Request): Promise<NextResponse> {
 
       // Tarifas
       const rentaVariablePct = nullableStr(row.rentavariablepct);
+      const rvPisoMin = nullableStr(row.rentavariablepisominimouf);
       const rv2Umbral = nullableStr(row.rentavariable2umbraluf);
       const rv2Pct = nullableStr(row.rentavariable2pct);
+      const rv2PisoMin = nullableStr(row.rentavariable2pisominimouf);
       const rv3Umbral = nullableStr(row.rentavariable3umbraluf);
       const rv3Pct = nullableStr(row.rentavariable3pct);
+      const rv3PisoMin = nullableStr(row.rentavariable3pisominimouf);
       const tarifaTipo = asString(row.tarifatipo).toUpperCase();
       const tarifaValor = asString(row.tarifavalor).replace(",", ".");
       const tarifaVigenciaDesde = parseDate(row.tarifavigenciadesde);
@@ -169,13 +178,13 @@ export async function POST(request: Request): Promise<NextResponse> {
 
       if (rentaVariablePct) {
         if (!group.rentaVariable.some((r) => r.umbralVentasUf === "0")) {
-          group.rentaVariable.push({ pctRentaVariable: rentaVariablePct, umbralVentasUf: "0" });
+          group.rentaVariable.push({ pctRentaVariable: rentaVariablePct, umbralVentasUf: "0", pisoMinimoUf: rvPisoMin });
         }
         if (rv2Umbral && rv2Pct && !group.rentaVariable.some((r) => r.umbralVentasUf === rv2Umbral)) {
-          group.rentaVariable.push({ pctRentaVariable: rv2Pct, umbralVentasUf: rv2Umbral });
+          group.rentaVariable.push({ pctRentaVariable: rv2Pct, umbralVentasUf: rv2Umbral, pisoMinimoUf: rv2PisoMin });
         }
         if (rv3Umbral && rv3Pct && !group.rentaVariable.some((r) => r.umbralVentasUf === rv3Umbral)) {
-          group.rentaVariable.push({ pctRentaVariable: rv3Pct, umbralVentasUf: rv3Umbral });
+          group.rentaVariable.push({ pctRentaVariable: rv3Pct, umbralVentasUf: rv3Umbral, pisoMinimoUf: rv3PisoMin });
         }
       } else if (tarifaTipo && tarifaValor && tarifaVigenciaDesde) {
         const tarifaKey = `${tarifaTipo}-${tarifaVigenciaDesde}`;
@@ -245,6 +254,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       const rentaVariable = group.rentaVariable.map((rv) => ({
         pctRentaVariable: rv.pctRentaVariable,
         umbralVentasUf: rv.umbralVentasUf,
+        pisoMinimoUf: rv.pisoMinimoUf,
         vigenciaDesde: group.fechaInicio,
         vigenciaHasta: group.fechaTermino,
         _key: crypto.randomUUID()
@@ -276,6 +286,9 @@ export async function POST(request: Request): Promise<NextResponse> {
         fechaApertura: group.fechaApertura,
         pctFondoPromocion: group.pctFondoPromocion,
         multiplicadorDiciembre: group.multiplicadorDiciembre,
+        multiplicadorJunio: group.multiplicadorJunio,
+        multiplicadorJulio: group.multiplicadorJulio,
+        multiplicadorAgosto: group.multiplicadorAgosto,
         codigoCC: group.codigoCC,
         pctAdministracionGgcc: group.pctAdministracionGgcc,
         notas: group.notas,

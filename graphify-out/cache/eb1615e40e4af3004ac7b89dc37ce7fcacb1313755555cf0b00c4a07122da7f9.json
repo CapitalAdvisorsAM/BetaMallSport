@@ -1,1 +1,0 @@
-{"nodes": [{"id": "lib_contract_formUtils", "label": "contracts/contract-form-utils (createEmptyPayload, fromContract, toApiPayload, mergeExtractedDraft)", "file_type": "code", "source_file": "src/components/contracts/contract-form-utils.ts", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}

@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDataTable } from "@/hooks/useDataTable";
 import { buildExportExcelUrl } from "@/lib/export/shared";
-import type { LocalRef, ProjectOption } from "@/types/finance";
+import type { LocalRef } from "@/types/finance";
 
 type AccountingMapping = {
   id: string;
@@ -29,7 +29,6 @@ type SalesMapping = {
 };
 
 type FinanceMappingsClientProps = {
-  projects: ProjectOption[];
   selectedProjectId: string;
   accountingMappings: AccountingMapping[];
   salesMappings: SalesMapping[];
@@ -85,7 +84,6 @@ function UnitSelect({
 }
 
 export function FinanceMappingsClient({
-  projects,
   selectedProjectId,
   accountingMappings,
   salesMappings,
@@ -338,10 +336,6 @@ export function FinanceMappingsClient({
       <ModuleHeader
         title="Mapeos"
         description="Vincula los identificadores externos con los locales del rent roll."
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        showProjectSelector={false}
-        preserve={{ tab }}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button asChild type="button" variant="outline" size="sm">

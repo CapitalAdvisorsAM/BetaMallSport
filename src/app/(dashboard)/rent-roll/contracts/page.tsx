@@ -7,17 +7,15 @@ import { RentRollEntityModeNav } from "@/components/rent-roll/RentRollEntityMode
 import { UploadHistory } from "@/components/upload/UploadHistory";
 import { UploadSection } from "@/components/upload/UploadSection";
 import { Button } from "@/components/ui/button";
-import { ProjectCreationPanel } from "@/components/ui/ProjectCreationPanel";
 import type { RentRollMode } from "@/lib/navigation";
 import { buildExportExcelUrl } from "@/lib/export/shared";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { getProjectContext, resolveProjectIdFromSearchParams } from "@/lib/project";
+import { getProjectContext } from "@/lib/project";
 import { getUploadHistory } from "@/lib/rent-roll/upload-history";
 
 type ContractsPageProps = {
   searchParams: {
-    project?: string | string[];
     seccion?: string | string[];
     cursor?: string | string[];
   };
@@ -65,9 +63,14 @@ const contractQueryArgs = {
         tipo: true,
         valor: true,
         umbralVentasUf: true,
+        pisoMinimoUf: true,
         vigenciaDesde: true,
         vigenciaHasta: true,
-        esDiciembre: true
+        esDiciembre: true,
+        descuentoTipo: true,
+        descuentoValor: true,
+        descuentoDesde: true,
+        descuentoHasta: true
       }
     },
     ggcc: {
@@ -108,24 +111,13 @@ export default async function ContractsPage({
   searchParams
 }: ContractsPageProps): Promise<JSX.Element> {
   const session = await requireSession();
-  const projectParam = resolveProjectIdFromSearchParams(searchParams);
   const seccionParam = getSingleValue(searchParams.seccion);
   const cursor = getSingleValue(searchParams.cursor);
-  const { selectedProjectId } = await getProjectContext(projectParam);
+  const { selectedProjectId } = await getProjectContext();
   const canEdit = canWrite(session.user.role);
 
   if (!selectedProjectId) {
-    return (
-      <ProjectCreationPanel
-        title="Contratos"
-        description="No hay proyectos activos. Crea uno para habilitar el CRUD de contratos."
-        canEdit={canEdit}
-      />
-    );
-  }
-
-  if (!projectParam) {
-    redirect(`/rent-roll/contracts?project=${selectedProjectId}`);
+    redirect("/");
   }
   const mode = resolveMode(seccionParam);
 
@@ -251,6 +243,9 @@ export default async function ContractsPage({
             pctFondoPromocion: contract.pctFondoPromocion?.toString() ?? null,
             pctAdministracionGgcc: contract.pctAdministracionGgcc?.toString() ?? null,
             multiplicadorDiciembre: contract.multiplicadorDiciembre?.toString() ?? null,
+            multiplicadorJunio: contract.multiplicadorJunio?.toString() ?? null,
+            multiplicadorJulio: contract.multiplicadorJulio?.toString() ?? null,
+            multiplicadorAgosto: contract.multiplicadorAgosto?.toString() ?? null,
             local: contract.local,
             locales: getAssociatedLocales(contract),
             arrendatario: contract.arrendatario,
@@ -258,9 +253,14 @@ export default async function ContractsPage({
               tipo: tarifa.tipo,
               valor: tarifa.valor.toString(),
               umbralVentasUf: tarifa.umbralVentasUf?.toString() ?? null,
+              pisoMinimoUf: tarifa.pisoMinimoUf?.toString() ?? null,
               vigenciaDesde: tarifa.vigenciaDesde.toISOString().slice(0, 10),
               vigenciaHasta: tarifa.vigenciaHasta ? tarifa.vigenciaHasta.toISOString().slice(0, 10) : null,
-              esDiciembre: tarifa.esDiciembre
+              esDiciembre: tarifa.esDiciembre,
+              descuentoTipo: tarifa.descuentoTipo ?? null,
+              descuentoValor: tarifa.descuentoValor?.toString() ?? null,
+              descuentoDesde: tarifa.descuentoDesde ? tarifa.descuentoDesde.toISOString().slice(0, 10) : null,
+              descuentoHasta: tarifa.descuentoHasta ? tarifa.descuentoHasta.toISOString().slice(0, 10) : null
             })),
             ggcc: contract.ggcc.map((item) => ({
               tarifaBaseUfM2: item.tarifaBaseUfM2.toString(),

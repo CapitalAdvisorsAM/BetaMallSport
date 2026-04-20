@@ -1,37 +1,38 @@
-﻿"use client";
+"use client";
 
 import { ModuleHeader } from "@/components/dashboard/ModuleHeader";
 import { UploadHistory } from "@/components/upload/UploadHistory";
 import { ProcessingUploadCard } from "@/components/upload/ProcessingUploadCard";
-import type { ProjectOption } from "@/types/finance";
 import type { UploadHistoryItem } from "@/lib/upload/history";
 
 type FinanceUploadClientProps = {
-  projects: ProjectOption[];
   selectedProjectId: string;
   accountingHistory: UploadHistoryItem[];
   salesHistory: UploadHistoryItem[];
   budgetedSalesHistory: UploadHistoryItem[];
+  expenseBudgetHistory: UploadHistoryItem[];
+  balancesHistory: UploadHistoryItem[];
+  bankHistory: UploadHistoryItem[];
 };
 
 export function FinanceUploadClient({
-  projects,
   selectedProjectId,
   accountingHistory,
   salesHistory,
-  budgetedSalesHistory
+  budgetedSalesHistory,
+  expenseBudgetHistory,
+  balancesHistory,
+  bankHistory
 }: FinanceUploadClientProps): JSX.Element {
   return (
-    <main className="space-y-4">
+    <main className="stagger space-y-4">
       <ModuleHeader
+        overline="Datos · Ingesta"
         title="Cargar Datos"
-        description='Sube el archivo CDG (.xlsx) para procesar las hojas "Data Contable" y "Data Ventas".'
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        showProjectSelector={false}
+        description='Sube el archivo CDG (.xlsx) para procesar las hojas "Data Contable" y "Data Ventas", o carga el presupuesto de gastos.'
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <div className="space-y-4">
           <ProcessingUploadCard
             title="Datos Contables"
@@ -82,10 +83,59 @@ export function FinanceUploadClient({
             countLabels={{ created: "Creados", updated: "Registros", rejected: "Errores" }}
           />
         </div>
+
+        <div className="space-y-4">
+          <ProcessingUploadCard
+            title="Presupuesto de Gastos"
+            description="Sube el presupuesto anual de gastos por grupo contable (Marketing, Inmobiliaria, Vacancia, etc.)."
+            instruction=".xlsx -> hoja 'Presupuesto' con columnas Periodo, GRUPO 1, GRUPO 3, Valor UF"
+            endpoint="/api/finance/upload/expense-budget"
+            projectId={selectedProjectId}
+            variant="expense-budget"
+            templateHref="/api/finance/upload/expense-budget/template"
+          />
+          <UploadHistory
+            items={expenseBudgetHistory}
+            title="Ultimas cargas de PPTO gastos"
+            errorDownloadBasePath={null}
+            countLabels={{ created: "Registros", updated: "Actualizados", rejected: "Errores" }}
+          />
+        </div>
+
+        <div className="space-y-4">
+          <ProcessingUploadCard
+            title="Balances"
+            description="Lee la hoja 'Data Balances' y carga el estado de situación financiera mensual en UF."
+            instruction="CDG Mall Sport .xlsx -> hoja 'Data Balances'"
+            endpoint="/api/finance/upload/balances"
+            projectId={selectedProjectId}
+            variant="balances"
+          />
+          <UploadHistory
+            items={balancesHistory}
+            title="Ultimas cargas de balances"
+            errorDownloadBasePath={null}
+            countLabels={{ created: "Registros", updated: "Actualizados", rejected: "Errores" }}
+          />
+        </div>
+
+        <div className="space-y-4">
+          <ProcessingUploadCard
+            title="Banco"
+            description="Lee la hoja 'Data Bco' y carga los movimientos bancarios mensuales."
+            instruction="CDG Mall Sport .xlsx -> hoja 'Data Bco'"
+            endpoint="/api/finance/upload/bank"
+            projectId={selectedProjectId}
+            variant="bank"
+          />
+          <UploadHistory
+            items={bankHistory}
+            title="Ultimas cargas de banco"
+            errorDownloadBasePath={null}
+            countLabels={{ created: "Registros", updated: "Actualizados", rejected: "Errores" }}
+          />
+        </div>
       </div>
     </main>
   );
 }
-
-
-

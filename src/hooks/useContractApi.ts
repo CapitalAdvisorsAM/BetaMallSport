@@ -13,13 +13,13 @@ export function useContractApi(): {
 } {
   async function saveContract(draft: ContractDraft, existingId?: string): Promise<ContractRow> {
     const isEditing = Boolean(existingId);
-    const editQuery = `?projectId=${encodeURIComponent(draft.proyectoId)}`;
+    const projectQuery = `?projectId=${encodeURIComponent(draft.proyectoId)}`;
     const response = await fetch(
-      isEditing ? `/api/contracts/${existingId}${editQuery}` : "/api/contracts",
+      isEditing ? `/api/contracts/${existingId}${projectQuery}` : `/api/contracts${projectQuery}`,
       {
-      method: isEditing ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(draft)
+        method: isEditing ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draft)
       }
     );
 
