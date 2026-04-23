@@ -11,27 +11,27 @@ function resolveSection(pathname: string): HelpSection {
     return "dashboard";
   }
 
-  if (pathname === "/rent-roll") {
+  if (pathname === "/plan/rent-roll") {
     return "rent-roll";
   }
 
-  if (pathname.startsWith("/rent-roll/units")) {
+  if (pathname.startsWith("/plan/units")) {
     return "locales";
   }
 
-  if (pathname.startsWith("/rent-roll/tenants")) {
+  if (pathname.startsWith("/plan/tenants")) {
     return "arrendatarios";
   }
 
-  if (pathname.startsWith("/rent-roll/contracts")) {
+  if (pathname.startsWith("/plan/contracts")) {
     return "contratos";
   }
 
-  if (pathname.startsWith("/rent-roll/upload")) {
+  if (pathname.startsWith("/imports")) {
     return "upload";
   }
 
-  if (pathname.startsWith("/rent-roll/dashboard")) {
+  if (pathname.startsWith("/plan/dashboard")) {
     return "rent-roll";
   }
 

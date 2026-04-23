@@ -1,6 +1,6 @@
 ﻿import { redirect } from "next/navigation";
-import { FinanceMappingsClient } from "@/components/finance/FinanceMappingsClient";
-import { getFinanceMappingsData } from "@/lib/finance/mappings";
+import { FinanceMappingsClient } from "@/components/real/FinanceMappingsClient";
+import { getFinanceMappingsData } from "@/lib/real/mappings";
 import { requireSession } from "@/lib/permissions";
 import { getProjectContext } from "@/lib/project";
 

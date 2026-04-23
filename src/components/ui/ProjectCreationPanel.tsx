@@ -47,7 +47,7 @@ export function ProjectCreationPanel({
         throw new Error(data.message ?? "No se pudo crear el proyecto.");
       }
 
-      router.push("/dashboard");
+      router.push("/plan/dashboard");
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Error inesperado al crear proyecto.");

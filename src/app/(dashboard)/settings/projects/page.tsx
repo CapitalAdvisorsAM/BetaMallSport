@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ProjectCrudPanel } from "@/components/rent-roll/ProjectCrudPanel";
+import { ProjectCrudPanel } from "@/components/plan/ProjectCrudPanel";
 import { Button } from "@/components/ui/button";
 import { buildExportExcelUrl } from "@/lib/export/shared";
 import { canWrite, requireSession } from "@/lib/permissions";

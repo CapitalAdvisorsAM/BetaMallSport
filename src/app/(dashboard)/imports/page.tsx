@@ -15,22 +15,22 @@ const RENT_ROLL_UPLOADS: UploadCard[] = [
   {
     title: "Locales",
     description: "Maestro de unidades arrendables (GLA, categoría, estado).",
-    href: "/rent-roll/units?seccion=upload",
+    href: "/imports/rent-roll/units",
   },
   {
     title: "Arrendatarios",
     description: "Maestro de tenants (RUT, razón social, contactos).",
-    href: "/rent-roll/tenants?seccion=upload",
+    href: "/imports/rent-roll/tenants",
   },
   {
     title: "Contratos",
     description: "Contratos vigentes: plazos, tarifas y locales asociados.",
-    href: "/rent-roll/contracts?seccion=upload",
+    href: "/imports/rent-roll/contracts",
   },
   {
     title: "Ventas Presupuestadas",
     description: "Ventas esperadas por arrendatario y período.",
-    href: "/rent-roll/budgeted-sales",
+    href: "/imports/rent-roll/budgeted-sales",
   },
 ];
 
@@ -38,27 +38,27 @@ const FINANCE_UPLOADS: UploadCard[] = [
   {
     title: "Contabilidad",
     description: "Partidas contables por período (EE.RR y EE.FF).",
-    href: "/finance/upload#accounting",
+    href: "/imports/finance/accounting",
   },
   {
     title: "Ventas Reales",
     description: "Ventas efectivas por arrendatario y período.",
-    href: "/finance/upload#sales",
+    href: "/imports/finance/sales",
   },
   {
     title: "Presupuesto Gastos",
     description: "Expense budget mensual por cuenta.",
-    href: "/finance/upload#expense-budget",
+    href: "/imports/finance/expense-budget",
   },
   {
     title: "Balances",
     description: "Balances de cuentas contables.",
-    href: "/finance/upload#balances",
+    href: "/imports/finance/balances",
   },
   {
     title: "Bancos",
     description: "Cartolas y movimientos bancarios.",
-    href: "/finance/upload#bank",
+    href: "/imports/finance/bank",
   },
 ];
 
@@ -94,19 +94,19 @@ export default async function ImportsHubPage(): Promise<JSX.Element> {
       <ModuleHeader
         overline="Carga de Datos"
         title="Imports"
-        description="Todos los flujos de carga de datos agrupados por dominio. Rent-roll define lo que debería pasar; Finance refleja lo que está pasando."
+        description="Todos los flujos de carga de datos agrupados por mundo. Expectativa define lo que debería pasar; Realidad refleja lo que está pasando."
       />
 
       <ModuleSectionCard
-        title="Rent Roll"
-        description="Datos contractuales y expected revenue."
+        title="Datos del Plan"
+        description="Rent roll y expectativa: contratos, locales, arrendatarios y ventas presupuestadas."
       >
         <UploadGrid cards={RENT_ROLL_UPLOADS} />
       </ModuleSectionCard>
 
       <ModuleSectionCard
-        title="Finance"
-        description="Datos efectivos y presupuesto de gastos."
+        title="Datos Reales"
+        description="Operación observada: contabilidad, ventas efectivas, balances y bancos."
       >
         <UploadGrid cards={FINANCE_UPLOADS} />
       </ModuleSectionCard>

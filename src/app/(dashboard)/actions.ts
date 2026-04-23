@@ -19,7 +19,7 @@ export async function selectProjectAction(projectId: string): Promise<never> {
   }
 
   setSelectedProjectCookie(project.id);
-  redirect("/dashboard");
+  redirect("/plan/dashboard");
 }
 
 export async function clearSelectedProjectAction(): Promise<never> {

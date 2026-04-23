@@ -18,17 +18,17 @@ export function TenantProfileHeader({ profile, quickStats }: TenantProfileHeader
         {/* Breadcrumb */}
         <nav className="mb-2 flex flex-wrap items-center gap-1 text-xs text-slate-500">
           <Link
-            href="/rent-roll/tenants"
+            href="/plan/tenants"
             className="text-brand-500 underline underline-offset-2 transition-colors hover:text-brand-700"
           >
-            Rent Roll · Arrendatarios
+            Expectativa · Arrendatarios
           </Link>
           <span className="text-slate-300">·</span>
           <Link
-            href="/finance/tenants"
+            href="/real/tenants"
             className="text-brand-500 underline underline-offset-2 transition-colors hover:text-brand-700"
           >
-            Finanzas · Arrendatarios
+            Realidad · Arrendatarios
           </Link>
         </nav>
 
