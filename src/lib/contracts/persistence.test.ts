@@ -22,7 +22,7 @@ function makeTx(results: Array<Record<string, unknown>>): {
 }
 
 const commonParams = {
-  proyectoId: "p1",
+  projectId: "p1",
   localIds: ["l1"],
   fechaInicio: "2026-06-01",
   fechaTermino: "2027-05-31",

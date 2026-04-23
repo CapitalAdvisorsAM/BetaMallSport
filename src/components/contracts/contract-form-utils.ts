@@ -78,7 +78,7 @@ export function createEmptyPayload(
 ): ContractDraftPayload {
   const uniqueLocalIds = Array.from(new Set(localIds.filter(Boolean)));
   return {
-    proyectoId,
+    projectId: proyectoId,
     localId: uniqueLocalIds[0] ?? "",
     localIds: uniqueLocalIds,
     arrendatarioId,
@@ -110,7 +110,7 @@ export function fromContract(
   const localIds =
     contract.locales.length > 0 ? contract.locales.map((local) => local.id) : [contract.local.id];
   return {
-    proyectoId,
+    projectId: proyectoId,
     localId: localIds[0] ?? contract.local.id,
     localIds,
     arrendatarioId: contract.arrendatario.id,

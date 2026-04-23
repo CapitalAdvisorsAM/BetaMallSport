@@ -61,7 +61,7 @@ async function callDelete(request: Request, params: { id: string }) {
 
 function makePayload(): ContractFormPayload {
   return {
-    proyectoId: "p1",
+    projectId: "p1",
     localId: "l1",
     localIds: ["l1"],
     arrendatarioId: "a1",
@@ -118,7 +118,7 @@ function makePayload(): ContractFormPayload {
 function makeExistingContract() {
   return {
     id: "contract-1",
-    proyectoId: "p1",
+    projectId: "p1",
     localId: "l1",
     arrendatarioId: "a1",
     numeroContrato: "C-100",
@@ -371,7 +371,7 @@ describe("PUT /api/contracts/[id]", () => {
 
   it("returns 404 when proyectoId does not match the existing contract", async () => {
     const payload = makePayload();
-    payload.proyectoId = "other-project";
+    payload.projectId = "other-project";
     prismaMock.contract.findFirst.mockResolvedValue(null);
 
     const response = await callPut(

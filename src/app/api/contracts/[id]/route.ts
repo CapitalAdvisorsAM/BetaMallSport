@@ -39,7 +39,7 @@ export async function GET(
     const projectId = await getRequiredActiveProjectIdFromRequest(request);
 
     const item = await prisma.contract.findFirst({
-      where: { id: context.params.id, proyectoId: projectId },
+      where: { id: context.params.id, projectId: projectId },
       include: {
         local: true,
         locales: {
@@ -305,7 +305,7 @@ export async function PUT(
     }
 
     const existing = await prisma.contract.findFirst({
-      where: { id: contractId, proyectoId: payload.proyectoId },
+      where: { id: contractId, projectId: payload.projectId },
       include: { tarifas: true, ggcc: true, locales: true }
     });
     if (!existing) {
@@ -314,11 +314,11 @@ export async function PUT(
 
     const [locals, arrendatario] = await Promise.all([
       prisma.unit.findMany({
-        where: { id: { in: localIds }, proyectoId: payload.proyectoId },
+        where: { id: { in: localIds }, projectId: payload.projectId },
         select: { id: true }
       }),
       prisma.tenant.findFirst({
-        where: { id: payload.arrendatarioId, proyectoId: payload.proyectoId },
+        where: { id: payload.arrendatarioId, projectId: payload.projectId },
         select: { id: true }
       })
     ]);
@@ -333,7 +333,7 @@ export async function PUT(
 
     const updated = await prisma.$transaction(async (tx) => {
       await assertNoOverlappingContracts(tx, {
-        proyectoId: payload.proyectoId,
+        projectId: payload.projectId,
         localIds,
         fechaInicio: payload.fechaInicio,
         fechaTermino: payload.fechaTermino,
@@ -374,7 +374,7 @@ export async function PUT(
 
       return snapshotDespues;
     });
-    invalidateMetricsCacheByProject(payload.proyectoId);
+    invalidateMetricsCacheByProject(payload.projectId);
 
     const [computed] = applyEstadoComputado([updated]);
     return NextResponse.json(computed);
@@ -395,7 +395,7 @@ export async function DELETE(
     const projectId = await getRequiredActiveProjectIdFromRequest(request);
 
     const deleted = await prisma.contract.deleteMany({
-      where: { id: context.params.id, proyectoId: projectId }
+      where: { id: context.params.id, projectId: projectId }
     });
     if (deleted.count === 0) {
       return NextResponse.json({ message: "Contrato no encontrado." }, { status: 404 });

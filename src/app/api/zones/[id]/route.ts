@@ -33,7 +33,7 @@ export async function PUT(
 
     const updated = await updateZone({
       zoneId: context.params.id,
-      projectId: result.data.proyectoId,
+      projectId: result.data.projectId,
       nombre: result.data.nombre
     });
     return NextResponse.json(updated);

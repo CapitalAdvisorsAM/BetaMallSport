@@ -18,7 +18,7 @@ export async function createContractCommand(input: {
   const { payload, userId } = input;
   const localIds = normalizedLocalIds(payload);
   const numeroContrato =
-    payload.numeroContrato?.trim() || (await generateNumeroContrato(prisma, payload.proyectoId));
+    payload.numeroContrato?.trim() || (await generateNumeroContrato(prisma, payload.projectId));
 
   if (localIds.length === 0) {
     throw new ApiError(400, "Debes seleccionar al menos un local.");
@@ -26,11 +26,11 @@ export async function createContractCommand(input: {
 
   const [locals, arrendatario] = await Promise.all([
     prisma.unit.findMany({
-      where: { id: { in: localIds }, proyectoId: payload.proyectoId },
+      where: { id: { in: localIds }, projectId: payload.projectId },
       select: { id: true }
     }),
     prisma.tenant.findFirst({
-      where: { id: payload.arrendatarioId, proyectoId: payload.proyectoId },
+      where: { id: payload.arrendatarioId, projectId: payload.projectId },
       select: { id: true }
     })
   ]);
@@ -43,7 +43,7 @@ export async function createContractCommand(input: {
 
   return prisma.$transaction(async (tx) => {
     await assertNoOverlappingContracts(tx, {
-      proyectoId: payload.proyectoId,
+      projectId: payload.projectId,
       localIds,
       fechaInicio: payload.fechaInicio,
       fechaTermino: payload.fechaTermino,
@@ -52,7 +52,7 @@ export async function createContractCommand(input: {
 
     const created = await tx.contract.create({
       data: {
-        proyectoId: payload.proyectoId,
+        projectId: payload.projectId,
         localId: localIds[0],
         arrendatarioId: payload.arrendatarioId,
         numeroContrato,

@@ -74,7 +74,7 @@ function EstadoBadge({ estado }: { estado: string }): JSX.Element {
 export function UploadHistory({
   items,
   title = "Ultimas 5 cargas",
-  errorDownloadBasePath = "/api/rent-roll/upload/errors",
+  errorDownloadBasePath = "/api/plan/upload/errors",
   countLabels = {
     created: "Creados",
     updated: "Actualizados",

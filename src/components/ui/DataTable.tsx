@@ -149,7 +149,7 @@ function IndeterminateCheckbox({
   );
 }
 
-function ExcelColumnHeader<TData>({ header }: { header: Header<TData, unknown> }): JSX.Element {
+export function ExcelColumnHeader<TData>({ header }: { header: Header<TData, unknown> }): JSX.Element {
   const column = header.column;
   const align = getColumnAlign(column);
   const filterType = getFilterType(column);

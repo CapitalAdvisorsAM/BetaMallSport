@@ -24,7 +24,7 @@ function isNonNegativeDecimal(value: string): boolean {
 }
 
 export const unitSchema = z.object({
-  proyectoId: z.string().min(1),
+  projectId: z.string().min(1),
   codigo: z.string().trim().min(1, "Codigo es obligatorio.").transform((value) => value.toUpperCase()),
   nombre: z.string().trim().default(""),
   glam2: z

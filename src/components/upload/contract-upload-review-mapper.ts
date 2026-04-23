@@ -131,7 +131,7 @@ export function previewRowToUploadDraft(
 
   return {
     draft: {
-      proyectoId,
+      projectId: proyectoId,
       localId: localCodigo,
       localIds: localCodigo ? [localCodigo] : [],
       arrendatarioId: arrendatarioNombre,

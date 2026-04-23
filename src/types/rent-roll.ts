@@ -4,7 +4,7 @@ export type {
   BudgetedSalesMatrixResponse,
   BudgetedSalesMatrixRow,
   BudgetedSalesMatrixSummary,
-} from "@/lib/rent-roll/budgeted-sales-matrix";
+} from "@/lib/plan/budgeted-sales-matrix";
 
 export type EstadoLocal = ContractDayStatus;
 

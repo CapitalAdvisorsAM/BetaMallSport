@@ -43,7 +43,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     const payload = result.data;
     const created = await createTenant({ payload });
-    invalidateMetricsCacheByProject(payload.proyectoId);
+    invalidateMetricsCacheByProject(payload.projectId);
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {

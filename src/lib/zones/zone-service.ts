@@ -8,9 +8,9 @@ type ZonePayload = z.infer<typeof zoneSchema>;
 
 export async function listZonesByProject(projectId: string) {
   return prisma.zone.findMany({
-    where: { proyectoId: projectId },
+    where: { projectId: projectId },
     orderBy: { nombre: "asc" },
-    select: { id: true, proyectoId: true, nombre: true, createdAt: true }
+    select: { id: true, projectId: true, nombre: true, createdAt: true }
   });
 }
 
@@ -18,7 +18,7 @@ export async function createZone(payload: ZonePayload) {
   try {
     return await prisma.zone.create({
       data: {
-        proyectoId: payload.proyectoId,
+        projectId: payload.projectId,
         nombre: payload.nombre
       }
     });
@@ -32,7 +32,7 @@ export async function createZone(payload: ZonePayload) {
 
 export async function updateZone(input: { zoneId: string; projectId: string; nombre: string }) {
   const existing = await prisma.zone.findFirst({
-    where: { id: input.zoneId, proyectoId: input.projectId },
+    where: { id: input.zoneId, projectId: input.projectId },
     select: { id: true }
   });
   if (!existing) {
@@ -54,7 +54,7 @@ export async function updateZone(input: { zoneId: string; projectId: string; nom
 
 export async function deleteZone(input: { zoneId: string; projectId: string }) {
   const deleted = await prisma.zone.deleteMany({
-    where: { id: input.zoneId, proyectoId: input.projectId }
+    where: { id: input.zoneId, projectId: input.projectId }
   });
 
   if (deleted.count === 0) {

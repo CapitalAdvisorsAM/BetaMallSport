@@ -20,7 +20,7 @@ async function ensureUniqueCode(input: {
 }): Promise<void> {
   const duplicate = await prisma.unit.findFirst({
     where: {
-      proyectoId: input.projectId,
+      projectId: input.projectId,
       ...(input.excludeId ? { id: { not: input.excludeId } } : {}),
       codigo: {
         equals: input.code,
@@ -37,7 +37,7 @@ async function ensureUniqueCode(input: {
 
 export async function listUnitsPage(input: ListUnitsPageInput) {
   const items = await prisma.unit.findMany({
-    where: { proyectoId: input.projectId },
+    where: { projectId: input.projectId },
     take: input.limit + 1,
     ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
     orderBy: { id: "asc" }
@@ -48,19 +48,19 @@ export async function listUnitsPage(input: ListUnitsPageInput) {
 
 export async function getUnitById(input: { projectId: string; unitId: string }) {
   return prisma.unit.findFirst({
-    where: { id: input.unitId, proyectoId: input.projectId }
+    where: { id: input.unitId, projectId: input.projectId }
   });
 }
 
 export async function createUnit(input: { payload: UnitPayload }) {
   await ensureUniqueCode({
-    projectId: input.payload.proyectoId,
+    projectId: input.payload.projectId,
     code: input.payload.codigo
   });
 
   return prisma.unit.create({
     data: {
-      proyectoId: input.payload.proyectoId,
+      projectId: input.payload.projectId,
       codigo: input.payload.codigo,
       nombre: input.payload.nombre,
       glam2: new Prisma.Decimal(input.payload.glam2),
@@ -75,7 +75,7 @@ export async function createUnit(input: { payload: UnitPayload }) {
 
 export async function updateUnit(input: { unitId: string; payload: UnitPayload }) {
   const existing = await prisma.unit.findFirst({
-    where: { id: input.unitId, proyectoId: input.payload.proyectoId },
+    where: { id: input.unitId, projectId: input.payload.projectId },
     select: { id: true }
   });
   if (!existing) {
@@ -83,7 +83,7 @@ export async function updateUnit(input: { unitId: string; payload: UnitPayload }
   }
 
   await ensureUniqueCode({
-    projectId: input.payload.proyectoId,
+    projectId: input.payload.projectId,
     code: input.payload.codigo,
     excludeId: input.unitId
   });
@@ -105,7 +105,7 @@ export async function updateUnit(input: { unitId: string; payload: UnitPayload }
 
 export async function deleteUnit(input: { projectId: string; unitId: string }) {
   const deleted = await prisma.unit.deleteMany({
-    where: { id: input.unitId, proyectoId: input.projectId }
+    where: { id: input.unitId, projectId: input.projectId }
   });
 
   if (deleted.count === 0) {

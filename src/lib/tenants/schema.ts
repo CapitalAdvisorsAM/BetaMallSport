@@ -15,7 +15,7 @@ export const TENANT_CATEGORY_LABELS: Record<TenantCategory, string> = {
 };
 
 export const tenantSchema = z.object({
-  proyectoId: z.string().min(1),
+  projectId: z.string().min(1),
   rut: z.string().trim().nullable().optional(),
   razonSocial: z.string().trim().min(1, "Razon social es obligatoria."),
   nombreComercial: z.string().trim().min(1, "Nombre comercial es obligatorio."),

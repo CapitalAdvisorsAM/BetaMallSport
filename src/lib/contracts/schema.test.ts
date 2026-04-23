@@ -5,7 +5,7 @@ type ContractPayload = (typeof contractPayloadSchema)["_type"];
 
 function basePayload(): ContractPayload {
   return {
-    proyectoId: "p1",
+    projectId: "p1",
     localId: "l1",
     localIds: ["l1"],
     arrendatarioId: "a1",

@@ -1,4 +1,4 @@
-import type { PeriodoMetrica } from "@/types/timeline";
+import type { PeriodoMetrica } from "@/types/rent-roll-timeline";
 
 export type PeriodoField =
   | "pctOcupacionGLA"

@@ -11,7 +11,7 @@ export function useBudgetedSalesCellApi(): {
     payload: BudgetedSaleCellPayload,
   ): Promise<BudgetedSaleCellResponse> {
     const response = await fetch(
-      `/api/rent-roll/budgeted-sales?projectId=${encodeURIComponent(payload.projectId)}`,
+      `/api/plan/budgeted-sales?projectId=${encodeURIComponent(payload.projectId)}`,
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },

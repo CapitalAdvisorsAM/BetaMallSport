@@ -55,13 +55,13 @@ export async function POST(request: Request): Promise<NextResponse> {
     const [arrendatarios, local] = await Promise.all([
       normalizedArrendatarioNombre
         ? prisma.tenant.findMany({
-            where: { proyectoId },
+            where: { projectId: proyectoId },
             select: { id: true, nombreComercial: true }
           })
         : Promise.resolve([]),
       extraction.localCodigo
         ? prisma.unit.findFirst({
-            where: { proyectoId, codigo: extraction.localCodigo },
+            where: { projectId: proyectoId, codigo: extraction.localCodigo },
             select: { id: true }
           })
         : Promise.resolve(null)

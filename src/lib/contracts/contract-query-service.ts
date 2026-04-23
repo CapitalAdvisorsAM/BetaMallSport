@@ -44,7 +44,7 @@ export async function listContractsPage(input: {
   cursor?: string;
 }) {
   const items = await prisma.contract.findMany({
-    where: { proyectoId: input.projectId },
+    where: { projectId: input.projectId },
     include: contractInclude,
     take: input.limit + 1,
     ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),

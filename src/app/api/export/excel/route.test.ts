@@ -149,9 +149,9 @@ describe("GET /api/export/excel", () => {
     expect(prismaMock.unit.findMany).toHaveBeenCalledTimes(1);
 
     const args = prismaMock.unit.findMany.mock.calls[0]?.[0] as {
-      where: { proyectoId: string; estado: string; OR: Array<Record<string, unknown>> };
+      where: { projectId: string; estado: string; OR: Array<Record<string, unknown>> };
     };
-    expect(args.where.proyectoId).toBe("p1");
+    expect(args.where.projectId).toBe("p1");
     expect(args.where.estado).toBe("ACTIVO");
     expect(args.where.OR).toHaveLength(2);
   });

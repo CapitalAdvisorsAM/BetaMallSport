@@ -2,7 +2,7 @@ import type { ContractStatus, ContractRateType, ContractDiscountType } from "@pr
 
 export type ContractApiBaseRow = {
   id: string;
-  proyectoId: string;
+  projectId: string;
   localId: string;
   localIds: string[];
   arrendatarioId: string;

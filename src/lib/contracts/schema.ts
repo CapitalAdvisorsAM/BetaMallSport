@@ -39,7 +39,7 @@ export const decimalStringSchema = z
 
 export const contractPayloadSchema = z
   .object({
-    proyectoId: z.string().min(1),
+    projectId: z.string().min(1),
     localId: z.string().min(1),
     localIds: z.array(z.string().min(1)).default([]),
     arrendatarioId: z.string().min(1),

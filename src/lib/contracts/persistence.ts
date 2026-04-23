@@ -55,8 +55,8 @@ export async function generateNumeroContrato(
     const numeroContrato = crypto.randomUUID().slice(0, 8).toUpperCase();
     const existing = await prismaClient.contract.findUnique({
       where: {
-        proyectoId_numeroContrato: {
-          proyectoId,
+        projectId_numeroContrato: {
+          projectId: proyectoId,
           numeroContrato
         }
       },
@@ -254,7 +254,7 @@ export async function persistContratoLocales(
 export async function assertNoOverlappingContracts(
   tx: Pick<Prisma.TransactionClient, "contract">,
   params: {
-    proyectoId: string;
+    projectId: string;
     localIds: string[];
     fechaInicio: string;
     fechaTermino: string;
@@ -262,7 +262,8 @@ export async function assertNoOverlappingContracts(
     excludeContractId?: string | null;
   }
 ): Promise<void> {
-  const { proyectoId, localIds, fechaInicio, fechaTermino, diasGracia, excludeContractId } = params;
+  const { projectId, localIds, fechaInicio, fechaTermino, diasGracia, excludeContractId } = params;
+  const proyectoId = projectId;
   if (localIds.length === 0) {
     return;
   }
@@ -272,7 +273,7 @@ export async function assertNoOverlappingContracts(
 
   const candidates = await tx.contract.findMany({
     where: {
-      proyectoId,
+      projectId: proyectoId,
       ...(excludeContractId ? { id: { not: excludeContractId } } : {}),
       estado: { in: [ContractStatus.VIGENTE, ContractStatus.GRACIA, ContractStatus.NO_INICIADO] },
       OR: [

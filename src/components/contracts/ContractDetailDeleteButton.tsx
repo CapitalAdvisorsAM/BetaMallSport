@@ -26,7 +26,7 @@ export function ContractDetailDeleteButton({
     try {
       await deleteContract(contractId, proyectoId);
       toast.success("Contrato eliminado correctamente.");
-      router.push("/rent-roll/contracts");
+      router.push("/plan/contracts");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo eliminar el contrato.");
       setIsDeleting(false);
