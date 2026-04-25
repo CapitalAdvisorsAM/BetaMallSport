@@ -1,4 +1,3 @@
-import { Prisma } from "@prisma/client";
 import { ApiError } from "@/lib/api-error";
 import {
   assertNoOverlappingContracts,
