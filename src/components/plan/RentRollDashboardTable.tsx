@@ -332,7 +332,7 @@ export function RentRollDashboardTable({
         }
       },
     ],
-    []
+    [tipoOptions, zonaOptions]
   );
 
   const { table } = useDataTable(sortedBaseRows, columns);
