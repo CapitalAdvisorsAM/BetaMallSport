@@ -20,8 +20,8 @@ export function AlertBar({
   vacantes,
   brechaFacturacion
 }: AlertCounts): JSX.Element | null {
-  const href = "/rent-roll/dashboard";
-  const rentRollHref = "/rent-roll";
+  const href = "/plan/dashboard";
+  const rentRollHref = "/plan/rent-roll";
 
   const items: AlertItem[] = [
     {

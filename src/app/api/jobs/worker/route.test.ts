@@ -24,7 +24,7 @@ vi.mock("@/lib/jobs", () => ({
   updateJobStatus: updateJobStatusMock
 }));
 
-vi.mock("@/lib/rent-roll/contracts-apply-job", () => ({
+vi.mock("@/lib/plan/contracts-apply-job", () => ({
   runContratosApplyJob: runContratosApplyJobMock
 }));
 

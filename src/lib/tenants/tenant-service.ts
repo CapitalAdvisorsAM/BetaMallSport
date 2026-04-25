@@ -14,7 +14,7 @@ type ListTenantsPageInput = {
 
 export async function listTenantsPage(input: ListTenantsPageInput) {
   const items = await prisma.tenant.findMany({
-    where: { proyectoId: input.projectId },
+    where: { projectId: input.projectId },
     take: input.limit + 1,
     ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
     orderBy: { id: "asc" }
@@ -25,14 +25,14 @@ export async function listTenantsPage(input: ListTenantsPageInput) {
 
 export async function getTenantById(input: { projectId: string; tenantId: string }) {
   return prisma.tenant.findFirst({
-    where: { id: input.tenantId, proyectoId: input.projectId }
+    where: { id: input.tenantId, projectId: input.projectId }
   });
 }
 
 export async function createTenant(input: { payload: TenantPayload }) {
   return prisma.tenant.create({
     data: {
-      proyectoId: input.payload.proyectoId,
+      projectId: input.payload.projectId,
       rut: resolveTenantRut(
         input.payload.rut,
         input.payload.razonSocial,
@@ -49,7 +49,7 @@ export async function createTenant(input: { payload: TenantPayload }) {
 
 export async function updateTenant(input: { tenantId: string; payload: TenantPayload }) {
   const existing = await prisma.tenant.findFirst({
-    where: { id: input.tenantId, proyectoId: input.payload.proyectoId },
+    where: { id: input.tenantId, projectId: input.payload.projectId },
     select: { id: true }
   });
   if (!existing) {
@@ -75,7 +75,7 @@ export async function updateTenant(input: { tenantId: string; payload: TenantPay
 
 export async function deleteTenant(input: { projectId: string; tenantId: string }) {
   const deleted = await prisma.tenant.deleteMany({
-    where: { id: input.tenantId, proyectoId: input.projectId }
+    where: { id: input.tenantId, projectId: input.projectId }
   });
 
   if (deleted.count === 0) {

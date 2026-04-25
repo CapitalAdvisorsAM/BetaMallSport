@@ -45,7 +45,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
     const payload = parsed.data;
     const contract = await createContractCommand({ payload, userId: session.user.id });
-    invalidateMetricsCacheByProject(payload.proyectoId);
+    invalidateMetricsCacheByProject(payload.projectId);
 
     return NextResponse.json(contract, { status: 201 });
   } catch (error) {

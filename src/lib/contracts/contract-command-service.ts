@@ -1,9 +1,12 @@
-import { Prisma, ContractRateType } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { ApiError } from "@/lib/api-error";
 import {
   assertNoOverlappingContracts,
   generateNumeroContrato,
   normalizedLocalIds,
+  payloadTarifas,
+  persistGGCC,
+  persistTarifas,
   toDate,
   toDecimal
 } from "@/lib/contracts/persistence";
@@ -18,7 +21,7 @@ export async function createContractCommand(input: {
   const { payload, userId } = input;
   const localIds = normalizedLocalIds(payload);
   const numeroContrato =
-    payload.numeroContrato?.trim() || (await generateNumeroContrato(prisma, payload.proyectoId));
+    payload.numeroContrato?.trim() || (await generateNumeroContrato(prisma, payload.projectId));
 
   if (localIds.length === 0) {
     throw new ApiError(400, "Debes seleccionar al menos un local.");
@@ -26,11 +29,11 @@ export async function createContractCommand(input: {
 
   const [locals, arrendatario] = await Promise.all([
     prisma.unit.findMany({
-      where: { id: { in: localIds }, proyectoId: payload.proyectoId },
+      where: { id: { in: localIds }, projectId: payload.projectId },
       select: { id: true }
     }),
     prisma.tenant.findFirst({
-      where: { id: payload.arrendatarioId, proyectoId: payload.proyectoId },
+      where: { id: payload.arrendatarioId, projectId: payload.projectId },
       select: { id: true }
     })
   ]);
@@ -43,7 +46,7 @@ export async function createContractCommand(input: {
 
   return prisma.$transaction(async (tx) => {
     await assertNoOverlappingContracts(tx, {
-      proyectoId: payload.proyectoId,
+      projectId: payload.projectId,
       localIds,
       fechaInicio: payload.fechaInicio,
       fechaTermino: payload.fechaTermino,
@@ -52,7 +55,7 @@ export async function createContractCommand(input: {
 
     const created = await tx.contract.create({
       data: {
-        proyectoId: payload.proyectoId,
+        projectId: payload.projectId,
         localId: localIds[0],
         arrendatarioId: payload.arrendatarioId,
         numeroContrato,
@@ -61,6 +64,7 @@ export async function createContractCommand(input: {
         fechaEntrega: toDate(payload.fechaEntrega),
         fechaApertura: toDate(payload.fechaApertura),
         diasGracia: payload.diasGracia,
+        cuentaParaVacancia: payload.cuentaParaVacancia,
         estado: computeEstadoContrato(
           new Date(payload.fechaInicio),
           new Date(payload.fechaTermino),
@@ -88,63 +92,18 @@ export async function createContractCommand(input: {
       skipDuplicates: true
     });
 
-    const tarifasPayload = [
-      ...payload.tarifas.map((item) => ({
-        tipo: item.tipo as "FIJO_UF_M2" | "FIJO_UF" | "PORCENTAJE",
-        valor: item.valor,
-        umbralVentasUf: null as string | null,
-        pisoMinimoUf: null as string | null,
-        vigenciaDesde: item.vigenciaDesde,
-        vigenciaHasta: item.vigenciaHasta,
-        esDiciembre: item.esDiciembre
-      })),
-      ...payload.rentaVariable.map((item) => ({
-        tipo: "PORCENTAJE" as const,
-        valor: item.pctRentaVariable,
-        umbralVentasUf: item.umbralVentasUf as string | null,
-        pisoMinimoUf: item.pisoMinimoUf ?? null,
-        vigenciaDesde: item.vigenciaDesde,
-        vigenciaHasta: item.vigenciaHasta,
-        esDiciembre: false
-      }))
-    ];
-    const tarifasByKey = new Map<string, (typeof tarifasPayload)[number]>();
-    for (const tarifa of tarifasPayload) {
-      const key = tarifa.tipo === "PORCENTAJE" && tarifa.umbralVentasUf
-        ? `${tarifa.tipo}|${tarifa.vigenciaDesde}|${tarifa.umbralVentasUf}`
-        : `${tarifa.tipo}|${tarifa.vigenciaDesde}`;
-      tarifasByKey.set(key, tarifa);
-    }
-
-    if (tarifasByKey.size > 0) {
-      await tx.contractRate.createMany({
-        data: Array.from(tarifasByKey.values()).map((t) => ({
-          contratoId: created.id,
-          tipo: t.tipo as ContractRateType,
-          valor: new Prisma.Decimal(t.valor),
-          umbralVentasUf: t.umbralVentasUf ? new Prisma.Decimal(t.umbralVentasUf) : null,
-          pisoMinimoUf: toDecimal(t.pisoMinimoUf),
-          vigenciaDesde: new Date(t.vigenciaDesde),
-          vigenciaHasta: toDate(t.vigenciaHasta),
-          esDiciembre: t.esDiciembre
-        }))
-      });
-    }
-
-    if (payload.ggcc.length > 0) {
-      await tx.contractCommonExpense.createMany({
-        data: payload.ggcc.map((g) => ({
-          contratoId: created.id,
-          tarifaBaseUfM2: new Prisma.Decimal(g.tarifaBaseUfM2),
-          pctAdministracion: new Prisma.Decimal(g.pctAdministracion),
-          pctReajuste: toDecimal(g.pctReajuste),
-          vigenciaDesde: new Date(payload.fechaInicio),
-          vigenciaHasta: toDate(payload.fechaTermino),
-          proximoReajuste: toDate(g.proximoReajuste),
-          mesesReajuste: g.mesesReajuste ?? null
-        }))
-      });
-    }
+    // Delegate to the shared bitemporal persisters. With no existing rows for a
+    // freshly-created contract, persistTarifas degenerates to "insert all" — but
+    // it correctly creates ContractRateDiscount rows from the payload's embedded
+    // descuento* fields, which the previous inline createMany was silently dropping.
+    await persistTarifas(tx, created.id, payloadTarifas(payload), {
+      userId,
+      amendmentId: null
+    });
+    await persistGGCC(tx, created.id, payload.ggcc, payload.fechaInicio, payload.fechaTermino, {
+      userId,
+      amendmentId: null
+    });
 
     if (payload.anexo) {
       await tx.contractAmendment.create({

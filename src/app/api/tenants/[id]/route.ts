@@ -49,7 +49,7 @@ export async function PUT(
     const payload = result.data;
     const tenantId = context.params.id;
     const updated = await updateTenant({ tenantId, payload });
-    invalidateMetricsCacheByProject(payload.proyectoId);
+    invalidateMetricsCacheByProject(payload.projectId);
     return NextResponse.json(updated);
   } catch (error) {
     return handleApiError(error);

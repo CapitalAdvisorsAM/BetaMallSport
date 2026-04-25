@@ -18,7 +18,7 @@ export default async function HomePage(): Promise<JSX.Element> {
 
   const cookieProjectId = getSelectedProjectCookie();
   if (cookieProjectId && projects.some((project) => project.id === cookieProjectId)) {
-    redirect("/dashboard");
+    redirect("/plan/dashboard");
   }
 
   if (projects.length === 0) {

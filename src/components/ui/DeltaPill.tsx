@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { getValueTone, getVarianceTone, TONE_BG_CLASS, type FlowKind, type Tone } from "@/lib/finance/value-tone";
+import { getValueTone, getVarianceTone, TONE_BG_CLASS, type FlowKind, type Tone } from "@/lib/real/value-tone";
 
 type DeltaPillProps = {
   value: number | null | undefined;

@@ -5,7 +5,7 @@ import { ApiError, handleApiError } from "@/lib/api-error";
 import { getJob, listQueuedJobs, updateJobStatus } from "@/lib/jobs";
 import { getRequestId, logDuration, logError } from "@/lib/observability";
 import { requireWriteAccess } from "@/lib/permissions";
-import { runContratosApplyJob } from "@/lib/rent-roll/contracts-apply-job";
+import { runContratosApplyJob } from "@/lib/plan/contracts-apply-job";
 
 export const runtime = "nodejs";
 

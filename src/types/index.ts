@@ -16,7 +16,7 @@ export type {
   RentRollSummary,
   RentRollMetricsResponse
 } from "@/types/metrics";
-export type { PeriodoMetrica, TimelineResponse } from "@/types/timeline";
+export type { PeriodoMetrica, TimelineResponse } from "@/types/rent-roll-timeline";
 export type {
   BudgetedSaleCellPayload,
   BudgetedSaleCellResponse,
@@ -33,16 +33,16 @@ export type {
   FacturacionDimensionSeries,
   FacturacionResponse,
   FacturacionSeriesPoint
-} from "./facturacion";
+} from "./billing";
 export type {
   VentasAnalyticsResponse,
   VentasDimensionSeries,
   VentasSeriesPoint
-} from "./ventas-analytics";
+} from "./sales-analytics";
 export type {
   CostoOcupacionResponse,
   CostoOcupacionRow
-} from "./costo-ocupacion";
+} from "./occupancy-cost";
 export type {
   PanelCdgCell,
   PanelCdgKpi,
@@ -152,7 +152,7 @@ export type RentRollPreviewPayload = {
 };
 
 export type ContractFormPayload = {
-  proyectoId: string;
+  projectId: string;
   localId: string;
   localIds: string[];
   arrendatarioId: string;
@@ -162,6 +162,7 @@ export type ContractFormPayload = {
   fechaEntrega: string | null;
   fechaApertura: string | null;
   diasGracia: number;
+  cuentaParaVacancia: boolean;
   rentaVariable: Array<{
     pctRentaVariable: string;
     umbralVentasUf: string;

@@ -47,7 +47,7 @@ describe("contract-upload-review-mapper", () => {
 
   it("maps draft back to preview payload preserving extras and nullable fields", () => {
     const draft: ContractDraftPayload = {
-      proyectoId: "p1",
+      projectId: "p1",
       localId: "L-102",
       localIds: ["L-102", "L-103"],
       arrendatarioId: "ACME SPORT",
@@ -66,6 +66,7 @@ describe("contract-upload-review-mapper", () => {
       codigoCC: null,
       pdfUrl: null,
       diasGracia: 0,
+      cuentaParaVacancia: true,
       notas: null,
       tarifas: [
         {
@@ -109,7 +110,7 @@ describe("contract-upload-review-mapper", () => {
 
   it("prioritizes localId over localIds[0] when serializing localCodigo", () => {
     const draft: ContractDraftPayload = {
-      proyectoId: "p1",
+      projectId: "p1",
       localId: "L-103",
       localIds: ["L-102", "L-103"],
       arrendatarioId: "ACME SPORT",
@@ -128,6 +129,7 @@ describe("contract-upload-review-mapper", () => {
       codigoCC: null,
       pdfUrl: null,
       diasGracia: 0,
+      cuentaParaVacancia: true,
       notas: null,
       tarifas: [],
       ggcc: [],

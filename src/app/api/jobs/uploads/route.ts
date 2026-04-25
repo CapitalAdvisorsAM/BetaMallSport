@@ -5,7 +5,7 @@ import { ApiError, handleApiError } from "@/lib/api-error";
 import { createJob, updateJobStatus } from "@/lib/jobs";
 import { requireWriteAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { runContratosApplyJob } from "@/lib/rent-roll/contracts-apply-job";
+import { runContratosApplyJob } from "@/lib/plan/contracts-apply-job";
 
 export const runtime = "nodejs";
 

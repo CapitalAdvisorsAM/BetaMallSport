@@ -2,7 +2,7 @@ import type { ContractStatus, ContractRateType, ContractDiscountType } from "@pr
 
 export type ContractApiBaseRow = {
   id: string;
-  proyectoId: string;
+  projectId: string;
   localId: string;
   localIds: string[];
   arrendatarioId: string;
@@ -19,6 +19,7 @@ export type ContractApiBaseRow = {
   multiplicadorAgosto: string | null;
   codigoCC: string | null;
   diasGracia: number;
+  cuentaParaVacancia: boolean;
   estado: ContractStatus;
   pdfUrl: string | null;
   notas: string | null;
@@ -74,6 +75,7 @@ export type ContractManagerListItem = {
   id: string;
   numeroContrato: string;
   diasGracia: number;
+  cuentaParaVacancia: boolean;
   estado: ContractStatus;
   pdfUrl: string | null;
   fechaInicio: string;

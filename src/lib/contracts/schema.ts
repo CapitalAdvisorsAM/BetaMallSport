@@ -39,7 +39,7 @@ export const decimalStringSchema = z
 
 export const contractPayloadSchema = z
   .object({
-    proyectoId: z.string().min(1),
+    projectId: z.string().min(1),
     localId: z.string().min(1),
     localIds: z.array(z.string().min(1)).default([]),
     arrendatarioId: z.string().min(1),
@@ -49,6 +49,7 @@ export const contractPayloadSchema = z
     fechaEntrega: nullableDateStringSchema,
     fechaApertura: nullableDateStringSchema,
     diasGracia: z.number().int().min(0).default(0),
+    cuentaParaVacancia: z.boolean().default(true),
     rentaVariable: z
       .array(
         z.object({
@@ -137,6 +138,13 @@ export const contractPayloadSchema = z
       }
       if (tarifa.vigenciaHasta !== null) {
         const tarifaHasta = new Date(tarifa.vigenciaHasta).getTime();
+        if (tarifaHasta < tarifaDesde) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "vigenciaHasta de la tarifa no puede ser anterior a vigenciaDesde.",
+            path: ["tarifas", i, "vigenciaHasta"]
+          });
+        }
         if (tarifaHasta > contractEnd) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -270,6 +278,22 @@ export const contractPayloadSchema = z
         break;
       }
       rentaVariableKeys.add(key);
+    }
+
+    for (let i = 0; i < payload.rentaVariable.length; i += 1) {
+      const item = payload.rentaVariable[i];
+      if (item.vigenciaHasta === null) {
+        continue;
+      }
+      const desde = new Date(item.vigenciaDesde).getTime();
+      const hasta = new Date(item.vigenciaHasta).getTime();
+      if (hasta < desde) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "vigenciaHasta del tramo de renta variable no puede ser anterior a vigenciaDesde.",
+          path: ["rentaVariable", i, "vigenciaHasta"]
+        });
+      }
     }
 
     // Overlapping validity windows within the same tarifa group.

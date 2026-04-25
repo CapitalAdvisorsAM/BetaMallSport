@@ -49,7 +49,7 @@ export async function PUT(
     const payload = result.data;
     const unitId = context.params.id;
     const updated = await updateUnit({ unitId, payload });
-    invalidateMetricsCacheByProject(payload.proyectoId);
+    invalidateMetricsCacheByProject(payload.projectId);
 
     return NextResponse.json(updated);
   } catch (error) {

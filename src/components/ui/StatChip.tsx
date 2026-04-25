@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { TONE_BG_CLASS, type Tone } from "@/lib/finance/value-tone";
+import { TONE_BG_CLASS, type Tone } from "@/lib/real/value-tone";
 
 type StatChipProps = {
   children: React.ReactNode;

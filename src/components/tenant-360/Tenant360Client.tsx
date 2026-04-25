@@ -57,7 +57,7 @@ export function Tenant360Client({
       const params = new URLSearchParams({ projectId: selectedProjectId });
       if (desde) params.set("from", desde);
       if (hasta) params.set("to", hasta);
-      const response = await fetch(`/api/finance/tenants/${tenantId}?${params.toString()}`);
+      const response = await fetch(`/api/real/tenants/${tenantId}?${params.toString()}`);
       if (!response.ok) {
         throw new Error(await readErrorMessage(response, "Error al cargar datos del arrendatario."));
       }
@@ -87,7 +87,7 @@ export function Tenant360Client({
         actions={
           <div className="flex items-center gap-3">
             <Breadcrumb items={[
-              { label: "Arrendatarios", href: "/rent-roll/tenants" },
+              { label: "Arrendatarios", href: "/plan/tenants" },
               { label: data?.profile?.nombreComercial ?? "Detalle" },
             ]} />
             <ProjectPeriodToolbar
