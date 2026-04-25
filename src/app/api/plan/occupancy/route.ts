@@ -40,7 +40,12 @@ export async function GET(request: Request): Promise<NextResponse> {
         }
       }),
       prisma.contract.findMany({
-        where: { projectId: projectId, estado: { in: ["VIGENTE", "GRACIA"] } },
+        where: {
+          projectId: projectId,
+          estado: { in: ["VIGENTE", "GRACIA"] },
+          // Solo contratos que cuentan para vacancia ocupan el local en el time-series.
+          cuentaParaVacancia: true
+        },
         select: { localId: true, fechaInicio: true, fechaTermino: true }
       })
     ]);

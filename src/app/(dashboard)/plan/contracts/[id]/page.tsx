@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button";
 import { ContractDetailEditButton } from "@/components/contracts/ContractDetailEditButton";
 import { ContractDetailDeleteButton } from "@/components/contracts/ContractDetailDeleteButton";
 import { canWrite, requireSession } from "@/lib/permissions";
+import { legacyDiscountFields } from "@/lib/contracts/rate-history";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
-import { cn, formatDate, formatUf } from "@/lib/utils";
+import { cn, formatDate, formatDateString, formatUf } from "@/lib/utils";
 import { MS_PER_DAY } from "@/lib/constants";
 import type { ContractManagerListItem } from "@/types";
 
@@ -30,8 +31,14 @@ const detailQueryArgs = {
         rut: true, email: true, telefono: true, vigente: true
       }
     },
-    tarifas: { orderBy: { vigenciaDesde: "desc" as const } },
-    ggcc: { orderBy: { vigenciaDesde: "desc" as const } },
+    tarifas: {
+      where: { supersededAt: null },
+      include: {
+        discounts: { where: { supersededAt: null }, orderBy: { vigenciaDesde: "asc" as const } }
+      },
+      orderBy: { vigenciaDesde: "desc" as const }
+    },
+    ggcc: { where: { supersededAt: null }, orderBy: { vigenciaDesde: "desc" as const } },
     anexos: { orderBy: { fecha: "desc" as const } },
   }
 } satisfies Prisma.ContractDefaultArgs;
@@ -103,6 +110,7 @@ export default async function ContractDetailPage({
     id: contract.id,
     numeroContrato: contract.numeroContrato,
     diasGracia: contract.diasGracia,
+    cuentaParaVacancia: contract.cuentaParaVacancia,
     estado: contract.estado,
     pdfUrl: contract.pdfUrl,
     fechaInicio: contract.fechaInicio.toISOString(),
@@ -132,10 +140,7 @@ export default async function ContractDetailPage({
       vigenciaDesde: tarifa.vigenciaDesde.toISOString().slice(0, 10),
       vigenciaHasta: tarifa.vigenciaHasta ? tarifa.vigenciaHasta.toISOString().slice(0, 10) : null,
       esDiciembre: tarifa.esDiciembre,
-      descuentoTipo: tarifa.descuentoTipo ?? null,
-      descuentoValor: tarifa.descuentoValor?.toString() ?? null,
-      descuentoDesde: tarifa.descuentoDesde ? tarifa.descuentoDesde.toISOString().slice(0, 10) : null,
-      descuentoHasta: tarifa.descuentoHasta ? tarifa.descuentoHasta.toISOString().slice(0, 10) : null
+      ...legacyDiscountFields(tarifa.discounts)
     })),
     ggcc: contract.ggcc.map((item) => ({
       tarifaBaseUfM2: item.tarifaBaseUfM2.toString(),
@@ -366,8 +371,12 @@ export default async function ContractDetailPage({
 
         {/* Tarifas */}
         {contract.tarifas.length > 0 ? (() => {
-          const hasVariable = contract.tarifas.some((t) => t.tipo === "PORCENTAJE");
-          const hasDescuento = contract.tarifas.some((t) => t.descuentoTipo !== null);
+          const tarifasWithLegacyDiscounts = contract.tarifas.map((tarifa) => ({
+            ...tarifa,
+            ...legacyDiscountFields(tarifa.discounts)
+          }));
+          const hasVariable = tarifasWithLegacyDiscounts.some((t) => t.tipo === "PORCENTAJE");
+          const hasDescuento = tarifasWithLegacyDiscounts.some((t) => t.descuentoTipo !== null);
           return (
             <div>
               <h4 className="mb-2 border-l-2 border-brand-300 pl-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Tarifas</h4>
@@ -397,7 +406,7 @@ export default async function ContractDetailPage({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {contract.tarifas.map((tarifa, index) => (
+                    {tarifasWithLegacyDiscounts.map((tarifa, index) => (
                       <tr
                         key={`${tarifa.tipo}-${tarifa.vigenciaDesde.toISOString()}-${index}`}
                         className={`${getStripedRowClass(index, "compact")} ${compactTableTheme.rowHover}`}
@@ -435,15 +444,15 @@ export default async function ContractDetailPage({
                             <td className={`${compactTableTheme.compactCell} text-right tabular-nums`}>
                               {tarifa.descuentoValor
                                 ? tarifa.descuentoTipo === "PORCENTAJE"
-                                  ? `${tarifa.descuentoValor.toString()}%`
+                                  ? `${tarifa.descuentoValor}%`
                                   : formatUf(Number(tarifa.descuentoValor))
                                 : "\u2014"}
                             </td>
                             <td className={`${compactTableTheme.compactCell} tabular-nums`}>
-                              {tarifa.descuentoDesde ? formatDate(tarifa.descuentoDesde) : "\u2014"}
+                              {tarifa.descuentoDesde ? formatDateString(tarifa.descuentoDesde) : "\u2014"}
                             </td>
                             <td className={`${compactTableTheme.compactCell} tabular-nums`}>
-                              {tarifa.descuentoHasta ? formatDate(tarifa.descuentoHasta) : "\u2014"}
+                              {tarifa.descuentoHasta ? formatDateString(tarifa.descuentoHasta) : "\u2014"}
                             </td>
                           </>
                         ) : null}

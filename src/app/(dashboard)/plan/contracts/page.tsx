@@ -9,6 +9,7 @@ import { UploadSection } from "@/components/upload/UploadSection";
 import { Button } from "@/components/ui/button";
 import type { RentRollMode } from "@/lib/navigation";
 import { applyEstadoComputado } from "@/lib/contracts/contract-query-service";
+import { legacyDiscountFields } from "@/lib/contracts/rate-history";
 import { buildExportExcelUrl } from "@/lib/export/shared";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -58,6 +59,7 @@ const contractQueryArgs = {
       }
     },
     tarifas: {
+      where: { supersededAt: null },
       orderBy: { vigenciaDesde: "desc" as const },
       take: 10,
       select: {
@@ -68,13 +70,20 @@ const contractQueryArgs = {
         vigenciaDesde: true,
         vigenciaHasta: true,
         esDiciembre: true,
-        descuentoTipo: true,
-        descuentoValor: true,
-        descuentoDesde: true,
-        descuentoHasta: true
+        discounts: {
+          where: { supersededAt: null },
+          orderBy: { vigenciaDesde: "asc" as const },
+          select: {
+            tipo: true,
+            valor: true,
+            vigenciaDesde: true,
+            vigenciaHasta: true
+          }
+        }
       }
     },
     ggcc: {
+      where: { supersededAt: null },
       orderBy: { vigenciaDesde: "desc" as const },
       take: 10,
       select: {
@@ -237,6 +246,7 @@ export default async function ContractsPage({
             id: contract.id,
             numeroContrato: contract.numeroContrato,
             diasGracia: contract.diasGracia,
+            cuentaParaVacancia: contract.cuentaParaVacancia,
             estado: contract.estado,
             pdfUrl: contract.pdfUrl,
             fechaInicio: contract.fechaInicio.toISOString(),
@@ -262,10 +272,7 @@ export default async function ContractsPage({
               vigenciaDesde: tarifa.vigenciaDesde.toISOString().slice(0, 10),
               vigenciaHasta: tarifa.vigenciaHasta ? tarifa.vigenciaHasta.toISOString().slice(0, 10) : null,
               esDiciembre: tarifa.esDiciembre,
-              descuentoTipo: tarifa.descuentoTipo ?? null,
-              descuentoValor: tarifa.descuentoValor?.toString() ?? null,
-              descuentoDesde: tarifa.descuentoDesde ? tarifa.descuentoDesde.toISOString().slice(0, 10) : null,
-              descuentoHasta: tarifa.descuentoHasta ? tarifa.descuentoHasta.toISOString().slice(0, 10) : null
+              ...legacyDiscountFields(tarifa.discounts)
             })),
             ggcc: contract.ggcc.map((item) => ({
               tarifaBaseUfM2: item.tarifaBaseUfM2.toString(),

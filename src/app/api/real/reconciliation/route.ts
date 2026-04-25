@@ -6,6 +6,7 @@ import { ApiError, handleApiError } from "@/lib/api-error";
 import { VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
 import { getFinanceFrom, getFinanceProjectId, getFinanceTo } from "@/lib/real/api-params";
 import { resolveMonthRange, toPeriodKey } from "@/lib/real/period-range";
+import { legacyDiscountFields } from "@/lib/contracts/rate-history";
 import { buildReconciliation } from "@/lib/real/reconciliation";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -57,16 +58,23 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             }
           },
           tarifas: {
+            where: { supersededAt: null },
             orderBy: { vigenciaDesde: "desc" },
             select: {
               tipo: true,
               valor: true,
               vigenciaDesde: true,
               vigenciaHasta: true,
-              esDiciembre: true
+              esDiciembre: true,
+              discounts: {
+                where: { supersededAt: null },
+                orderBy: { vigenciaDesde: "asc" },
+                select: { tipo: true, valor: true, vigenciaDesde: true, vigenciaHasta: true }
+              }
             }
           },
           ggcc: {
+            where: { supersededAt: null },
             orderBy: { vigenciaDesde: "desc" },
             select: {
               tarifaBaseUfM2: true,
@@ -107,7 +115,24 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       })
     ]);
 
-    const result = buildReconciliation(contracts, accountingRecords, sales, periods);
+    // Project active discounts back into the legacy 4-field shape so reconciliation's
+    // calcExpectedIncome actually applies them. Without this projection, the UI shows
+    // expected income computed without discounts and reconciliation gaps look larger.
+    const contractsWithDiscounts = contracts.map((c) => ({
+      ...c,
+      tarifas: c.tarifas.map(({ discounts, ...t }) => {
+        const proj = legacyDiscountFields(discounts);
+        return {
+          ...t,
+          descuentoTipo: proj.descuentoTipo,
+          descuentoValor: proj.descuentoValor,
+          descuentoDesde: proj.descuentoDesde ? new Date(proj.descuentoDesde) : null,
+          descuentoHasta: proj.descuentoHasta ? new Date(proj.descuentoHasta) : null
+        };
+      })
+    }));
+
+    const result = buildReconciliation(contractsWithDiscounts, accountingRecords, sales, periods);
 
     return NextResponse.json({
       periods,

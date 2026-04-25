@@ -38,6 +38,7 @@ export async function recalculateBillingAlerts(projectId: string): Promise<void>
           local: { select: { glam2: true } },
           tarifas: {
             where: {
+              supersededAt: null,
               tipo: { in: ["FIJO_UF_M2", "FIJO_UF", "PORCENTAJE"] },
               vigenciaDesde: { lte: lookbackEnd }
             },
@@ -45,7 +46,7 @@ export async function recalculateBillingAlerts(projectId: string): Promise<void>
             select: { tipo: true, valor: true, umbralVentasUf: true }
           },
           ggcc: {
-            where: { vigenciaDesde: { lte: lookbackEnd } },
+            where: { supersededAt: null, vigenciaDesde: { lte: lookbackEnd } },
             orderBy: { vigenciaDesde: "desc" as const },
             take: 1,
             select: { tarifaBaseUfM2: true, pctAdministracion: true }

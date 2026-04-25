@@ -70,7 +70,7 @@ async function buildVariableRentData(proyectoId: string): Promise<VariableRentDa
         fechaInicio: true,
         fechaTermino: true,
         tarifas: {
-          where: { tipo: ContractRateType.PORCENTAJE },
+          where: { supersededAt: null, tipo: ContractRateType.PORCENTAJE },
           select: { valor: true, umbralVentasUf: true, vigenciaDesde: true, vigenciaHasta: true },
         },
       },
@@ -355,6 +355,7 @@ async function buildFuturePeriodos(
       },
       tarifas: {
         where: {
+          supersededAt: null,
           tipo: { in: [ContractRateType.FIJO_UF_M2, ContractRateType.FIJO_UF] }
         },
         select: {

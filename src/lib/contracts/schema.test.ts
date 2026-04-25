@@ -15,6 +15,7 @@ function basePayload(): ContractPayload {
     fechaEntrega: null,
     fechaApertura: null,
     diasGracia: 0,
+    cuentaParaVacancia: true,
     rentaVariable: [],
     pctFondoPromocion: null,
     pctAdministracionGgcc: null,
@@ -247,6 +248,94 @@ describe("contractPayloadSchema — GGCC reajuste", () => {
         pctReajuste: "3",
         proximoReajuste: "2027-01-01",
         mesesReajuste: 12
+      }
+    ];
+    const result = contractPayloadSchema.safeParse(payload);
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("contractPayloadSchema — cuentaParaVacancia", () => {
+  it("aplica default true cuando se omite el campo", () => {
+    const payload = basePayload();
+    // Use Object spread to drop the field while keeping the other validations.
+    const { cuentaParaVacancia: _omit, ...rest } = payload;
+    void _omit;
+    const result = contractPayloadSchema.safeParse(rest);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.cuentaParaVacancia).toBe(true);
+    }
+  });
+
+  it("respeta cuentaParaVacancia: false cuando se envia explicitamente", () => {
+    const payload = basePayload();
+    payload.cuentaParaVacancia = false;
+    const result = contractPayloadSchema.safeParse(payload);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.cuentaParaVacancia).toBe(false);
+    }
+  });
+
+  it("acepta cuentaParaVacancia: true cuando se envia explicitamente", () => {
+    const payload = basePayload();
+    payload.cuentaParaVacancia = true;
+    const result = contractPayloadSchema.safeParse(payload);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.cuentaParaVacancia).toBe(true);
+    }
+  });
+});
+
+describe("contractPayloadSchema — rango invertido (vigenciaHasta < vigenciaDesde)", () => {
+  it("rechaza tarifa con vigenciaHasta anterior a vigenciaDesde", () => {
+    const payload = basePayload();
+    payload.tarifas[0].vigenciaDesde = "2027-02-01";
+    payload.tarifas[0].vigenciaHasta = "2026-03-31";
+    const result = contractPayloadSchema.safeParse(payload);
+    expect(result.success).toBe(false);
+    expect(issueMessages(result)).toContain(
+      "vigenciaHasta de la tarifa no puede ser anterior a vigenciaDesde."
+    );
+  });
+
+  it("acepta tarifa con vigenciaHasta igual a vigenciaDesde (1 día)", () => {
+    const payload = basePayload();
+    payload.tarifas[0].vigenciaDesde = "2026-06-15";
+    payload.tarifas[0].vigenciaHasta = "2026-06-15";
+    const result = contractPayloadSchema.safeParse(payload);
+    expect(result.success).toBe(true);
+  });
+
+  it("rechaza tramo de renta variable con vigenciaHasta anterior a vigenciaDesde", () => {
+    const payload = basePayload();
+    payload.rentaVariable = [
+      {
+        pctRentaVariable: "5",
+        umbralVentasUf: "0",
+        pisoMinimoUf: null,
+        vigenciaDesde: "2027-01-01",
+        vigenciaHasta: "2026-12-31"
+      }
+    ];
+    const result = contractPayloadSchema.safeParse(payload);
+    expect(result.success).toBe(false);
+    expect(issueMessages(result)).toContain(
+      "vigenciaHasta del tramo de renta variable no puede ser anterior a vigenciaDesde."
+    );
+  });
+
+  it("acepta tramo de renta variable con vigenciaHasta null (abierto)", () => {
+    const payload = basePayload();
+    payload.rentaVariable = [
+      {
+        pctRentaVariable: "5",
+        umbralVentasUf: "0",
+        pisoMinimoUf: null,
+        vigenciaDesde: "2026-01-01",
+        vigenciaHasta: null
       }
     ];
     const result = contractPayloadSchema.safeParse(payload);

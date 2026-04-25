@@ -4,9 +4,10 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
+import { legacyDiscountFields } from "@/lib/contracts/rate-history";
 import { getFinanceMode, getFinancePeriod, getFinanceProjectId } from "@/lib/real/api-params";
 import { shiftPeriod } from "@/lib/real/billing-utils";
-import { buildWaterfall } from "@/lib/real/waterfall";
+import { buildWaterfall, type WfContract } from "@/lib/real/waterfall";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import type { WaterfallMode } from "@/types/finance";
@@ -45,6 +46,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             select: { id: true, glam2: true },
           },
           tarifas: {
+            where: { supersededAt: null },
             orderBy: { vigenciaDesde: "desc" },
             select: {
               tipo: true,
@@ -52,9 +54,20 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
               vigenciaDesde: true,
               vigenciaHasta: true,
               esDiciembre: true,
+              discounts: {
+                where: { supersededAt: null },
+                orderBy: { vigenciaDesde: "asc" },
+                select: {
+                  tipo: true,
+                  valor: true,
+                  vigenciaDesde: true,
+                  vigenciaHasta: true,
+                },
+              },
             },
           },
           ggcc: {
+            where: { supersededAt: null },
             orderBy: { vigenciaDesde: "desc" },
             select: {
               tarifaBaseUfM2: true,
@@ -91,8 +104,24 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       }),
     ]);
 
+    // Project active discounts back into the legacy 4-field shape on each tarifa
+    // so billing helpers (computeEffectiveRate) can apply them transparently.
+    const wfContracts: WfContract[] = contracts.map((c) => ({
+      ...c,
+      tarifas: c.tarifas.map(({ discounts, ...tarifa }) => {
+        const projected = legacyDiscountFields(discounts);
+        return {
+          ...tarifa,
+          descuentoTipo: projected.descuentoTipo,
+          descuentoValor: projected.descuentoValor,
+          descuentoDesde: projected.descuentoDesde ? new Date(projected.descuentoDesde) : null,
+          descuentoHasta: projected.descuentoHasta ? new Date(projected.descuentoHasta) : null,
+        };
+      }),
+    }));
+
     const result = buildWaterfall(
-      contracts,
+      wfContracts,
       accountingRecords,
       sales,
       currentPeriod,

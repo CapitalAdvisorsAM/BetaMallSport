@@ -66,6 +66,7 @@ describe("contract-upload-review-mapper", () => {
       codigoCC: null,
       pdfUrl: null,
       diasGracia: 0,
+      cuentaParaVacancia: true,
       notas: null,
       tarifas: [
         {
@@ -128,6 +129,7 @@ describe("contract-upload-review-mapper", () => {
       codigoCC: null,
       pdfUrl: null,
       diasGracia: 0,
+      cuentaParaVacancia: true,
       notas: null,
       tarifas: [],
       ggcc: [],

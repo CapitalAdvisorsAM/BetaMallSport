@@ -396,7 +396,7 @@ export async function applyContrato(
       fechaInicio: new Date(row.fechaInicio),
       fechaTermino: new Date(row.fechaTermino)
     },
-    include: { tarifas: true, ggcc: true }
+    include: { tarifas: { where: { supersededAt: null } }, ggcc: true }
   });
   const beforeByNumero =
     !beforeByNatural && row.numeroContrato
@@ -407,7 +407,7 @@ export async function applyContrato(
               numeroContrato: row.numeroContrato
             }
           },
-          include: { tarifas: true, ggcc: true }
+          include: { tarifas: { where: { supersededAt: null } }, ggcc: true }
         })
       : null;
   const before = beforeByNatural ?? beforeByNumero;
@@ -471,49 +471,93 @@ export async function applyContrato(
   return { before, contrato };
 }
 
+export type ApplyOptions = {
+  /** UUID of the user driving the upload — used for supersededBy on retired rows. */
+  userId: string;
+  /** Override timestamp (for testability). */
+  now?: Date;
+};
+
+/**
+ * Upserts a single tarifa from a rent-roll upload row, with bitemporal supersession.
+ *
+ * Differences from persistTarifas (the editor's API):
+ *   - Operates on ONE tarifa at a time (the upload provides them piecemeal).
+ *   - Active rows that don't appear in this call are LEFT ALONE (incremental merge,
+ *     not "replace-set"). The upload doesn't know the complete picture.
+ *
+ * Behavior:
+ *   - Active row with same (tipo, vigenciaDesde) and same values → no-op.
+ *   - Active row with same (tipo, vigenciaDesde) but different valor/vigenciaHasta
+ *     → supersede + insert new (preserves history; required since the GIST constraint
+ *     would block an in-place UPDATE that conflicts with a different active row).
+ *   - No active row with that key → simple insert.
+ */
 export async function applyTarifas(
   tx: Prisma.TransactionClient,
   contratoId: string,
-  tarifas: TarifaApplyInput
+  tarifas: TarifaApplyInput,
+  options: ApplyOptions
 ): Promise<void> {
-  const existingTarifa = await tx.contractRate.findFirst({
+  const now = options.now ?? new Date();
+  const newValor = new Prisma.Decimal(tarifas.tarifaValor);
+  const newHasta = dateOrNull(tarifas.tarifaVigenciaHasta);
+
+  const existing = await tx.contractRate.findFirst({
     where: {
       contratoId,
+      supersededAt: null,
       tipo: tarifas.tarifaTipo,
       vigenciaDesde: new Date(tarifas.tarifaVigenciaDesde)
     }
   });
 
-  if (existingTarifa) {
+  if (existing) {
+    const sameValor = existing.valor.equals(newValor);
+    const sameHasta =
+      (existing.vigenciaHasta === null && newHasta === null) ||
+      (existing.vigenciaHasta !== null && newHasta !== null &&
+        existing.vigenciaHasta.toISOString().slice(0, 10) === newHasta.toISOString().slice(0, 10));
+    if (sameValor && sameHasta) {
+      return;
+    }
     await tx.contractRate.update({
-      where: { id: existingTarifa.id },
+      where: { id: existing.id },
       data: {
-        valor: new Prisma.Decimal(tarifas.tarifaValor),
-        vigenciaHasta: dateOrNull(tarifas.tarifaVigenciaHasta)
+        supersededAt: now,
+        supersededBy: options.userId,
+        supersedeReason: "rent-roll upload"
       }
     });
-    return;
   }
 
   await tx.contractRate.create({
     data: {
       contratoId,
       tipo: tarifas.tarifaTipo,
-      valor: new Prisma.Decimal(tarifas.tarifaValor),
+      valor: newValor,
       vigenciaDesde: new Date(tarifas.tarifaVigenciaDesde),
-      vigenciaHasta: dateOrNull(tarifas.tarifaVigenciaHasta),
+      vigenciaHasta: newHasta,
       esDiciembre: false
     }
   });
 }
 
+/**
+ * Upserts the GGCC profile of a contract from an upload row, with supersession.
+ *
+ * Atomic-set semantics (mirrors persistGGCC): if any active row's values differ
+ * from the payload, ALL active rows are superseded and ONE new row is inserted.
+ * If the active set already matches the payload → no-op.
+ */
 export async function applyGGCC(
   tx: Prisma.TransactionClient,
   contratoId: string,
   ggcc: GgccApplyInput,
   localGlam2: string,
   fechaInicio: string,
-  fechaTermino: string
+  fechaTermino: string,
+  options: ApplyOptions
 ): Promise<void> {
   if (!ggcc.ggccTipo || !ggcc.ggccValor || !ggcc.ggccPctAdministracion) {
     return;
@@ -524,34 +568,58 @@ export async function applyGGCC(
     return;
   }
 
-  const ggccExists = await tx.contractCommonExpense.findFirst({
-    where: { contratoId }
+  const now = options.now ?? new Date();
+  const newPctAdmin = new Prisma.Decimal(ggcc.ggccPctAdministracion);
+  const newPctReajuste = decimalOrNull(ggcc.ggccPctReajuste);
+  const newVigenciaDesde = new Date(fechaInicio);
+  const newVigenciaHasta = dateOrNull(fechaTermino);
+  const newMesesReajuste = ggcc.ggccMesesReajuste ?? null;
+
+  const existing = await tx.contractCommonExpense.findMany({
+    where: { contratoId, supersededAt: null }
   });
-  if (ggccExists) {
-    await tx.contractCommonExpense.update({
-      where: { id: ggccExists.id },
+
+  if (existing.length === 1) {
+    const row = existing[0];
+    const dateEq = (a: Date | null, b: Date | null) =>
+      (a === null && b === null) ||
+      (a !== null && b !== null && a.toISOString().slice(0, 10) === b.toISOString().slice(0, 10));
+    const decEq = (a: Prisma.Decimal | null, b: Prisma.Decimal | null) =>
+      (a === null && b === null) || (a !== null && b !== null && a.equals(b));
+
+    const matches =
+      row.tarifaBaseUfM2.equals(tarifaBaseUfM2) &&
+      row.pctAdministracion.equals(newPctAdmin) &&
+      decEq(row.pctReajuste, newPctReajuste) &&
+      dateEq(row.vigenciaDesde, newVigenciaDesde) &&
+      dateEq(row.vigenciaHasta, newVigenciaHasta) &&
+      (row.mesesReajuste ?? null) === newMesesReajuste;
+    if (matches) {
+      return;
+    }
+  }
+
+  if (existing.length > 0) {
+    await tx.contractCommonExpense.updateMany({
+      where: { id: { in: existing.map((r) => r.id) } },
       data: {
-        tarifaBaseUfM2,
-        pctAdministracion: new Prisma.Decimal(ggcc.ggccPctAdministracion),
-        pctReajuste: decimalOrNull(ggcc.ggccPctReajuste),
-        vigenciaDesde: new Date(fechaInicio),
-        vigenciaHasta: dateOrNull(fechaTermino),
-        mesesReajuste: ggcc.ggccMesesReajuste ?? null
+        supersededAt: now,
+        supersededBy: options.userId,
+        supersedeReason: "rent-roll upload"
       }
     });
-    return;
   }
 
   await tx.contractCommonExpense.create({
     data: {
       contratoId,
       tarifaBaseUfM2,
-      pctAdministracion: new Prisma.Decimal(ggcc.ggccPctAdministracion),
-      pctReajuste: decimalOrNull(ggcc.ggccPctReajuste),
-      vigenciaDesde: new Date(fechaInicio),
-      vigenciaHasta: dateOrNull(fechaTermino),
+      pctAdministracion: newPctAdmin,
+      pctReajuste: newPctReajuste,
+      vigenciaDesde: newVigenciaDesde,
+      vigenciaHasta: newVigenciaHasta,
       proximoReajuste: null,
-      mesesReajuste: ggcc.ggccMesesReajuste ?? null
+      mesesReajuste: newMesesReajuste
     }
   });
 }

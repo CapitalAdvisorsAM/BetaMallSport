@@ -138,64 +138,249 @@ export function payloadTarifas(payload: ContractsPayloadShape): Array<{
   return Array.from(byKey.values());
 }
 
+export type PersistTarifasOptions = {
+  /** UUID of the user making the change — recorded as supersededBy on retired rows. */
+  userId: string;
+  /** Optional ContractAmendment id to link with this change (option C: hybrid capture). */
+  amendmentId: string | null;
+  /** Human-readable reason (typically the anexo description). */
+  supersedeReason?: string | null;
+  /** Override the supersession timestamp (for testability). */
+  now?: Date;
+};
+
+type ExistingActiveRate = {
+  id: string;
+  tipo: ContractRateType;
+  valor: Prisma.Decimal;
+  umbralVentasUf: Prisma.Decimal | null;
+  pisoMinimoUf: Prisma.Decimal | null;
+  vigenciaDesde: Date;
+  vigenciaHasta: Date | null;
+  esDiciembre: boolean;
+};
+
+type ExistingActiveDiscount = {
+  id: string;
+  tipo: ContractDiscountType;
+  valor: Prisma.Decimal;
+  vigenciaDesde: Date;
+  vigenciaHasta: Date | null;
+};
+
+type ExistingActiveRateWithDiscounts = ExistingActiveRate & {
+  discounts: ExistingActiveDiscount[];
+};
+
+type PayloadTarifa = ReturnType<typeof payloadTarifas>[number];
+
+/**
+ * Implicit discount derived from the legacy embedded fields on a payload tarifa.
+ * The form still ships discount info as four fields per tarifa (descuentoTipo/Valor/
+ * Desde/Hasta); persistTarifas translates that to ContractRateDiscount rows. When the
+ * form is rebuilt to support multiple discounts per rate, this function will be
+ * replaced by direct iteration over a `tarifa.discounts` array.
+ */
+type ImplicitDiscount = {
+  tipo: ContractDiscountType;
+  valor: string;
+  vigenciaDesde: string;
+  vigenciaHasta: string | null;
+};
+
+function decimalEquals(a: Prisma.Decimal | null, b: string | null): boolean {
+  if (a === null && b === null) return true;
+  if (a === null || b === null) return false;
+  try {
+    return a.equals(new Prisma.Decimal(b));
+  } catch {
+    return false;
+  }
+}
+
+function dateEquals(a: Date | null, b: string | null): boolean {
+  if (a === null && b === null) return true;
+  if (a === null || b === null) return false;
+  return a.toISOString().slice(0, 10) === new Date(b).toISOString().slice(0, 10);
+}
+
+/**
+ * Compares ONLY the rate-level fields (no discount fields). Discounts now live in
+ * ContractRateDiscount and are versioned independently — a discount-only change must
+ * not supersede the parent rate.
+ */
+export function tarifaRateOnlyEqual(existing: ExistingActiveRate, payload: PayloadTarifa): boolean {
+  return (
+    decimalEquals(existing.valor, payload.valor) &&
+    decimalEquals(existing.umbralVentasUf, payload.umbralVentasUf) &&
+    decimalEquals(existing.pisoMinimoUf, payload.pisoMinimoUf) &&
+    dateEquals(existing.vigenciaHasta, payload.vigenciaHasta) &&
+    existing.esDiciembre === payload.esDiciembre
+  );
+}
+
+/**
+ * Extracts the discount embedded in a payload tarifa. Returns null when the payload
+ * has no active discount. The form may set descuentoDesde/Hasta to null — in that
+ * case the discount is treated as covering the parent rate's full validity window.
+ */
+export function legacyDiscountFromPayload(payload: PayloadTarifa): ImplicitDiscount | null {
+  if (!payload.descuentoTipo || !payload.descuentoValor) return null;
+  return {
+    tipo: payload.descuentoTipo as ContractDiscountType,
+    valor: payload.descuentoValor,
+    vigenciaDesde: payload.descuentoDesde ?? payload.vigenciaDesde,
+    vigenciaHasta: payload.descuentoHasta ?? payload.vigenciaHasta
+  };
+}
+
+function discountEqual(existing: ExistingActiveDiscount, payload: ImplicitDiscount): boolean {
+  return (
+    existing.tipo === payload.tipo &&
+    decimalEquals(existing.valor, payload.valor) &&
+    dateEquals(existing.vigenciaDesde, payload.vigenciaDesde) &&
+    dateEquals(existing.vigenciaHasta, payload.vigenciaHasta)
+  );
+}
+
+/**
+ * @deprecated Use tarifaRateOnlyEqual + per-discount comparison instead. This combined
+ * helper conflated rate-level and discount-level changes; kept exported only because
+ * older callers may still reference it. Will be removed in a follow-up.
+ */
+export function tarifaValuesEqual(existing: ExistingActiveRate, payload: PayloadTarifa): boolean {
+  return tarifaRateOnlyEqual(existing, payload);
+}
+
+/**
+ * Persists tarifas using bitemporal supersession.
+ *
+ *   - Existing active rows whose payload twin has identical values  → no-op.
+ *   - Existing active rows whose payload twin has changed values    → mark superseded + insert new.
+ *   - Existing active rows absent from payload                       → mark superseded (logical delete).
+ *   - Payload items without an existing match                        → simple insert.
+ *
+ * The match key is `(tipo, vigenciaDesde, umbralVentasUf)`. Changing any of those keys
+ * is interpreted as "retire and replace", not as in-place edit.
+ *
+ * Superseded rows are preserved forever — they are how we reconstruct historical reports
+ * (`ContractAmendment.snapshotAntes` JSON is also preserved for legal traceability when
+ * `amendmentId` is provided).
+ */
 export async function persistTarifas(
   tx: Prisma.TransactionClient,
   contratoId: string,
-  tarifas: ReturnType<typeof payloadTarifas>
+  tarifas: ReturnType<typeof payloadTarifas>,
+  options: PersistTarifasOptions
 ): Promise<void> {
-  const existingTarifas = await tx.contractRate.findMany({
-    where: { contratoId }
+  const now = options.now ?? new Date();
+
+  // Load currently-active rates AND their currently-active discounts. Superseded
+  // rows are historical and never touched.
+  const existing = await tx.contractRate.findMany({
+    where: { contratoId, supersededAt: null },
+    include: { discounts: { where: { supersededAt: null } } }
   });
-  const existingTarifasByKey = new Map(
-    existingTarifas.map((item) => [tarifaKey(item.tipo, item.vigenciaDesde, item.umbralVentasUf), item])
+
+  const existingByKey = new Map<string, ExistingActiveRateWithDiscounts>(
+    existing.map((row) => [tarifaKey(row.tipo, row.vigenciaDesde, row.umbralVentasUf), row])
   );
-  const payloadTarifasByKey = new Map(
-    tarifas.map((item) => [tarifaKey(item.tipo, item.vigenciaDesde, item.umbralVentasUf), item] as const)
+  const payloadByKey = new Map(
+    tarifas.map((item) => [tarifaKey(item.tipo, item.vigenciaDesde, item.umbralVentasUf), item])
   );
 
-  const tarifasToDelete = existingTarifas
-    .filter((item) => !payloadTarifasByKey.has(tarifaKey(item.tipo, item.vigenciaDesde, item.umbralVentasUf)))
-    .map((item) => item.id);
+  // Aggregated mutations applied at the end so we can use Prisma's set-based ops.
+  const rateIdsToSupersede: string[] = [];
+  const discountIdsToSupersede: string[] = [];
+  const ratesToInsert: PayloadTarifa[] = [];
+  // Discounts to insert that target an EXISTING (kept) rate. Discounts targeting
+  // a NEW rate are derived later, after the new rates' UUIDs are generated.
+  const discountsToInsertOnExistingRate: Array<{
+    contractRateId: string;
+    discount: ImplicitDiscount;
+  }> = [];
 
-  if (tarifasToDelete.length > 0) {
-    await tx.contractRate.deleteMany({
-      where: { id: { in: tarifasToDelete } }
-    });
-  }
+  for (const [key, row] of existingByKey) {
+    const payloadItem = payloadByKey.get(key);
 
-  const tarifasToUpdate: Array<{ id: string; payloadItem: ReturnType<typeof payloadTarifas>[number] }> = [];
-  const tarifasToCreate: Array<ReturnType<typeof payloadTarifas>[number]> = [];
-  for (const item of tarifas) {
-    const found = existingTarifasByKey.get(tarifaKey(item.tipo, item.vigenciaDesde, item.umbralVentasUf));
-    if (found) {
-      tarifasToUpdate.push({ id: found.id, payloadItem: item });
-    } else {
-      tarifasToCreate.push(item);
+    if (payloadItem === undefined) {
+      // Row removed from payload → supersede rate AND its active discounts together.
+      rateIdsToSupersede.push(row.id);
+      for (const d of row.discounts) discountIdsToSupersede.push(d.id);
+      continue;
+    }
+
+    const newDiscount = legacyDiscountFromPayload(payloadItem);
+
+    if (!tarifaRateOnlyEqual(row, payloadItem)) {
+      // Rate-level fields changed → supersede rate + its discounts; queue new rate.
+      // Any discount in the payload will be re-attached to the new rate after insert.
+      rateIdsToSupersede.push(row.id);
+      for (const d of row.discounts) discountIdsToSupersede.push(d.id);
+      ratesToInsert.push(payloadItem);
+      continue;
+    }
+
+    // Rate-level fields unchanged — check the discount independently. The form ships
+    // at most one discount per rate today, so the existing-vs-payload comparison is
+    // a 1:1 match on the (single) active discount. Multi-discount support per rate
+    // requires reshaping the payload; tracked as a follow-up.
+    const existingDiscount = row.discounts[0] ?? null;
+    const noChange =
+      (existingDiscount === null && newDiscount === null) ||
+      (existingDiscount !== null &&
+        newDiscount !== null &&
+        discountEqual(existingDiscount, newDiscount));
+    if (noChange) continue;
+
+    if (existingDiscount) discountIdsToSupersede.push(existingDiscount.id);
+    if (newDiscount) {
+      discountsToInsertOnExistingRate.push({
+        contractRateId: row.id,
+        discount: newDiscount
+      });
     }
   }
 
-  await Promise.all(
-    tarifasToUpdate.map((item) =>
-      tx.contractRate.update({
-        where: { id: item.id },
-        data: {
-          valor: new Prisma.Decimal(item.payloadItem.valor),
-          umbralVentasUf: item.payloadItem.umbralVentasUf ? new Prisma.Decimal(item.payloadItem.umbralVentasUf) : null,
-          pisoMinimoUf: toDecimal(item.payloadItem.pisoMinimoUf),
-          vigenciaHasta: toDate(item.payloadItem.vigenciaHasta),
-          esDiciembre: item.payloadItem.esDiciembre,
-          descuentoTipo: item.payloadItem.descuentoTipo as ContractDiscountType | null,
-          descuentoValor: toDecimal(item.payloadItem.descuentoValor),
-          descuentoDesde: toDate(item.payloadItem.descuentoDesde),
-          descuentoHasta: toDate(item.payloadItem.descuentoHasta)
-        }
-      })
-    )
-  );
+  // Payload rows not matching any existing key → fresh insert (rate + optional discount).
+  for (const [key, item] of payloadByKey) {
+    if (!existingByKey.has(key)) {
+      ratesToInsert.push(item);
+    }
+  }
 
-  if (tarifasToCreate.length > 0) {
+  // Phase 1: supersession (rates + discounts) — run BEFORE inserts so that the GIST
+  // anti-overlap constraint sees the old rows as already superseded by the time the
+  // replacement rows hit the same date range.
+  const supersedeMeta = {
+    supersededAt: now,
+    supersededBy: options.userId,
+    supersedeReason: options.supersedeReason ?? null,
+    amendmentId: options.amendmentId
+  } as const;
+
+  if (rateIdsToSupersede.length > 0) {
+    await tx.contractRate.updateMany({
+      where: { id: { in: rateIdsToSupersede } },
+      data: supersedeMeta
+    });
+  }
+
+  if (discountIdsToSupersede.length > 0) {
+    await tx.contractRateDiscount.updateMany({
+      where: { id: { in: discountIdsToSupersede } },
+      data: supersedeMeta
+    });
+  }
+
+  // Phase 2: insert new rates with pre-generated UUIDs so their discounts can be
+  // linked in the same call without a round-trip. Legacy descuento* columns are
+  // intentionally NOT written; discounts live exclusively in ContractRateDiscount.
+  const newRatesWithIds = ratesToInsert.map((item) => ({ id: crypto.randomUUID(), item }));
+  if (newRatesWithIds.length > 0) {
     await tx.contractRate.createMany({
-      data: tarifasToCreate.map((item) => ({
+      data: newRatesWithIds.map(({ id, item }) => ({
+        id,
         contratoId,
         tipo: item.tipo as ContractRateType,
         valor: new Prisma.Decimal(item.valor),
@@ -204,10 +389,30 @@ export async function persistTarifas(
         vigenciaDesde: new Date(item.vigenciaDesde),
         vigenciaHasta: toDate(item.vigenciaHasta),
         esDiciembre: item.esDiciembre,
-        descuentoTipo: item.descuentoTipo as ContractDiscountType | null,
-        descuentoValor: toDecimal(item.descuentoValor),
-        descuentoDesde: toDate(item.descuentoDesde),
-        descuentoHasta: toDate(item.descuentoHasta)
+        amendmentId: options.amendmentId
+      }))
+    });
+  }
+
+  // Phase 3: insert discounts. Combines (a) discounts attached to NEW rates and
+  // (b) discount-only changes that target EXISTING rates whose value didn't change.
+  const allDiscountInserts: Array<{ contractRateId: string; discount: ImplicitDiscount }> = [
+    ...discountsToInsertOnExistingRate
+  ];
+  for (const { id, item } of newRatesWithIds) {
+    const d = legacyDiscountFromPayload(item);
+    if (d) allDiscountInserts.push({ contractRateId: id, discount: d });
+  }
+
+  if (allDiscountInserts.length > 0) {
+    await tx.contractRateDiscount.createMany({
+      data: allDiscountInserts.map(({ contractRateId, discount }) => ({
+        contractRateId,
+        tipo: discount.tipo,
+        valor: new Prisma.Decimal(discount.valor),
+        vigenciaDesde: new Date(discount.vigenciaDesde),
+        vigenciaHasta: discount.vigenciaHasta ? new Date(discount.vigenciaHasta) : null,
+        amendmentId: options.amendmentId
       }))
     });
   }
@@ -315,14 +520,100 @@ export async function assertNoOverlappingContracts(
   }
 }
 
+export type PersistGGCCOptions = {
+  /** UUID of the user making the change — recorded as supersededBy on retired rows. */
+  userId: string;
+  /** Optional ContractAmendment id to link with this change (option C). */
+  amendmentId: string | null;
+  /** Human-readable reason (typically the anexo description). */
+  supersedeReason?: string | null;
+  /** Override the supersession timestamp (for testability). */
+  now?: Date;
+};
+
+type ExistingActiveGGCC = {
+  id: string;
+  tarifaBaseUfM2: Prisma.Decimal;
+  pctAdministracion: Prisma.Decimal;
+  pctReajuste: Prisma.Decimal | null;
+  proximoReajuste: Date | null;
+  mesesReajuste: number | null;
+};
+
+type PayloadGGCC = ContractsPayloadShape["ggcc"][number];
+
+function ggccCanonicalKey(
+  row: ExistingActiveGGCC | PayloadGGCC
+): string {
+  const tarifa = row.tarifaBaseUfM2 instanceof Prisma.Decimal
+    ? row.tarifaBaseUfM2.toString()
+    : new Prisma.Decimal(row.tarifaBaseUfM2).toString();
+  const pctAdm = row.pctAdministracion instanceof Prisma.Decimal
+    ? row.pctAdministracion.toString()
+    : new Prisma.Decimal(row.pctAdministracion).toString();
+  const pctRea = row.pctReajuste === null || row.pctReajuste === undefined
+    ? ""
+    : row.pctReajuste instanceof Prisma.Decimal
+      ? row.pctReajuste.toString()
+      : new Prisma.Decimal(row.pctReajuste).toString();
+  const prox = row.proximoReajuste === null || row.proximoReajuste === undefined
+    ? ""
+    : row.proximoReajuste instanceof Date
+      ? row.proximoReajuste.toISOString().slice(0, 10)
+      : new Date(row.proximoReajuste).toISOString().slice(0, 10);
+  const meses = row.mesesReajuste === null || row.mesesReajuste === undefined ? "" : String(row.mesesReajuste);
+  return `${tarifa}|${pctAdm}|${pctRea}|${prox}|${meses}`;
+}
+
+/**
+ * Persists GGCC rows using bitemporal supersession with atomic-set semantics.
+ *
+ * GGCC rows have no natural per-row identity in the payload (no id, all rows share
+ * vigenciaDesde = fechaInicio). The right operation is therefore "is the active set
+ * the same as the payload set?":
+ *
+ *   - Sets equal     → no-op.
+ *   - Sets differ    → supersede every active row, insert every payload row.
+ *
+ * This preserves history without requiring per-row matching. Equivalent in shape to
+ * the old `deleteMany + createMany`, but supersession instead of physical deletion.
+ */
 export async function persistGGCC(
   tx: Prisma.TransactionClient,
   contratoId: string,
   ggcc: ContractsPayloadShape["ggcc"],
   fechaInicio: string,
-  fechaTermino: string
+  fechaTermino: string,
+  options: PersistGGCCOptions
 ): Promise<void> {
-  await tx.contractCommonExpense.deleteMany({ where: { contratoId } });
+  const now = options.now ?? new Date();
+
+  const existing = await tx.contractCommonExpense.findMany({
+    where: { contratoId, supersededAt: null }
+  });
+
+  const existingKeys = new Set(existing.map(ggccCanonicalKey));
+  const payloadKeys = new Set(ggcc.map(ggccCanonicalKey));
+
+  const setsEqual =
+    existingKeys.size === payloadKeys.size &&
+    [...existingKeys].every((k) => payloadKeys.has(k));
+
+  if (setsEqual) {
+    return;
+  }
+
+  if (existing.length > 0) {
+    await tx.contractCommonExpense.updateMany({
+      where: { id: { in: existing.map((row) => row.id) } },
+      data: {
+        supersededAt: now,
+        supersededBy: options.userId,
+        supersedeReason: options.supersedeReason ?? null,
+        amendmentId: options.amendmentId
+      }
+    });
+  }
 
   if (ggcc.length > 0) {
     await tx.contractCommonExpense.createMany({
@@ -334,7 +625,8 @@ export async function persistGGCC(
         vigenciaDesde: new Date(fechaInicio),
         vigenciaHasta: toDate(fechaTermino),
         proximoReajuste: toDate(item.proximoReajuste),
-        mesesReajuste: item.mesesReajuste ?? null
+        mesesReajuste: item.mesesReajuste ?? null,
+        amendmentId: options.amendmentId
       }))
     });
   }

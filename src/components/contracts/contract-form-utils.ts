@@ -87,6 +87,7 @@ export function createEmptyPayload(
     fechaEntrega: null,
     fechaApertura: null,
     diasGracia: 0,
+    cuentaParaVacancia: true,
     rentaVariable: [],
     pctFondoPromocion: null,
     pctAdministracionGgcc: null,
@@ -119,6 +120,7 @@ export function fromContract(
     fechaEntrega: contract.fechaEntrega,
     fechaApertura: contract.fechaApertura,
     diasGracia: contract.diasGracia,
+    cuentaParaVacancia: contract.cuentaParaVacancia,
     rentaVariable: toAllRentaVariableItems(
       contract.tarifas
         .filter((tarifa) => tarifa.tipo === "PORCENTAJE")

@@ -83,13 +83,13 @@ enum ContractDayStatus {
 }
 
 enum DataUploadType {
-  UNITS      @map("LOCALES")
-  TENANTS    @map("ARRENDATARIOS")
+  UNITS          @map("LOCALES")
+  TENANTS        @map("ARRENDATARIOS")
   RENT_ROLL
-  SALES      @map("VENTAS")
-  ACCOUNTING @map("CONTABLE")
-  BALANCES   @map("BALANCES")
-  BANK       @map("BANCO")
+  SALES          @map("VENTAS")
+  ACCOUNTING     @map("CONTABLE")
+  BALANCES       @map("BALANCES")
+  BANK           @map("BANCO")
   BUDGETED_SALES @map("VENTAS_PRESUPUESTADAS")
   EXPENSE_BUDGET @map("PPTO_GASTOS")
 
@@ -113,30 +113,30 @@ enum UserRole {
 }
 
 model Project {
-  id             String           @id @default(uuid()) @db.Uuid
-  nombre         String
-  slug           String           @unique
-  color          String
-  glaTotal       Decimal?         @db.Decimal(12, 2)
-  activo         Boolean          @default(true)
-  reportDate     DateTime?        @db.Date @map("fechaReporte")
-  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
-  locales              Unit[]
-  zones                Zone[]
-  tenantSales          TenantSale[]
-  tenantBudgetedSales  TenantBudgetedSale[]
-  ingresoEnergia       IngresoEnergia[]
-  arrendatarios        Tenant[]
-  contratos            Contract[]
-  contratosDia         ContractDay[]
-  dataUploads          DataUpload[]
+  id                     String                  @id @default(uuid()) @db.Uuid
+  nombre                 String
+  slug                   String                  @unique
+  color                  String
+  glaTotal               Decimal?                @db.Decimal(12, 2)
+  activo                 Boolean                 @default(true)
+  reportDate             DateTime?               @map("fechaReporte") @db.Date
+  createdAt              DateTime                @default(now()) @db.Timestamptz(3)
+  locales                Unit[]
+  zones                  Zone[]
+  tenantSales            TenantSale[]
+  tenantBudgetedSales    TenantBudgetedSale[]
+  ingresoEnergia         IngresoEnergia[]
+  arrendatarios          Tenant[]
+  contratos              Contract[]
+  contratosDia           ContractDay[]
+  dataUploads            DataUpload[]
   accountingUnitMappings AccountingUnitMapping[]
-  salesTenantMappings  SalesTenantMapping[]
-  accountingRecords    AccountingRecord[]
-  billingAlerts        BillingAlert[]
-  expenseBudgets       ExpenseBudget[]
-  balanceRecords       BalanceRecord[]
-  bankMovements        BankMovement[]
+  salesTenantMappings    SalesTenantMapping[]
+  accountingRecords      AccountingRecord[]
+  billingAlerts          BillingAlert[]
+  expenseBudgets         ExpenseBudget[]
+  balanceRecords         BalanceRecord[]
+  bankMovements          BankMovement[]
 
   @@index([activo])
   @@index([nombre])
@@ -150,20 +150,20 @@ model ValorUF {
 }
 
 model Unit {
-  id         String        @id @default(uuid()) @db.Uuid
-  projectId  String        @db.Uuid @map("proyectoId")
-  codigo     String
-  nombre     String
-  glam2      Decimal       @db.Decimal(10, 2)
-  piso       String
-  tipo       UnitType
-  zonaId     String?       @db.Uuid
-  esGLA      Boolean       @default(true)
-  estado     MasterStatus @default(ACTIVO)
-  createdAt  DateTime      @default(now()) @db.Timestamptz(3)
+  id        String       @id @default(uuid()) @db.Uuid
+  projectId String       @map("proyectoId") @db.Uuid
+  codigo    String
+  nombre    String
+  glam2     Decimal      @db.Decimal(10, 2)
+  piso      String
+  tipo      UnitType
+  zonaId    String?      @db.Uuid
+  esGLA     Boolean      @default(true)
+  estado    MasterStatus @default(ACTIVO)
+  createdAt DateTime     @default(now()) @db.Timestamptz(3)
 
-  proyecto               Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  zona                   Zone?                  @relation(fields: [zonaId], references: [id], onDelete: SetNull)
+  proyecto               Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  zona                   Zone?                   @relation(fields: [zonaId], references: [id], onDelete: SetNull)
   contratos              Contract[]
   contratosAsociados     ContractUnit[]
   contratosDia           ContractDay[]
@@ -182,7 +182,7 @@ model Unit {
 
 model Zone {
   id        String   @id @default(uuid()) @db.Uuid
-  projectId String   @db.Uuid @map("proyectoId")
+  projectId String   @map("proyectoId") @db.Uuid
   nombre    String
   createdAt DateTime @default(now()) @db.Timestamptz(3)
 
@@ -196,7 +196,7 @@ model Zone {
 
 model IngresoEnergia {
   id        String   @id @default(uuid()) @db.Uuid
-  projectId String   @db.Uuid @map("proyectoId")
+  projectId String   @map("proyectoId") @db.Uuid
   localId   String   @db.Uuid
   periodo   DateTime @db.Date
   valorUf   Decimal  @db.Decimal(14, 4)
@@ -212,10 +212,10 @@ model IngresoEnergia {
 
 model TenantSale {
   id         String   @id @default(uuid()) @db.Uuid
-  projectId  String   @db.Uuid @map("proyectoId")
-  tenantId   String   @db.Uuid @map("arrendatarioId")
-  period     DateTime @db.Date @map("periodo")
-  salesPesos Decimal  @db.Decimal(18, 2) @map("ventasPesos")
+  projectId  String   @map("proyectoId") @db.Uuid
+  tenantId   String   @map("arrendatarioId") @db.Uuid
+  period     DateTime @map("periodo") @db.Date
+  salesPesos Decimal  @map("ventasPesos") @db.Decimal(18, 2)
   createdAt  DateTime @default(now()) @db.Timestamptz(3)
   updatedAt  DateTime @updatedAt @db.Timestamptz(3)
 
@@ -228,13 +228,13 @@ model TenantSale {
 }
 
 model TenantBudgetedSale {
-  id        String   @id @default(uuid()) @db.Uuid
-  projectId String   @db.Uuid @map("proyectoId")
-  tenantId  String   @db.Uuid @map("arrendatarioId")
-  period    DateTime @db.Date @map("periodo")
-  salesPesos Decimal  @db.Decimal(18, 2) @map("ventasPesos")
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  id         String   @id @default(uuid()) @db.Uuid
+  projectId  String   @map("proyectoId") @db.Uuid
+  tenantId   String   @map("arrendatarioId") @db.Uuid
+  period     DateTime @map("periodo") @db.Date
+  salesPesos Decimal  @map("ventasPesos") @db.Decimal(18, 2)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
 
   project Project @relation(fields: [projectId], references: [id])
   tenant  Tenant  @relation(fields: [tenantId, projectId], references: [id, projectId])
@@ -245,16 +245,16 @@ model TenantBudgetedSale {
 }
 
 model Tenant {
-  id              String   @id @default(uuid()) @db.Uuid
-  projectId       String   @db.Uuid @map("proyectoId")
+  id              String          @id @default(uuid()) @db.Uuid
+  projectId       String          @map("proyectoId") @db.Uuid
   rut             String
   razonSocial     String
   nombreComercial String
-  vigente         Boolean          @default(true)
+  vigente         Boolean         @default(true)
   email           String?
   telefono        String?
   category        TenantCategory?
-  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  createdAt       DateTime        @default(now()) @db.Timestamptz(3)
 
   proyecto            Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
   contratos           Contract[]
@@ -273,34 +273,35 @@ model Tenant {
 }
 
 model Contract {
-  id                String         @id @default(uuid()) @db.Uuid
-  projectId         String         @db.Uuid @map("proyectoId")
-  localId           String         @db.Uuid
-  arrendatarioId    String         @db.Uuid
-  numeroContrato    String
-  fechaInicio       DateTime       @db.Date
-  fechaTermino      DateTime       @db.Date
-  fechaEntrega      DateTime?      @db.Date
-  fechaApertura     DateTime?      @db.Date
-  pctFondoPromocion Decimal?       @db.Decimal(6, 3)
+  id                     String         @id @default(uuid()) @db.Uuid
+  projectId              String         @map("proyectoId") @db.Uuid
+  localId                String         @db.Uuid
+  arrendatarioId         String         @db.Uuid
+  numeroContrato         String
+  fechaInicio            DateTime       @db.Date
+  fechaTermino           DateTime       @db.Date
+  fechaEntrega           DateTime?      @db.Date
+  fechaApertura          DateTime?      @db.Date
+  pctFondoPromocion      Decimal?       @db.Decimal(6, 3)
   /// @deprecated Default de formulario únicamente. Valor canónico está en ContratoGGCC.pctAdministracion.
   /// No agregar nuevas lecturas/escrituras a este campo.
-  pctAdministracionGgcc Decimal?    @db.Decimal(6, 3)
-  multiplicadorDiciembre Decimal?    @db.Decimal(6, 3)
-  multiplicadorJunio     Decimal?    @db.Decimal(6, 3)
-  multiplicadorJulio     Decimal?    @db.Decimal(6, 3)
-  multiplicadorAgosto    Decimal?    @db.Decimal(6, 3)
-  codigoCC          String?
-  estado            ContractStatus
-  diasGracia        Int            @default(0)
-  pdfUrl            String?
-  notas             String?
-  createdAt         DateTime       @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime       @updatedAt @db.Timestamptz(3)
+  pctAdministracionGgcc  Decimal?       @db.Decimal(6, 3)
+  multiplicadorDiciembre Decimal?       @db.Decimal(6, 3)
+  multiplicadorJunio     Decimal?       @db.Decimal(6, 3)
+  multiplicadorJulio     Decimal?       @db.Decimal(6, 3)
+  multiplicadorAgosto    Decimal?       @db.Decimal(6, 3)
+  codigoCC               String?
+  estado                 ContractStatus
+  diasGracia             Int            @default(0)
+  cuentaParaVacancia     Boolean        @default(true)
+  pdfUrl                 String?
+  notas                  String?
+  createdAt              DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime       @updatedAt @db.Timestamptz(3)
 
-  proyecto     Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  local        Unit                  @relation(fields: [localId, projectId], references: [id, projectId], onDelete: Restrict)
-  arrendatario Tenant                @relation(fields: [arrendatarioId, projectId], references: [id, projectId], onDelete: Restrict)
+  proyecto     Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  local        Unit                    @relation(fields: [localId, projectId], references: [id, projectId], onDelete: Restrict)
+  arrendatario Tenant                  @relation(fields: [arrendatarioId, projectId], references: [id, projectId], onDelete: Restrict)
   locales      ContractUnit[]
   tarifas      ContractRate[]
   anexos       ContractAmendment[]
@@ -326,7 +327,7 @@ model ContractUnit {
   createdAt  DateTime @default(now()) @db.Timestamptz(3)
 
   contrato Contract @relation(fields: [contratoId], references: [id], onDelete: Cascade)
-  local    Unit    @relation(fields: [localId], references: [id], onDelete: Cascade)
+  local    Unit     @relation(fields: [localId], references: [id], onDelete: Cascade)
 
   @@unique([contratoId, localId])
   @@index([contratoId])
@@ -335,29 +336,66 @@ model ContractUnit {
 }
 
 model ContractRate {
-  id              String             @id @default(uuid()) @db.Uuid
-  contratoId      String             @db.Uuid
-  tipo            ContractRateType
-  valor           Decimal            @db.Decimal(10, 4)
-  umbralVentasUf  Decimal?           @db.Decimal(14, 4)
+  id             String                @id @default(uuid()) @db.Uuid
+  contratoId     String                @db.Uuid
+  tipo           ContractRateType
+  valor          Decimal               @db.Decimal(10, 4)
+  umbralVentasUf Decimal?              @db.Decimal(14, 4)
   /// Piso mínimo mensual en UF aplicable sólo a tarifas PORCENTAJE.
   /// Cuando está definido se cobra max(fixedRent+variable, pisoMinimoUf) mensualmente.
-  pisoMinimoUf    Decimal?           @db.Decimal(14, 4)
-  vigenciaDesde   DateTime           @db.Date
-  vigenciaHasta   DateTime?          @db.Date
-  esDiciembre   Boolean            @default(false)
-  descuentoTipo   ContractDiscountType?
-  descuentoValor  Decimal?           @db.Decimal(10, 4)
-  descuentoDesde  DateTime?          @db.Date
-  descuentoHasta  DateTime?          @db.Date
-  createdAt     DateTime           @default(now()) @db.Timestamptz(3)
+  pisoMinimoUf   Decimal?              @db.Decimal(14, 4)
+  vigenciaDesde  DateTime              @db.Date
+  vigenciaHasta  DateTime?             @db.Date
+  esDiciembre    Boolean               @default(false)
+  /// @deprecated Reemplazado por ContractRateDiscount (descuentos como entidad temporal aparte).
+  /// No agregar nuevas lecturas/escrituras a estos campos.
+  descuentoTipo  ContractDiscountType?
+  descuentoValor Decimal?              @db.Decimal(10, 4)
+  descuentoDesde DateTime?             @db.Date
+  descuentoHasta DateTime?             @db.Date
+  createdAt      DateTime              @default(now()) @db.Timestamptz(3)
 
-  contrato Contract @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  /// Bitemporal supersession (transaction time).
+  /// supersededAt IS NULL = fila vigente para la verdad actual.
+  /// Para reconstruir "lo que se sabía en T": filtrar createdAt <= T AND (supersededAt IS NULL OR supersededAt > T).
+  supersededAt    DateTime? @db.Timestamptz(3)
+  supersededBy    String?   @db.Uuid
+  supersedeReason String?
+  amendmentId     String?   @db.Uuid
+
+  contrato  Contract               @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  amendment ContractAmendment?     @relation(fields: [amendmentId], references: [id], onDelete: SetNull)
+  discounts ContractRateDiscount[]
 
   @@index([contratoId])
   @@index([vigenciaDesde, vigenciaHasta])
   @@index([contratoId, tipo, vigenciaDesde])
+  @@index([contratoId, supersededAt])
   @@map("ContratoTarifa")
+}
+
+model ContractRateDiscount {
+  id             String               @id @default(uuid()) @db.Uuid
+  contractRateId String               @db.Uuid
+  tipo           ContractDiscountType
+  valor          Decimal              @db.Decimal(10, 4)
+  vigenciaDesde  DateTime             @db.Date
+  vigenciaHasta  DateTime?            @db.Date
+  createdAt      DateTime             @default(now()) @db.Timestamptz(3)
+
+  /// Bitemporal supersession — ver comentario en ContractRate.
+  supersededAt    DateTime? @db.Timestamptz(3)
+  supersededBy    String?   @db.Uuid
+  supersedeReason String?
+  amendmentId     String?   @db.Uuid
+
+  contractRate ContractRate       @relation(fields: [contractRateId], references: [id], onDelete: Cascade)
+  amendment    ContractAmendment? @relation(fields: [amendmentId], references: [id], onDelete: SetNull)
+
+  @@index([contractRateId])
+  @@index([contractRateId, supersededAt])
+  @@index([contractRateId, vigenciaDesde])
+  @@map("ContratoTarifaDescuento")
 }
 
 model ContractAmendment {
@@ -371,7 +409,10 @@ model ContractAmendment {
   usuarioId         String   @db.Uuid
   createdAt         DateTime @default(now()) @db.Timestamptz(3)
 
-  contrato Contract @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  contrato       Contract                @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  rates          ContractRate[]
+  discounts      ContractRateDiscount[]
+  commonExpenses ContractCommonExpense[]
 
   @@index([contratoId])
   @@index([contratoId, fecha])
@@ -391,16 +432,25 @@ model ContractCommonExpense {
   mesesReajuste     Int?
   createdAt         DateTime  @default(now()) @db.Timestamptz(3)
 
-  contrato Contract @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  /// Bitemporal supersession — same semantics as ContractRate.
+  /// supersededAt IS NULL = fila vigente para la verdad actual.
+  supersededAt    DateTime? @db.Timestamptz(3)
+  supersededBy    String?   @db.Uuid
+  supersedeReason String?
+  amendmentId     String?   @db.Uuid
+
+  contrato  Contract           @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  amendment ContractAmendment? @relation(fields: [amendmentId], references: [id], onDelete: SetNull)
 
   @@index([contratoId])
   @@index([contratoId, vigenciaDesde])
+  @@index([contratoId, supersededAt])
   @@map("ContratoGGCC")
 }
 
 model ContractDay {
   id         String            @id @default(uuid()) @db.Uuid
-  projectId  String            @db.Uuid @map("proyectoId")
+  projectId  String            @map("proyectoId") @db.Uuid
   localId    String            @db.Uuid
   contratoId String?           @db.Uuid
   fecha      DateTime          @db.Date
@@ -422,16 +472,16 @@ model ContractDay {
 }
 
 model DataUpload {
-  id                String           @id @default(uuid()) @db.Uuid
-  projectId         String           @db.Uuid @map("proyectoId")
-  type              DataUploadType   @map("tipo")
-  userId            String           @db.Uuid @map("usuarioId")
-  fileName          String           @map("archivoNombre")
-  fileUrl           String           @map("archivoUrl")
-  recordsLoaded     Int              @default(0) @map("registrosCargados")
-  status            DataUploadStatus @map("estado")
-  errorDetail       Json?            @map("errorDetalle")
-  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
+  id            String           @id @default(uuid()) @db.Uuid
+  projectId     String           @map("proyectoId") @db.Uuid
+  type          DataUploadType   @map("tipo")
+  userId        String           @map("usuarioId") @db.Uuid
+  fileName      String           @map("archivoNombre")
+  fileUrl       String           @map("archivoUrl")
+  recordsLoaded Int              @default(0) @map("registrosCargados")
+  status        DataUploadStatus @map("estado")
+  errorDetail   Json?            @map("errorDetalle")
+  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
@@ -490,10 +540,10 @@ model VerificationToken {
 
 model AccountingUnitMapping {
   id           String   @id @default(uuid()) @db.Uuid
-  projectId    String   @db.Uuid @map("proyectoId")
+  projectId    String   @map("proyectoId") @db.Uuid
   externalUnit String   @map("localExterno")
-  unitId       String   @db.Uuid @map("localId")
-  createdBy    String   @db.Uuid @map("creadoPor")
+  unitId       String   @map("localId") @db.Uuid
+  createdBy    String   @map("creadoPor") @db.Uuid
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -506,23 +556,23 @@ model AccountingUnitMapping {
 }
 
 model AccountingRecord {
-  id              String   @id @default(uuid()) @db.Uuid
-  projectId       String   @db.Uuid @map("proyectoId")
-  unitId          String?  @db.Uuid @map("localId")
-  tenantId        String?  @db.Uuid @map("arrendatarioId")
-  period          DateTime @db.Date @map("periodo")
-  group1          String   @map("grupo1")
-  group3          String   @map("grupo3")
-  denomination    String   @map("denominacion")
-  valueUf         Decimal  @db.Decimal(14, 4) @map("valorUf")
-  sizeCategory    String?  @map("categoriaTamano")
-  typeCategory    String?  @map("categoriaTipo")
-  floor           String?  @map("piso")
-  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  id           String   @id @default(uuid()) @db.Uuid
+  projectId    String   @map("proyectoId") @db.Uuid
+  unitId       String?  @map("localId") @db.Uuid
+  tenantId     String?  @map("arrendatarioId") @db.Uuid
+  period       DateTime @map("periodo") @db.Date
+  group1       String   @map("grupo1")
+  group3       String   @map("grupo3")
+  denomination String   @map("denominacion")
+  valueUf      Decimal  @map("valorUf") @db.Decimal(14, 4)
+  sizeCategory String?  @map("categoriaTamano")
+  typeCategory String?  @map("categoriaTipo")
+  floor        String?  @map("piso")
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
 
-  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  unit         Unit?        @relation(fields: [unitId], references: [id], onDelete: Cascade)
-  tenant       Tenant?      @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  unit    Unit?   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  tenant  Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
   // @@unique removed — replaced by two partial unique indexes in migration SQL
   // to correctly handle nullable unitId (NULL != NULL in PG unique constraints).
@@ -559,13 +609,13 @@ model DashboardConfig {
 }
 
 model SalesTenantMapping {
-  id              String   @id @default(uuid()) @db.Uuid
-  projectId       String   @db.Uuid @map("proyectoId")
-  salesAccountId  Int      @map("idCa")
-  storeName       String   @map("tiendaNombre")
-  tenantId        String   @db.Uuid @map("arrendatarioId")
-  createdBy       String   @db.Uuid @map("creadoPor")
-  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  id             String   @id @default(uuid()) @db.Uuid
+  projectId      String   @map("proyectoId") @db.Uuid
+  salesAccountId Int      @map("idCa")
+  storeName      String   @map("tiendaNombre")
+  tenantId       String   @map("arrendatarioId") @db.Uuid
+  createdBy      String   @map("creadoPor") @db.Uuid
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   tenant  Tenant  @relation(fields: [tenantId, projectId], references: [id, projectId], onDelete: Cascade)
@@ -577,16 +627,16 @@ model SalesTenantMapping {
 }
 
 model BillingAlert {
-  id                  String                @id @default(uuid()) @db.Uuid
-  projectId           String                @db.Uuid @map("proyectoId")
-  arrendatarioId      String                @db.Uuid
-  severity            BillingAlertSeverity
-  consecutiveMonths   Int                   @map("mesesConsecutivos")
-  avgGapPct           Decimal               @db.Decimal(8, 2) @map("brechaPromedioPct")
-  latestPeriod        String                @map("ultimoPeriodo")
-  resolvedAt          DateTime?             @db.Timestamptz(3) @map("resueltaEn")
-  createdAt           DateTime              @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
+  id                String               @id @default(uuid()) @db.Uuid
+  projectId         String               @map("proyectoId") @db.Uuid
+  arrendatarioId    String               @db.Uuid
+  severity          BillingAlertSeverity
+  consecutiveMonths Int                  @map("mesesConsecutivos")
+  avgGapPct         Decimal              @map("brechaPromedioPct") @db.Decimal(8, 2)
+  latestPeriod      String               @map("ultimoPeriodo")
+  resolvedAt        DateTime?            @map("resueltaEn") @db.Timestamptz(3)
+  createdAt         DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime             @updatedAt @db.Timestamptz(3)
 
   proyecto     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   arrendatario Tenant  @relation(fields: [arrendatarioId, projectId], references: [id, projectId], onDelete: Cascade)
@@ -600,7 +650,7 @@ model BillingAlert {
 
 model ExpenseBudget {
   id        String   @id @default(uuid()) @db.Uuid
-  projectId String   @db.Uuid @map("proyectoId")
+  projectId String   @map("proyectoId") @db.Uuid
   periodo   DateTime @db.Date
   grupo1    String
   grupo3    String
@@ -618,23 +668,23 @@ model ExpenseBudget {
 
 model BalanceRecord {
   id             String   @id @default(uuid()) @db.Uuid
-  projectId      String   @db.Uuid @map("proyectoId")
-  period         DateTime @db.Date @map("periodo")
+  projectId      String   @map("proyectoId") @db.Uuid
+  period         DateTime @map("periodo") @db.Date
   accountCode    String   @map("codigo")
   accountName    String   @map("nombre")
   accountNameAlt String?  @map("nombre2")
-  debitsClp      Decimal  @db.Decimal(18, 2) @map("debitosClp")
-  creditsClp     Decimal  @db.Decimal(18, 2) @map("creditosClp")
-  debtorClp      Decimal  @db.Decimal(18, 2) @map("deudorClp")
-  creditorClp    Decimal  @db.Decimal(18, 2) @map("acreedorClp")
-  assetClp       Decimal  @db.Decimal(18, 2) @map("activoClp")
-  liabilityClp   Decimal  @db.Decimal(18, 2) @map("pasivoClp")
-  lossesClp      Decimal  @db.Decimal(18, 2) @map("perdidasClp")
-  gainsClp       Decimal  @db.Decimal(18, 2) @map("gananciasClp")
-  diffClp        Decimal  @db.Decimal(18, 2) @map("diferenciaClp")
+  debitsClp      Decimal  @map("debitosClp") @db.Decimal(18, 2)
+  creditsClp     Decimal  @map("creditosClp") @db.Decimal(18, 2)
+  debtorClp      Decimal  @map("deudorClp") @db.Decimal(18, 2)
+  creditorClp    Decimal  @map("acreedorClp") @db.Decimal(18, 2)
+  assetClp       Decimal  @map("activoClp") @db.Decimal(18, 2)
+  liabilityClp   Decimal  @map("pasivoClp") @db.Decimal(18, 2)
+  lossesClp      Decimal  @map("perdidasClp") @db.Decimal(18, 2)
+  gainsClp       Decimal  @map("gananciasClp") @db.Decimal(18, 2)
+  diffClp        Decimal  @map("diferenciaClp") @db.Decimal(18, 2)
   category       String   @map("categoria")
   groupName      String   @map("grupo")
-  valueUf        Decimal  @db.Decimal(14, 4) @map("valorUf")
+  valueUf        Decimal  @map("valorUf") @db.Decimal(14, 4)
   createdAt      DateTime @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime @updatedAt @db.Timestamptz(3)
 
@@ -649,13 +699,13 @@ model BalanceRecord {
 
 model BankMovement {
   id              String   @id @default(uuid()) @db.Uuid
-  projectId       String   @db.Uuid @map("proyectoId")
-  period          DateTime @db.Date @map("periodo")
-  accountingDate  DateTime @db.Date @map("fechaContable")
+  projectId       String   @map("proyectoId") @db.Uuid
+  period          DateTime @map("periodo") @db.Date
+  accountingDate  DateTime @map("fechaContable") @db.Date
   account         String   @map("cc")
   movement        String   @map("movimiento")
   operationNumber String?  @map("numeroOperacion")
-  amountClp       Decimal  @db.Decimal(18, 2) @map("montoClp")
+  amountClp       Decimal  @map("montoClp") @db.Decimal(18, 2)
   originRut       String?  @map("rutOrigen")
   originName      String?  @map("nombreOrigen")
   transferComment String?  @map("comentarioTransferencia")

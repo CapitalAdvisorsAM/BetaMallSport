@@ -63,6 +63,14 @@ export type RawContractRate = {
   vigenciaDesde: Date;
   vigenciaHasta: Date | null;
   esDiciembre: boolean;
+  // Legacy 4-field discount projection populated at the route boundary from
+  // ContractRateDiscount via legacyDiscountFields(). Optional because some
+  // upstream routes still pass tarifas without the projection (those callers
+  // silently lose discount info — see follow-up items).
+  descuentoTipo?: import("@prisma/client").ContractDiscountType | null;
+  descuentoValor?: DecimalLike | null;
+  descuentoDesde?: Date | null;
+  descuentoHasta?: Date | null;
 };
 
 export type RawContractGgcc = {

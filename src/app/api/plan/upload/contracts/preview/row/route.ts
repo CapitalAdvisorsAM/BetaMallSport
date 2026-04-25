@@ -48,8 +48,8 @@ async function loadLookupData(projectId: string): Promise<{
       include: {
         local: { select: { codigo: true } },
         arrendatario: { select: { nombreComercial: true } },
-        tarifas: true,
-        ggcc: true
+        tarifas: { where: { supersededAt: null } },
+        ggcc: { where: { supersededAt: null } }
       }
     })
   ]);

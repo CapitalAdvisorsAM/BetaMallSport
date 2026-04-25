@@ -3,6 +3,7 @@ export const EXPORT_DATASETS = [
   "locales",
   "arrendatarios",
   "contratos",
+  "rent_roll_snapshot",
   "finance_tenants",
   "finance_eerr",
   "finance_mappings"
@@ -21,6 +22,7 @@ export type ExportExcelQuery = {
   desde?: string;
   hasta?: string;
   tab?: string;
+  fecha?: string;
 };
 
 export function isExportDataset(value: string | null): value is ExportDataset {
@@ -53,5 +55,6 @@ export function buildExportExcelUrl(query: ExportExcelQuery): string {
   setOptionalParam(params, "desde", query.desde);
   setOptionalParam(params, "hasta", query.hasta);
   setOptionalParam(params, "tab", query.tab);
+  setOptionalParam(params, "fecha", query.fecha);
   return `/api/export/excel?${params.toString()}`;
 }

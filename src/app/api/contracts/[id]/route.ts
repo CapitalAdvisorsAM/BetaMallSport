@@ -1,10 +1,11 @@
 export const dynamic = "force-dynamic";
 
-import { Prisma, ContractRateType } from "@prisma/client";
+import { Prisma, ContractDiscountType, ContractRateType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { applyEstadoComputado } from "@/lib/contracts/contract-query-service";
+import { legacyDiscountFields } from "@/lib/contracts/rate-history";
 import {
   getRequiredActiveProjectIdFromRequest,
   withCanonicalProjectId
@@ -47,8 +48,16 @@ export async function GET(
           orderBy: { createdAt: "asc" }
         },
         arrendatario: true,
-        tarifas: { orderBy: { vigenciaDesde: "desc" } },
-        ggcc: { orderBy: { vigenciaDesde: "desc" } },
+        // Only active rates — superseded rows live in history and must not surface
+        // to the editor (they would appear as ghost duplicates after corrections).
+        tarifas: {
+          where: { supersededAt: null },
+          include: {
+            discounts: { where: { supersededAt: null }, orderBy: { vigenciaDesde: "asc" } }
+          },
+          orderBy: { vigenciaDesde: "desc" }
+        },
+        ggcc: { where: { supersededAt: null }, orderBy: { vigenciaDesde: "desc" } },
         anexos: { orderBy: { createdAt: "desc" }, take: 5 }
       }
     });
@@ -56,7 +65,16 @@ export async function GET(
       throw new ApiError(404, "No encontrado.");
     }
     const [computed] = applyEstadoComputado([item]);
-    return NextResponse.json(computed);
+    // Project active discounts back into the legacy 4-field shape on each tarifa,
+    // strip the discounts relation so the response shape stays unchanged.
+    const response = {
+      ...computed,
+      tarifas: computed.tarifas.map(({ discounts, ...tarifa }) => ({
+        ...tarifa,
+        ...legacyDiscountFields(discounts)
+      }))
+    };
+    return NextResponse.json(response);
   } catch (error) {
     return handleApiError(error);
   }
@@ -80,20 +98,50 @@ function toDecimalString(value: Prisma.Decimal | string | null): string | null {
   return value.toString();
 }
 
-function normalizedTarifas(
-  tarifas: Array<{
-    tipo: string;
-    valor: Prisma.Decimal | string;
-    umbralVentasUf?: Prisma.Decimal | string | null;
-    vigenciaDesde: Date | string;
-    vigenciaHasta: Date | string | null;
-    esDiciembre: boolean;
-    descuentoTipo?: string | null;
-    descuentoValor?: Prisma.Decimal | string | null;
-    descuentoDesde?: Date | string | null;
-    descuentoHasta?: Date | string | null;
-  }>
-): string {
+type NormalizedTarifaInput = {
+  tipo: string;
+  valor: Prisma.Decimal | string;
+  umbralVentasUf?: Prisma.Decimal | string | null;
+  vigenciaDesde: Date | string;
+  vigenciaHasta: Date | string | null;
+  esDiciembre: boolean;
+  // Either inline legacy fields (payload shape) or a discounts relation (DB shape).
+  descuentoTipo?: string | null;
+  descuentoValor?: Prisma.Decimal | string | null;
+  descuentoDesde?: Date | string | null;
+  descuentoHasta?: Date | string | null;
+  discounts?: Array<{
+    tipo: ContractDiscountType;
+    valor: Prisma.Decimal;
+    vigenciaDesde: Date;
+    vigenciaHasta: Date | null;
+  }>;
+};
+
+function tarifaDiscountFields(item: NormalizedTarifaInput): {
+  descuentoTipo: string | null;
+  descuentoValor: string | null;
+  descuentoDesde: string | null;
+  descuentoHasta: string | null;
+} {
+  if (item.discounts && item.discounts.length > 0) {
+    const projected = legacyDiscountFields(item.discounts);
+    return {
+      descuentoTipo: projected.descuentoTipo,
+      descuentoValor: projected.descuentoValor,
+      descuentoDesde: projected.descuentoDesde,
+      descuentoHasta: projected.descuentoHasta
+    };
+  }
+  return {
+    descuentoTipo: item.descuentoTipo ?? null,
+    descuentoValor: toDecimalString(item.descuentoValor ?? null),
+    descuentoDesde: toDateOnly(item.descuentoDesde ?? null),
+    descuentoHasta: toDateOnly(item.descuentoHasta ?? null)
+  };
+}
+
+function normalizedTarifas(tarifas: NormalizedTarifaInput[]): string {
   return JSON.stringify(
     tarifas
       .map((item) => ({
@@ -103,10 +151,7 @@ function normalizedTarifas(
         vigenciaDesde: toDateOnly(item.vigenciaDesde),
         vigenciaHasta: toDateOnly(item.vigenciaHasta),
         esDiciembre: item.esDiciembre,
-        descuentoTipo: item.descuentoTipo ?? null,
-        descuentoValor: toDecimalString(item.descuentoValor ?? null),
-        descuentoDesde: toDateOnly(item.descuentoDesde ?? null),
-        descuentoHasta: toDateOnly(item.descuentoHasta ?? null)
+        ...tarifaDiscountFields(item)
       }))
       .sort((a, b) => a.key.localeCompare(b.key))
   );
@@ -165,7 +210,13 @@ function normalizedGgcc(
 }
 
 function computeCamposModificados(
-  existing: Prisma.ContractGetPayload<{ include: { tarifas: true; ggcc: true; locales: true } }>,
+  existing: Prisma.ContractGetPayload<{
+    include: {
+      tarifas: { include: { discounts: true } };
+      ggcc: true;
+      locales: true;
+    };
+  }>,
   payload: ContractPayload,
   localIds: string[]
 ): string[] {
@@ -210,7 +261,8 @@ function computeCamposModificados(
     ],
     ["codigoCC", existing.codigoCC, payload.codigoCC],
     ["pdfUrl", existing.pdfUrl, payload.pdfUrl],
-    ["notas", existing.notas, payload.notas]
+    ["notas", existing.notas, payload.notas],
+    ["cuentaParaVacancia", existing.cuentaParaVacancia, payload.cuentaParaVacancia]
   ];
 
   for (const [field, before, after] of scalarChecks) {
@@ -270,6 +322,7 @@ function buildContratoPayload(
     fechaEntrega: toDate(parsed.fechaEntrega),
     fechaApertura: toDate(parsed.fechaApertura),
     diasGracia: parsed.diasGracia,
+    cuentaParaVacancia: parsed.cuentaParaVacancia,
     estado: computeEstadoContrato(
       new Date(parsed.fechaInicio),
       new Date(parsed.fechaTermino),
@@ -306,7 +359,16 @@ export async function PUT(
 
     const existing = await prisma.contract.findFirst({
       where: { id: contractId, projectId: payload.projectId },
-      include: { tarifas: true, ggcc: true, locales: true }
+      include: {
+        tarifas: {
+          where: { supersededAt: null },
+          include: {
+            discounts: { where: { supersededAt: null }, orderBy: { vigenciaDesde: "asc" } }
+          }
+        },
+        ggcc: { where: { supersededAt: null } },
+        locales: true
+      }
     });
     if (!existing) {
       return NextResponse.json({ message: "Contrato no encontrado." }, { status: 404 });
@@ -341,33 +403,66 @@ export async function PUT(
         excludeContractId: contractId
       });
 
-      await tx.contract.update({
-        where: { id: contractId },
-        data: buildContratoPayload(payload, existing.numeroContrato, localIds)
-      });
-
-      await persistContratoLocales(tx, contractId, localIds);
-      await persistTarifas(tx, contractId, payloadTarifas(payload));
-      await persistGGCC(tx, contractId, payload.ggcc, payload.fechaInicio, payload.fechaTermino);
-
-      const snapshotDespues = await tx.contract.findUnique({
-        where: { id: contractId },
-        include: { tarifas: true, ggcc: true, locales: true }
-      });
-      if (!snapshotDespues) {
-        throw new Error("Contrato no encontrado.");
-      }
-
+      // Pre-create amendment skeleton so persistTarifas can stamp superseded rows with
+      // amendmentId in the same transaction. snapshotDespues is backfilled after persists
+      // (see end of this block). Option C of the supersession plan: amendment is always
+      // recorded for traceability when any field changed; payload.anexo carries optional
+      // human-readable metadata.
+      let amendmentId: string | null = null;
       if (camposModificados.length > 0) {
-        await tx.contractAmendment.create({
+        const amendment = await tx.contractAmendment.create({
           data: {
             contratoId: contractId,
             fecha: payload.anexo ? new Date(payload.anexo.fecha) : new Date(),
             descripcion: payload.anexo?.descripcion ?? "Edicion de contrato",
             camposModificados,
             snapshotAntes: existing as unknown as Prisma.InputJsonValue,
-            snapshotDespues: snapshotDespues as unknown as Prisma.InputJsonValue,
+            snapshotDespues: {} as unknown as Prisma.InputJsonValue,
             usuarioId: session.user.id
+          }
+        });
+        amendmentId = amendment.id;
+      }
+
+      await tx.contract.update({
+        where: { id: contractId },
+        data: buildContratoPayload(payload, existing.numeroContrato, localIds)
+      });
+
+      await persistContratoLocales(tx, contractId, localIds);
+      await persistTarifas(tx, contractId, payloadTarifas(payload), {
+        userId: session.user.id,
+        amendmentId,
+        supersedeReason: payload.anexo?.descripcion ?? null
+      });
+      await persistGGCC(tx, contractId, payload.ggcc, payload.fechaInicio, payload.fechaTermino, {
+        userId: session.user.id,
+        amendmentId,
+        supersedeReason: payload.anexo?.descripcion ?? null
+      });
+
+      const snapshotDespues = await tx.contract.findUnique({
+        where: { id: contractId },
+        include: {
+          tarifas: {
+            where: { supersededAt: null },
+            include: {
+              discounts: { where: { supersededAt: null }, orderBy: { vigenciaDesde: "asc" } }
+            }
+          },
+          ggcc: { where: { supersededAt: null } },
+          locales: true
+        }
+      });
+      if (!snapshotDespues) {
+        throw new Error("Contrato no encontrado.");
+      }
+
+      if (amendmentId) {
+        await tx.contractAmendment.update({
+          where: { id: amendmentId },
+          data: {
+            snapshotDespues: snapshotDespues as unknown as Prisma.InputJsonValue
           }
         });
       }
@@ -377,7 +472,14 @@ export async function PUT(
     invalidateMetricsCacheByProject(payload.projectId);
 
     const [computed] = applyEstadoComputado([updated]);
-    return NextResponse.json(computed);
+    const response = {
+      ...computed,
+      tarifas: computed.tarifas.map(({ discounts, ...tarifa }) => ({
+        ...tarifa,
+        ...legacyDiscountFields(discounts)
+      }))
+    };
+    return NextResponse.json(response);
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json({ message: "Payload invalido", issues: error.issues }, { status: 400 });

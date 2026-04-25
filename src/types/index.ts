@@ -162,6 +162,7 @@ export type ContractFormPayload = {
   fechaEntrega: string | null;
   fechaApertura: string | null;
   diasGracia: number;
+  cuentaParaVacancia: boolean;
   rentaVariable: Array<{
     pctRentaVariable: string;
     umbralVentasUf: string;

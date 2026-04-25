@@ -47,6 +47,13 @@ export type ReconContract = {
     vigenciaDesde: Date;
     vigenciaHasta: Date | null;
     esDiciembre: boolean;
+    // Optional legacy discount projection (populated at the route boundary
+    // from ContractRateDiscount via legacyDiscountFields). Without these,
+    // calcExpectedIncome silently ignores discounts.
+    descuentoTipo?: import("@prisma/client").ContractDiscountType | null;
+    descuentoValor?: DecimalLike | null;
+    descuentoDesde?: Date | null;
+    descuentoHasta?: Date | null;
   }[];
   ggcc: {
     tarifaBaseUfM2: DecimalLike;

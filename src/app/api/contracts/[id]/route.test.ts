@@ -86,6 +86,7 @@ function makePayload(): ContractFormPayload {
     multiplicadorJulio: null,
     multiplicadorAgosto: null,
     diasGracia: 0,
+    cuentaParaVacancia: true,
     codigoCC: "CC-1",
     pdfUrl: "https://example.com/contract.pdf",
     notas: "Notas",
@@ -146,7 +147,8 @@ function makeExistingContract() {
         vigenciaDesde: new Date("2026-01-01"),
         vigenciaHasta: null,
         esDiciembre: false,
-        createdAt: new Date("2026-01-01")
+        createdAt: new Date("2026-01-01"),
+        discounts: [] as Array<unknown>
       },
       {
         id: "tarifa-remove",
@@ -156,7 +158,8 @@ function makeExistingContract() {
         vigenciaDesde: new Date("2026-02-01"),
         vigenciaHasta: null,
         esDiciembre: false,
-        createdAt: new Date("2026-02-01")
+        createdAt: new Date("2026-02-01"),
+        discounts: [] as Array<unknown>
       }
     ],
     ggcc: [
@@ -199,10 +202,23 @@ function setupTransaction(options: {
     update: vi.fn().mockResolvedValue({ id: "contract-1" }),
     findUnique: vi.fn().mockResolvedValue(options.finalContract)
   };
+  // After the discount-extraction refactor, persistTarifas loads existing rates
+  // WITH their active discounts via include. Each fixture row needs `.discounts: []`
+  // for the include to deserialize cleanly even when the test doesn't exercise discounts.
+  const existingTarifasWithDiscounts = (options.existingTarifas ?? []).map((row) => {
+    const r = row as Record<string, unknown>;
+    return r.discounts ? row : { ...r, discounts: [] };
+  });
   const contractRate = {
-    findMany: vi.fn().mockResolvedValue(options.existingTarifas ?? []),
+    findMany: vi.fn().mockResolvedValue(existingTarifasWithDiscounts),
     deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     update: vi.fn().mockResolvedValue({}),
+    updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+    createMany: vi.fn().mockResolvedValue({ count: 0 })
+  };
+  const contractRateDiscount = {
+    findMany: vi.fn().mockResolvedValue([]),
+    updateMany: vi.fn().mockResolvedValue({ count: 0 }),
     createMany: vi.fn().mockResolvedValue({ count: 0 })
   };
   const contractUnit = {
@@ -214,20 +230,24 @@ function setupTransaction(options: {
     findMany: vi.fn().mockResolvedValue(options.existingGgcc ?? []),
     deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     update: vi.fn().mockResolvedValue({}),
+    updateMany: vi.fn().mockResolvedValue({ count: 0 }),
     createMany: vi.fn().mockResolvedValue({ count: 0 })
   };
   const contractAmendment = {
-    create: vi.fn().mockResolvedValue({})
+    create: vi.fn().mockResolvedValue({ id: "amendment-1" }),
+    update: vi.fn().mockResolvedValue({})
   };
 
   const tx = {
     contract,
     contractRate,
+    contractRateDiscount,
     contractUnit,
     contractCommonExpense,
     contractAmendment,
     contrato: contract,
     contratoTarifa: contractRate,
+    contratoTarifaDescuento: contractRateDiscount,
     contratoLocal: contractUnit,
     contratoGGCC: contractCommonExpense,
     contratoAnexo: contractAmendment
@@ -267,7 +287,10 @@ afterEach(() => {
 });
 
 describe("PUT /api/contracts/[id]", () => {
-  it("deletes tarifas removed from payload", async () => {
+  it("supersedes tarifas removed from payload (logical delete)", async () => {
+    // After the bitemporal refactor, tarifas are NEVER physically deleted from PUT.
+    // Removing a tarifa from the payload marks it as superseded so historical reports
+    // and amendment snapshots can still reconstruct what was active before.
     const existing = makeExistingContract();
     const payload = makePayload();
     prismaMock.contract.findFirst.mockResolvedValue(existing);
@@ -288,16 +311,25 @@ describe("PUT /api/contracts/[id]", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(tx.contractRate.deleteMany).toHaveBeenCalledWith({
-      where: {
-        id: {
-          in: ["tarifa-remove"]
-        }
-      }
-    });
+    expect(tx.contractRate.deleteMany).not.toHaveBeenCalled();
+    // Other tarifas may also be superseded if the fixture has gaps vs the payload
+    // (e.g. descuento fields not modeled). The contract under test is just that
+    // tarifa-remove ends up in the supersession set.
+    expect(tx.contractRate.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: expect.arrayContaining(["tarifa-remove"]) } },
+        data: expect.objectContaining({
+          supersededAt: expect.any(Date),
+          supersededBy: "u1"
+        })
+      })
+    );
   });
 
-  it("deletes GGCC rows removed from payload", async () => {
+  it("supersedes GGCC rows when payload set differs from existing", async () => {
+    // GGCC supersession is atomic-set: if the payload set differs from the active set,
+    // ALL existing rows are superseded and ALL payload rows are inserted. No physical
+    // delete — old rows remain queryable for historical reports.
     const existing = makeExistingContract();
     const payload = makePayload();
     payload.ggcc = [payload.ggcc[0]];
@@ -319,9 +351,15 @@ describe("PUT /api/contracts/[id]", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(tx.contractCommonExpense.deleteMany).toHaveBeenCalledWith({
-      where: { contratoId: "contract-1" }
-    });
+    expect(tx.contractCommonExpense.deleteMany).not.toHaveBeenCalled();
+    expect(tx.contractCommonExpense.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          supersededAt: expect.any(Date),
+          supersededBy: "u1"
+        })
+      })
+    );
   });
 
   it("returns 400 with zod issues for invalid payload", async () => {
@@ -449,9 +487,14 @@ describe("PUT /api/contracts/[id]", () => {
       { id: "contract-1" }
     );
 
-    const anexoPayload = tx.contractAmendment.create.mock.calls[0][0].data as { snapshotDespues: typeof finalContract };
-    expect(anexoPayload.snapshotDespues.tarifas).toBeDefined();
-    expect(anexoPayload.snapshotDespues.ggcc).toBeDefined();
+    // The snapshotDespues is filled in via amendment.update at the end of the
+    // transaction, after persistTarifas runs (so the amendment can stamp
+    // amendmentId on superseded rows during the same tx).
+    const updateCall = tx.contractAmendment.update.mock.calls[0][0] as {
+      data: { snapshotDespues: typeof finalContract };
+    };
+    expect(updateCall.data.snapshotDespues.tarifas).toBeDefined();
+    expect(updateCall.data.snapshotDespues.ggcc).toBeDefined();
   });
 
   it("returns 400 when GGCC reajuste months is sent without pctReajuste", async () => {

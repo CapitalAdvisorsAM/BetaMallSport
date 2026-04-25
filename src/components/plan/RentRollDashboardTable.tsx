@@ -3,25 +3,35 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
+import { type UnitType } from "@prisma/client";
+import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/DataTable";
+import { enumFilterColumn } from "@/components/ui/data-table-columns";
 import { useDataTable } from "@/hooks/useDataTable";
-import { formatClp, formatDecimal, formatUfPerM2 } from "@/lib/utils";
+import { cn, formatClp, formatDecimal, formatUfPerM2 } from "@/lib/utils";
 
 export type RentRollDashboardTableRow = {
-  id: string; // Contract ID
+  id: string; // Contract ID, or `vacant-${unitId}` for vacant units
   localId: string; // Unit ID
-  tenantId: string; // Tenant ID
+  tenantId: string | null; // Tenant ID, null for vacant rows
   local: string;
   arrendatario: string;
+  zona: string | null;
+  tipo: UnitType;
   glam2: number;
   tarifaUfM2: number;
   rentaFijaUf: number;
   ggccUf: number;
-  ventasPesos: number | null;
+  ggccTarifaBaseUfM2: number | null;
+  ggccPctAdministracion: number | null;
   ventasPresupuestadasPesos: number | null;
   pctRentaVariable: number | null;
   rentaVariableUf: number | null;
   pctFondoPromocion: number | null;
+  vacante: boolean;
+  cuentaParaVacancia: boolean;
+  fechaTermino: string | null;
+  diasParaVencer: number | null;
 };
 
 type RentRollDashboardTableProps = {
@@ -36,12 +46,38 @@ function renderMetric(value: number | null, suffix = ""): string {
   return `${formatDecimal(value)}${suffix}`;
 }
 
+function expiryBadgeClass(diasParaVencer: number | null): string {
+  if (diasParaVencer == null) {
+    return "border border-slate-200 bg-slate-50 text-slate-500";
+  }
+  if (diasParaVencer <= 90) {
+    return "border border-rose-200 bg-rose-50 text-rose-700";
+  }
+  if (diasParaVencer <= 180) {
+    return "border border-amber-200 bg-amber-50 text-amber-700";
+  }
+  return "border border-slate-200 bg-slate-50 text-slate-600";
+}
+
 export function RentRollDashboardTable({
   rows,
   snapshotDate
 }: RentRollDashboardTableProps): JSX.Element {
   const sortedBaseRows = useMemo(
     () => [...rows].sort((a, b) => a.local.localeCompare(b.local, "es-CL")),
+    [rows]
+  );
+
+  const zonaOptions = useMemo(
+    () =>
+      Array.from(new Set(rows.map((r) => r.zona).filter((z): z is string => Boolean(z)))).sort(
+        (a, b) => a.localeCompare(b, "es-CL")
+      ),
+    [rows]
+  );
+
+  const tipoOptions = useMemo(
+    () => Array.from(new Set(rows.map((r) => r.tipo as string))).sort((a, b) => a.localeCompare(b, "es-CL")),
     [rows]
   );
 
@@ -58,37 +94,84 @@ export function RentRollDashboardTable({
           },
         },
         cell: ({ row }) => (
-          <span className="whitespace-nowrap font-medium text-slate-900">{row.original.local}</span>
+          <span className="flex items-center gap-2 whitespace-nowrap font-medium text-slate-900">
+            {row.original.local}
+            {row.original.vacante && (
+              <Badge
+                variant="outline"
+                className="rounded px-1.5 py-0 text-[10px] font-semibold uppercase tracking-wide border border-rose-200 bg-rose-50 text-rose-700"
+              >
+                Vacante
+              </Badge>
+            )}
+            {!row.original.vacante && !row.original.cuentaParaVacancia && (
+              <Badge
+                variant="outline"
+                title="Este contrato existe y se cobra, pero el local no se cuenta como ocupado en los KPIs de vacancia."
+                className="rounded px-1.5 py-0 text-[10px] font-semibold uppercase tracking-wide border border-amber-200 bg-amber-50 text-amber-700"
+              >
+                No vacancia
+              </Badge>
+            )}
+          </span>
         )
       },
       {
         accessorKey: "arrendatario",
         header: "Arrendatario",
         filterFn: "includesString",
-        cell: ({ row }) => (
-          <Link
-            href={`/tenants/${row.original.tenantId}`}
-            className="whitespace-nowrap text-brand-500 underline underline-offset-2 font-medium transition-colors hover:text-brand-700"
-          >
-            {row.original.arrendatario}
-          </Link>
-        )
+        cell: ({ row }) => {
+          if (row.original.vacante || !row.original.tenantId) {
+            return <span className="whitespace-nowrap text-slate-400">—</span>;
+          }
+          return (
+            <Link
+              href={`/tenants/${row.original.tenantId}`}
+              className="whitespace-nowrap text-brand-500 underline underline-offset-2 font-medium transition-colors hover:text-brand-700"
+            >
+              {row.original.arrendatario}
+            </Link>
+          );
+        }
       },
+      enumFilterColumn<RentRollDashboardTableRow>({
+        id: "zona",
+        accessorFn: (row) => row.zona ?? "—",
+        header: "Zona",
+        options: zonaOptions.length > 0 ? zonaOptions : ["—"],
+        cell: (row) => (
+          <span className="whitespace-nowrap text-slate-700">{row.zona ?? "—"}</span>
+        )
+      }),
+      enumFilterColumn<RentRollDashboardTableRow>({
+        id: "tipo",
+        accessorFn: (row) => row.tipo as string,
+        header: "Tipo",
+        options: tipoOptions,
+        cell: (row) => (
+          <span className="whitespace-nowrap text-slate-700">{row.tipo}</span>
+        )
+      }),
       {
         id: "contractId",
         header: "Contrato",
-        accessorFn: (row) => row.id,
+        accessorFn: (row) => (row.vacante ? "" : row.id),
         meta: {
           linkTo: {
             path: "/plan/contracts",
             idKey: "id",
           },
         },
-        cell: ({ row }) => (
-          <span className="whitespace-nowrap font-mono text-xs text-slate-500">
-            {row.original.id.slice(0, 8)}...
-          </span>
-        )
+        cell: ({ row }) => {
+          if (row.original.vacante) {
+            return <span className="whitespace-nowrap text-slate-400">—</span>;
+          }
+          return (
+            <span className="whitespace-nowrap font-mono text-xs text-slate-500">
+              {row.original.id.slice(0, 8)}...
+            </span>
+          );
+        }
       },
       {
         accessorKey: "glam2",
@@ -140,18 +223,28 @@ export function RentRollDashboardTable({
         )
       },
       {
-        accessorFn: (row) => row.ventasPesos ?? undefined,
-        id: "ventasPesos",
-        header: "Ventas Reales (Pesos)",
+        accessorFn: (row) => row.ggccTarifaBaseUfM2 ?? undefined,
+        id: "ggccTarifaBaseUfM2",
+        header: "GGCC base (UF/m²)",
         enableColumnFilter: false,
         sortUndefined: "last",
-        meta: {
-          align: "right",
-          summary: { type: "sum", formatter: (value: number) => formatClp(value) }
-        },
+        meta: { align: "right" },
         cell: ({ row }) => (
           <span className="whitespace-nowrap text-slate-700">
-            {row.original.ventasPesos != null ? formatClp(row.original.ventasPesos) : "–"}
+            {renderMetric(row.original.ggccTarifaBaseUfM2)}
+          </span>
+        )
+      },
+      {
+        accessorFn: (row) => row.ggccPctAdministracion ?? undefined,
+        id: "ggccPctAdministracion",
+        header: "% Admin GGCC",
+        enableColumnFilter: false,
+        sortUndefined: "last",
+        meta: { align: "right" },
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap text-slate-700">
+            {renderMetric(row.original.ggccPctAdministracion, "%")}
           </span>
         )
       },
@@ -212,6 +305,31 @@ export function RentRollDashboardTable({
             {renderMetric(row.original.pctFondoPromocion, "")}
           </span>
         )
+      },
+      {
+        accessorFn: (row) => row.diasParaVencer ?? undefined,
+        id: "diasParaVencer",
+        header: "Vence en",
+        enableColumnFilter: false,
+        sortUndefined: "last",
+        meta: { align: "right" },
+        cell: ({ row }) => {
+          const { fechaTermino, diasParaVencer } = row.original;
+          if (fechaTermino == null || diasParaVencer == null) {
+            return <span className="whitespace-nowrap text-slate-400">—</span>;
+          }
+          return (
+            <Badge
+              variant="outline"
+              className={cn(
+                "rounded px-2 py-0.5 text-xs font-semibold whitespace-nowrap",
+                expiryBadgeClass(diasParaVencer)
+              )}
+            >
+              {fechaTermino} ({diasParaVencer}d)
+            </Badge>
+          );
+        }
       },
     ],
     []

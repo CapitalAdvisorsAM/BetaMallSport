@@ -19,6 +19,7 @@ export type ContractApiBaseRow = {
   multiplicadorAgosto: string | null;
   codigoCC: string | null;
   diasGracia: number;
+  cuentaParaVacancia: boolean;
   estado: ContractStatus;
   pdfUrl: string | null;
   notas: string | null;
@@ -74,6 +75,7 @@ export type ContractManagerListItem = {
   id: string;
   numeroContrato: string;
   diasGracia: number;
+  cuentaParaVacancia: boolean;
   estado: ContractStatus;
   pdfUrl: string | null;
   fechaInicio: string;

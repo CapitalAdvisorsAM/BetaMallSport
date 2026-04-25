@@ -8,6 +8,7 @@ import { getFinanceFrom, getFinanceProjectId, getFinanceTo } from "@/lib/real/ap
 import { resolveMonthRange, toPeriodKey } from "@/lib/real/period-range";
 import { buildUfRateMap } from "@/lib/real/uf-lookup";
 import { shiftPeriod } from "@/lib/real/billing-utils";
+import { legacyDiscountFields } from "@/lib/contracts/rate-history";
 import { buildBudgetVsActual } from "@/lib/plan/budget-vs-actual";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -49,6 +50,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             select: { id: true, rut: true, nombreComercial: true },
           },
           tarifas: {
+            where: { supersededAt: null },
             orderBy: { vigenciaDesde: "desc" },
             select: {
               tipo: true,
@@ -56,9 +58,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
               vigenciaDesde: true,
               vigenciaHasta: true,
               esDiciembre: true,
+              discounts: {
+                where: { supersededAt: null },
+                orderBy: { vigenciaDesde: "asc" },
+                select: { tipo: true, valor: true, vigenciaDesde: true, vigenciaHasta: true },
+              },
             },
           },
           ggcc: {
+            where: { supersededAt: null },
             orderBy: { vigenciaDesde: "desc" },
             select: {
               tarifaBaseUfM2: true,
@@ -101,7 +109,23 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     // Build UF map for all periods and their lag counterparts.
     const lagPeriods = periods.map((p) => shiftPeriod(p, -VARIABLE_RENT_LAG_MONTHS));
     const ufRateByPeriod = await buildUfRateMap([...new Set([...periods, ...lagPeriods])]);
-    const result = buildBudgetVsActual(contracts, accountingRecords, budgetedSales, periods, ufRateByPeriod);
+    // Project active discounts back into the legacy 4-field shape so
+    // calcExpectedIncome inside buildBudgetVsActual actually applies them.
+    const contractsWithDiscounts = contracts.map((c) => ({
+      ...c,
+      tarifas: c.tarifas.map(({ discounts, ...t }) => {
+        const proj = legacyDiscountFields(discounts);
+        return {
+          ...t,
+          descuentoTipo: proj.descuentoTipo,
+          descuentoValor: proj.descuentoValor,
+          descuentoDesde: proj.descuentoDesde ? new Date(proj.descuentoDesde) : null,
+          descuentoHasta: proj.descuentoHasta ? new Date(proj.descuentoHasta) : null
+        };
+      })
+    }));
+
+    const result = buildBudgetVsActual(contractsWithDiscounts, accountingRecords, budgetedSales, periods, ufRateByPeriod);
 
     return NextResponse.json(result);
   } catch (error) {

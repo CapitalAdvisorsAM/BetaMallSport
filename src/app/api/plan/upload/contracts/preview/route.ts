@@ -94,8 +94,8 @@ export async function POST(request: Request): Promise<NextResponse> {
         include: {
           local: { select: { codigo: true } },
           arrendatario: { select: { nombreComercial: true } },
-          tarifas: true,
-          ggcc: true
+          tarifas: { where: { supersededAt: null } },
+          ggcc: { where: { supersededAt: null } }
         }
       })
     ]);

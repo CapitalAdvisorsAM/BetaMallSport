@@ -45,6 +45,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             },
             tarifas: {
               where: {
+                supersededAt: null,
                 tipo: { in: ["FIJO_UF_M2", "PORCENTAJE"] },
                 vigenciaDesde: { lte: hastaDate },
                 OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: desdeDate } }]
@@ -53,7 +54,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
               select: { tipo: true, valor: true }
             },
             ggcc: {
-              where: { vigenciaDesde: { lte: hastaDate } },
+              where: { supersededAt: null, vigenciaDesde: { lte: hastaDate } },
               orderBy: { vigenciaDesde: "desc" },
               take: 1,
               select: { tarifaBaseUfM2: true, pctAdministracion: true }

@@ -4,7 +4,7 @@
  * GGCC changes, and a residual "other" bucket).
  */
 
-import { ContractRateType, ContractStatus } from "@prisma/client";
+import { ContractDiscountType, ContractRateType, ContractStatus } from "@prisma/client";
 import { VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
 import {
   type DecimalLike,
@@ -49,6 +49,10 @@ export type WfContract = {
     vigenciaDesde: Date;
     vigenciaHasta: Date | null;
     esDiciembre: boolean;
+    descuentoTipo?: ContractDiscountType | null;
+    descuentoValor?: DecimalLike | null;
+    descuentoDesde?: Date | null;
+    descuentoHasta?: Date | null;
   }[];
   ggcc: {
     tarifaBaseUfM2: DecimalLike;

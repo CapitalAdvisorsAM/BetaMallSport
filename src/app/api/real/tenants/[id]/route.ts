@@ -6,6 +6,7 @@ import { ApiError, handleApiError } from "@/lib/api-error";
 import { VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
 import { getFinanceFrom, getFinanceProjectId, getFinanceTo } from "@/lib/real/api-params";
 import { resolveMonthRange, toPeriodKey } from "@/lib/real/period-range";
+import { legacyDiscountFields } from "@/lib/contracts/rate-history";
 import { buildTenant360Data } from "@/lib/real/tenant-360";
 import { buildPeerComparison } from "@/lib/real/peer-comparison";
 import { buildUfRateMap } from "@/lib/real/uf-lookup";
@@ -51,8 +52,14 @@ export async function GET(
           local: {
             select: { id: true, codigo: true, nombre: true, glam2: true, esGLA: true }
           },
-          tarifas: { orderBy: { vigenciaDesde: "desc" } },
-          ggcc: { orderBy: { vigenciaDesde: "desc" } },
+          tarifas: {
+            where: { supersededAt: null },
+            include: {
+              discounts: { where: { supersededAt: null }, orderBy: { vigenciaDesde: "asc" } }
+            },
+            orderBy: { vigenciaDesde: "desc" }
+          },
+          ggcc: { where: { supersededAt: null }, orderBy: { vigenciaDesde: "desc" } },
           anexos: { orderBy: { fecha: "desc" } }
         },
         orderBy: { fechaInicio: "desc" }
@@ -146,9 +153,26 @@ export async function GET(
     const lagPeriods = periods.map((p) => shiftPeriod(p, -VARIABLE_RENT_LAG_MONTHS));
     const ufRateByPeriod = await buildUfRateMap([...new Set([...periods, ...lagPeriods])]);
 
+    // Project active discounts back into the legacy 4-field shape so billing
+    // calculations (calcExpectedIncome inside buildTenant360Data) actually apply
+    // them. Without this projection discounts are silently ignored.
+    const contractsWithDiscounts = contracts.map((c) => ({
+      ...c,
+      tarifas: c.tarifas.map(({ discounts, ...t }) => {
+        const proj = legacyDiscountFields(discounts);
+        return {
+          ...t,
+          descuentoTipo: proj.descuentoTipo,
+          descuentoValor: proj.descuentoValor,
+          descuentoDesde: proj.descuentoDesde ? new Date(proj.descuentoDesde) : null,
+          descuentoHasta: proj.descuentoHasta ? new Date(proj.descuentoHasta) : null
+        };
+      })
+    }));
+
     const data = buildTenant360Data({
       tenant,
-      contracts,
+      contracts: contractsWithDiscounts,
       accountingRecords,
       sales,
       contractDays,

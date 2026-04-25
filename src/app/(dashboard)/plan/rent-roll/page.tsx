@@ -1,23 +1,20 @@
-import { ContractRateType, ContractStatus } from "@prisma/client";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { KpiCard } from "@/components/dashboard/KpiCard";
-import { RentRollDashboardTable, type RentRollDashboardTableRow } from "@/components/plan/RentRollDashboardTable";
+import { RentRollDashboardTable } from "@/components/plan/RentRollDashboardTable";
 import { OccupancyBySizeTable } from "@/components/plan/OccupancyBySizeTable";
 import { OcupacionTipoTable } from "@/components/plan/OcupacionTipoTable";
 import { RentRollSnapshotDatePicker } from "@/components/plan/RentRollSnapshotDatePicker";
-import { VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
-import { shiftPeriod, calcTieredVariableRent } from "@/lib/real/billing-utils";
-import { buildOcupacionDetalle, calculateWalt } from "@/lib/kpi";
+import { Button } from "@/components/ui/button";
+import { buildExportExcelUrl } from "@/lib/export/shared";
 import { requireSession } from "@/lib/permissions";
-import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
+import { buildRentRollSnapshotRows } from "@/lib/plan/rent-roll-snapshot";
 import {
   formatWaltValue,
-  getPeriodoFromFecha,
-  parseDateParam,
   resolveSnapshotDate
 } from "@/lib/plan/snapshot-date";
-import { formatClp, formatDecimal } from "@/lib/utils";
+import { formatDecimal } from "@/lib/utils";
 
 type RentRollPageProps = {
   searchParams: {
@@ -37,8 +34,6 @@ export default async function RentRollPage({
   }
 
   const fecha = resolveSnapshotDate(searchParams.fecha, searchParams.periodo);
-  const fechaReferencia = parseDateParam(fecha);
-  const periodoVentas = getPeriodoFromFecha(fecha);
 
   if (
     searchParams.fecha !== fecha ||
@@ -49,204 +44,16 @@ export default async function RentRollPage({
     redirect(`/plan/rent-roll?${params.toString()}`);
   }
 
-  const periodoVentasVariable = shiftPeriod(periodoVentas, -VARIABLE_RENT_LAG_MONTHS);
-
-  const [contracts, unitSalesRaw, budgetedSalesRaw, localesActivos, latestValorUf] = await Promise.all([
-    prisma.contract.findMany({
-      where: {
-        projectId: selectedProjectId,
-        estado: { in: [ContractStatus.VIGENTE, ContractStatus.GRACIA] },
-        fechaInicio: { lte: fechaReferencia },
-        fechaTermino: { gte: fechaReferencia }
-      },
-      include: {
-        local: {
-          select: {
-            id: true,
-            codigo: true,
-            nombre: true,
-            glam2: true,
-            esGLA: true,
-            tipo: true,
-            zona: { select: { nombre: true } }
-          }
-        },
-        arrendatario: {
-          select: {
-            nombreComercial: true
-          }
-        },
-        tarifas: {
-          where: {
-            tipo: { in: [ContractRateType.FIJO_UF_M2, ContractRateType.PORCENTAJE] },
-            vigenciaDesde: { lte: fechaReferencia },
-            OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: fechaReferencia } }]
-          },
-          orderBy: [{ vigenciaDesde: "desc" }],
-          select: {
-            tipo: true,
-            valor: true,
-            umbralVentasUf: true
-          }
-        },
-        ggcc: {
-          where: {
-            vigenciaDesde: { lte: fechaReferencia },
-            OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: fechaReferencia } }]
-          },
-          orderBy: [{ vigenciaDesde: "desc" }],
-          take: 1,
-          select: {
-            tarifaBaseUfM2: true,
-            pctAdministracion: true
-          }
-        }
-      },
-      orderBy: [{ local: { codigo: "asc" } }]
-    }),
-    prisma.tenantSale.findMany({
-      where: {
-        projectId: selectedProjectId,
-        period: new Date(`${periodoVentas}-01`)
-      },
-      select: {
-        tenantId: true,
-        salesPesos: true,
-        createdAt: true
-      },
-      orderBy: [{ createdAt: "desc" }]
-    }),
-    prisma.tenantBudgetedSale.findMany({
-      where: {
-        projectId: selectedProjectId,
-        period: new Date(`${periodoVentasVariable}-01`)
-      },
-      select: {
-        tenantId: true,
-        salesPesos: true
-      }
-    }),
-    prisma.unit.findMany({
-      where: {
-        projectId: selectedProjectId,
-        estado: "ACTIVO"
-      },
-      select: {
-        id: true,
-        tipo: true,
-        esGLA: true,
-        glam2: true,
-        zona: { select: { nombre: true } }
-      }
-    }),
-    prisma.valorUF.findFirst({ orderBy: { fecha: "desc" }, select: { valor: true } })
-  ]);
-
-  const ufRate = latestValorUf ? Number(latestValorUf.valor.toString()) : 0;
-
-  const ventasByTenantId = new Map<string, number>();
-  for (const sale of unitSalesRaw) {
-    if (!ventasByTenantId.has(sale.tenantId)) {
-      ventasByTenantId.set(sale.tenantId, Number(sale.salesPesos));
-    }
-  }
-
-  const budgetedByTenantId = new Map<string, number>();
-  for (const row of budgetedSalesRaw) {
-    if (!budgetedByTenantId.has(row.tenantId)) {
-      budgetedByTenantId.set(row.tenantId, Number(row.salesPesos));
-    }
-  }
-
-  const rows: RentRollDashboardTableRow[] = contracts.map((contract) => {
-    const glam2 = Number(contract.local.glam2);
-    const tarifaFija = contract.tarifas.find(
-      (tarifa) => tarifa.tipo === ContractRateType.FIJO_UF_M2
-    );
-    const tarifasVariable = contract.tarifas.filter(
-      (tarifa) => tarifa.tipo === ContractRateType.PORCENTAJE
-    );
-    const tiers = tarifasVariable.map((t) => ({
-      umbralVentasUf: Number(t.umbralVentasUf?.toString() ?? "0"),
-      pct: Number(t.valor),
-    }));
-    const tarifaUfM2 = tarifaFija?.valor ? Number(tarifaFija.valor) : 0;
-    const rentaFijaUf = glam2 * tarifaUfM2;
-
-    const ggccActual = contract.ggcc[0];
-    const ggccUf = ggccActual
-      ? Number(ggccActual.tarifaBaseUfM2) *
-        glam2 *
-        (1 + Number(ggccActual.pctAdministracion) / 100)
-      : 0;
-
-    const ventasPesos = ventasByTenantId.has(contract.arrendatarioId)
-      ? (ventasByTenantId.get(contract.arrendatarioId) ?? null)
-      : null;
-    const ventasPresupuestadasPesos = budgetedByTenantId.get(contract.arrendatarioId) ?? null;
-    const ventasPresupuestadasUf = ventasPresupuestadasPesos !== null && ufRate > 0
-      ? ventasPresupuestadasPesos / ufRate
-      : null;
-    const rentaVariableUf =
-      ventasPresupuestadasUf !== null && tiers.length > 0
-        ? calcTieredVariableRent(ventasPresupuestadasUf, tiers, rentaFijaUf)
-        : null;
-    const pctRentaVariable = tiers.length > 0 ? tiers[0].pct : null;
-    const pctFondoPromocion = contract.pctFondoPromocion
-      ? Number(contract.pctFondoPromocion)
-      : null;
-
-    return {
-      id: contract.id,
-      localId: contract.localId,
-      tenantId: contract.arrendatarioId,
-      local: `${contract.local.codigo} - ${contract.local.nombre}`,
-      arrendatario: contract.arrendatario.nombreComercial,
-      glam2,
-      tarifaUfM2,
-      rentaFijaUf,
-      ggccUf,
-      ventasPesos,
-      ventasPresupuestadasPesos,
-      pctRentaVariable,
-      rentaVariableUf,
-      pctFondoPromocion
-    };
-  });
-
-  const totals = rows.reduce(
-    (acc, row) => {
-      acc.glam2 += row.glam2;
-      acc.rentaFijaUf += row.rentaFijaUf;
-      acc.ggccUf += row.ggccUf;
-      if (row.ventasPesos != null) {
-        acc.ventasPesos += row.ventasPesos;
-      }
-      if (row.rentaVariableUf != null) {
-        acc.rentaVariableUf += row.rentaVariableUf;
-      }
-      return acc;
-    },
-    { glam2: 0, rentaFijaUf: 0, ggccUf: 0, ventasPesos: 0, rentaVariableUf: 0 }
-  );
-
-  const ocupacionDetalle = buildOcupacionDetalle(
-    localesActivos.map((l) => ({ ...l, zona: l.zona?.nombre ?? null })),
-    contracts.map((contract) => ({
-      localId: contract.localId,
-      localGlam2: contract.local.glam2,
-      fechaTermino: contract.fechaTermino,
-      tarifa: null
-    }))
-  );
-
-  const walt = calculateWalt(
-    contracts.map((contract) => ({
-      fechaTermino: contract.fechaTermino,
-      localGlam2: contract.local.glam2
-    })),
-    fechaReferencia
-  );
+  const snapshot = await buildRentRollSnapshotRows(selectedProjectId, fecha);
+  const {
+    rows,
+    contractCount,
+    vacantCount,
+    totals,
+    walt,
+    ocupacionDetalle,
+    periodoVentasVariable
+  } = snapshot;
 
   const tamanoRows = [
     { key: "Tienda Mayor", label: "Tienda Mayor" },
@@ -303,9 +110,23 @@ export default async function RentRollPage({
       <section className="rounded-md bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <RentRollSnapshotDatePicker projectId={selectedProjectId} selectedDate={fecha} />
-          <div className="rounded-md border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
-            <div><span className="font-semibold">Ventas reales:</span> {periodoVentas}</div>
-            <div><span className="font-semibold">Presupuesto (renta variable):</span> {periodoVentasVariable}</div>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="rounded-md border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
+              <div><span className="font-semibold">Snapshot:</span> {fecha}</div>
+              <div><span className="font-semibold">Presupuesto (renta variable):</span> {periodoVentasVariable}</div>
+            </div>
+            <Button asChild type="button" size="sm">
+              <Link
+                href={buildExportExcelUrl({
+                  dataset: "rent_roll_snapshot",
+                  scope: "all",
+                  projectId: selectedProjectId,
+                  fecha
+                })}
+              >
+                Descargar Excel
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -315,6 +136,7 @@ export default async function RentRollPage({
           metricId="kpi_rent_roll_snapshot_renta_fija_total_uf"
           title="Renta fija total (UF)"
           value={formatDecimal(totals.rentaFijaUf)}
+          subtitle={`${contractCount} contratos activos`}
           accent="slate"
         />
         <KpiCard
@@ -324,10 +146,10 @@ export default async function RentRollPage({
           accent="slate"
         />
         <KpiCard
-          metricId="kpi_rent_roll_snapshot_ventas_periodo_uf"
-          title="Ventas periodo (Pesos)"
-          value={formatClp(totals.ventasPesos)}
-          accent="slate"
+          title="Locales vacantes"
+          value={vacantCount.toString()}
+          subtitle={vacantCount === 0 ? "Sin vacantes al snapshot" : "Locales activos sin contrato vigente"}
+          accent={vacantCount === 0 ? "green" : "red"}
         />
         <KpiCard
           metricId="kpi_rent_roll_snapshot_walt_global"
@@ -357,4 +179,3 @@ export default async function RentRollPage({
     </main>
   );
 }
-

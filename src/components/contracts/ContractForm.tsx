@@ -148,6 +148,27 @@ function ContractStatusAndLocalsSection({
             className="w-full"
           />
         </FormField>
+
+        <label className="flex items-start gap-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+          <Checkbox
+            id="cuenta-para-vacancia"
+            checked={payload.cuentaParaVacancia}
+            disabled={!canEdit}
+            onCheckedChange={(value) =>
+              setPayload((previous) => ({
+                ...previous,
+                cuentaParaVacancia: value === true
+              }))
+            }
+            className="mt-0.5"
+          />
+          <span className="space-y-0.5">
+            <span className="block font-medium text-slate-800">Considerar para calculo de vacancia</span>
+            <span className="block text-xs text-slate-500">
+              Si se desmarca, el local no contara como ocupado en los KPIs de vacancia, aunque el contrato siga vigente y generando renta.
+            </span>
+          </span>
+        </label>
       </div>
 
       <div className="text-sm">

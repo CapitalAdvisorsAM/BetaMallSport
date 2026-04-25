@@ -85,6 +85,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       arrendatario: true,
       tarifas: {
         where: {
+          supersededAt: null,
           tipo: ContractRateType.FIJO_UF_M2,
           vigenciaDesde: { lte: today },
           OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: today } }]

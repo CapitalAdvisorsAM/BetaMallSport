@@ -149,6 +149,7 @@ export function previewRowToUploadDraft(
       codigoCC: asNullableString(row.data.codigoCC),
       pdfUrl: null,
       diasGracia: 0,
+      cuentaParaVacancia: true,
       notas: asNullableString(row.data.notas),
       tarifas,
       ggcc,

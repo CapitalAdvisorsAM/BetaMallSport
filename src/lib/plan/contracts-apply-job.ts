@@ -174,7 +174,8 @@ export async function runContratosApplyJob(input: {
           }
           duplicatedTarifaKey.add(tarifaKey);
 
-          await applyTarifas(tx, contrato.id, normalized);
+          const applyOpts = { userId };
+          await applyTarifas(tx, contrato.id, normalized, applyOpts);
 
           if (normalized.rentaVariablePct && Number.isFinite(Number(normalized.rentaVariablePct))) {
             await applyTarifas(tx, contrato.id, {
@@ -182,7 +183,7 @@ export async function runContratosApplyJob(input: {
               tarifaValor: normalized.rentaVariablePct,
               tarifaVigenciaDesde: normalized.fechaInicio,
               tarifaVigenciaHasta: normalized.fechaTermino
-            });
+            }, applyOpts);
           }
 
           const tramosEscalonados = [
@@ -198,12 +199,12 @@ export async function runContratosApplyJob(input: {
                 tarifaValor: tramo.valor,
                 tarifaVigenciaDesde: tramo.desde,
                 tarifaVigenciaHasta: tramo.hasta
-              });
+              }, applyOpts);
             }
           }
 
           if (localData) {
-            await applyGGCC(tx, contrato.id, normalized, localData.glam2, normalized.fechaInicio, normalized.fechaTermino);
+            await applyGGCC(tx, contrato.id, normalized, localData.glam2, normalized.fechaInicio, normalized.fechaTermino, applyOpts);
           }
 
           if (normalized.anexoFecha && normalized.anexoDescripcion) {

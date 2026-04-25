@@ -4,6 +4,8 @@ export const runtime = "nodejs";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
+import { buildRentRollSnapshotRows } from "@/lib/plan/rent-roll-snapshot";
+import { isValidDate, todayParam } from "@/lib/plan/snapshot-date";
 import { buildTenantsActiveContractWhere, buildTenantsWhere, parseTenantActiveFilter } from "@/lib/plan/tenants";
 import { buildUnitsWhere, parseUnitsStatus } from "@/lib/plan/units";
 import { getOptionalBooleanSearchParam } from "@/lib/http/request";
@@ -265,9 +267,11 @@ async function buildContratosExport(scope: ExportScope, proyectoId: string): Pro
       },
       arrendatario: { select: { nombreComercial: true } },
       tarifas: {
+        where: { supersededAt: null },
         orderBy: [{ vigenciaDesde: "asc" }, { createdAt: "asc" }]
       },
       ggcc: {
+        where: { supersededAt: null },
         orderBy: [{ vigenciaDesde: "asc" }, { createdAt: "asc" }]
       }
     },
@@ -623,6 +627,94 @@ async function buildFinanzasEerrExport(
   };
 }
 
+async function buildRentRollSnapshotExport(
+  scope: ExportScope,
+  proyectoId: string,
+  searchParams: URLSearchParams
+): Promise<ExportResult> {
+  const fechaParam = searchParams.get("fecha");
+  const fecha = isValidDate(fechaParam ?? undefined) ? fechaParam! : todayParam();
+
+  const snapshot = await buildRentRollSnapshotRows(proyectoId, fecha);
+
+  const detailHeaders = [
+    "Local",
+    "Arrendatario",
+    "Zona",
+    "Tipo",
+    "Contrato",
+    "Vacante",
+    "Cuenta vacancia",
+    "GLA m2",
+    "Tarifa UF/m2",
+    "Renta fija UF",
+    "GGCC UF",
+    "GGCC base UF/m2",
+    "% Admin GGCC",
+    "Ventas presup. (Pesos)",
+    "% Renta variable",
+    "Renta variable UF",
+    "% Fondo promocion",
+    "Fecha termino",
+    "Dias para vencer"
+  ];
+
+  const detailRows = snapshot.rows.map((row) => [
+    row.local,
+    row.arrendatario,
+    row.zona ?? "",
+    row.tipo as string,
+    row.vacante ? "" : row.id,
+    row.vacante ? "Si" : "No",
+    row.vacante ? "" : row.cuentaParaVacancia ? "Si" : "No",
+    row.glam2,
+    row.tarifaUfM2,
+    row.rentaFijaUf,
+    row.ggccUf,
+    row.ggccTarifaBaseUfM2 ?? "",
+    row.ggccPctAdministracion ?? "",
+    row.ventasPresupuestadasPesos ?? "",
+    row.pctRentaVariable ?? "",
+    row.rentaVariableUf ?? "",
+    row.pctFondoPromocion ?? "",
+    row.fechaTermino ?? "",
+    row.diasParaVencer ?? ""
+  ]);
+
+  const pctOcupacion =
+    snapshot.glaTotal > 0 ? (snapshot.glaArrendada / snapshot.glaTotal) * 100 : 0;
+
+  const summaryRows: Array<Array<string | number | boolean | null>> = [
+    ["Snapshot", snapshot.fecha],
+    ["Periodo presupuesto (renta variable)", snapshot.periodoVentasVariable],
+    ["Contratos vigentes", snapshot.contractCount],
+    ["Locales vacantes", snapshot.vacantCount],
+    ["GLA total m2", snapshot.glaTotal],
+    ["GLA arrendada m2", snapshot.glaArrendada],
+    ["% Ocupacion", pctOcupacion],
+    ["Renta fija total UF", snapshot.totals.rentaFijaUf],
+    ["GGCC total UF", snapshot.totals.ggccUf],
+    ["Renta variable total UF", snapshot.totals.rentaVariableUf],
+    ["WALT (meses)", snapshot.walt]
+  ];
+
+  return {
+    fileName: `rent-roll-${snapshot.fecha}-${scope}-${dateStamp()}`,
+    sheets: [
+      {
+        name: "Rent Roll",
+        headers: detailHeaders,
+        rows: detailRows
+      },
+      {
+        name: "Resumen",
+        headers: ["Indicador", "Valor"],
+        rows: summaryRows
+      }
+    ]
+  };
+}
+
 async function buildFinanzasMapeosExport(
   scope: ExportScope,
   proyectoId: string,
@@ -692,6 +784,9 @@ async function buildExportResult(
   }
   if (dataset === "contratos") {
     return buildContratosExport(scope, proyectoId);
+  }
+  if (dataset === "rent_roll_snapshot") {
+    return buildRentRollSnapshotExport(scope, proyectoId, searchParams);
   }
   if (dataset === "finance_tenants") {
     return buildFinanzasArrendatariosExport(scope, proyectoId, searchParams);

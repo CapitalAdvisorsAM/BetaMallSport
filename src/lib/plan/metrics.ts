@@ -67,6 +67,7 @@ async function listContratosConRelaciones(
       },
       tarifas: {
         where: {
+          supersededAt: null,
           tipo: { in: [ContractRateType.FIJO_UF_M2, ContractRateType.PORCENTAJE] },
           vigenciaDesde: { lte: hoy },
           OR: [{ vigenciaHasta: null }, { vigenciaHasta: { gte: hoy } }]
@@ -80,6 +81,7 @@ async function listContratosConRelaciones(
       },
       ggcc: {
         where: {
+          supersededAt: null,
           vigenciaDesde: { lte: hoy }
         },
         orderBy: { vigenciaDesde: "desc" },
@@ -123,7 +125,7 @@ function sum(values: number[]): number {
   return round4(values.reduce((acc, value) => acc + value, 0));
 }
 
-function daysUntilDate(from: Date, to: Date): number {
+export function daysUntilDate(from: Date, to: Date): number {
   return Math.floor((startOfUtcDay(to).getTime() - startOfUtcDay(from).getTime()) / MS_PER_DAY);
 }
 

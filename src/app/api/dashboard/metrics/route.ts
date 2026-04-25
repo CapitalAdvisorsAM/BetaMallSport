@@ -86,6 +86,7 @@ export async function GET(request: Request): Promise<NextResponse> {
                 fechaInicio: true,
                 fechaTermino: true,
                 diasGracia: true,
+                cuentaParaVacancia: true,
                 local: {
                   select: {
                     codigo: true,
@@ -100,6 +101,7 @@ export async function GET(request: Request): Promise<NextResponse> {
                 },
                 tarifas: {
                   where: {
+                    supersededAt: null,
                     tipo: {
                       in: [
                         ContractRateType.FIJO_UF_M2,
@@ -119,6 +121,7 @@ export async function GET(request: Request): Promise<NextResponse> {
                 },
                 ggcc: {
                   where: {
+                    supersededAt: null,
                     vigenciaDesde: { lte: today }
                   },
                   orderBy: { vigenciaDesde: "desc" },
@@ -198,6 +201,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
           return {
             estado: estadoComputado,
+            cuentaParaVacancia: contract.cuentaParaVacancia,
             data: {
               id: contract.id,
               localId: contract.localId,
@@ -227,9 +231,31 @@ export async function GET(request: Request): Promise<NextResponse> {
           .map((contract) => contract.data);
         const activeContracts = [...vigenteContracts, ...graciaContracts];
 
-        const localesConContratoVigente = new Set(vigenteContracts.map((contract) => contract.localId));
+        // Solo los contratos marcados `cuentaParaVacancia=true` ocupan el local
+        // para efectos de los KPIs de ocupacion / vacancia. Los contratos
+        // excluidos siguen vigentes para renta y GGCC, pero su local aparece
+        // como vacante en la vista de ocupacion.
+        const localIdsOcupanParaVacancia = new Set(
+          contratosWithState
+            .filter((contract) => contract.cuentaParaVacancia)
+            .map((contract) => contract.data.localId)
+        );
+        const vigenteContractsParaOcupacion = vigenteContracts.filter((contract) =>
+          localIdsOcupanParaVacancia.has(contract.localId)
+        );
+        const graciaContractsParaOcupacion = graciaContracts.filter((contract) =>
+          localIdsOcupanParaVacancia.has(contract.localId)
+        );
+        const activeContractsParaOcupacion = [
+          ...vigenteContractsParaOcupacion,
+          ...graciaContractsParaOcupacion
+        ];
+
+        const localesConContratoVigente = new Set(
+          vigenteContractsParaOcupacion.map((contract) => contract.localId)
+        );
         const localesEnGracia = new Set(
-          graciaContracts
+          graciaContractsParaOcupacion
             .map((contract) => contract.localId)
             .filter((localId) => !localesConContratoVigente.has(localId))
         );
@@ -237,7 +263,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         const localesVacantes = localesActivos.filter((local) => !localesConArrendatario.has(local.id));
 
         const localesActivosMapped = localesActivos.map((l) => ({ ...l, zona: l.zona?.nombre ?? null }));
-        const ocupacion = buildOcupacionDetalle(localesActivosMapped, activeContracts);
+        const ocupacion = buildOcupacionDetalle(localesActivosMapped, activeContractsParaOcupacion);
         const ufRateMap = await buildUfRateMap([periodo]);
         const ufRateForPeriodo = ufRateMap.get(periodo) ?? (valorUf ? Number(valorUf.valor.toString()) : 0);
         const ingresos = buildIngresoDesglosado(

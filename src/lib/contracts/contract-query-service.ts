@@ -10,8 +10,8 @@ export const contractInclude = {
     orderBy: { createdAt: "asc" as const }
   },
   arrendatario: true,
-  tarifas: { orderBy: { vigenciaDesde: "desc" as const } },
-  ggcc: { orderBy: { vigenciaDesde: "desc" as const } },
+  tarifas: { where: { supersededAt: null }, orderBy: { vigenciaDesde: "desc" as const } },
+  ggcc: { where: { supersededAt: null }, orderBy: { vigenciaDesde: "desc" as const } },
   anexos: { orderBy: { createdAt: "desc" as const }, take: 5 }
 } as const;
 
