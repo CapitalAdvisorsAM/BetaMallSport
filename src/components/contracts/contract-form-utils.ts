@@ -38,6 +38,12 @@ export function toApiPayload(payload: ContractDraftPayload): ContractFormPayload
   const localIds = Array.from(new Set(payload.localIds.filter(Boolean)));
   const localId = localIds[0] ?? payload.localId;
   const validTiers = payload.rentaVariable.filter((item) => !isBlank(item.pctRentaVariable));
+  // Strip placeholder tarifa rows the form leaves behind when the contract is
+  // 100% renta variable. A tarifa needs both `valor` and `vigenciaDesde` to be
+  // non-empty for Zod's decimalStringSchema/dateStringSchema to accept it.
+  const validTarifas = payload.tarifas.filter(
+    (tarifa) => !isBlank(tarifa.valor) && !isBlank(tarifa.vigenciaDesde)
+  );
 
   return {
     ...payload,
@@ -50,7 +56,7 @@ export function toApiPayload(payload: ContractDraftPayload): ContractFormPayload
       vigenciaDesde: payload.fechaInicio,
       vigenciaHasta: payload.fechaTermino
     })),
-    tarifas: payload.tarifas.map((tarifa) => ({
+    tarifas: validTarifas.map((tarifa) => ({
       tipo: tarifa.tipo,
       valor: tarifa.valor,
       vigenciaDesde: tarifa.vigenciaDesde,
