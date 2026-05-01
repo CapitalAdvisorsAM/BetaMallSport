@@ -11,3 +11,15 @@ pnpm-debug.log*
 .env
 .claude/settings.local.json
 graphify-out/
+
+# Build / dev artifacts
+*.tsbuildinfo
+.next-dev.log
+
+# Local scratch files
+/_*.xls
+/_*.xlsx
+
+# One-off script outputs (keep dir, ignore contents)
+/reports/*.json
+/reports/*.csv
