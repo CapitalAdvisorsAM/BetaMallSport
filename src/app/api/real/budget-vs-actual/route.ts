@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+import { AccountingScenario } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
@@ -82,6 +83,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           projectId,
           period: { gte: desdeDate, lte: hastaDate },
           group1: "INGRESOS DE EXPLOTACION",
+          // "actual" must read only Real rows so newly-ingested PPTO scenario
+          // entries don't get added to the actual billing side.
+          scenario: AccountingScenario.REAL,
         },
         select: {
           unitId: true,

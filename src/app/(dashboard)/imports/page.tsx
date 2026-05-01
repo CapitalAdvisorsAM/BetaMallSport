@@ -46,6 +46,11 @@ const FINANCE_UPLOADS: UploadCard[] = [
     href: "/imports/finance/sales",
   },
   {
+    title: "Ventas Diarias",
+    description: "Ventas a granularidad diaria desde 'Data Ventas'.",
+    href: "/imports/finance/sales-daily",
+  },
+  {
     title: "Presupuesto Gastos",
     description: "Expense budget mensual por cuenta.",
     href: "/imports/finance/expense-budget",

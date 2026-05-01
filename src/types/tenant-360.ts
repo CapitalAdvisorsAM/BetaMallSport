@@ -38,6 +38,7 @@ export type Tenant360MonthlyPoint = {
   period: string;
   billingUf: number;
   salesPesos: number;
+  salesUf: number;
   costoOcupacionPct: number | null;
   billingUfM2: number | null;
 };
@@ -111,6 +112,7 @@ export type BillingCategory = {
 export type Tenant360SalesPoint = {
   period: string;
   salesPesos: number;
+  salesUf: number;
   salesPerM2: number;
   variableRentUf: number;
   salesClp: number | null;

@@ -17,6 +17,20 @@ export function formatPanelYoy(value: number | null): string {
   return `${sign}${value.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 }
 
+/** Formatea un delta absoluto (real - referencia) en la unidad del KPI con signo. */
+export function formatPanelDelta(value: number | null, unit: PanelCdgUnit): string {
+  if (value === null || Number.isNaN(value)) return DASH;
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${formatPanelValue(value, unit)}`;
+}
+
+/** Diff porcentual = (real - referencia) / |referencia|, mismo formato que YoY. */
+export function diffPct(real: number | null, reference: number | null): number | null {
+  if (real === null || reference === null) return null;
+  if (reference === 0) return null;
+  return ((real - reference) / Math.abs(reference)) * 100;
+}
+
 export type Semaphore = "green" | "amber" | "red" | "neutral";
 
 export function realVsPptoSemaphore(real: number | null, ppto: number | null): Semaphore {

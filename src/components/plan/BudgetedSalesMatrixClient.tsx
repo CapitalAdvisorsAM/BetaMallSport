@@ -120,9 +120,9 @@ function EditableCell({
     return (
       <span
         className={cn(
-          "block w-full cursor-text rounded px-2 py-0.5 text-right tabular-nums",
+          "block w-full cursor-text rounded px-2 py-0.5 text-right tabular-nums transition-colors",
           "hover:bg-slate-100",
-          isSaving ? "opacity-60" : value === null ? "text-slate-300" : "text-slate-700",
+          isSaving ? "opacity-60" : value === null ? "italic text-slate-400" : "font-medium text-slate-700",
         )}
         onClick={() => setEditing(true)}
         role="button"
@@ -301,7 +301,7 @@ export function BudgetedSalesMatrixClient({
       ...data.periods.map((p): ColumnDef<BudgetedSalesMatrixRow> => ({
         id: p,
         accessorFn: (row) => row.byPeriod[p] ?? null,
-        header: formatPeriodShort(p),
+        header: () => <span className="text-xs">{formatPeriodShort(p)}</span>,
         filterFn: "inNumberRange",
         meta: { filterType: "number", align: "right" },
         cell: ({ row }) => {
@@ -318,7 +318,12 @@ export function BudgetedSalesMatrixClient({
               onSave={handleSaveCellRef.current}
             />
           ) : (
-            <span className={cn("px-2", value === null ? "text-slate-300" : "text-slate-700")}>
+            <span
+              className={cn(
+                "px-2",
+                value === null ? "italic text-slate-400" : "font-medium text-slate-700",
+              )}
+            >
               {formatCell(value, mode, row.original.glam2)}
             </span>
           );
@@ -506,10 +511,10 @@ export function BudgetedSalesMatrixClient({
                             cell.column.columnDef.meta?.sticky
                               ? "sticky left-0 z-10 bg-inherit px-3 py-1 font-medium text-slate-800"
                               : cell.column.id === "total"
-                              ? "px-2.5 py-1 text-right text-sm font-semibold tabular-nums text-slate-800"
+                              ? "min-w-[128px] border-l border-slate-200 bg-slate-50/80 px-2.5 py-1 text-right text-sm font-semibold tabular-nums text-slate-800"
                               : cell.column.id === "glam2"
-                              ? "px-2.5 py-1"
-                              : "px-1 py-0.5 text-right tabular-nums text-sm",
+                              ? "min-w-[88px] px-2.5 py-1"
+                              : "min-w-[128px] px-2 py-1 text-right tabular-nums text-sm font-medium",
                           )}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -532,7 +537,7 @@ export function BudgetedSalesMatrixClient({
                         {mode === "pesos" ? formatClp(footerTotals[p] ?? 0) : "—"}
                       </td>
                     ))}
-                    <td className="px-2.5 py-1.5 text-right text-sm font-semibold tabular-nums text-slate-800">
+                    <td className="min-w-[128px] border-l border-slate-200 bg-slate-100 px-2.5 py-1.5 text-right text-sm font-semibold tabular-nums text-slate-800">
                       {mode === "pesos" ? formatClp(footerTotal) : "—"}
                     </td>
                   </tr>

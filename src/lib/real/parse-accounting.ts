@@ -1,18 +1,42 @@
-﻿import * as XLSX from "xlsx";
+﻿import { AccountingScenario } from "@prisma/client";
+import * as XLSX from "xlsx";
 import { num, str } from "@/lib/real/parse-utils";
 
 export type FilaContable = {
   mes: Date;
   localCodigo: string;
   arrendatarioNombre: string;
+  grupo0: string;
   grupo1: string;
+  grupo2: string;
   grupo3: string;
   denominacion: string;
+  clCoste: string;
+  descripcionClCoste: string;
   valorUf: number;
+  valorClp: number;
   categoriaTamano: string;
   categoriaTipo: string;
   piso: string;
+  documento: string;
+  textoCabDocumento: string;
+  esGla: boolean | null;
+  scenario: AccountingScenario;
 };
+
+function parseScenario(raw: string): AccountingScenario | null {
+  const v = raw.trim().toLowerCase();
+  if (v === "real") return AccountingScenario.REAL;
+  if (v === "ppto" || v === "presupuesto" || v === "budget") return AccountingScenario.PPTO;
+  return null;
+}
+
+function parseGlaFlag(raw: string): boolean | null {
+  const v = raw.trim().toUpperCase();
+  if (v === "GLA") return true;
+  if (v === "NO GLA") return false;
+  return null;
+}
 
 /** Convierte número serial de Excel a Date (primer día del mes) */
 function serialToDate(serial: number): Date {
@@ -56,9 +80,10 @@ export function parseContable(buffer: Buffer): FilaContable[] {
   const filas: FilaContable[] = [];
 
   for (const row of raw) {
-    // Filtrar solo filas con Ce.coste == "Real"
     const ceCoste = str(row["Ce.coste"]);
-    if (ceCoste && ceCoste.toLowerCase() !== "real") continue;
+    const scenario = parseScenario(ceCoste);
+    // Filas sin escenario reconocible (vacío, "x", etc.) se descartan
+    if (!scenario) continue;
 
     const mesRaw = row["Mes"];
     if (!mesRaw) continue;
@@ -68,7 +93,7 @@ export function parseContable(buffer: Buffer): FilaContable[] {
 
     const localRaw = str(row["Local"] ?? row["Denominación objeto"] ?? "");
     const localCodigo = extractLocalCodigo(localRaw);
-    if (!localCodigo) continue;
+    // Nota: filas sin Local quedan con localCodigo === "" y se persisten con unitId null.
 
     const valorUf = num(row["Valor UF"]);
     // Incluir filas con valor 0 (pueden ser importantes para el EE.RR)
@@ -77,17 +102,40 @@ export function parseContable(buffer: Buffer): FilaContable[] {
     const grupo3 = str(row["GRUPO 3"]);
     if (!grupo1) continue;
 
+    const valorClp = num(
+      row["Valor/mon.inf."] ??
+        row["Valor/mon.inf. (CLP)"] ??
+        row["Valor mon.inf."] ??
+        row["Valor mon.inf. (CLP)"] ??
+        row["Valor (CLP)"] ??
+        0
+    );
+
     filas.push({
       mes,
       localCodigo,
       arrendatarioNombre: str(row["Arrendatario"]),
+      grupo0: str(row["GRUPO 0"]),
       grupo1,
+      grupo2: str(row["GRUPO 2"]),
       grupo3,
       denominacion: str(row["Denominación objeto"] ?? row["Denominacion objeto"] ?? ""),
+      clCoste: str(row["Cl.coste"] ?? row["Cl coste"] ?? ""),
+      descripcionClCoste: str(
+        row["Descrip.clases coste"] ??
+          row["Descripcion clases coste"] ??
+          row["Descrip clases coste"] ??
+          ""
+      ),
       valorUf,
+      valorClp,
       categoriaTamano: str(row["Categoría (Tamaño)"] ?? row["Categoria (Tamano)"] ?? ""),
       categoriaTipo: str(row["Categoría (Tipo)"] ?? row["Categoria (Tipo)"] ?? ""),
-      piso: str(row["Piso"] ?? "")
+      piso: str(row["Piso"] ?? ""),
+      documento: str(row["Documento"] ?? ""),
+      textoCabDocumento: str(row["Texto cab.documento"] ?? row["Texto cab documento"] ?? ""),
+      esGla: parseGlaFlag(str(row["GLA / NO GLA"] ?? row["GLA/NO GLA"] ?? row["GLA"] ?? "")),
+      scenario
     });
   }
 

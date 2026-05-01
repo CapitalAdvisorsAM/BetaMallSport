@@ -29,9 +29,10 @@ import {
   chartHeight,
   chartLegendProps,
   chartMargins,
+  buildPeriodoTickFormatter,
   getSeriesColor,
 } from "@/lib/charts/theme";
-import { cn, formatUf, formatUfPerM2 } from "@/lib/utils";
+import { cn, formatPeriodoCorto, formatUf, formatUfPerM2, groupPeriodosByYear } from "@/lib/utils";
 import type { FacturacionResponse } from "@/types/billing";
 
 // ---------------------------------------------------------------------------
@@ -102,13 +103,14 @@ export function FacturacionClient({
   useEffect(() => { void fetchData(); }, [fetchData]);
 
   const periods = data?.periods ?? [];
+  const yearGroups = groupPeriodosByYear(periods);
   const series = data?.series ?? [];
   const totals = data?.totals ?? [];
   const dimensionKeys = series.map((s) => s.dimension);
 
   // Build chart data
   const chartData = periods.map((p, i) => {
-    const entry: Record<string, string | number> = { mes: p.slice(5) };
+    const entry: Record<string, string | number> = { periodo: p };
     for (const s of series) {
       entry[s.dimension] = s.data[i]?.ufPerM2 ?? 0;
     }
@@ -184,12 +186,12 @@ export function FacturacionClient({
             <ResponsiveContainer width="100%" height={chartHeight.lg}>
               <ComposedChart data={chartData} margin={chartMargins.default}>
                 <CartesianGrid {...chartGridProps} />
-                <XAxis dataKey="mes" {...chartAxisProps} />
+                <XAxis dataKey="periodo" {...chartAxisProps} tickFormatter={buildPeriodoTickFormatter(periods.length)} />
                 <YAxis {...chartAxisProps} tickFormatter={(v: number) => formatUf(v)} />
                 <Tooltip
                   content={
                     <ChartTooltip
-                      labelFormatter={(l) => `Mes: ${String(l)}`}
+                      labelFormatter={(l) => formatPeriodoCorto(String(l))}
                       valueFormatter={(value) => {
                         const v = typeof value === "number" ? value : Number(value ?? 0);
                         return formatUfPerM2(v);
@@ -230,15 +232,25 @@ export function FacturacionClient({
                 </p>
               }
             >
-              <table className={`${compactTheme.table} text-xs`}>
+              <table className={`${compactTheme.table} text-xs border-collapse`}>
                 <thead className={compactTheme.head}>
+                  {yearGroups.length > 1 && (
+                    <tr className="bg-brand-700">
+                      <th className="sticky left-0 z-10 bg-brand-700 py-0.5 border-r border-white/10" />
+                      {yearGroups.map(({ year, count }, idx) => (
+                        <th key={year} colSpan={count} className={cn("py-0.5 text-center text-[9px] font-bold uppercase tracking-widest text-white/30", idx > 0 && "border-l border-white/15")}>
+                          {year}
+                        </th>
+                      ))}
+                    </tr>
+                  )}
                   <tr>
-                    <th className={`${compactTheme.headCell} sticky left-0 bg-brand-700 pl-4 pr-3`}>
+                    <th className={cn(compactTheme.headCell, "sticky left-0 z-10 bg-brand-700 pl-4 pr-3 border-r border-white/10")}>
                       {DIMENSION_LABELS[dimension]}
                     </th>
                     {periods.map((p) => (
-                      <th key={p} className={`${compactTheme.compactHeadCell} min-w-[80px] text-right`}>
-                        {p}
+                      <th key={p} className={cn(compactTheme.compactHeadCell, "min-w-[80px] text-right border-r border-white/10")}>
+                        {formatPeriodoCorto(p)}
                       </th>
                     ))}
                   </tr>
@@ -253,7 +265,7 @@ export function FacturacionClient({
                         {s.dimension}
                       </td>
                       {s.data.map((d) => (
-                        <td key={d.period} className={cn("px-2 py-1.5 text-right", valueCls(d.ufPerM2))}>
+                        <td key={d.period} className={cn("px-2 py-1.5 text-right border-r border-slate-100", valueCls(d.ufPerM2))}>
                           {formatUfPerM2(d.ufPerM2)}
                         </td>
                       ))}
@@ -265,7 +277,7 @@ export function FacturacionClient({
                       Total
                     </td>
                     {totals.map((t) => (
-                      <td key={t.period} className="px-2 py-2 text-right text-xs font-bold">
+                      <td key={t.period} className="px-2 py-2 text-right text-xs font-bold border-r border-white/15">
                         {formatUfPerM2(t.ufPerM2)}
                       </td>
                     ))}

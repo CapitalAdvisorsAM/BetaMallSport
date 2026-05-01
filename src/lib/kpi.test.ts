@@ -1,8 +1,9 @@
-import { ContractStatus, UnitType, ContractRateType } from "@prisma/client";
+import { AccountingScenario, ContractStatus, UnitType, ContractRateType } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 import {
   buildAlertCounts,
-  buildIngresoDesglosado,
+  buildIngresoDesglosadoFromAccounting,
+  buildIngresoDesglosadoFromContracts,
   buildOcupacionDetalle,
   buildContractExpiryBuckets,
   buildVencimientosPorAnio,
@@ -17,6 +18,7 @@ import {
   type KpiContractInput,
   type KpiLocalInput
 } from "@/lib/kpi";
+import { buildPivotKey, type AccountingPivotResult } from "@/lib/real/accounting-pivot";
 
 const activeLocales: KpiLocalInput[] = [
   { id: "l1", codigo: "L-101", esGLA: true, glam2: "100" },
@@ -292,7 +294,7 @@ describe("cdg mall sport KPIs", () => {
       { id: "loc-bod", tipo: UnitType.BODEGA, esGLA: false, glam2: "15" }
     ];
 
-    const ingresos = buildIngresoDesglosado(
+    const ingresos = buildIngresoDesglosadoFromContracts(
       contratos,
       locales,
       [{ arrendatarioId: "tenant-var", periodo: "2026-03", ventasPesos: "1000" }],
@@ -313,7 +315,7 @@ describe("cdg mall sport KPIs", () => {
   });
 
   it("returns zero variable and energy income when no data exists for the period", () => {
-    const ingresos = buildIngresoDesglosado(
+    const ingresos = buildIngresoDesglosadoFromContracts(
       [
         makeContract({
           localId: "loc-a",
@@ -329,6 +331,75 @@ describe("cdg mall sport KPIs", () => {
 
     expect(ingresos.arriendoVariableUf).toBe(0);
     expect(ingresos.ventaEnergiaUf).toBe(0);
+  });
+
+  it("builds ingreso desglosado from accounting pivot mirroring Excel SUMIFS", () => {
+    const pivot: AccountingPivotResult = new Map();
+    const set = (group3: string, scenario: AccountingScenario, value: number) => {
+      pivot.set(buildPivotKey("2026-04", group3, scenario), value);
+    };
+    // Real: numbers chosen so totals are easy to verify by hand.
+    set("ARRIENDO DE LOCAL FIJO", AccountingScenario.REAL, 8500);
+    set("ARRIENDO DE LOCAL VARIABLE", AccountingScenario.REAL, 1200);
+    set("SIMULADORES Y MODULO", AccountingScenario.REAL, 700);
+    set("ARRIENDO DE ESPACIO", AccountingScenario.REAL, 800);
+    set("ARRIENDO BODEGA", AccountingScenario.REAL, 200);
+    set("INGRESOS POR VENTA DE ENERGIA", AccountingScenario.REAL, 350);
+    // Ppto present but should not bleed into Real result.
+    set("ARRIENDO DE LOCAL FIJO", AccountingScenario.PPTO, 9000);
+
+    const real = buildIngresoDesglosadoFromAccounting({
+      pivot,
+      periodo: "2026-04",
+      scenario: AccountingScenario.REAL,
+      glaArrendadaM2: 1700
+    });
+
+    expect(real.arriendoFijoUf).toBe(8500);
+    expect(real.arriendoVariableUf).toBe(1200);
+    expect(real.simuladoresModulosUf).toBe(700);
+    expect(real.arriendoEspacioUf).toBe(800);
+    expect(real.arriendoBodegaUf).toBe(200);
+    expect(real.ventaEnergiaUf).toBe(350);
+    expect(real.totalUf).toBe(11750);
+    expect(real.facturacionUfM2).toBeCloseTo(11750 / 1700, 4);
+    expect(real.arriendoFijoUfM2).toBeCloseTo(8500 / 1700, 4);
+
+    const ppto = buildIngresoDesglosadoFromAccounting({
+      pivot,
+      periodo: "2026-04",
+      scenario: AccountingScenario.PPTO,
+      glaArrendadaM2: 1700
+    });
+    expect(ppto.arriendoFijoUf).toBe(9000);
+    expect(ppto.totalUf).toBe(9000);
+  });
+
+  it("returns zeros from accounting pivot when the period has no data", () => {
+    const pivot: AccountingPivotResult = new Map();
+    const result = buildIngresoDesglosadoFromAccounting({
+      pivot,
+      periodo: "2026-05",
+      scenario: AccountingScenario.REAL,
+      glaArrendadaM2: 1000
+    });
+    expect(result.totalUf).toBe(0);
+    expect(result.facturacionUfM2).toBe(0);
+    expect(result.arriendoFijoUfM2).toBe(0);
+  });
+
+  it("avoids division by zero when GLA arrendada is 0", () => {
+    const pivot: AccountingPivotResult = new Map();
+    pivot.set(buildPivotKey("2026-04", "ARRIENDO DE LOCAL FIJO", AccountingScenario.REAL), 5000);
+    const result = buildIngresoDesglosadoFromAccounting({
+      pivot,
+      periodo: "2026-04",
+      scenario: AccountingScenario.REAL,
+      glaArrendadaM2: 0
+    });
+    expect(result.totalUf).toBe(5000);
+    expect(result.facturacionUfM2).toBe(0);
+    expect(result.arriendoFijoUfM2).toBe(0);
   });
 
   it("builds occupancy detail grouped by category and size", () => {

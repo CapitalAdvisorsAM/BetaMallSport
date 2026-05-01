@@ -182,7 +182,8 @@ export default async function ContractsPage({
     estado: contract.estado,
     fechaInicio: contract.fechaInicio.toISOString(),
     fechaTermino: contract.fechaTermino.toISOString(),
-    pdfUrl: contract.pdfUrl
+    pdfUrl: contract.pdfUrl,
+    cuentaParaVacancia: contract.cuentaParaVacancia
   }));
 
   return (

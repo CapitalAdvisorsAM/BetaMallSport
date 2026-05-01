@@ -1,8 +1,10 @@
+import { AccountingScenario } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { getFinanceMode, getFinancePeriod, getFinanceProjectId } from "@/lib/real/api-params";
 import { BELOW_EBITDA_GROUPS } from "@/lib/real/eerr";
 import { buildPanelKpi } from "@/lib/real/panel-kpis";
+import { buildUfRateMap, getUfRate } from "@/lib/real/uf-lookup";
 import { getRequiredActiveProjectIdSearchParam } from "@/lib/http/request";
 import { buildMetricsCacheKey, getOrSetMetricsCache } from "@/lib/metrics-cache";
 import { requireSession } from "@/lib/permissions";
@@ -128,8 +130,11 @@ function sumEbitdaBudget(records: BudgetRow[]): number {
   }, 0);
 }
 
-function sumSales(records: SaleRow[]): number {
-  return records.reduce((sum, record) => sum + toNumber(record.salesPesos), 0);
+function sumSalesUf(records: SaleRow[], ufRateByPeriod: Map<string, number>): number {
+  return records.reduce((sum, record) => {
+    const uf = getUfRate(periodKey(record.period), ufRateByPeriod);
+    return sum + (uf > 0 ? toNumber(record.salesPesos) / uf : 0);
+  }, 0);
 }
 
 function sumCashBalances(records: BalanceRow[]): number | null {
@@ -142,7 +147,11 @@ function sumCashBalances(records: BalanceRow[]): number | null {
 
 async function queryAccounting(projectId: string, from: Date, to: Date): Promise<AccountingRow[]> {
   return prisma.accountingRecord.findMany({
-    where: { projectId, period: { gte: from, lte: to } },
+    where: {
+      projectId,
+      period: { gte: from, lte: to },
+      scenario: AccountingScenario.REAL
+    },
     select: { group1: true, group3: true, period: true, valueUf: true }
   });
 }
@@ -261,12 +270,21 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         const monthBudgetIncomeUf = sumBudget(currentBudgets, { group1: INCOME_GROUP });
         const ytdBudgetIncomeUf = sumBudget(ytdBudgets, { group1: INCOME_GROUP });
 
-        const currentSalesUf = sumSales(currentSales);
-        const priorSalesUf = sumSales(priorSales);
-        const ytdSalesUf = sumSales(ytdSales);
-        const priorYtdSalesUf = sumSales(priorYtdSales);
-        const currentBudgetSalesUf = sumSales(currentBudgetedSales);
-        const ytdBudgetSalesUf = sumSales(ytdBudgetedSales);
+        const salesPeriods = [
+          ...currentSales,
+          ...priorSales,
+          ...ytdSales,
+          ...priorYtdSales,
+          ...currentBudgetedSales,
+          ...ytdBudgetedSales
+        ].map((sale) => periodKey(sale.period));
+        const salesUfRateByPeriod = await buildUfRateMap([...new Set(salesPeriods)]);
+        const currentSalesUf = sumSalesUf(currentSales, salesUfRateByPeriod);
+        const priorSalesUf = sumSalesUf(priorSales, salesUfRateByPeriod);
+        const ytdSalesUf = sumSalesUf(ytdSales, salesUfRateByPeriod);
+        const priorYtdSalesUf = sumSalesUf(priorYtdSales, salesUfRateByPeriod);
+        const currentBudgetSalesUf = sumSalesUf(currentBudgetedSales, salesUfRateByPeriod);
+        const ytdBudgetSalesUf = sumSalesUf(ytdBudgetedSales, salesUfRateByPeriod);
         const currentCashUf = sumCashBalances(currentCashBalances);
         const priorCashUf = sumCashBalances(priorCashBalances);
 

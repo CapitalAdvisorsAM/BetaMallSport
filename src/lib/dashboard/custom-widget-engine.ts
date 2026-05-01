@@ -2,10 +2,14 @@ import type { PeriodoMetrica } from "@/types/rent-roll-timeline";
 
 export type PeriodoField =
   | "pctOcupacionGLA"
+  | "pctVacanciaGLA"
   | "waltMeses"
   | "glaArrendadaM2"
   | "glaTotalM2"
   | "glaVacanteM2"
+  | "localesArrendados"
+  | "localesVacantes"
+  | "localesGLA"
   | "rentaFijaUf"
   | "contratosActivos"
   | "ingresosFijoUf"
@@ -39,10 +43,14 @@ export const PERIODO_FIELD_CATALOG: Record<
   { label: string; defaultFormat: DisplayFormat }
 > = {
   pctOcupacionGLA:                   { label: "% Ocupación GLA",                    defaultFormat: "percent" },
+  pctVacanciaGLA:                    { label: "% Vacancia GLA",                      defaultFormat: "percent" },
   waltMeses:                         { label: "WALT (meses)",                        defaultFormat: "months"  },
   glaArrendadaM2:                    { label: "GLA Arrendada",                       defaultFormat: "m2"      },
   glaTotalM2:                        { label: "GLA Total",                           defaultFormat: "m2"      },
   glaVacanteM2:                      { label: "GLA Vacante",                         defaultFormat: "m2"      },
+  localesArrendados:                 { label: "Locales Arrendados",                  defaultFormat: "number"  },
+  localesVacantes:                   { label: "Locales Vacantes",                    defaultFormat: "number"  },
+  localesGLA:                        { label: "Locales GLA",                         defaultFormat: "number"  },
   rentaFijaUf:                       { label: "Renta Fija",                          defaultFormat: "uf"      },
   contratosActivos:                  { label: "Contratos Activos",                   defaultFormat: "number"  },
   ingresosFijoUf:                    { label: "Ingresos Fijos",                      defaultFormat: "uf"      },
@@ -69,10 +77,14 @@ export type ChartDataPoint = {
 function resolveField(periodo: PeriodoMetrica, field: PeriodoField): number | null {
   switch (field) {
     case "pctOcupacionGLA":           return periodo.pctOcupacionGLA;
+    case "pctVacanciaGLA":            return periodo.pctVacanciaGLA;
     case "waltMeses":                 return periodo.waltMeses;
     case "glaArrendadaM2":            return periodo.glaArrendadaM2;
     case "glaTotalM2":                return periodo.glaTotalM2;
-    case "glaVacanteM2":              return periodo.glaTotalM2 - periodo.glaArrendadaM2;
+    case "glaVacanteM2":              return periodo.glaVacanteM2;
+    case "localesArrendados":         return periodo.localesArrendados;
+    case "localesVacantes":           return periodo.localesVacantes;
+    case "localesGLA":                return periodo.localesGLA;
     case "rentaFijaUf":               return periodo.rentaFijaUf;
     case "contratosActivos":          return periodo.contratosActivos;
     case "ingresosFijoUf":            return periodo.ingresosFijoUf;

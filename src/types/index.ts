@@ -43,6 +43,7 @@ export type {
   CostoOcupacionResponse,
   CostoOcupacionRow
 } from "./occupancy-cost";
+export type { VentasDiariasResponse, DailyDimensionRow } from "./sales-daily";
 export type {
   PanelCdgCell,
   PanelCdgKpi,
@@ -84,6 +85,19 @@ export type {
   PeerComparison,
   PeerComparisonRow
 } from "./tenant-360";
+export type {
+  Local360Data,
+  Local360Profile,
+  Local360QuickStats,
+  Local360Kpis,
+  TenantHistoryEntry,
+  TenantHistoryRate,
+  TenantHistoryDiscount,
+  OccupancyMonthlyPoint,
+  EnergyMonthlyPoint,
+  LocalPeerComparison,
+  LocalPeerStat
+} from "./local-360";
 
 export type RentRollRow = {
   id: string;

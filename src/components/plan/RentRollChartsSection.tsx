@@ -51,6 +51,7 @@ type CustomWidgetRow = {
 type RentRollChartsSectionProps = {
   periodos: PeriodoMetrica[];
   categoryConcentration: RentRollCategoryConcentrationDatum[];
+  referencePeriodo?: string;
   enabledCharts?: Set<string>;
   waltVariant?: string;
   customWidgets?: CustomWidgetRow[];
@@ -110,6 +111,7 @@ function formatWaltAxisTick(value: number): string {
 export function RentRollChartsSection({
   periodos,
   categoryConcentration,
+  referencePeriodo,
   enabledCharts,
   waltVariant = "con_walt",
   customWidgets = []
@@ -118,7 +120,7 @@ export function RentRollChartsSection({
     return enabledCharts ? enabledCharts.has(id) : true;
   }
 
-  const currentPeriodo = getCurrentPeriodo();
+  const currentPeriodo = referencePeriodo ?? getCurrentPeriodo();
   const total = periodos.length;
 
   const xAxisTickFormatter = (value: string, index: number): string =>
@@ -155,7 +157,7 @@ export function RentRollChartsSection({
     () => periodos.map((p) => ({
       periodo: p.periodo,
       glaArrendada: p.glaArrendadaM2,
-      glaVacante: Math.max(0, p.glaTotalM2 - p.glaArrendadaM2)
+      glaVacante: p.glaVacanteM2
     })),
     [periodos]
   );
@@ -206,7 +208,7 @@ export function RentRollChartsSection({
         </div>
         <p className="mt-1 text-sm text-slate-500">
           Series de tiempo mensuales: datos historicos de `ContratoDia` y proyeccion futura con
-          contratos vigentes. La referencia vertical marca el mes actual.
+          contratos vigentes. La referencia vertical marca la fecha de reporte del proyecto.
         </p>
         <div className="mt-2 flex gap-4 text-xs text-slate-500">
           <span className="flex items-center gap-1">
@@ -272,7 +274,7 @@ export function RentRollChartsSection({
                   x={currentPeriodo}
                   stroke={chartColors.warningLight}
                   strokeDasharray="4 2"
-                  label={{ value: "Hoy", position: "top", fontSize: 10, fill: chartColors.warningLight }}
+                  label={{ value: "Reporte", position: "top", fontSize: 10, fill: chartColors.warningLight }}
                 />
                 <Line
                   yAxisId="ocupacion"
@@ -335,7 +337,7 @@ export function RentRollChartsSection({
                 x={currentPeriodo}
                 stroke={chartColors.warningLight}
                 strokeDasharray="4 2"
-                label={{ value: "Hoy", position: "top", fontSize: 10, fill: chartColors.warningLight }}
+                label={{ value: "Reporte", position: "top", fontSize: 10, fill: chartColors.warningLight }}
               />
               <Bar dataKey="rentaFijaUf" name="Renta Fija UF" radius={chartBarRadius}>
                 {chart2Data.map((entry, index) => (
@@ -377,7 +379,7 @@ export function RentRollChartsSection({
                 x={currentPeriodo}
                 stroke={chartColors.warningLight}
                 strokeDasharray="4 2"
-                label={{ value: "Hoy", position: "top", fontSize: 10, fill: chartColors.warningLight }}
+                label={{ value: "Reporte", position: "top", fontSize: 10, fill: chartColors.warningLight }}
               />
               <Line
                 type="monotone"
@@ -438,7 +440,7 @@ export function RentRollChartsSection({
                 x={currentPeriodo}
                 stroke={chartColors.warningLight}
                 strokeDasharray="4 2"
-                label={{ value: "Hoy", position: "top", fontSize: 10, fill: chartColors.warningLight }}
+                label={{ value: "Reporte", position: "top", fontSize: 10, fill: chartColors.warningLight }}
               />
               <Area
                 type="monotone"
@@ -493,7 +495,7 @@ export function RentRollChartsSection({
                 x={currentPeriodo}
                 stroke={chartColors.warningLight}
                 strokeDasharray="4 2"
-                label={{ value: "Hoy", position: "top", fontSize: 10, fill: chartColors.warningLight }}
+                label={{ value: "Reporte", position: "top", fontSize: 10, fill: chartColors.warningLight }}
               />
               <Bar dataKey="vencimientos" name="Contratos que vencen" radius={chartBarRadius}>
                 {chart5Data.map((entry, index) => {
@@ -577,7 +579,7 @@ export function RentRollChartsSection({
                 x={currentPeriodo}
                 stroke={chartColors.warningLight}
                 strokeDasharray="4 2"
-                label={{ value: "Hoy", position: "top", fontSize: 10, fill: chartColors.warningLight }}
+                label={{ value: "Reporte", position: "top", fontSize: 10, fill: chartColors.warningLight }}
               />
               <Bar
                 dataKey="regular"

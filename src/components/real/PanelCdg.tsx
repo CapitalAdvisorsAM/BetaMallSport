@@ -1,5 +1,7 @@
 import { cn } from "@/lib/utils";
 import {
+  diffPct,
+  formatPanelDelta,
   formatPanelValue,
   formatPanelYoy,
   realVsPptoSemaphore,
@@ -14,6 +16,8 @@ type PanelCdgProps = {
   reportDate: string | null;
   className?: string;
 };
+
+const TOTAL_COLS = 1 + 7 + 7;
 
 function semaphoreToTone(sem: "green" | "amber" | "red" | "neutral"): Tone {
   if (sem === "green") return "positive";
@@ -51,25 +55,22 @@ export function PanelCdg({ kpis, reportDate, className }: PanelCdgProps): JSX.El
                 KPI
               </th>
               <th
-                colSpan={3}
+                colSpan={7}
                 className="border-b border-r border-surface-200 px-3 py-2 text-center overline text-slate-500"
               >
                 Mes
               </th>
               <th
-                colSpan={3}
+                colSpan={7}
                 className="border-b border-surface-200 px-3 py-2 text-center overline text-slate-500"
               >
                 YTD
               </th>
             </tr>
             <tr className="text-right">
-              <th className="border-b border-surface-200 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Real</th>
-              <th className="border-b border-surface-200 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Ppto</th>
-              <th className="border-b border-r border-surface-200 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400">YoY</th>
-              <th className="border-b border-surface-200 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Real</th>
-              <th className="border-b border-surface-200 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Ppto</th>
-              <th className="border-b border-surface-200 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400">YoY</th>
+              {[0, 1].map((i) => (
+                <ColumnSubHeader key={i} borderRight={i === 0} />
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -87,7 +88,7 @@ export function PanelCdg({ kpis, reportDate, className }: PanelCdgProps): JSX.El
             })}
             {kpis.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-sm text-slate-500">
+                <td colSpan={TOTAL_COLS} className="px-3 py-6 text-center text-sm text-slate-500">
                   Sin datos disponibles para la fecha de reporte seleccionada.
                 </td>
               </tr>
@@ -96,6 +97,22 @@ export function PanelCdg({ kpis, reportDate, className }: PanelCdgProps): JSX.El
         </table>
       </div>
     </section>
+  );
+}
+
+function ColumnSubHeader({ borderRight }: { borderRight: boolean }): JSX.Element {
+  const cell = "border-b border-surface-200 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400";
+  const right = borderRight ? "border-r" : "";
+  return (
+    <>
+      <th className={cell}>2026R</th>
+      <th className={cell}>2026P</th>
+      <th className={cell}>2025R</th>
+      <th className={cell}>Δ Ppto</th>
+      <th className={cell}>Δ Ppto %</th>
+      <th className={cell}>Δ YoY</th>
+      <th className={cn(cell, right)}>Δ YoY %</th>
+    </>
   );
 }
 
@@ -112,7 +129,7 @@ function SectionedPanelRow({
     <>
       {showSection ? (
         <tr className="border-t border-surface-200 bg-surface-50/70">
-          <td colSpan={7} className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+          <td colSpan={TOTAL_COLS} className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
             {kpi.section}
           </td>
         </tr>
@@ -136,58 +153,60 @@ function PanelRow({ kpi, zebra }: PanelRowProps): JSX.Element {
       >
         {kpi.label}
       </td>
-      <PanelCell cell={kpi.mes} unit={kpi.unit} kind="real" />
-      <PanelCell cell={kpi.mes} unit={kpi.unit} kind="ppto" />
-      <PanelCell cell={kpi.mes} unit={kpi.unit} kind="yoy" borderRight />
-      <PanelCell cell={kpi.ytd} unit={kpi.unit} kind="real" />
-      <PanelCell cell={kpi.ytd} unit={kpi.unit} kind="ppto" />
-      <PanelCell cell={kpi.ytd} unit={kpi.unit} kind="yoy" />
+      <PeriodCells cell={kpi.mes} unit={kpi.unit} borderRight />
+      <PeriodCells cell={kpi.ytd} unit={kpi.unit} />
     </tr>
   );
 }
 
-type PanelCellProps = {
+type PeriodCellsProps = {
   cell: PanelCdgCell;
   unit: PanelCdgUnit;
-  kind: "real" | "ppto" | "yoy";
   borderRight?: boolean;
 };
 
-function PanelCell({ cell, unit, kind, borderRight = false }: PanelCellProps): JSX.Element {
-  const borderCls = borderRight ? "border-r border-surface-200" : "";
+function PeriodCells({ cell, unit, borderRight = false }: PeriodCellsProps): JSX.Element {
+  const realTone = semaphoreToTone(realVsPptoSemaphore(cell.real, cell.ppto));
+  const realText =
+    realTone === "positive"
+      ? "text-positive-700"
+      : realTone === "negative"
+        ? "text-negative-700"
+        : "text-slate-800";
 
-  if (kind === "yoy") {
-    const tone = semaphoreToTone(yoySemaphore(cell.yoy));
-    return (
-      <td className={cn("px-3 py-2 text-right num", borderCls)}>
-        <StatChip tone={tone} size="sm">
+  const deltaPpto = cell.real !== null && cell.ppto !== null ? cell.real - cell.ppto : null;
+  const deltaPptoPct = diffPct(cell.real, cell.ppto);
+  const deltaYoy = cell.real !== null && cell.prior !== null ? cell.real - cell.prior : null;
+  const yoyTone = semaphoreToTone(yoySemaphore(cell.yoy));
+
+  return (
+    <>
+      <td className={cn("px-2 py-2 text-right num font-semibold", realText)}>
+        {formatPanelValue(cell.real, unit)}
+      </td>
+      <td className="px-2 py-2 text-right num text-slate-500">
+        {formatPanelValue(cell.ppto, unit)}
+      </td>
+      <td className="px-2 py-2 text-right num text-slate-500">
+        {formatPanelValue(cell.prior, unit)}
+      </td>
+      <td className="px-2 py-2 text-right num text-slate-700">
+        {formatPanelDelta(deltaPpto, unit)}
+      </td>
+      <td className="px-2 py-2 text-right num">
+        <StatChip tone={semaphoreToTone(realVsPptoSemaphore(cell.real, cell.ppto))} size="sm">
+          {formatPanelYoy(deltaPptoPct)}
+        </StatChip>
+      </td>
+      <td className="px-2 py-2 text-right num text-slate-700">
+        {formatPanelDelta(deltaYoy, unit)}
+      </td>
+      <td className={cn("px-2 py-2 text-right num", borderRight && "border-r border-surface-200")}>
+        <StatChip tone={yoyTone} size="sm">
           {formatPanelYoy(cell.yoy)}
         </StatChip>
       </td>
-    );
-  }
-
-  const value = kind === "real" ? cell.real : cell.ppto;
-
-  if (kind === "real") {
-    const tone = semaphoreToTone(realVsPptoSemaphore(cell.real, cell.ppto));
-    const text =
-      tone === "positive"
-        ? "text-positive-700"
-        : tone === "negative"
-          ? "text-negative-700"
-          : "text-slate-800";
-    return (
-      <td className={cn("px-3 py-2 text-right num font-semibold", text, borderCls)}>
-        {formatPanelValue(value, unit)}
-      </td>
-    );
-  }
-
-  return (
-    <td className={cn("px-3 py-2 text-right num text-slate-500", borderCls)}>
-      {formatPanelValue(value, unit)}
-    </td>
+    </>
   );
 }
 

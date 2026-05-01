@@ -21,8 +21,9 @@ import {
   chartLegendProps,
   chartMargins,
   getSeriesColor,
+  buildPeriodoTickFormatter,
 } from "@/lib/charts/theme";
-import { formatClp, formatUf } from "@/lib/utils";
+import { formatClp, formatPeriodoCorto, formatUf } from "@/lib/utils";
 import type { Tenant360SalesPoint } from "@/types/tenant-360";
 
 type SalesPerformanceSectionProps = {
@@ -44,6 +45,7 @@ export function SalesPerformanceSection({ data }: SalesPerformanceSectionProps):
           <XAxis
             dataKey="period"
             {...chartAxisProps}
+            tickFormatter={buildPeriodoTickFormatter(data.length)}
           />
           <YAxis
             yAxisId="left"
@@ -59,6 +61,7 @@ export function SalesPerformanceSection({ data }: SalesPerformanceSectionProps):
           <Tooltip
             content={
               <ChartTooltip
+                labelFormatter={(l) => formatPeriodoCorto(String(l))}
                 valueFormatter={(value, name, entry) => {
                   const v = typeof value === "number" ? value : Number(value ?? 0);
                   if (String(name) === "Ventas (UF)") {

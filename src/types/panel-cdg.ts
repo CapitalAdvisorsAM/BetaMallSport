@@ -3,6 +3,7 @@ export type PanelCdgUnit = "uf" | "m2" | "pct" | "uf_m2";
 export type PanelCdgCell = {
   real: number | null;
   ppto: number | null;
+  prior: number | null;
   yoy: number | null;
 };
 

@@ -29,8 +29,9 @@ import {
   chartHeight,
   chartLegendProps,
   chartMargins,
+  buildPeriodoTickFormatter,
 } from "@/lib/charts/theme";
-import { cn, formatPercent, formatUf } from "@/lib/utils";
+import { cn, formatPercent, formatPeriodoCorto, formatUf, groupPeriodosByYear } from "@/lib/utils";
 import type { GgccDeficitResponse, GgccDeficitPeriodRow } from "@/types/ggcc-deficit";
 
 // ---------------------------------------------------------------------------
@@ -94,13 +95,14 @@ export function GgccDeficitClient({
   useEffect(() => { void fetchData(); }, [fetchData]);
 
   const periods = data?.periods ?? [];
+  const yearGroups = groupPeriodosByYear(periods);
   const overall = data?.overall ?? [];
   const bySize = data?.bySize ?? [];
   const manoDeObraRatio = data?.manoDeObraIngresosRatio ?? {};
 
   // Build chart data for overall deficit
   const chartData = overall.map((row) => ({
-    mes: row.period.slice(5),
+    periodo: row.period,
     "Recuperacion": row.recoveryUf,
     "Costo": row.costUf,
     "Deficit %": row.deficitPct
@@ -163,7 +165,7 @@ export function GgccDeficitClient({
             <ResponsiveContainer width="100%" height={chartHeight.lg}>
               <ComposedChart data={chartData} margin={chartMargins.default}>
                 <CartesianGrid {...chartGridProps} />
-                <XAxis dataKey="mes" {...chartAxisProps} />
+                <XAxis dataKey="periodo" {...chartAxisProps} tickFormatter={buildPeriodoTickFormatter(periods.length)} />
                 <YAxis yAxisId="left" {...chartAxisProps} tickFormatter={(v: number) => formatUf(v, 0)} />
                 <YAxis
                   yAxisId="right"
@@ -174,7 +176,7 @@ export function GgccDeficitClient({
                 <Tooltip
                   content={
                     <ChartTooltip
-                      labelFormatter={(l) => `Mes: ${String(l)}`}
+                      labelFormatter={(l) => formatPeriodoCorto(String(l))}
                       valueFormatter={(value, name) => {
                         const v = typeof value === "number" ? value : Number(value ?? 0);
                         const label = String(name ?? "");
@@ -211,15 +213,25 @@ export function GgccDeficitClient({
               }
             >
               <div className="overflow-x-auto">
-                <table className={`${compactTheme.table} text-xs`}>
+                <table className={`${compactTheme.table} text-xs border-collapse`}>
                   <thead className={compactTheme.head}>
+                    {yearGroups.length > 1 && (
+                      <tr className="bg-brand-700">
+                        <th className="sticky left-0 z-10 bg-brand-700 py-0.5 border-r border-white/10" />
+                        {yearGroups.map(({ year, count }, idx) => (
+                          <th key={year} colSpan={count} className={cn("py-0.5 text-center text-[9px] font-bold uppercase tracking-widest text-white/30", idx > 0 && "border-l border-white/15")}>
+                            {year}
+                          </th>
+                        ))}
+                      </tr>
+                    )}
                     <tr>
-                      <th className={`${compactTheme.headCell} sticky left-0 bg-brand-700 pl-4 pr-3`}>
+                      <th className={cn(compactTheme.headCell, "sticky left-0 z-10 bg-brand-700 pl-4 pr-3 border-r border-white/10")}>
                         Concepto
                       </th>
                       {periods.map((p) => (
-                        <th key={p} className={`${compactTheme.compactHeadCell} min-w-[90px] text-right`}>
-                          {p}
+                        <th key={p} className={cn(compactTheme.compactHeadCell, "min-w-[90px] text-right border-r border-white/10")}>
+                          {formatPeriodoCorto(p)}
                         </th>
                       ))}
                     </tr>
@@ -245,15 +257,25 @@ export function GgccDeficitClient({
               toolbar={<p className="text-xs text-slate-400">Desglose de costos</p>}
             >
               <div className="overflow-x-auto">
-                <table className={`${compactTheme.table} text-xs`}>
+                <table className={`${compactTheme.table} text-xs border-collapse`}>
                   <thead className={compactTheme.head}>
+                    {yearGroups.length > 1 && (
+                      <tr className="bg-brand-700">
+                        <th className="sticky left-0 z-10 bg-brand-700 py-0.5 border-r border-white/10" />
+                        {yearGroups.map(({ year, count }, idx) => (
+                          <th key={year} colSpan={count} className={cn("py-0.5 text-center text-[9px] font-bold uppercase tracking-widest text-white/30", idx > 0 && "border-l border-white/15")}>
+                            {year}
+                          </th>
+                        ))}
+                      </tr>
+                    )}
                     <tr>
-                      <th className={`${compactTheme.headCell} sticky left-0 bg-brand-700 pl-4 pr-3`}>
+                      <th className={cn(compactTheme.headCell, "sticky left-0 z-10 bg-brand-700 pl-4 pr-3 border-r border-white/10")}>
                         Componente
                       </th>
                       {periods.map((p) => (
-                        <th key={p} className={`${compactTheme.compactHeadCell} min-w-[90px] text-right`}>
-                          {p}
+                        <th key={p} className={cn(compactTheme.compactHeadCell, "min-w-[90px] text-right border-r border-white/10")}>
+                          {formatPeriodoCorto(p)}
                         </th>
                       ))}
                     </tr>
@@ -268,7 +290,7 @@ export function GgccDeficitClient({
                         Total
                       </td>
                       {overall.map((r) => (
-                        <td key={r.period} className="px-2 py-2 text-right text-xs font-bold">
+                        <td key={r.period} className="px-2 py-2 text-right text-xs font-bold border-r border-white/15">
                           {formatUf(r.costUf)}
                         </td>
                       ))}
@@ -288,15 +310,25 @@ export function GgccDeficitClient({
                   <div key={dim.dimension}>
                     <p className="mb-1 text-xs font-medium text-slate-500">{dim.dimension}</p>
                     <div className="overflow-x-auto">
-                      <table className={`${compactTheme.table} text-xs`}>
+                      <table className={`${compactTheme.table} text-xs border-collapse`}>
                         <thead className={compactTheme.head}>
+                          {yearGroups.length > 1 && (
+                            <tr className="bg-brand-700">
+                              <th className="sticky left-0 z-10 bg-brand-700 py-0.5 border-r border-white/10" />
+                              {yearGroups.map(({ year, count }, idx) => (
+                                <th key={year} colSpan={count} className={cn("py-0.5 text-center text-[9px] font-bold uppercase tracking-widest text-white/30", idx > 0 && "border-l border-white/15")}>
+                                  {year}
+                                </th>
+                              ))}
+                            </tr>
+                          )}
                           <tr>
-                            <th className={`${compactTheme.headCell} sticky left-0 bg-brand-700 pl-4 pr-3`}>
+                            <th className={cn(compactTheme.headCell, "sticky left-0 z-10 bg-brand-700 pl-4 pr-3 border-r border-white/10")}>
                               Concepto
                             </th>
                             {periods.map((p) => (
-                              <th key={p} className={`${compactTheme.compactHeadCell} min-w-[90px] text-right`}>
-                                {p}
+                              <th key={p} className={cn(compactTheme.compactHeadCell, "min-w-[90px] text-right border-r border-white/10")}>
+                                {formatPeriodoCorto(p)}
                               </th>
                             ))}
                           </tr>
@@ -323,15 +355,25 @@ export function GgccDeficitClient({
                 toolbar={<p className="text-xs text-slate-400">Mano de Obra / Ingresos</p>}
               >
                 <div className="overflow-x-auto">
-                  <table className={`${compactTheme.table} text-xs`}>
+                  <table className={`${compactTheme.table} text-xs border-collapse`}>
                     <thead className={compactTheme.head}>
+                      {yearGroups.length > 1 && (
+                        <tr className="bg-brand-700">
+                          <th className="sticky left-0 z-10 bg-brand-700 py-0.5 border-r border-white/10" />
+                          {yearGroups.map(({ year, count }, idx) => (
+                            <th key={year} colSpan={count} className={cn("py-0.5 text-center text-[9px] font-bold uppercase tracking-widest text-white/30", idx > 0 && "border-l border-white/15")}>
+                              {year}
+                            </th>
+                          ))}
+                        </tr>
+                      )}
                       <tr>
-                        <th className={`${compactTheme.headCell} sticky left-0 bg-brand-700 pl-4 pr-3`}>
+                        <th className={cn(compactTheme.headCell, "sticky left-0 z-10 bg-brand-700 pl-4 pr-3 border-r border-white/10")}>
                           Indicador
                         </th>
                         {periods.map((p) => (
-                          <th key={p} className={`${compactTheme.compactHeadCell} min-w-[90px] text-right`}>
-                            {p}
+                          <th key={p} className={cn(compactTheme.compactHeadCell, "min-w-[90px] text-right border-r border-white/10")}>
+                            {formatPeriodoCorto(p)}
                           </th>
                         ))}
                       </tr>
@@ -342,7 +384,7 @@ export function GgccDeficitClient({
                           MdO / Ingresos %
                         </td>
                         {periods.map((p) => (
-                          <td key={p} className="px-2 py-1.5 text-right text-slate-700">
+                          <td key={p} className="px-2 py-1.5 text-right text-slate-700 border-r border-slate-100">
                             {formatPercent(manoDeObraRatio[p] ?? 0)}
                           </td>
                         ))}
@@ -383,7 +425,7 @@ function renderConceptRow(
         if (isDeficitUf) cls = deficitUfCls(v);
         if (isDeficitPct) cls = deficitColorCls(v);
         return (
-          <td key={r.period} className={cn("px-2 py-1.5 text-right", cls)}>
+          <td key={r.period} className={cn("px-2 py-1.5 text-right border-r border-slate-100", cls)}>
             {isDeficitPct ? formatPercent(v) : formatUf(v)}
           </td>
         );
@@ -404,7 +446,7 @@ function renderBreakdownRow(
         {label}
       </td>
       {rows.map((r) => (
-        <td key={r.period} className="px-2 py-1.5 text-right text-slate-600">
+        <td key={r.period} className="px-2 py-1.5 text-right text-slate-600 border-r border-slate-100">
           {formatUf(getValue(r))}
         </td>
       ))}

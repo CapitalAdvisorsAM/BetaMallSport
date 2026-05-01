@@ -1,4 +1,5 @@
 import { createElement, Fragment, type ReactElement } from "react";
+import { formatPeriodoCorto } from "@/lib/utils";
 
 // Chart theme tokens — kept in sync with tailwind.config.ts design tokens.
 // All Recharts-based charts must source colors, axis props, margins, and
@@ -144,6 +145,19 @@ export function chartGradientGroup(
 }
 
 // Standardized empty-chart visual — neutral frame used when a chart has no data.
+// Returns an XAxis tickFormatter that shows "Ene 24" labels with adaptive
+// thinning for long date ranges. January is always shown to mark year boundaries.
+export function buildPeriodoTickFormatter(totalPeriods: number) {
+  return (value: string, index: number): string => {
+    const isJan = value.endsWith("-01");
+    if (totalPeriods <= 12) return formatPeriodoCorto(value);
+    if (totalPeriods <= 24) {
+      return index % 3 === 0 || isJan ? formatPeriodoCorto(value) : "";
+    }
+    return index % 6 === 0 || isJan ? formatPeriodoCorto(value) : "";
+  };
+}
+
 export const chartEmptyState = {
   wrapperClass:
     "flex h-full w-full items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50/40 text-xs text-slate-400",

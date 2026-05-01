@@ -3,7 +3,10 @@ import { calculateWalt } from "@/lib/kpi";
 import { prisma } from "@/lib/prisma";
 import type { PeriodoMetrica, TimelineResponse } from "@/types/rent-roll-timeline";
 
-function toPeriodoKey(date: Date): string {
+function toPeriodoKey(date: Date | string): string {
+  if (typeof date === "string") {
+    return date.slice(0, 7);
+  }
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
   return `${year}-${month}`;
@@ -19,8 +22,9 @@ function startOfMonth(year: number, month: number): Date {
 }
 
 function endOfMonth(year: number, month: number): Date {
-  // Last moment of the last day: start of next month minus 1ms
-  return new Date(Date.UTC(year, month, 1) - 1);
+  // Contract dates are stored as date-only values at midnight, so the month
+  // end snapshot must also use the last day at midnight to keep that day inclusive.
+  return new Date(Date.UTC(year, month, 0));
 }
 
 function addMonths(year: number, month: number, n: number): { year: number; month: number } {
@@ -30,6 +34,11 @@ function addMonths(year: number, month: number, n: number): { year: number; mont
 
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function clampLeasedGla(value: number, glaTotalM2: number): number {
+  if (glaTotalM2 <= 0) return 0;
+  return Math.min(round2(value), glaTotalM2);
 }
 
 function isBodegaEspacio(tipo: UnitType): boolean {
@@ -55,6 +64,82 @@ type VariableRentData = {
   ventaMap: Map<string, { rentaVariableUf: number; ventasTotalUf: number }>;
   contractsWithPct: ContractWithPct[];
 };
+
+type HistoricalDayRow = {
+  fecha: Date;
+  localId: string;
+  contratoId: string | null;
+  estadoDia: string;
+  glam2: number;
+  tarifaDia: number;
+  tipo: UnitType;
+  localEsGLA: boolean;
+  fechaTermino: Date | null;
+};
+
+type FutureContractRow = {
+  id: string;
+  localId: string;
+  fechaInicio: Date;
+  fechaTermino: Date;
+  local: {
+    id: string;
+    tipo: UnitType;
+    glam2: Prisma.Decimal;
+    esGLA: boolean;
+  };
+  tarifas: Array<{
+    tipo: ContractRateType;
+    valor: Prisma.Decimal;
+    vigenciaDesde: Date;
+    vigenciaHasta: Date | null;
+  }>;
+};
+
+function isOccupiedStatus(estadoDia: string): boolean {
+  return estadoDia === "OCUPADO" || estadoDia === "GRACIA";
+}
+
+function preferHistoricalDay(current: HistoricalDayRow | undefined, candidate: HistoricalDayRow): HistoricalDayRow {
+  if (!current) return candidate;
+  if (!current.fechaTermino) return candidate;
+  if (!candidate.fechaTermino) return current;
+  return candidate.fechaTermino >= current.fechaTermino ? candidate : current;
+}
+
+function uniqueOccupiedGlaRows(rows: HistoricalDayRow[]): HistoricalDayRow[] {
+  const byLocal = new Map<string, HistoricalDayRow>();
+
+  for (const row of rows) {
+    if (!row.localEsGLA || !isOccupiedStatus(row.estadoDia)) continue;
+    byLocal.set(row.localId, preferHistoricalDay(byLocal.get(row.localId), row));
+  }
+
+  return [...byLocal.values()];
+}
+
+function preferFutureContract(
+  current: FutureContractRow | undefined,
+  candidate: FutureContractRow
+): FutureContractRow {
+  if (!current) return candidate;
+  return candidate.fechaTermino >= current.fechaTermino ? candidate : current;
+}
+
+function uniqueActiveGlaContractsAtMonthEnd(
+  contracts: FutureContractRow[],
+  monthEnd: Date
+): FutureContractRow[] {
+  const byLocal = new Map<string, FutureContractRow>();
+
+  for (const contract of contracts) {
+    if (!contract.local.esGLA) continue;
+    if (contract.fechaInicio > monthEnd || contract.fechaTermino < monthEnd) continue;
+    byLocal.set(contract.localId, preferFutureContract(byLocal.get(contract.localId), contract));
+  }
+
+  return [...byLocal.values()];
+}
 
 async function buildVariableRentData(proyectoId: string): Promise<VariableRentData> {
   const [ventas, contractsRaw] = await Promise.all([
@@ -138,6 +223,7 @@ function computePctPromedioForPeriodo(
 async function buildHistoricalPeriodos(
   proyectoId: string,
   glaTotalM2: number,
+  localesGLA: number,
   currentPeriodo: string,
   variableRentData: VariableRentData
 ): Promise<PeriodoMetrica[]> {
@@ -159,7 +245,8 @@ async function buildHistoricalPeriodos(
       tarifaDia: true,
       local: {
         select: {
-          tipo: true
+          tipo: true,
+          esGLA: true
         }
       },
       contrato: {
@@ -178,16 +265,7 @@ async function buildHistoricalPeriodos(
   // Group by "YYYY-MM"
   const byMonth = new Map<
     string,
-    Array<{
-      fecha: Date;
-      localId: string;
-      contratoId: string | null;
-      estadoDia: string;
-      glam2: number;
-      tarifaDia: number;
-      tipo: UnitType;
-      fechaTermino: Date | null;
-    }>
+    HistoricalDayRow[]
   >();
 
   for (const dia of allDias) {
@@ -201,6 +279,7 @@ async function buildHistoricalPeriodos(
       glam2: dia.glam2.toNumber(),
       tarifaDia: dia.tarifaDia.toNumber(),
       tipo: dia.local.tipo,
+      localEsGLA: dia.local.esGLA,
       fechaTermino: dia.contrato?.fechaTermino ?? null
     });
   }
@@ -227,12 +306,15 @@ async function buildHistoricalPeriodos(
     const lastDateStr = dates[dates.length - 1];
     const lastDateDias = dias.filter((d) => d.fecha.toISOString() === lastDateStr);
 
-    // glaArrendadaM2: sum of glam2 for OCUPADO records on last day
-    const glaArrendadaM2 = round2(
-      lastDateDias
-        .filter((d) => d.estadoDia === "OCUPADO")
-        .reduce((sum, d) => sum + d.glam2, 0)
+    const occupiedRows = uniqueOccupiedGlaRows(lastDateDias);
+    const glaArrendadaM2 = clampLeasedGla(
+      occupiedRows.reduce((sum, d) => sum + d.glam2, 0),
+      glaTotalM2
     );
+    const glaVacanteM2 = round2(Math.max(glaTotalM2 - glaArrendadaM2, 0));
+    const pctVacanciaGLA = round2(glaTotalM2 > 0 ? (glaVacanteM2 / glaTotalM2) * 100 : 0);
+    const localesArrendados = occupiedRows.length;
+    const localesVacantes = Math.max(localesGLA - localesArrendados, 0);
 
     // contratosActivos: distinct contratoIds where estadoDia IN [OCUPADO, GRACIA] on last day
     const activeContratoIds = new Set(
@@ -244,17 +326,16 @@ async function buildHistoricalPeriodos(
     const contratosActivos = activeContratoIds.size;
 
     const activeContractsForWalt = Array.from(
-      lastDateDias.reduce(
+      occupiedRows.reduce(
         (acc, dia) => {
           if (
             !dia.contratoId ||
-            !dia.fechaTermino ||
-            (dia.estadoDia !== "OCUPADO" && dia.estadoDia !== "GRACIA")
+            !dia.fechaTermino
           ) {
             return acc;
           }
-          if (!acc.has(dia.contratoId)) {
-            acc.set(dia.contratoId, {
+          if (!acc.has(dia.localId)) {
+            acc.set(dia.localId, {
               fechaTermino: dia.fechaTermino,
               localGlam2: dia.glam2
             });
@@ -270,18 +351,17 @@ async function buildHistoricalPeriodos(
     // rentaFijaUf: sum of tarifaDia * glam2 for all days in the month,
     // then divide by unique dates count to normalize to monthly
     const uniqueDatesCount = dates.length;
-    const rentaSumAllDays = dias
-      .filter((d) => d.estadoDia === "OCUPADO" || d.estadoDia === "GRACIA")
-      .reduce((sum, d) => sum + d.tarifaDia * d.glam2, 0);
+    const rentaSumAllDays = dates.reduce((sum, dateKey) => {
+      const dayRows = dias.filter((d) => d.fecha.toISOString() === dateKey);
+      return sum + uniqueOccupiedGlaRows(dayRows).reduce((daySum, d) => daySum + d.tarifaDia * d.glam2, 0);
+    }, 0);
     const rentaFijaUf = round2(uniqueDatesCount > 0 ? rentaSumAllDays / uniqueDatesCount : 0);
 
     // pctOcupacionGLA
     const pctOcupacionGLA = round2(glaTotalM2 > 0 ? (glaArrendadaM2 / glaTotalM2) * 100 : 0);
 
     // Ingresos breakdown by type using last day snapshot
-    const activeDiasLastDay = lastDateDias.filter(
-      (d) => d.estadoDia === "OCUPADO" || d.estadoDia === "GRACIA"
-    );
+    const activeDiasLastDay = occupiedRows;
 
     const ingresosFijoUf = round2(
       activeDiasLastDay
@@ -308,9 +388,14 @@ async function buildHistoricalPeriodos(
       periodo,
       esFuturo: false,
       pctOcupacionGLA,
+      pctVacanciaGLA,
       waltMeses,
       glaArrendadaM2,
+      glaVacanteM2,
       glaTotalM2,
+      localesArrendados,
+      localesVacantes,
+      localesGLA,
       rentaFijaUf,
       contratosActivos,
       ingresosFijoUf,
@@ -332,6 +417,7 @@ async function buildHistoricalPeriodos(
 async function buildFuturePeriodos(
   proyectoId: string,
   glaTotalM2: number,
+  localesGLA: number,
   currentPeriodo: string,
   variableRentData: VariableRentData
 ): Promise<PeriodoMetrica[]> {
@@ -339,10 +425,12 @@ async function buildFuturePeriodos(
   const activeContracts = await prisma.contract.findMany({
     where: {
       projectId: proyectoId,
-      estado: { in: [ContractStatus.VIGENTE, ContractStatus.GRACIA] }
+      estado: { not: ContractStatus.TERMINADO_ANTICIPADO },
+      cuentaParaVacancia: true
     },
     select: {
       id: true,
+      localId: true,
       fechaInicio: true,
       fechaTermino: true,
       local: {
@@ -408,23 +496,15 @@ async function buildFuturePeriodos(
     const { year: y, month: m } = parsePeriodoKey(periodo);
     const monthStart = startOfMonth(y, m);
     const monthEnd = endOfMonth(y, m);
-
-    // Contracts active in this month
-    const activeInMonth = activeContracts.filter((c) => {
-      const inicio = c.fechaInicio;
-      const termino = c.fechaTermino;
-      return inicio <= monthEnd && termino >= monthStart;
-    });
+    const activeAtMonthEnd = uniqueActiveGlaContractsAtMonthEnd(activeContracts, monthEnd);
 
     let glaArrendadaM2 = 0;
-    let contratosActivos = 0;
     let rentaFijaUf = 0;
     let ingresosFijoUf = 0;
     let ingresosSimuladorModuloUf = 0;
     let ingresosBodegaEspacioUf = 0;
 
-    for (const c of activeInMonth) {
-      contratosActivos++;
+    for (const c of activeAtMonthEnd) {
       const glam2 = c.local.glam2.toNumber();
       glaArrendadaM2 += glam2;
 
@@ -459,10 +539,13 @@ async function buildFuturePeriodos(
       }
     }
 
+    glaArrendadaM2 = clampLeasedGla(glaArrendadaM2, glaTotalM2);
+    const glaVacanteM2 = round2(Math.max(glaTotalM2 - glaArrendadaM2, 0));
     const pctOcupacionGLA = round2(glaTotalM2 > 0 ? (glaArrendadaM2 / glaTotalM2) * 100 : 0);
-    const activeAtMonthEnd = activeContracts.filter(
-      (contract) => contract.fechaInicio <= monthEnd && contract.fechaTermino >= monthEnd
-    );
+    const pctVacanciaGLA = round2(glaTotalM2 > 0 ? (glaVacanteM2 / glaTotalM2) * 100 : 0);
+    const localesArrendados = activeAtMonthEnd.length;
+    const localesVacantes = Math.max(localesGLA - localesArrendados, 0);
+    const contratosActivos = activeAtMonthEnd.length;
     const waltMeses = round2(
       calculateWalt(
         activeAtMonthEnd.map((contract) => ({
@@ -475,11 +558,16 @@ async function buildFuturePeriodos(
 
     result.push({
       periodo,
-      esFuturo: true,
+      esFuturo: periodo > currentPeriodo,
       pctOcupacionGLA,
+      pctVacanciaGLA,
       waltMeses,
-      glaArrendadaM2: round2(glaArrendadaM2),
+      glaArrendadaM2,
+      glaVacanteM2,
       glaTotalM2,
+      localesArrendados,
+      localesVacantes,
+      localesGLA,
       rentaFijaUf: round2(rentaFijaUf),
       contratosActivos,
       ingresosFijoUf: round2(ingresosFijoUf),
@@ -499,9 +587,13 @@ async function buildFuturePeriodos(
   return result;
 }
 
-export async function getTimelineData(proyectoId: string): Promise<TimelineResponse> {
+export async function getTimelineData(proyectoId: string, asOfDate?: Date | string): Promise<TimelineResponse> {
   // Get all active locales to compute glaTotalM2, and variable rent data in parallel
-  const [localesActivos, variableRentData] = await Promise.all([
+  const [projectSnapshot, localesActivos, variableRentData] = await Promise.all([
+    prisma.project.findUnique({
+      where: { id: proyectoId },
+      select: { reportDate: true },
+    }),
     prisma.unit.findMany({
       where: { projectId: proyectoId, estado: "ACTIVO", esGLA: true },
       select: { glam2: true },
@@ -510,24 +602,26 @@ export async function getTimelineData(proyectoId: string): Promise<TimelineRespo
   ]);
 
   const glaTotalM2 = round2(localesActivos.reduce((sum, l) => sum + l.glam2.toNumber(), 0));
+  const localesGLA = localesActivos.length;
 
-  const now = new Date();
-  const currentPeriodo = toPeriodoKey(now);
+  const referenceDate = asOfDate ?? projectSnapshot?.reportDate ?? new Date();
+  const currentPeriodo = toPeriodoKey(referenceDate);
 
   const [historical, future] = await Promise.all([
-    buildHistoricalPeriodos(proyectoId, glaTotalM2, currentPeriodo, variableRentData),
-    buildFuturePeriodos(proyectoId, glaTotalM2, currentPeriodo, variableRentData),
+    buildHistoricalPeriodos(proyectoId, glaTotalM2, localesGLA, currentPeriodo, variableRentData),
+    buildFuturePeriodos(proyectoId, glaTotalM2, localesGLA, currentPeriodo, variableRentData),
   ]);
 
-  // Merge: historical has esFuturo=false, future has esFuturo=true
-  // Remove duplicates: future overrides historical if same periodo (current month)
-  const historicalPeriodos = new Set(historical.map((p) => p.periodo));
-  const futurePeriodosFiltered = future.filter((p) => !historicalPeriodos.has(p.periodo));
+  const periodosByKey = new Map<string, PeriodoMetrica>();
+  for (const periodo of historical) {
+    periodosByKey.set(periodo.periodo, periodo);
+  }
+  for (const periodo of future) {
+    periodosByKey.set(periodo.periodo, periodo);
+  }
 
-  const periodos = [...historical, ...futurePeriodosFiltered].sort((a, b) =>
-    a.periodo.localeCompare(b.periodo)
-  );
+  const periodos = [...periodosByKey.values()].sort((a, b) => a.periodo.localeCompare(b.periodo));
 
-  return { periodos };
+  return { asOfPeriodo: currentPeriodo, periodos };
 }
 

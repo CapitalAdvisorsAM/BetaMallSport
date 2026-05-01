@@ -9,7 +9,7 @@ import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolba
 import { TableDisclosureButton } from "@/components/ui/TableDisclosureButton";
 import { BELOW_EBITDA_GROUPS, calculateEbitdaMargin, formatEerr } from "@/lib/real/eerr";
 import { getValueTone, getVarianceTone, TONE_TEXT_CLASS } from "@/lib/real/value-tone";
-import { cn, formatPercent, formatUf, formatUfPerM2 } from "@/lib/utils";
+import { cn, formatPercent, formatUf, formatUfPerM2, groupPeriodosByYear } from "@/lib/utils";
 import type { EerrData, EerrDetalleResponse } from "@/types/finance";
 
 type BillingLine = { grupo1: string; grupo3: string; porPeriodo: Record<string, number>; total: number };
@@ -52,7 +52,8 @@ function aggregateByYear(data: EerrData): EerrData {
   };
 }
 
-const HEAD_CLS = "min-w-[90px] px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70";
+const HEAD_CLS = "min-w-[90px] px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70 border-r border-white/10";
+const GR = "border-r border-slate-100";
 const CREDIT_LINES = new Set(["RECUPERACION GASTOS COMUNES", "FONDO DE PROMOCION"]);
 
 export function EerrClient({
@@ -81,6 +82,7 @@ export function EerrClient({
   const hasBudgets = !!(data?.presupuestoEbitda);
   // label col + period cols + total col + (ppto + var% when budgets)
   const colCount = 1 + (data?.periodos.length ?? 0) + 1 + (hasBudgets ? 2 : 0);
+  const yearGroups = groupPeriodosByYear(data?.periodos ?? []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -217,8 +219,28 @@ export function EerrClient({
 
               {/* ── Header ─────────────────────────────────────────── */}
               <thead>
+                {yearGroups.length > 1 && (
+                  <tr className="bg-brand-700">
+                    <th className="sticky left-0 z-10 w-72 bg-brand-700 py-0.5 border-r border-white/10" />
+                    {yearGroups.map(({ year, count }, idx) => (
+                      <th
+                        key={year}
+                        colSpan={count}
+                        className={cn(
+                          "py-0.5 text-center text-[9px] font-bold uppercase tracking-widest text-white/30",
+                          idx > 0 && "border-l border-white/15"
+                        )}
+                      >
+                        {year}
+                      </th>
+                    ))}
+                    <th className="py-0.5 border-l border-white/15" />
+                    {hasBudgets && <th className="py-0.5" />}
+                    {hasBudgets && <th className="py-0.5" />}
+                  </tr>
+                )}
                 <tr className="border-b border-slate-200 bg-brand-700">
-                  <th className="sticky left-0 z-10 w-72 bg-brand-700 py-2.5 pl-4 pr-3 text-left text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  <th className="sticky left-0 z-10 w-72 bg-brand-700 py-2.5 pl-4 pr-3 text-left text-[10px] font-bold uppercase tracking-widest text-white/70 border-r border-white/10">
                     En UF
                   </th>
                   {data.periodos.map((p) => (
@@ -257,7 +279,7 @@ export function EerrClient({
                         {data.periodos.map((p) => {
                           const v = section.porPeriodo[p] ?? 0;
                           return (
-                            <td key={p} className={cn("px-3 py-2.5 text-right tabular-nums font-semibold", TONE_TEXT_CLASS[getValueTone(section.tipo, v)])}>
+                            <td key={p} className={cn("px-3 py-2.5 text-right tabular-nums font-semibold", GR, TONE_TEXT_CLASS[getValueTone(section.tipo, v)])}>
                               {formatEerr(v)}
                             </td>
                           );
@@ -278,17 +300,18 @@ export function EerrClient({
                       </tr>
 
                       {/* Line rows */}
-                      {isExpanded && section.lineas.map((line) => {
+                      {isExpanded && section.lineas.map((line, lineIdx) => {
                         const lineKey = `${section.grupo1}::${line.grupo3}`;
                         const isLineExpanded = expandedLines.has(lineKey);
                         const isLineLoading = loadingLines.has(lineKey);
                         const detalle = detalleCache.get(lineKey);
                         const isCredit = CREDIT_LINES.has(line.grupo3);
+                        const lineBg = lineIdx % 2 === 0 ? "bg-white" : "bg-slate-50";
 
                         return (
                           <Fragment key={lineKey}>
-                            <tr className="border-b border-slate-100 bg-white transition-colors hover:bg-slate-50/60">
-                              <td className="sticky left-0 z-10 bg-white py-1.5 pl-9 pr-3">
+                            <tr className={cn("border-b border-slate-100 transition-colors hover:bg-slate-100/60", lineBg)}>
+                              <td className={cn("sticky left-0 z-10 py-1.5 pl-9 pr-3", lineBg)}>
                                 <div className="flex items-center gap-2">
                                   <TableDisclosureButton
                                     expanded={isLineExpanded}
@@ -307,6 +330,7 @@ export function EerrClient({
                                 return (
                                   <td key={p} className={cn(
                                     "px-3 py-1.5 text-right tabular-nums",
+                                    GR,
                                     isCredit ? "italic text-emerald-700" : TONE_TEXT_CLASS[getValueTone(line.tipo, v)]
                                   )}>
                                     {formatEerr(v)}
@@ -341,7 +365,7 @@ export function EerrClient({
                                     </span>
                                   </td>
                                   {data.periodos.map((p) => (
-                                    <td key={p} className="px-3 py-1.5 text-right tabular-nums text-[11px] text-slate-500">
+                                    <td key={p} className={cn("px-3 py-1.5 text-right tabular-nums text-[11px] text-slate-500", GR)}>
                                       {formatEerr(cat.porPeriodo[p] ?? 0)}
                                     </td>
                                   ))}
@@ -388,7 +412,7 @@ export function EerrClient({
                                         )}
                                       </td>
                                       {data.periodos.map((p) => (
-                                        <td key={p} className="px-3 py-1.5 text-right tabular-nums text-[11px] text-slate-600">
+                                        <td key={p} className={cn("px-3 py-1.5 text-right tabular-nums text-[11px] text-slate-600", GR)}>
                                           {formatEerr(loc.porPeriodo[p] ?? 0)}
                                         </td>
                                       ))}
@@ -416,7 +440,7 @@ export function EerrClient({
                   {data.periodos.map((p) => {
                     const v = data.ebitda.porPeriodo[p] ?? 0;
                     return (
-                      <td key={p} className={cn("px-3 py-3 text-right text-[12px] font-bold tabular-nums", TONE_TEXT_CLASS[getValueTone("ingreso", v)])}>
+                      <td key={p} className={cn("px-3 py-3 text-right text-[12px] font-bold tabular-nums", GR, TONE_TEXT_CLASS[getValueTone("ingreso", v)])}>
                         {formatEerr(v)}
                       </td>
                     );
@@ -453,7 +477,7 @@ export function EerrClient({
                       const ing = ingresos.porPeriodo[p] ?? 0;
                       const mg = calculateEbitdaMargin(ing, data.ebitda.porPeriodo[p] ?? 0);
                       return (
-                        <td key={p} className="px-3 py-1 text-right text-[10px] italic tabular-nums text-slate-500">
+                        <td key={p} className={cn("px-3 py-1 text-right text-[10px] italic tabular-nums text-slate-500", GR)}>
                           {mg !== null ? formatPercent(mg) : "—"}
                         </td>
                       );
@@ -485,7 +509,7 @@ export function EerrClient({
                         {data.periodos.map((p) => {
                           const v = section.porPeriodo[p] ?? 0;
                           return (
-                            <td key={p} className={cn("px-3 py-2.5 text-right tabular-nums font-semibold", TONE_TEXT_CLASS[getValueTone(section.tipo, v)])}>
+                            <td key={p} className={cn("px-3 py-2.5 text-right tabular-nums font-semibold", GR, TONE_TEXT_CLASS[getValueTone(section.tipo, v)])}>
                               {formatEerr(v)}
                             </td>
                           );
@@ -504,13 +528,15 @@ export function EerrClient({
                           </td>
                         )}
                       </tr>
-                      {isExpanded && section.lineas.map((line) => (
-                        <tr key={line.grupo3} className="border-b border-slate-100 bg-white">
-                          <td className="sticky left-0 z-10 bg-white py-1.5 pl-9 pr-3 text-slate-600">{line.grupo3}</td>
+                      {isExpanded && section.lineas.map((line, lineIdx) => {
+                        const lineBg = lineIdx % 2 === 0 ? "bg-white" : "bg-slate-50";
+                        return (
+                        <tr key={line.grupo3} className={cn("border-b border-slate-100 transition-colors hover:bg-slate-100/60", lineBg)}>
+                          <td className={cn("sticky left-0 z-10 py-1.5 pl-9 pr-3 text-slate-600", lineBg)}>{line.grupo3}</td>
                           {data.periodos.map((p) => {
                             const v = line.porPeriodo[p] ?? 0;
                             return (
-                              <td key={p} className={cn("px-3 py-1.5 text-right tabular-nums", TONE_TEXT_CLASS[getValueTone(line.tipo, v)])}>
+                              <td key={p} className={cn("px-3 py-1.5 text-right tabular-nums", GR, TONE_TEXT_CLASS[getValueTone(line.tipo, v)])}>
                                 {formatEerr(v)}
                               </td>
                             );
@@ -529,7 +555,8 @@ export function EerrClient({
                             </td>
                           )}
                         </tr>
-                      ))}
+                        );
+                      })}
                     </Fragment>
                   );
                 })}
@@ -543,7 +570,7 @@ export function EerrClient({
                     {data.periodos.map((p) => {
                       const v = data.ebit.porPeriodo[p] ?? 0;
                       return (
-                        <td key={p} className={cn("px-3 py-3 text-right text-[12px] font-bold tabular-nums", TONE_TEXT_CLASS[getValueTone("ingreso", v)])}>
+                        <td key={p} className={cn("px-3 py-3 text-right text-[12px] font-bold tabular-nums", GR, TONE_TEXT_CLASS[getValueTone("ingreso", v)])}>
                           {formatEerr(v)}
                         </td>
                       );

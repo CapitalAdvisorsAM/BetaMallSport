@@ -1,4 +1,4 @@
-﻿import { redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { FinanceMappingsClient } from "@/components/real/FinanceMappingsClient";
 import { getFinanceMappingsData } from "@/lib/real/mappings";
 import { requireSession } from "@/lib/permissions";
@@ -16,15 +16,35 @@ export default async function FinanceMappingsPage({
     redirect("/");
   }
 
-  const { accountingMappings, salesMappings, units } = await getFinanceMappingsData(selectedProjectId);
-  const defaultTab = searchParams.tab === "sales" ? "sales" : searchParams.tab === "ventas" ? "sales" : "accounting";
+  const {
+    accountingMappings,
+    salesMappings,
+    accountingTenantMappings,
+    unmappedAccountingRecords,
+    units,
+    tenants
+  } =
+    await getFinanceMappingsData(selectedProjectId);
+
+  const tabParam = searchParams.tab;
+  const defaultTab: "accounting" | "sales" | "accounting-tenants" | "unmapped-accounting" =
+    tabParam === "sales" || tabParam === "ventas"
+      ? "sales"
+      : tabParam === "accounting-tenants" || tabParam === "arrendatarios"
+        ? "accounting-tenants"
+        : tabParam === "unmapped-accounting" || tabParam === "pendientes"
+          ? "unmapped-accounting"
+        : "accounting";
 
   return (
     <FinanceMappingsClient
       selectedProjectId={selectedProjectId}
       accountingMappings={accountingMappings}
       salesMappings={salesMappings}
+      accountingTenantMappings={accountingTenantMappings}
+      unmappedAccountingRecords={unmappedAccountingRecords}
       units={units}
+      tenants={tenants}
       defaultTab={defaultTab}
     />
   );

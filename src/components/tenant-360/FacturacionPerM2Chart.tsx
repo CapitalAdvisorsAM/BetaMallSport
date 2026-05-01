@@ -20,8 +20,9 @@ import {
   chartHeight,
   chartLegendProps,
   chartMargins,
+  buildPeriodoTickFormatter,
 } from "@/lib/charts/theme";
-import { formatUf } from "@/lib/utils";
+import { formatPeriodoCorto, formatUf } from "@/lib/utils";
 import type { Tenant360MonthlyPoint, Tenant360SalesPoint } from "@/types/tenant-360";
 
 type FacturacionPerM2ChartProps = {
@@ -64,6 +65,7 @@ export function FacturacionPerM2Chart({ monthlyData, salesData }: FacturacionPer
           <XAxis
             dataKey="period"
             {...chartAxisProps}
+            tickFormatter={buildPeriodoTickFormatter(chartData.length)}
           />
           <YAxis
             {...chartAxisProps}
@@ -72,6 +74,7 @@ export function FacturacionPerM2Chart({ monthlyData, salesData }: FacturacionPer
           <Tooltip
             content={
               <ChartTooltip
+                labelFormatter={(l) => formatPeriodoCorto(String(l))}
                 valueFormatter={(value) =>
                   `${formatUf(typeof value === "number" ? value : Number(value ?? 0))} UF/m\u00b2`
                 }

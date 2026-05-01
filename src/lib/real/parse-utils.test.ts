@@ -48,11 +48,12 @@ describe("parse-utils", () => {
 });
 
 describe("parser smoke tests", () => {
-  it("parseContable reads representative rows from Data Contable", () => {
+  it("parseContable reads Real and Ppto rows from Data Contable", () => {
     const aoa = [
       ["Ce.coste", "Mes", "Local", "Arrendatario", "GRUPO 1", "GRUPO 3", "Denominacion objeto", "Valor UF", "Categoria (Tamano)", "Categoria (Tipo)", "Piso"],
       ["Real", "2026-01-01", "[L102] TIENDA A", "Tenant A", "INGRESOS DE EXPLOTACION", "Renta Fija", "Renta Fija", "100,5", "Mediano", "Moda", "1"],
-      ["Presupuesto", "2026-01-01", "[L999] IGNORAR", "Tenant B", "INGRESOS DE EXPLOTACION", "Renta Fija", "Renta Fija", "999", "Grande", "Moda", "2"]
+      ["Presupuesto", "2026-01-01", "[L102] TIENDA A", "Tenant A", "INGRESOS DE EXPLOTACION", "Renta Fija", "Renta Fija", "999", "Mediano", "Moda", "1"],
+      ["x", "2026-01-01", "[L103] IGNORAR", "Tenant C", "INGRESOS DE EXPLOTACION", "Renta Fija", "Renta Fija", "1", "Grande", "Moda", "2"]
     ];
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();
@@ -61,8 +62,11 @@ describe("parser smoke tests", () => {
 
     const filas = parseContable(buffer);
 
-    expect(filas).toHaveLength(1);
-    expect(filas[0]).toMatchObject({
+    // Real and Presupuesto rows are kept; the unrecognized "x" row is dropped.
+    expect(filas).toHaveLength(2);
+    const real = filas.find((row) => row.scenario === "REAL");
+    const ppto = filas.find((row) => row.scenario === "PPTO");
+    expect(real).toMatchObject({
       localCodigo: "102",
       arrendatarioNombre: "Tenant A",
       grupo1: "INGRESOS DE EXPLOTACION",
@@ -72,7 +76,9 @@ describe("parser smoke tests", () => {
       categoriaTipo: "Moda",
       piso: "1"
     });
-    expect(filas[0]?.mes.toISOString().slice(0, 7)).toBe("2026-01");
+    expect(real?.mes.toISOString().slice(0, 7)).toBe("2026-01");
+    expect(ppto?.valorUf).toBe(999);
+    expect(ppto?.mes.toISOString().slice(0, 7)).toBe("2026-01");
   });
 
   it("parseVentas aggregates rows by local and month", () => {

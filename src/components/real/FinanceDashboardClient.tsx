@@ -33,10 +33,11 @@ import {
   chartGradientGroup,
   gradientId,
   chartSeriesColors,
+  buildPeriodoTickFormatter,
 } from "@/lib/charts/theme";
 import { formatEerr, BELOW_EBITDA_GROUPS } from "@/lib/real/eerr";
 import { getVarianceTone, TONE_TEXT_CLASS } from "@/lib/real/value-tone";
-import { cn, formatPercent, formatUf } from "@/lib/utils";
+import { cn, formatPercent, formatPeriodoCorto, formatUf } from "@/lib/utils";
 import type { MetricFormulaId } from "@/lib/metric-formulas";
 import { PanelCdg } from "@/components/real/PanelCdg";
 import { DeltaPill } from "@/components/ui/DeltaPill";
@@ -160,11 +161,17 @@ function normalizeDashboardData(raw: unknown): DashboardData | null {
 
 const PANEL_UNITS: PanelCdgUnit[] = ["uf", "m2", "pct", "uf_m2"];
 
-function normalizePanelCell(raw: unknown): { real: number | null; ppto: number | null; yoy: number | null } {
+function normalizePanelCell(raw: unknown): {
+  real: number | null;
+  ppto: number | null;
+  prior: number | null;
+  yoy: number | null;
+} {
   const cell = asRecord(raw);
   return {
     real: cell ? asNullableNumber(cell.real) : null,
     ppto: cell ? asNullableNumber(cell.ppto) : null,
+    prior: cell ? asNullableNumber(cell.prior) : null,
     yoy: cell ? asNullableNumber(cell.yoy) : null
   };
 }
@@ -295,7 +302,7 @@ export function FinanceDashboardClient({ selectedProjectId, reportDate }: Props)
 
   const chartMonths = data?.grafico?.meses ?? [];
   const chartData = chartMonths.map((m, i) => ({
-    mes: m.slice(5), // MM
+    periodo: m,
     ingresosActual: data?.grafico.ingresosActual[i] ?? 0,
     ingresosAnterior: data?.grafico.ingresosAnterior[i] ?? 0,
     ebitda: data?.grafico.ebitdaActual[i] ?? 0
@@ -416,12 +423,12 @@ export function FinanceDashboardClient({ selectedProjectId, reportDate }: Props)
                   ])}
                 </defs>
                 <CartesianGrid {...chartGridProps} />
-                <XAxis dataKey="mes" {...chartAxisProps} />
+                <XAxis dataKey="periodo" {...chartAxisProps} tickFormatter={buildPeriodoTickFormatter(chartMonths.length)} />
                 <YAxis {...chartAxisProps} tickFormatter={(v: number) => formatUf(v, 0)} />
                 <Tooltip
                   content={
                     <ChartTooltip
-                      labelFormatter={(l) => `Mes: ${String(l)}`}
+                      labelFormatter={(l) => formatPeriodoCorto(String(l))}
                       valueFormatter={(value) =>
                         typeof value === "number" ? formatUf(value, 0) : String(value ?? "\u2014")
                       }

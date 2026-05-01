@@ -1,12 +1,14 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+import { AccountingScenario } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
 import { legacyDiscountFields } from "@/lib/contracts/rate-history";
 import { getFinanceMode, getFinancePeriod, getFinanceProjectId } from "@/lib/real/api-params";
 import { shiftPeriod } from "@/lib/real/billing-utils";
+import { buildUfRateMap, getUfRate } from "@/lib/real/uf-lookup";
 import { buildWaterfall, type WfContract } from "@/lib/real/waterfall";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -83,6 +85,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           projectId,
           period: { in: [previousDate, currentDate] },
           group1: "INGRESOS DE EXPLOTACION",
+          scenario: AccountingScenario.REAL,
         },
         select: {
           unitId: true,
@@ -120,10 +123,20 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       }),
     }));
 
+    const ufRateByPeriod = await buildUfRateMap([...new Set(sales.map((sale) => sale.period.toISOString().slice(0, 7)))]);
+    const salesInUf = sales.map((sale) => {
+      const period = sale.period.toISOString().slice(0, 7);
+      const uf = getUfRate(period, ufRateByPeriod);
+      return {
+        ...sale,
+        salesPesos: uf > 0 ? Number(sale.salesPesos) / uf : 0,
+      };
+    });
+
     const result = buildWaterfall(
       wfContracts,
       accountingRecords,
-      sales,
+      salesInUf,
       currentPeriod,
       previousPeriod,
       mode,

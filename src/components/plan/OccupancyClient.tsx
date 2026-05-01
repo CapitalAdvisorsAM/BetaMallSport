@@ -29,8 +29,9 @@ import {
   chartLegendProps,
   chartMargins,
   getSeriesColor,
+  buildPeriodoTickFormatter,
 } from "@/lib/charts/theme";
-import { cn, formatPercent, formatUf } from "@/lib/utils";
+import { cn, formatPercent, formatPeriodoCorto, formatUf } from "@/lib/utils";
 import type {
   OccupancyDimensionRow,
   OccupancyTimeSeriesResponse
@@ -131,7 +132,7 @@ export function OccupancyClient({
   // Build chart data
   const chartData = snapshots.map((snap) => {
     const rows = getRowsForDimension(snap, dimension);
-    const entry: Record<string, string | number> = { mes: snap.period.slice(5) };
+    const entry: Record<string, string | number> = { periodo: snap.period };
     for (const key of dimensionKeys) {
       const row = rows.find((r) => r.dimension === key);
       entry[key] = row ? row.glaOcupada : 0;
@@ -196,7 +197,7 @@ export function OccupancyClient({
             <ResponsiveContainer width="100%" height={chartHeight.lg}>
               <ComposedChart data={chartData} margin={chartMargins.default}>
                 <CartesianGrid {...chartGridProps} />
-                <XAxis dataKey="mes" {...chartAxisProps} />
+                <XAxis dataKey="periodo" {...chartAxisProps} tickFormatter={buildPeriodoTickFormatter(snapshots.length)} />
                 <YAxis yAxisId="left" {...chartAxisProps} tickFormatter={(v: number) => formatUf(v, 0)} />
                 <YAxis
                   yAxisId="right"
@@ -208,7 +209,7 @@ export function OccupancyClient({
                 <Tooltip
                   content={
                     <ChartTooltip
-                      labelFormatter={(l) => `Mes: ${String(l)}`}
+                      labelFormatter={(l) => formatPeriodoCorto(String(l))}
                       valueFormatter={(value, name) => {
                         const v = typeof value === "number" ? value : Number(value ?? 0);
                         return String(name) === "Vacancia %" ? formatPercent(v) : formatUf(v, 0);

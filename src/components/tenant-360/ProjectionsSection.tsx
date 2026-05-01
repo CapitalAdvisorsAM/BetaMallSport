@@ -24,8 +24,9 @@ import {
   chartHeight,
   chartLegendProps,
   chartMargins,
+  buildPeriodoTickFormatter,
 } from "@/lib/charts/theme";
-import { cn, formatPercent, formatUf } from "@/lib/utils";
+import { cn, formatPercent, formatPeriodoCorto, formatUf } from "@/lib/utils";
 import type { Tenant360Projection, GapAnalysisRow } from "@/types/tenant-360";
 
 type ProjectionsSectionProps = {
@@ -146,6 +147,7 @@ export function ProjectionsSection({ projections, gapAnalysis }: ProjectionsSect
                 <XAxis
                   dataKey="period"
                   {...chartAxisProps}
+                  tickFormatter={buildPeriodoTickFormatter(gapAnalysis.length)}
                 />
                 <YAxis
                   yAxisId="left"
@@ -161,6 +163,7 @@ export function ProjectionsSection({ projections, gapAnalysis }: ProjectionsSect
                 <Tooltip
                   content={
                     <ChartTooltip
+                      labelFormatter={(l) => formatPeriodoCorto(String(l))}
                       valueFormatter={(value, name) => {
                         const v = typeof value === "number" ? value : Number(value ?? 0);
                         if (String(name) === "Brecha %") return formatPercent(v);

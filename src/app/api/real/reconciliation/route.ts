@@ -1,12 +1,14 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+import { AccountingScenario } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
 import { getFinanceFrom, getFinanceProjectId, getFinanceTo } from "@/lib/real/api-params";
 import { resolveMonthRange, toPeriodKey } from "@/lib/real/period-range";
 import { legacyDiscountFields } from "@/lib/contracts/rate-history";
+import { buildUfRateMap, getUfRate } from "@/lib/real/uf-lookup";
 import { buildReconciliation } from "@/lib/real/reconciliation";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -89,7 +91,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         where: {
           projectId,
           period: { gte: desdeDate, lte: hastaDate },
-          group1: "INGRESOS DE EXPLOTACION"
+          group1: "INGRESOS DE EXPLOTACION",
+          scenario: AccountingScenario.REAL
         },
         select: {
           unitId: true,
@@ -132,7 +135,16 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       })
     }));
 
-    const result = buildReconciliation(contractsWithDiscounts, accountingRecords, sales, periods);
+    const ufRateByPeriod = await buildUfRateMap([...new Set(sales.map((sale) => toPeriodKey(sale.period)))]);
+    const salesInUf = sales.map((sale) => {
+      const uf = getUfRate(toPeriodKey(sale.period), ufRateByPeriod);
+      return {
+        ...sale,
+        salesPesos: uf > 0 ? Number(sale.salesPesos) / uf : 0
+      };
+    });
+
+    const result = buildReconciliation(contractsWithDiscounts, accountingRecords, salesInUf, periods);
 
     return NextResponse.json({
       periods,

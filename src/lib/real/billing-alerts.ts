@@ -1,7 +1,8 @@
 import type { BillingAlertSeverity } from "@prisma/client";
-import { ContractRateType, Prisma } from "@prisma/client";
+import { AccountingScenario, ContractRateType, Prisma } from "@prisma/client";
 import { VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
 import { shiftPeriod, calcTieredVariableRent } from "@/lib/real/billing-utils";
+import { buildUfRateMap, getUfRate } from "@/lib/real/uf-lookup";
 import { prisma } from "@/lib/prisma";
 
 const GAP_THRESHOLD_PCT = 5;
@@ -75,7 +76,8 @@ export async function recalculateBillingAlerts(projectId: string): Promise<void>
         projectId,
         unitId: { in: unitIds },
         period: { gte: lookbackStart, lte: lookbackEnd },
-        group1: "INGRESOS DE EXPLOTACION"
+        group1: "INGRESOS DE EXPLOTACION",
+        scenario: AccountingScenario.REAL
       },
       select: { unitId: true, period: true, valueUf: true }
     }),
@@ -89,12 +91,17 @@ export async function recalculateBillingAlerts(projectId: string): Promise<void>
     })
   ]);
 
-  // Build sales by tenant+period
+  const ufRateByPeriod = await buildUfRateMap([
+    ...new Set(salesRecords.map((sale) => sale.period.toISOString().slice(0, 7)))
+  ]);
+
+  // Build sales by tenant+period in UF.
   const salesByTenantPeriod = new Map<string, Map<string, number>>();
   for (const s of salesRecords) {
     const p = s.period.toISOString().slice(0, 7);
+    const uf = getUfRate(p, ufRateByPeriod);
     const tenantMap = salesByTenantPeriod.get(s.tenantId) ?? new Map<string, number>();
-    tenantMap.set(p, (tenantMap.get(p) ?? 0) + Number(s.salesPesos));
+    tenantMap.set(p, (tenantMap.get(p) ?? 0) + (uf > 0 ? Number(s.salesPesos) / uf : 0));
     salesByTenantPeriod.set(s.tenantId, tenantMap);
   }
 

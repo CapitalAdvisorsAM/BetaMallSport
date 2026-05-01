@@ -18,6 +18,7 @@ type ContractsViewRow = {
   fechaInicio: string;
   fechaTermino: string;
   pdfUrl: string | null;
+  cuentaParaVacancia: boolean;
 };
 
 type ContractsViewTableProps = {
@@ -25,6 +26,7 @@ type ContractsViewTableProps = {
 };
 
 const PDF_OPTIONS = ["Disponible", "Sin PDF"];
+const VACANCIA_OPTIONS = ["Si", "No"];
 
 export function ContractsViewTable({
   rows
@@ -111,6 +113,30 @@ export function ContractsViewTable({
         },
         meta: { filterType: "enum", filterOptions: PDF_OPTIONS, align: "center" },
         cell: ({ row }) => <span>{row.original.pdfUrl ? "Disponible" : "Sin PDF"}</span>
+      },
+      {
+        id: "cuentaParaVacancia",
+        accessorFn: (row) => (row.cuentaParaVacancia ? "Si" : "No"),
+        header: "Vacancia",
+        filterFn: (row, columnId, filterValue) => {
+          if (!Array.isArray(filterValue) || filterValue.length === 0) {
+            return true;
+          }
+          return filterValue.includes(String(row.getValue(columnId)));
+        },
+        meta: { filterType: "enum", filterOptions: VACANCIA_OPTIONS, align: "center" },
+        cell: ({ row }) =>
+          row.original.cuentaParaVacancia ? (
+            <span className="text-slate-700">Si</span>
+          ) : (
+            <Badge
+              variant="outline"
+              title="Este contrato existe y se cobra, pero el local no se cuenta como ocupado en los KPIs de vacancia."
+              className="rounded-full border-amber-200 bg-amber-50 text-amber-700"
+            >
+              No
+            </Badge>
+          )
       }
     ],
     [stateOptions]
