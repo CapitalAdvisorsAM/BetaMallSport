@@ -96,6 +96,10 @@ export function ProcessingUploadCard({
     ContableUploadResult | VentasUploadResult | ExpenseBudgetUploadResult | BalanceUploadResult | BankUploadResult | null
   >(null);
   const [error, setError] = useState<string | null>(null);
+  const [manualEditsWarning, setManualEditsWarning] = useState<{
+    editedCount: number;
+    periods: string[];
+  } | null>(null);
 
   function selectFile(f: File | null): void {
     setFile(f);
@@ -109,20 +113,37 @@ export function ProcessingUploadCard({
     if (dropped) selectFile(dropped);
   }
 
-  async function handleUpload(): Promise<void> {
+  async function handleUpload(forceOverwrite = false): Promise<void> {
     if (!file || !projectId) return;
 
     setLoading(true);
     setResult(null);
     setError(null);
+    if (!forceOverwrite) setManualEditsWarning(null);
 
     try {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("projectId", projectId);
+      if (forceOverwrite) formData.append("forceOverwrite", "true");
 
       const response = await fetch(endpoint, { method: "POST", body: formData });
       const payload = (await response.json()) as unknown;
+
+      // Handle 409 warning for manual edits (contable only)
+      if (
+        response.status === 409 &&
+        variant === "contable" &&
+        typeof payload === "object" &&
+        payload !== null &&
+        "warning" in payload &&
+        (payload as { warning: boolean }).warning === true
+      ) {
+        const w = payload as unknown as { editedCount: number; periods: string[] };
+        setManualEditsWarning({ editedCount: w.editedCount, periods: w.periods });
+        return;
+      }
+
       const validPayload =
         variant === "contable"
           ? isContableResult(payload)
@@ -143,6 +164,7 @@ export function ProcessingUploadCard({
       }
 
       setResult(payload as ContableUploadResult | VentasUploadResult | ExpenseBudgetUploadResult | BalanceUploadResult | BankUploadResult);
+      setManualEditsWarning(null);
       setFlash(true);
       window.setTimeout(() => setFlash(false), 500);
       router.refresh();
@@ -157,6 +179,7 @@ export function ProcessingUploadCard({
     setFile(null);
     setResult(null);
     setError(null);
+    setManualEditsWarning(null);
     if (fileRef.current) fileRef.current.value = "";
   }
 
@@ -413,6 +436,39 @@ export function ProcessingUploadCard({
                 </div>
               </details>
             ) : null}
+          </div>
+        ) : null}
+
+        {manualEditsWarning ? (
+          <div className="rounded-md border border-amber-400/50 bg-amber-50 p-3 text-xs">
+            <p className="font-semibold text-amber-800">
+              ⚠ Este período tiene {manualEditsWarning.editedCount} corrección
+              {manualEditsWarning.editedCount !== 1 ? "es" : ""} manual
+              {manualEditsWarning.editedCount !== 1 ? "es" : ""} en la tabla de datos.
+            </p>
+            <p className="mt-1 text-amber-700">
+              Períodos afectados: {manualEditsWarning.periods.join(", ")}
+            </p>
+            <p className="mt-1 text-amber-600">
+              Si continúas, las correcciones manuales se perderán y se reemplazarán con los
+              datos del archivo.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => void handleUpload(true)}
+                className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
+              >
+                Sobrescribir de todas formas
+              </button>
+              <button
+                type="button"
+                onClick={() => setManualEditsWarning(null)}
+                className="rounded-md border border-amber-300 px-3 py-1.5 text-xs text-amber-700 hover:bg-amber-100"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         ) : null}
 

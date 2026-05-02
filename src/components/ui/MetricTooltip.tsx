@@ -4,8 +4,9 @@ type MetricTooltipProps = {
   metricId: MetricFormulaId;
 };
 
-export function MetricTooltip({ metricId }: MetricTooltipProps): JSX.Element {
+export function MetricTooltip({ metricId }: MetricTooltipProps): JSX.Element | null {
   const metric = getMetricFormula(metricId);
+  if (!metric) return null;
   const ariaLabel = `Como se calcula. Formula: ${metric.formula}. ${metric.detail}`;
 
   return (

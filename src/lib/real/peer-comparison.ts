@@ -1,15 +1,8 @@
 import { AccountingScenario, type PrismaClient } from "@prisma/client";
 import { mapCategoria } from "@/lib/kpi";
+import { toNum } from "@/lib/real/billing-utils";
 import { buildUfRateMap, getUfRate } from "@/lib/real/uf-lookup";
 import type { PeerComparison, PeerComparisonRow } from "@/types/tenant-360";
-
-type DecimalLike = number | string | { toString(): string };
-
-function toNum(value: DecimalLike | null | undefined): number {
-  if (value === null || value === undefined) return 0;
-  const n = Number(value.toString());
-  return Number.isFinite(n) ? n : 0;
-}
 
 type BuildPeerComparisonInput = {
   projectId: string;

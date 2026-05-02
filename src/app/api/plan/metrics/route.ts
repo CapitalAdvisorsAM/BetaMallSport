@@ -11,6 +11,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { isPeriodoValido } from "@/lib/validators";
 import { buildMetricsCacheKey, getOrSetMetricsCache } from "@/lib/metrics-cache";
+import { toPeriodKey } from "@/lib/real/period-range";
 import type { RentRollMetricsResponse } from "@/types/metrics";
 
 export const runtime = "nodejs";
@@ -18,12 +19,6 @@ export const runtime = "nodejs";
 type EstadoMetricaFiltro = "OCUPADO" | "GRACIA" | "TODOS";
 
 const allowedEstadoFiltros = new Set<EstadoMetricaFiltro>(["OCUPADO", "GRACIA", "TODOS"]);
-
-function toPeriodo(value: Date): string {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
-}
 
 function parseEstado(raw: string | null): EstadoMetricaFiltro | null {
   const normalized = (raw ?? "OCUPADO").toUpperCase();
@@ -38,7 +33,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     const { searchParams } = new URL(request.url);
     const proyectoId = searchParams.get("projectId");
-    const periodo = searchParams.get("periodo") ?? toPeriodo(new Date());
+    const periodo = searchParams.get("periodo") ?? toPeriodKey(new Date());
     const estado = parseEstado(searchParams.get("estado"));
 
     if (!proyectoId) {

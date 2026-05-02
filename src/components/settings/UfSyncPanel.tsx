@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { extractApiErrorMessage } from "@/lib/http/client-errors";
 import { formatUf } from "@/lib/utils";
 
 type UfRow = { fecha: string; valor: string };
@@ -16,17 +17,6 @@ type UfSyncPanelProps = {
   isAdmin: boolean;
   ufValues: UfRow[];
 };
-
-async function readErrorMessage(response: Response, fallback: string): Promise<string> {
-  const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) return fallback;
-  try {
-    const data = (await response.json()) as { message?: string };
-    return data.message ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 function TrendBadge({ current, previous }: { current: string; previous?: string }): JSX.Element | null {
   if (!previous) return null;
@@ -69,7 +59,7 @@ export function UfSyncPanel({ currentUf, isStale, isAdmin, ufValues }: UfSyncPan
     try {
       const response = await fetch("/api/admin/uf-sync", { method: "POST" });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, "Error al sincronizar UF."));
+        throw new Error(await extractApiErrorMessage(response, "Error al sincronizar UF."));
       }
       const data = (await response.json()) as { synced: number; skipped: number };
       if (data.synced === 0) {
@@ -98,7 +88,7 @@ export function UfSyncPanel({ currentUf, isStale, isAdmin, ufValues }: UfSyncPan
         body: JSON.stringify({ desde: backfillDesde, hasta: backfillHasta }),
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, "Error al sincronizar rango UF."));
+        throw new Error(await extractApiErrorMessage(response, "Error al sincronizar rango UF."));
       }
       const data = (await response.json()) as { synced: number; skipped: number };
       toast.success(`Backfill completado: ${data.synced} registros sincronizados, ${data.skipped} omitidos.`);

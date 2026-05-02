@@ -28,6 +28,7 @@ import { SalesYoYChart } from "@/components/tenant-360/SalesYoYChart";
 import { SalesSeasonalityChart } from "@/components/tenant-360/SalesSeasonalityChart";
 import { RentCompositionChart } from "@/components/tenant-360/RentCompositionChart";
 import { BillingRealizationSection } from "@/components/tenant-360/BillingRealizationSection";
+import { extractApiErrorMessage } from "@/lib/http/client-errors";
 import { cn } from "@/lib/utils";
 import type { Local360Data } from "@/types/local-360";
 
@@ -49,17 +50,6 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "facturacion", label: "Facturación & Ocupación" },
   { id: "analisis",    label: "Análisis & Proyecciones" },
 ];
-
-async function readErrorMessage(response: Response, fallback: string): Promise<string> {
-  const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) return fallback;
-  try {
-    const data = (await response.json()) as { message?: string };
-    return data.message ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 export function Local360Client({
   unitId,
@@ -87,7 +77,7 @@ export function Local360Client({
       if (selectedTenantId) params.set("tenantId", selectedTenantId);
       const response = await fetch(`/api/real/units/${unitId}?${params.toString()}`);
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, "Error al cargar datos del local."));
+        throw new Error(await extractApiErrorMessage(response, "Error al cargar datos del local."));
       }
       const payload = (await response.json()) as Local360Data;
       setData(payload);

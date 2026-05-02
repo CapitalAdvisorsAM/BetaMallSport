@@ -13,6 +13,8 @@ import {
   Legend,
   Line,
   LineChart,
+  Pie,
+  PieChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -35,7 +37,7 @@ import {
   chartMargins,
 } from "@/lib/charts/theme";
 import { formatWaltValue } from "@/lib/plan/snapshot-date";
-import { formatPercent, formatSquareMeters, formatUf } from "@/lib/utils";
+import { formatPercent, formatPeriodoCorto, formatSquareMeters, formatUf } from "@/lib/utils";
 import type { PeriodoMetrica } from "@/types/rent-roll-timeline";
 import type { FormulaConfig } from "@/lib/dashboard/custom-widget-engine";
 
@@ -48,9 +50,15 @@ type CustomWidgetRow = {
   formulaConfig: FormulaConfig;
 };
 
+export type GlaCategoryDatum = {
+  category: string;
+  totalM2: number;
+};
+
 type RentRollChartsSectionProps = {
   periodos: PeriodoMetrica[];
   categoryConcentration: RentRollCategoryConcentrationDatum[];
+  glaTotalByCategory?: GlaCategoryDatum[];
   referencePeriodo?: string;
   enabledCharts?: Set<string>;
   waltVariant?: string;
@@ -62,27 +70,6 @@ type RentRollChartsSectionProps = {
 // because the two lines aren't a series — they are separate metrics.
 const chartSeriesPaletteWaltColor = "#7c3aed";
 
-const MESES_ES = [
-  "Ene",
-  "Feb",
-  "Mar",
-  "Abr",
-  "May",
-  "Jun",
-  "Jul",
-  "Ago",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dic"
-];
-
-function formatPeriodoLabel(periodo: string): string {
-  const [yearStr, monthStr] = periodo.split("-");
-  const monthIndex = Number(monthStr) - 1;
-  const year = String(Number(yearStr)).slice(-2);
-  return `${MESES_ES[monthIndex] ?? monthStr} ${year}`;
-}
 
 function getCurrentPeriodo(): string {
   const now = new Date();
@@ -93,12 +80,12 @@ function getCurrentPeriodo(): string {
 
 function tickFormatter(value: string, index: number, total: number): string {
   if (total > 18) {
-    return index % 6 === 0 ? formatPeriodoLabel(value) : "";
+    return index % 6 === 0 ? formatPeriodoCorto(value) : "";
   }
   if (total > 9) {
-    return index % 3 === 0 ? formatPeriodoLabel(value) : "";
+    return index % 3 === 0 ? formatPeriodoCorto(value) : "";
   }
-  return formatPeriodoLabel(value);
+  return formatPeriodoCorto(value);
 }
 
 function formatWaltAxisTick(value: number): string {
@@ -111,6 +98,7 @@ function formatWaltAxisTick(value: number): string {
 export function RentRollChartsSection({
   periodos,
   categoryConcentration,
+  glaTotalByCategory = [],
   referencePeriodo,
   enabledCharts,
   waltVariant = "con_walt",
@@ -127,7 +115,7 @@ export function RentRollChartsSection({
     tickFormatter(value, index, total);
 
   const tooltipLabelFormatter = (label: ReactNode): ReactNode =>
-    typeof label === "string" ? formatPeriodoLabel(label) : label;
+    typeof label === "string" ? formatPeriodoCorto(label) : label;
 
   const { chart1Data, waltAxisMax } = useMemo(() => {
     const data = periodos.map((p) => ({
@@ -197,6 +185,46 @@ export function RentRollChartsSection({
     <section className="space-y-4">
       {chartEnabled("chart_concentracion_gla") && (
         <RentRollCategoryConcentration data={categoryConcentration} />
+      )}
+
+      {/* chart4 — Distribución m² Totales por Categoría */}
+      {glaTotalByCategory.length > 0 && (
+        <MetricChartCard
+          title="Distribución de m² Totales por Categoría"
+          metricId="chart_gla_distribution_pie"
+          description="Participación de cada categoría (tamaño) en el total de m² GLA del proyecto."
+        >
+          <div className="flex flex-col items-center gap-4 sm:flex-row">
+            <ResponsiveContainer width="100%" height={chartHeight.md}>
+              <PieChart>
+                <Pie
+                  data={glaTotalByCategory}
+                  dataKey="totalM2"
+                  nameKey="category"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={110}
+                  label={({ name, percent }: { name?: string; percent?: number }) =>
+                    `${name ?? ""} ${((percent ?? 0) * 100).toFixed(1)}%`
+                  }
+                  labelLine={false}
+                >
+                  {glaTotalByCategory.map((_, i) => {
+                    const palette = [chartColors.brandPrimary, chartColors.gold, chartColors.brandDark, chartColors.brandLight, chartColors.goldLight];
+                    return <Cell key={`cell-${i}`} fill={palette[i % palette.length]} />;
+                  })}
+                </Pie>
+                <Tooltip
+                  formatter={(value, name) => [
+                    `${Number(value ?? 0).toLocaleString("es-CL", { maximumFractionDigits: 0 })} m²`,
+                    String(name ?? "")
+                  ]}
+                />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </MetricChartCard>
       )}
 
       <header className="rounded-md bg-white p-4 shadow-sm">

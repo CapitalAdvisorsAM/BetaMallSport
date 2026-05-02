@@ -125,6 +125,16 @@ enum UserRole {
   GERENCIA
 }
 
+enum AnalysisView {
+  EERR
+  CDG
+}
+
+enum NoteStatus {
+  OPEN
+  RESOLVED
+}
+
 model Project {
   id                       String                    @id @default(uuid()) @db.Uuid
   nombre                   String
@@ -153,6 +163,7 @@ model Project {
   expenseBudgets           ExpenseBudget[]
   balanceRecords           BalanceRecord[]
   bankMovements            BankMovement[]
+  notes                    AnalysisNote[]
 
   @@index([activo])
   @@index([nombre])
@@ -262,26 +273,26 @@ model TenantBudgetedSale {
 }
 
 model TenantSaleDaily {
-  id                   String    @id @default(uuid()) @db.Uuid
-  projectId            String    @map("proyectoId") @db.Uuid
-  tenantId             String?   @map("arrendatarioId") @db.Uuid
-  salesAccountId       String    @map("idCa")
-  storeName            String    @map("tiendaNombre")
-  date                 DateTime  @map("fecha") @db.Date
-  period               DateTime  @map("periodo") @db.Date
-  day                  Int       @map("dia")
-  totalReceipts        Decimal   @map("totalBoletas") @db.Decimal(18, 2)
-  totalExemptReceipts  Decimal   @map("totalBoletasExentas") @db.Decimal(18, 2)
-  totalInvoices        Decimal   @map("totalFacturas") @db.Decimal(18, 2)
-  totalCreditNotes     Decimal   @map("totalNotasCredito") @db.Decimal(18, 2)
-  salesPesos           Decimal   @map("ventasPesos") @db.Decimal(18, 2)
-  registrationDate     DateTime? @map("fechaRegistro") @db.Date
-  sizeCategory         String?   @map("categoriaTamano")
-  typeCategory         String?   @map("categoriaTipo")
-  floor                String?   @map("piso")
-  glaType              String?   @map("glaTipo")
-  createdAt            DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt            DateTime  @updatedAt @db.Timestamptz(3)
+  id                  String    @id @default(uuid()) @db.Uuid
+  projectId           String    @map("proyectoId") @db.Uuid
+  tenantId            String?   @map("arrendatarioId") @db.Uuid
+  salesAccountId      String    @map("idCa")
+  storeName           String    @map("tiendaNombre")
+  date                DateTime  @map("fecha") @db.Date
+  period              DateTime  @map("periodo") @db.Date
+  day                 Int       @map("dia")
+  totalReceipts       Decimal   @map("totalBoletas") @db.Decimal(18, 2)
+  totalExemptReceipts Decimal   @map("totalBoletasExentas") @db.Decimal(18, 2)
+  totalInvoices       Decimal   @map("totalFacturas") @db.Decimal(18, 2)
+  totalCreditNotes    Decimal   @map("totalNotasCredito") @db.Decimal(18, 2)
+  salesPesos          Decimal   @map("ventasPesos") @db.Decimal(18, 2)
+  registrationDate    DateTime? @map("fechaRegistro") @db.Date
+  sizeCategory        String?   @map("categoriaTamano")
+  typeCategory        String?   @map("categoriaTipo")
+  floor               String?   @map("piso")
+  glaType             String?   @map("glaTipo")
+  createdAt           DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @db.Timestamptz(3)
 
   project Project @relation(fields: [projectId], references: [id])
   tenant  Tenant? @relation(fields: [tenantId, projectId], references: [id, projectId])
@@ -545,14 +556,42 @@ model DataUpload {
 }
 
 model User {
-  id            String    @id @default(uuid()) @db.Uuid
+  id            String         @id @default(uuid()) @db.Uuid
   name          String?
-  email         String?   @unique
-  emailVerified DateTime? @db.Timestamptz(3)
+  email         String?        @unique
+  emailVerified DateTime?      @db.Timestamptz(3)
   image         String?
-  role          UserRole  @default(OPERACIONES)
+  role          UserRole       @default(OPERACIONES)
   accounts      Account[]
   sessions      Session[]
+  createdNotes  AnalysisNote[] @relation("NoteCreator")
+  updatedNotes  AnalysisNote[] @relation("NoteUpdater")
+  resolvedNotes AnalysisNote[] @relation("NoteResolver")
+}
+
+model AnalysisNote {
+  id           String       @id @default(uuid()) @db.Uuid
+  projectId    String       @db.Uuid
+  lineKey      String
+  view         AnalysisView
+  body         String       @db.Text
+  status       NoteStatus   @default(OPEN)
+  createdById  String       @db.Uuid
+  updatedById  String?      @db.Uuid
+  resolvedById String?      @db.Uuid
+  resolvedAt   DateTime?    @db.Timestamptz(3)
+  deletedAt    DateTime?    @db.Timestamptz(3)
+  createdAt    DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime     @updatedAt @db.Timestamptz(3)
+
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy  User    @relation("NoteCreator", fields: [createdById], references: [id])
+  updatedBy  User?   @relation("NoteUpdater", fields: [updatedById], references: [id])
+  resolvedBy User?   @relation("NoteResolver", fields: [resolvedById], references: [id])
+
+  @@index([projectId])
+  @@index([projectId, view, lineKey])
+  @@index([projectId, status])
 }
 
 model Account {
@@ -672,6 +711,8 @@ model AccountingRecord {
   documentHeader        String?            @map("textoCabDocumento")
   glaFlag               Boolean?           @map("esGla")
   scenario              AccountingScenario @default(REAL) @map("escenario")
+  isManuallyEdited      Boolean            @default(false) @map("editadoManualmente")
+  originalValueUf       Decimal?           @map("valorUfOriginal") @db.Decimal(14, 4)
   createdAt             DateTime           @default(now()) @db.Timestamptz(3)
 
   project        Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -692,6 +733,7 @@ model AccountingRecord {
   @@index([chartOfAccountId, period])
   @@index([projectId, scenario, period])
   @@index([projectId, scenario, group3, period])
+  @@index([projectId, isManuallyEdited])
   @@map("RegistroContable")
 }
 

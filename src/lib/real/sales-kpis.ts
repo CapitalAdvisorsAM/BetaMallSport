@@ -7,6 +7,7 @@
  *   5. Ticket UF/m² promedio mensual (mean of monthly ratios)
  */
 
+import { toNum } from "@/lib/real/billing-utils";
 import { yoyPct } from "@/lib/real/panel-kpis";
 import {
   distributeSalesToUnits,
@@ -16,14 +17,6 @@ import {
   type VentaUnitInput
 } from "@/lib/real/ventas-timeseries";
 import type { VentasKpisResponse } from "@/types/sales-analytics";
-
-type DecimalLike = number | string | { toString(): string };
-
-function toNum(v: DecimalLike | null | undefined): number {
-  if (v === null || v === undefined) return 0;
-  const n = Number(v.toString());
-  return Number.isFinite(n) ? n : 0;
-}
 
 export type BuildSalesKpisArgs = {
   sales: VentaSaleInput[];

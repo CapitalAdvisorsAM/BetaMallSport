@@ -14,6 +14,7 @@ import {
   type KpiContractInput
 } from "@/lib/kpi";
 import { pivotAccounting } from "@/lib/real/accounting-pivot";
+import { toPeriodKey } from "@/lib/real/period-range";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { computeEstadoContrato, startOfDay } from "@/lib/utils";
@@ -22,12 +23,6 @@ import { buildMetricsCacheKey, getOrSetMetricsCache } from "@/lib/metrics-cache"
 import type { DashboardMetricsResponse } from "@/types/dashboard-metrics";
 
 export const runtime = "nodejs";
-
-function toPeriodo(value: Date): string {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
-}
 
 function toIsoDateString(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -39,7 +34,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     const { searchParams } = new URL(request.url);
     const proyectoId = searchParams.get("projectId");
-    const periodo = searchParams.get("periodo") ?? toPeriodo(new Date());
+    const periodo = searchParams.get("periodo") ?? toPeriodKey(new Date());
     const scenarioParam = searchParams.get("scenario")?.toUpperCase();
     const scenario: AccountingScenario =
       scenarioParam === "PPTO" ? AccountingScenario.PPTO : AccountingScenario.REAL;

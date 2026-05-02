@@ -4,7 +4,7 @@
  */
 
 import { ContractRateType, ContractStatus } from "@prisma/client";
-import { VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
+import { ACCOUNTING_REVENUE_GROUP, VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
 import {
   type DecimalLike,
   toNum,
@@ -78,7 +78,6 @@ export type BvaAccountingRecord = {
 // Core
 // ---------------------------------------------------------------------------
 
-const REVENUE_GROUP = "INGRESOS DE EXPLOTACION";
 
 export function buildBudgetVsActual(
   contracts: BvaContract[],
@@ -91,7 +90,7 @@ export function buildBudgetVsActual(
   const actualByUnitPeriod = new Map<string, Map<string, number>>();
   for (const r of accountingRecords) {
     if (!r.unitId) continue;
-    if (r.group1 !== REVENUE_GROUP) continue;
+    if (r.group1 !== ACCOUNTING_REVENUE_GROUP) continue;
     const p = periodKey(r.period);
     if (!periods.includes(p)) continue;
     const unitMap = actualByUnitPeriod.get(r.unitId) ?? new Map<string, number>();

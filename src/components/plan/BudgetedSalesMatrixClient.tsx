@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { ExcelColumnHeader } from "@/components/ui/DataTable";
 import { getTableTheme, getStripedRowClass } from "@/components/ui/table-theme";
 import { useBudgetedSalesCellApi } from "@/hooks/useBudgetedSalesCellApi";
-import { cn, formatClp, formatDecimal } from "@/lib/utils";
+import { cn, formatClp, formatDecimal, formatPeriodoCorto } from "@/lib/utils";
 import type { BudgetedSalesMatrixResponse, BudgetedSalesMatrixRow } from "@/types/rent-roll";
 
 type BudgetedSalesMatrixClientProps = {
@@ -40,12 +40,6 @@ type ViewMode = "pesos" | "pesosm2";
 
 const compactTheme = getTableTheme("compact");
 
-const MONTH_NAMES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-
-function formatPeriodShort(period: string): string {
-  const [y, m] = period.split("-");
-  return `${MONTH_NAMES[Number(m) - 1]} ${y.slice(2)}`;
-}
 
 function formatCell(value: number | null, mode: ViewMode, glam2: number): string {
   if (value === null) return "—";
@@ -301,7 +295,7 @@ export function BudgetedSalesMatrixClient({
       ...data.periods.map((p): ColumnDef<BudgetedSalesMatrixRow> => ({
         id: p,
         accessorFn: (row) => row.byPeriod[p] ?? null,
-        header: () => <span className="text-xs">{formatPeriodShort(p)}</span>,
+        header: () => <span className="text-xs">{formatPeriodoCorto(p)}</span>,
         filterFn: "inNumberRange",
         meta: { filterType: "number", align: "right" },
         cell: ({ row }) => {

@@ -190,13 +190,29 @@ export function OccupancyClient({
   }
   const dimensionKeys = [...allDimensions];
 
-  // Build chart data
+  // Build chart data (occupied GLA by selected dimension)
   const chartData = snapshots.map((snap) => {
     const rows = getRowsForDimension(snap, dimension);
     const entry: Record<string, string | number> = { periodo: snap.period };
     for (const key of dimensionKeys) {
       const row = rows.find((r) => r.dimension === key);
       entry[key] = row ? row.glaOcupada : 0;
+    }
+    entry["Vacancia %"] = snap.totals.pctVacancia;
+    return entry;
+  });
+
+  // chart6 — Vacancia por Tipo de Tienda (m²): always locked to byType
+  const allTypes = new Set<string>();
+  for (const snap of snapshots) {
+    for (const row of snap.byType) allTypes.add(row.dimension);
+  }
+  const typeKeys = [...allTypes];
+  const vacancyByTypeData = snapshots.map((snap) => {
+    const entry: Record<string, string | number> = { periodo: snap.period };
+    for (const key of typeKeys) {
+      const row = snap.byType.find((r) => r.dimension === key);
+      entry[key] = row ? row.glaVacante : 0;
     }
     entry["Vacancia %"] = snap.totals.pctVacancia;
     return entry;
@@ -301,6 +317,61 @@ export function OccupancyClient({
               </ComposedChart>
             </ResponsiveContainer>
           </MetricChartCard>
+
+          {/* chart6 — Vacancia por Tipo de Tienda (m²) */}
+          {typeKeys.length > 0 && (
+            <MetricChartCard
+              title="Vacancia por Tipo de Tienda (m²)"
+              metricId="chart_vacancy_by_type"
+              description="Barras: GLA vacante por tipo de espacio (m²). Línea: tasa de vacancia total (%)."
+            >
+              <ResponsiveContainer width="100%" height={chartHeight.md}>
+                <ComposedChart data={vacancyByTypeData} margin={chartMargins.default}>
+                  <CartesianGrid {...chartGridProps} />
+                  <XAxis dataKey="periodo" {...chartAxisProps} tickFormatter={buildPeriodoTickFormatter(snapshots.length)} />
+                  <YAxis yAxisId="left" {...chartAxisProps} tickFormatter={(v: number) => formatUf(v, 0)} />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    {...chartAxisProps}
+                    tickFormatter={(v: number) => formatPercent(v)}
+                    domain={[0, "auto"]}
+                  />
+                  <Tooltip
+                    content={
+                      <ChartTooltip
+                        labelFormatter={(l) => formatPeriodoCorto(String(l))}
+                        valueFormatter={(value, name) => {
+                          const v = typeof value === "number" ? value : Number(value ?? 0);
+                          return String(name) === "Vacancia %" ? formatPercent(v) : formatUf(v, 0);
+                        }}
+                      />
+                    }
+                  />
+                  <Legend {...chartLegendProps} />
+                  {typeKeys.map((key, i) => (
+                    <Bar
+                      key={key}
+                      yAxisId="left"
+                      dataKey={key}
+                      name={key}
+                      stackId="vacancia"
+                      fill={getSeriesColor(i)}
+                    />
+                  ))}
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="Vacancia %"
+                    name="Vacancia %"
+                    stroke={chartColors.negative}
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </MetricChartCard>
+          )}
 
           {/* Current snapshot table */}
           <ModuleSectionCard>

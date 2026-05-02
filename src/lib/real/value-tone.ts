@@ -2,10 +2,12 @@ export type FlowKind = "ingreso" | "costo";
 
 export type Tone = "positive" | "negative" | "neutral";
 
-export function getValueTone(kind: FlowKind, value: number | null | undefined): Tone {
+export function getValueTone(_kind: FlowKind, value: number | null | undefined): Tone {
   if (value === null || value === undefined) return "neutral";
   if (value === 0) return "neutral";
-  if (kind === "costo") return value > 0 ? "negative" : "positive";
+  // Sign-based: positive = green, negative = red for all sections.
+  // Costs are stored as negative UF values, so they correctly show red.
+  // `_kind` is kept only so callers don't need to change signatures.
   return value >= 0 ? "positive" : "negative";
 }
 

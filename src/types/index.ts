@@ -100,6 +100,20 @@ export type {
   Tenant360BudgetSalesPoint
 } from "./tenant-360";
 export type {
+  AnalysisNoteListResponse,
+  AnalysisNoteRow,
+  AnalysisViewKey,
+  NoteStatusKey,
+  NoteUserRef
+} from "./notes";
+export type {
+  AccountingRecordRow,
+  AccountingRecordPatchPayload,
+  AccountingRecordsResponse,
+  AccountingManualEditsWarning,
+  AccountingGroupOptions,
+} from "./accounting-records";
+export type {
   Local360Data,
   Local360Profile,
   Local360QuickStats,

@@ -63,9 +63,9 @@ declare module "@tanstack/react-table" {
 const VIRTUALIZATION_THRESHOLD = 100;
 
 const DENSITY_ROW_HEIGHT: Record<TableDensity, number> = {
-  compact: 33,
-  default: 41,
-  comfortable: 49,
+  compact: 29,
+  default: 37,
+  comfortable: 45,
 };
 
 interface DataTableProps<TData> {

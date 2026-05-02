@@ -156,6 +156,11 @@ export function groupPeriodosByYear(periods: string[]): { year: string; count: n
   return groups;
 }
 
+export function getCurrentYearMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export function slugify(value: string): string {
   const normalized = value
     .normalize("NFD")

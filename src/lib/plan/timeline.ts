@@ -1,16 +1,8 @@
 import { ContractStatus, UnitType, ContractRateType, Prisma } from "@prisma/client";
 import { calculateWalt } from "@/lib/kpi";
 import { prisma } from "@/lib/prisma";
+import { toPeriodKey as toPeriodoKey } from "@/lib/real/period-range";
 import type { PeriodoMetrica, TimelineResponse } from "@/types/rent-roll-timeline";
-
-function toPeriodoKey(date: Date | string): string {
-  if (typeof date === "string") {
-    return date.slice(0, 7);
-  }
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
-}
 
 function parsePeriodoKey(periodo: string): { year: number; month: number } {
   const [yearStr, monthStr] = periodo.split("-");

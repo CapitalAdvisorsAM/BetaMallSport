@@ -48,9 +48,7 @@ export function toNum(value: DecimalLike | null | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-export function periodKey(d: Date): string {
-  return d.toISOString().slice(0, 7);
-}
+export { toPeriodKey as periodKey } from "@/lib/real/period-range";
 
 export function findRateForPeriod<T extends RateEntry>(tarifas: T[], periodDate: Date): T | null {
   const nonDec = tarifas

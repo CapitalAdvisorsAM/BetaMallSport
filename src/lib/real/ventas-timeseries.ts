@@ -7,6 +7,8 @@
  * `buildSalesCrosstab` and `buildSalesKpis`.
  */
 
+import { toNum } from "@/lib/real/billing-utils";
+import { toPeriodKey as periodKey } from "@/lib/real/period-range";
 import type {
   VentasDimensionSeries,
   VentasSeriesPoint,
@@ -42,15 +44,7 @@ export type VentaUnitInput = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function toNum(v: DecimalLike | null | undefined): number {
-  if (v === null || v === undefined) return 0;
-  const n = Number(v.toString());
-  return Number.isFinite(n) ? n : 0;
-}
-
-export function periodKey(d: Date): string {
-  return d.toISOString().slice(0, 7);
-}
+export { periodKey };
 
 function periodBounds(period: string): { start: Date; end: Date } {
   const start = new Date(`${period}-01T00:00:00Z`);

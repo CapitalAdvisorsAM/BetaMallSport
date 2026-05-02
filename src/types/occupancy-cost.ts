@@ -21,3 +21,13 @@ export type CostoOcupacionResponse = {
   ytdFrom: string;
   rows: CostoOcupacionRow[];
 };
+
+export type CostoOcupacionTimeseriesSeries = {
+  dimension: string;
+  data: (number | null)[];
+};
+
+export type CostoOcupacionTimeseriesResponse = {
+  periods: string[];
+  series: CostoOcupacionTimeseriesSeries[];
+};

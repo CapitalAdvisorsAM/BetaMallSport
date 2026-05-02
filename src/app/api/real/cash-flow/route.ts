@@ -23,26 +23,32 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
 
     const { desdeDate, hastaDate } = resolveMonthRange(from, to);
-    const records = await prisma.bankMovement.findMany({
-      where: {
-        projectId,
-        period: { gte: desdeDate, lte: hastaDate }
-      },
-      orderBy: [{ period: "asc" }, { classification: "asc" }],
-      select: {
-        period: true,
-        classification: true,
-        amountClp: true
-      }
-    });
+
+    const [rawMovements, rawFondos] = await Promise.all([
+      prisma.bankMovement.findMany({
+        where: { projectId, period: { gte: desdeDate, lte: hastaDate } },
+        orderBy: [{ period: "asc" }, { classification: "asc" }],
+        select: { period: true, classification: true, amountClp: true, bank: true }
+      }),
+      prisma.balanceRecord.findMany({
+        where: {
+          projectId,
+          period: { gte: desdeDate, lte: hastaDate },
+          category: { contains: "Fondo", mode: "insensitive" }
+        },
+        select: { period: true, assetClp: true }
+      })
+    ]);
 
     return NextResponse.json(
       buildCashFlow(
-        records.map((record) => ({
-          period: record.period,
-          classification: record.classification,
-          amountClp: record.amountClp
-        }))
+        rawMovements.map((r) => ({
+          period: r.period,
+          classification: r.classification,
+          amountClp: r.amountClp,
+          bank: r.bank
+        })),
+        rawFondos.map((r) => ({ period: r.period, balanceClp: r.assetClp }))
       )
     );
   } catch (error) {

@@ -56,7 +56,7 @@ export function parseVentas(buffer: Buffer): FilaVenta[] {
   for (const row of raw) {
     // Filtrar solo Tipo == "Real"
     const tipo = str(row["Tipo"]);
-    if (tipo && tipo.toLowerCase() !== "real") continue;
+    if (tipo.toLowerCase() !== "real") continue;
 
     const idCa = str(row["ID CA"]).trim();
     if (!idCa) continue;
