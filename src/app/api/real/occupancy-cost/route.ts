@@ -13,7 +13,7 @@ import {
 } from "@/lib/real/costo-ocupacion";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import type { CostoOcupacionResponse } from "@/types/occupancy-cost";
+import type { CostoOcupacionResponse, CostoOcupacionTimeseriesResponse } from "@/types/occupancy-cost";
 
 export async function GET(request: Request): Promise<NextResponse> {
   try {
@@ -23,6 +23,11 @@ export async function GET(request: Request): Promise<NextResponse> {
     const projectId = getFinanceProjectId(searchParams);
     if (!projectId) {
       return NextResponse.json({ message: "projectId requerido." }, { status: 400 });
+    }
+
+    const mode = searchParams.get("mode");
+    if (mode === "timeseries") {
+      return handleTimeseries(searchParams, projectId);
     }
 
     const period = searchParams.get("period") ?? searchParams.get("to") ?? "";
@@ -127,4 +132,94 @@ export async function GET(request: Request): Promise<NextResponse> {
   } catch (error) {
     return handleApiError(error);
   }
+}
+
+async function handleTimeseries(
+  searchParams: URLSearchParams,
+  projectId: string
+): Promise<NextResponse> {
+  const dimension = (searchParams.get("dimension") ?? "tamano") as "tamano" | "piso";
+  const fromParam = searchParams.get("from") ?? "";
+  const toParam = searchParams.get("to") ?? searchParams.get("period") ?? "";
+
+  if (!/^\d{4}-\d{2}$/.test(fromParam) || !/^\d{4}-\d{2}$/.test(toParam)) {
+    return NextResponse.json({ message: "from y to requeridos (YYYY-MM)." }, { status: 400 });
+  }
+
+  const fromDate = new Date(`${fromParam}-01T00:00:00Z`);
+  const toDate = new Date(`${toParam}-01T00:00:00Z`);
+
+  const [rawRecords, rawSalesDaily, rawUf] = await Promise.all([
+    prisma.accountingRecord.findMany({
+      where: {
+        projectId,
+        group1: "INGRESOS DE EXPLOTACION",
+        period: { gte: fromDate, lte: toDate },
+        scenario: AccountingScenario.REAL
+      },
+      select: {
+        period: true,
+        valueUf: true,
+        sizeCategory: true,
+        floor: true
+      }
+    }),
+    prisma.tenantSaleDaily.findMany({
+      where: { projectId, period: { gte: fromDate, lte: toDate } },
+      select: { period: true, salesPesos: true, sizeCategory: true, floor: true }
+    }),
+    prisma.valorUF.findMany({
+      where: { fecha: { gte: fromDate, lte: toDate } },
+      select: { fecha: true, valor: true }
+    })
+  ]);
+
+  const ufByPeriod = new Map<string, number>();
+  for (const uf of rawUf) {
+    const key = uf.fecha.toISOString().slice(0, 7);
+    if (!ufByPeriod.has(key)) ufByPeriod.set(key, Number(uf.valor));
+  }
+
+  const billingMap = new Map<string, Map<string, number>>();
+  for (const r of rawRecords) {
+    const dimValue = (dimension === "tamano" ? r.sizeCategory : r.floor) ?? "Sin datos";
+    const p = r.period.toISOString().slice(0, 7);
+    const dimMap = billingMap.get(dimValue) ?? new Map<string, number>();
+    dimMap.set(p, (dimMap.get(p) ?? 0) + Number(r.valueUf));
+    billingMap.set(dimValue, dimMap);
+  }
+
+  const salesMap = new Map<string, Map<string, number>>();
+  for (const s of rawSalesDaily) {
+    const dimValue = (dimension === "tamano" ? s.sizeCategory : s.floor) ?? "Sin datos";
+    const p = s.period.toISOString().slice(0, 7);
+    const uf = ufByPeriod.get(p) ?? 0;
+    const salesUf = uf > 0 ? Number(s.salesPesos) / uf : 0;
+    const dimMap = salesMap.get(dimValue) ?? new Map<string, number>();
+    dimMap.set(p, (dimMap.get(p) ?? 0) + salesUf);
+    salesMap.set(dimValue, dimMap);
+  }
+
+  const periods: string[] = [];
+  const cur = new Date(fromDate);
+  while (cur <= toDate) {
+    periods.push(cur.toISOString().slice(0, 7));
+    cur.setUTCMonth(cur.getUTCMonth() + 1);
+  }
+
+  const allDims = new Set([...billingMap.keys(), ...salesMap.keys()]);
+  allDims.delete("Sin datos");
+
+  const series = [...allDims].map((dim) => ({
+    dimension: dim,
+    data: periods.map((p) => {
+      const billing = billingMap.get(dim)?.get(p) ?? 0;
+      const salesVal = salesMap.get(dim)?.get(p) ?? 0;
+      if (salesVal <= 0) return null;
+      return (billing / salesVal) * 100;
+    })
+  }));
+
+  const result: CostoOcupacionTimeseriesResponse = { periods, series };
+  return NextResponse.json(result);
 }

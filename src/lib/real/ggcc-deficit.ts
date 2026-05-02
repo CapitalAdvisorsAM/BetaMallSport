@@ -3,6 +3,8 @@
  * Replicates CDG Excel "GG.CC." sheet logic.
  */
 
+import { toNum } from "@/lib/real/billing-utils";
+import { toPeriodKey } from "@/lib/real/period-range";
 import type {
   GgccCostBreakdown,
   GgccDeficitByDimension,
@@ -28,15 +30,6 @@ export type GgccRecordInput = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function toNum(v: DecimalLike | null | undefined): number {
-  if (v === null || v === undefined) return 0;
-  const n = Number(v.toString());
-  return Number.isFinite(n) ? n : 0;
-}
-
-function pKey(d: Date): string {
-  return d.toISOString().slice(0, 7);
-}
 
 function normalizeLabel(v: string): string {
   return v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
@@ -112,7 +105,7 @@ export function buildGgccDeficit(
   const bySizeGla = new Map<string, Map<string, number>>();
 
   for (const r of records) {
-    const p = pKey(r.period);
+    const p = toPeriodKey(r.period);
     const val = toNum(r.valueUf);
 
     if (isRecovery(r.group3)) {
@@ -163,7 +156,7 @@ export function buildGgccDeficit(
   // Mano de Obra / Ingresos ratio
   const incomeByPeriod = new Map<string, number>();
   for (const r of incomeRecords) {
-    const p = pKey(r.period);
+    const p = toPeriodKey(r.period);
     incomeByPeriod.set(p, (incomeByPeriod.get(p) ?? 0) + toNum(r.valueUf));
   }
 

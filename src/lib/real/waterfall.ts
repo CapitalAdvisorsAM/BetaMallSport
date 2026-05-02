@@ -5,7 +5,7 @@
  */
 
 import { ContractDiscountType, ContractRateType, ContractStatus } from "@prisma/client";
-import { VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
+import { ACCOUNTING_REVENUE_GROUP, VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
 import {
   type DecimalLike,
   toNum,
@@ -106,12 +106,11 @@ export function buildWaterfall(
   previousPeriod: string,
   mode: WaterfallMode,
 ): WaterfallResponse {
-  const REVENUE_GROUP = "INGRESOS DE EXPLOTACION";
 
   // 1. Starting income (from accounting records in previousPeriod)
   let startingIncome = 0;
   for (const r of accountingRecords) {
-    if (r.group1 === REVENUE_GROUP && periodKey(r.period) === previousPeriod) {
+    if (r.group1 === ACCOUNTING_REVENUE_GROUP && periodKey(r.period) === previousPeriod) {
       startingIncome += toNum(r.valueUf);
     }
   }
@@ -119,7 +118,7 @@ export function buildWaterfall(
   // 2. Ending income (from accounting records in currentPeriod)
   let endingIncome = 0;
   for (const r of accountingRecords) {
-    if (r.group1 === REVENUE_GROUP && periodKey(r.period) === currentPeriod) {
+    if (r.group1 === ACCOUNTING_REVENUE_GROUP && periodKey(r.period) === currentPeriod) {
       endingIncome += toNum(r.valueUf);
     }
   }

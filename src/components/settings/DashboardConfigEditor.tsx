@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { extractApiErrorMessage } from "@/lib/http/client-errors";
 import { cn } from "@/lib/utils";
 import type { ResolvedWidgetConfig, WidgetId } from "@/lib/dashboard/widget-registry";
 import { getWidget, WIDGET_IDS } from "@/lib/dashboard/widget-registry";
@@ -32,17 +33,6 @@ const SECTION_LABELS: Record<string, string> = {
   cartera: "Estado de cartera",
   charts: "Gráficos (Rent Roll)",
 };
-
-async function readErrorMessage(response: Response, fallback: string): Promise<string> {
-  const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) return fallback;
-  try {
-    const data = (await response.json()) as { message?: string };
-    return data.message ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 export function DashboardConfigEditor({ initialConfigs, initialCustomWidgets, canEdit }: Props) {
   const router = useRouter();
@@ -98,7 +88,7 @@ export function DashboardConfigEditor({ initialConfigs, initialCustomWidgets, ca
       });
 
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, "Error al guardar configuración."));
+        throw new Error(await extractApiErrorMessage(response, "Error al guardar configuración."));
       }
 
       toast.success("Configuración guardada.");
@@ -123,7 +113,7 @@ export function DashboardConfigEditor({ initialConfigs, initialCustomWidgets, ca
         body: JSON.stringify({ ...payload, position: customWidgets.length }),
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, "Error al crear widget."));
+        throw new Error(await extractApiErrorMessage(response, "Error al crear widget."));
       }
       const created = (await response.json()) as CustomWidgetRow;
       setCustomWidgets((prev) => [...prev, created]);
@@ -148,7 +138,7 @@ export function DashboardConfigEditor({ initialConfigs, initialCustomWidgets, ca
         body: JSON.stringify({ enabled }),
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, "Error al actualizar."));
+        throw new Error(await extractApiErrorMessage(response, "Error al actualizar."));
       }
       startTransition(() => router.refresh());
     } catch (error) {
@@ -164,7 +154,7 @@ export function DashboardConfigEditor({ initialConfigs, initialCustomWidgets, ca
     try {
       const response = await fetch(`/api/custom-widgets/${id}`, { method: "DELETE" });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, "Error al eliminar."));
+        throw new Error(await extractApiErrorMessage(response, "Error al eliminar."));
       }
       setCustomWidgets((prev) => prev.filter((w) => w.id !== id));
       toast.success("Widget eliminado.");

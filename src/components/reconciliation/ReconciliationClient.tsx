@@ -316,22 +316,22 @@ export function ReconciliationClient({
 
     return (
       <TableRow className="border-t-2 border-brand-700 bg-slate-50 font-semibold text-slate-800 hover:bg-slate-50">
-        <TableCell className="sticky left-0 z-10 bg-slate-50 px-4 py-3">
+        <TableCell className="sticky left-0 z-10 bg-slate-50 px-4 py-2">
           Totales ({filteredRows.length} arrendatarios)
         </TableCell>
         {/* Locales column — empty */}
-        <TableCell className="px-3 py-3" />
-        <TableCell className="px-3 py-3 text-right tabular-nums">{formatUf(totalGla, 1)}</TableCell>
-        <TableCell className="px-3 py-3 text-right tabular-nums">{formatUf(totalExpected)}</TableCell>
-        <TableCell className="px-3 py-3 text-right tabular-nums">{formatUf(totalActual)}</TableCell>
-        <TableCell className={cn("px-3 py-3 text-right tabular-nums", gapTextStyles[gapSeverity])}>
+        <TableCell className="px-3 py-2" />
+        <TableCell className="px-3 py-2 text-right tabular-nums">{formatUf(totalGla, 1)}</TableCell>
+        <TableCell className="px-3 py-2 text-right tabular-nums">{formatUf(totalExpected)}</TableCell>
+        <TableCell className="px-3 py-2 text-right tabular-nums">{formatUf(totalActual)}</TableCell>
+        <TableCell className={cn("px-3 py-2 text-right tabular-nums", gapTextStyles[gapSeverity])}>
           {formatUf(totalGap)}
         </TableCell>
-        <TableCell className={cn("px-3 py-3 text-right tabular-nums", gapTextStyles[gapSeverity])}>
+        <TableCell className={cn("px-3 py-2 text-right tabular-nums", gapTextStyles[gapSeverity])}>
           {formatUf(totalGapPct, 1)}%
         </TableCell>
         {/* Estado badge column — empty in footer */}
-        <TableCell className="px-3 py-3" />
+        <TableCell className="px-3 py-2" />
       </TableRow>
     );
   }, [summary, filteredRows, activeTab]);

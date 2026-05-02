@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Area, CartesianGrid, ComposedChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
 import { ModuleEmptyState } from "@/components/dashboard/ModuleEmptyState";
@@ -13,6 +13,7 @@ import { UnifiedTable } from "@/components/ui/UnifiedTable";
 import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
 import {
   chartAxisProps,
+  chartBarRadius,
   chartGridProps,
   chartHeight,
   chartLegendProps,
@@ -21,6 +22,7 @@ import {
   gradientId,
   chartSeriesColors,
   buildPeriodoTickFormatter,
+  getSeriesColor,
 } from "@/lib/charts/theme";
 import { cn, formatPeriodoCorto, formatUf } from "@/lib/utils";
 import type { CashFlowResponse } from "@/types/finance";
@@ -117,6 +119,101 @@ export function CashFlowClient({ selectedProjectId, defaultDesde, defaultHasta }
               </ComposedChart>
             </ResponsiveContainer>
           </MetricChartCard>
+
+          {/* chart22 — Diversificación de Caja por Banco */}
+          {data.bankNames.length > 0 && (
+            <MetricChartCard
+              title="Diversificación de Caja por Banco (CLP)"
+              metricId="chart_cash_bank_diversification"
+              description="Saldo acumulado por banco en cada período. Barras apiladas por institución financiera."
+            >
+              <ResponsiveContainer width="100%" height={chartHeight.md}>
+                <ComposedChart data={data.periods.map((p) => {
+                  const entry: Record<string, string | number> = { period: p };
+                  for (const s of data.bankBreakdown) entry[s.bank] = s.byPeriod[p] ?? 0;
+                  return entry;
+                })} margin={chartMargins.default}>
+                  <CartesianGrid {...chartGridProps} />
+                  <XAxis dataKey="period" {...chartAxisProps} tickFormatter={buildPeriodoTickFormatter(data.periods.length)} />
+                  <YAxis {...chartAxisProps} tickFormatter={(v: number) => formatUf(v, 0)} />
+                  <Tooltip
+                    content={
+                      <ChartTooltip
+                        labelFormatter={(l) => formatPeriodoCorto(String(l))}
+                        valueFormatter={(value) => typeof value === "number" ? formatUf(value, 0) : String(value ?? "—")}
+                      />
+                    }
+                  />
+                  <Legend {...chartLegendProps} />
+                  {data.bankNames.map((bank, i) => (
+                    <Bar key={bank} dataKey={bank} name={bank} stackId="banks" fill={getSeriesColor(i)} radius={i === data.bankNames.length - 1 ? chartBarRadius : [0, 0, 0, 0]} maxBarSize={20} />
+                  ))}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </MetricChartCard>
+          )}
+
+          {/* chart23 — Fondos Mutuos */}
+          {Object.keys(data.fondosMutuosByPeriod).length > 0 && (
+            <MetricChartCard
+              title="Fondos Mutuos (CLP)"
+              metricId="chart_cash_fondos_mutuos"
+              description="Evolución del saldo de fondos mutuos del activo corriente por período."
+            >
+              <ResponsiveContainer width="100%" height={chartHeight.sm}>
+                <ComposedChart data={data.periods.map((p) => ({ period: p, "Fondos Mutuos": data.fondosMutuosByPeriod[p] ?? 0 }))} margin={chartMargins.default}>
+                  <CartesianGrid {...chartGridProps} />
+                  <XAxis dataKey="period" {...chartAxisProps} tickFormatter={buildPeriodoTickFormatter(data.periods.length)} />
+                  <YAxis {...chartAxisProps} tickFormatter={(v: number) => formatUf(v, 0)} />
+                  <Tooltip
+                    content={
+                      <ChartTooltip
+                        labelFormatter={(l) => formatPeriodoCorto(String(l))}
+                        valueFormatter={(value) => typeof value === "number" ? formatUf(value, 0) : String(value ?? "—")}
+                      />
+                    }
+                  />
+                  <Legend {...chartLegendProps} />
+                  <Line type="monotone" dataKey="Fondos Mutuos" name="Fondos Mutuos" stroke={chartSeriesColors.actual} strokeWidth={2} dot={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </MetricChartCard>
+          )}
+
+          {/* chart25 — Banco + Fondos Mutuos combinado */}
+          {data.bankNames.length > 0 && Object.keys(data.fondosMutuosByPeriod).length > 0 && (
+            <MetricChartCard
+              title="Caja por Banco + Fondos Mutuos (CLP)"
+              metricId="chart_cash_diversification_combined"
+              description="Barras apiladas por banco y línea de fondos mutuos en un mismo gráfico."
+            >
+              <ResponsiveContainer width="100%" height={chartHeight.md}>
+                <ComposedChart data={data.periods.map((p) => {
+                  const entry: Record<string, string | number> = { period: p, "Fondos Mutuos": data.fondosMutuosByPeriod[p] ?? 0 };
+                  for (const s of data.bankBreakdown) entry[s.bank] = s.byPeriod[p] ?? 0;
+                  return entry;
+                })} margin={chartMargins.default}>
+                  <CartesianGrid {...chartGridProps} />
+                  <XAxis dataKey="period" {...chartAxisProps} tickFormatter={buildPeriodoTickFormatter(data.periods.length)} />
+                  <YAxis yAxisId="left" {...chartAxisProps} tickFormatter={(v: number) => formatUf(v, 0)} />
+                  <YAxis yAxisId="right" orientation="right" {...chartAxisProps} tickFormatter={(v: number) => formatUf(v, 0)} />
+                  <Tooltip
+                    content={
+                      <ChartTooltip
+                        labelFormatter={(l) => formatPeriodoCorto(String(l))}
+                        valueFormatter={(value) => typeof value === "number" ? formatUf(value, 0) : String(value ?? "—")}
+                      />
+                    }
+                  />
+                  <Legend {...chartLegendProps} />
+                  {data.bankNames.map((bank, i) => (
+                    <Bar yAxisId="left" key={bank} dataKey={bank} name={bank} stackId="banks" fill={getSeriesColor(i)} radius={i === data.bankNames.length - 1 ? chartBarRadius : [0, 0, 0, 0]} maxBarSize={20} />
+                  ))}
+                  <Line yAxisId="right" type="monotone" dataKey="Fondos Mutuos" name="Fondos Mutuos" stroke="#011E42" strokeWidth={2} dot={false} strokeDasharray="4 2" />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </MetricChartCard>
+          )}
 
           <ModuleSectionCard>
             <UnifiedTable

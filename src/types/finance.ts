@@ -283,10 +283,18 @@ export type CashFlowSection = {
   total: number;
 };
 
+export type CashFlowBankSeries = {
+  bank: string;
+  byPeriod: Record<string, number>;
+};
+
 export type CashFlowResponse = {
   periods: string[];
   sections: CashFlowSection[];
   inflowsByPeriod: Record<string, number>;
   netByPeriod: Record<string, number>;
   cumulativeByPeriod: Record<string, number>;
+  bankNames: string[];
+  bankBreakdown: CashFlowBankSeries[];
+  fondosMutuosByPeriod: Record<string, number>;
 };

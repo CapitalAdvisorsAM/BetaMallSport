@@ -358,11 +358,86 @@ export const METRIC_FORMULAS = {
     title: "Breakdown All-In del Arrendatario (UF/m²)",
     formula: "UF/m² por tipo de cobro = SUM(valueUf por group3) / GLA ocupada",
     detail: "Descompone el UF/m² total facturado por tipo de cobro: arriendo fijo, variable, GG.CC. y otros ingresos."
+  },
+  chart_ggcc_cost_breakdown: {
+    title: "Desglose Costos GG.CC. (UF)",
+    formula: "SUM(valueUf) por subcategoría de costo: Contribuciones, Mano de Obra, Gastos Operaciones, Gastos Administración",
+    detail: "Desglosa la estructura de costos operacionales del gasto común por tipo de gasto."
+  },
+  chart_ggcc_recovery_vs_cost_m2: {
+    title: "Recuperación vs Costo Real GG.CC. (UF/m²)",
+    formula: "UF/m² = SUM(valueUf) / GLA total; Déficit % = (Recuperación - Costo) / Recuperación * 100",
+    detail: "Compara la intensidad de recuperación y costo de GG.CC. por metro cuadrado con su déficit relativo."
+  },
+  chart_ggcc_mdo_vs_ingresos: {
+    title: "Costo Mano de Obra vs Ingresos GG.CC. (UF)",
+    formula: "Mano de Obra UF = SUM(valueUf de Mano de Obra); % s/ Ingresos = Mano de Obra / Recuperación GGCC * 100",
+    detail: "Evalúa el peso relativo del costo de mano de obra sobre los ingresos totales de GG.CC."
+  },
+  chart_cash_bank_diversification: {
+    title: "Diversificación de Caja por Banco (CLP)",
+    formula: "Saldo acumulado por banco = SUM(amountClp de BankMovement) acumulado por período",
+    detail: "Muestra cómo se distribuye la caja acumulada entre los distintos bancos en cada período."
+  },
+  chart_cash_fondos_mutuos: {
+    title: "Fondos Mutuos (CLP)",
+    formula: "Saldo Fondos Mutuos = SUM(assetClp de BalanceRecord donde categoría contiene 'Fondo')",
+    detail: "Evolución del saldo de fondos mutuos registrados en el balance de activos corrientes."
+  },
+  chart_cash_diversification_combined: {
+    title: "Caja por Banco + Fondos Mutuos (CLP)",
+    formula: "Barras: saldo acumulado por banco; Línea: saldo fondos mutuos",
+    detail: "Vista combinada de la diversificación de caja bancaria y los fondos mutuos en un mismo gráfico."
+  },
+  chart_eerr_income_breakdown: {
+    title: "Breakdown Ingresos de Explotación (UF)",
+    formula: "SUM(valueUf) por group3 dentro de INGRESOS DE EXPLOTACION por período",
+    detail: "Descompone los ingresos de explotación en sus líneas: arriendo fijo, variable, energía, marketing, etc."
+  },
+  chart_eerr_opex_breakdown: {
+    title: "Desglose Gastos Operacionales (UF)",
+    formula: "SUM(|valueUf|) por sección de costos operacionales (VACANCIA G.C., GASTOS MARKETING, GASTOS INMOBILIARIA)",
+    detail: "Muestra la composición mensual de los gastos operacionales del EE.RR. agrupados por sección."
+  },
+  chart_gla_distribution_pie: {
+    title: "Distribución m² GLA por Categoría",
+    formula: "SUM(glam2 donde esGLA=true) agrupado por categoriaTamano",
+    detail: "Muestra qué porcentaje del GLA total corresponde a cada categoría de tamaño de local."
+  },
+  chart_ventas_diarias_bar: {
+    title: "Ventas Diarias (UF)",
+    formula: "SUM(salesPesos * valorUF para cada día) / valorUF diario",
+    detail: "Venta total diaria en UF para el período seleccionado, incluyendo todos los locales."
+  },
+  chart_vacancy_by_type: {
+    title: "Vacancia por Tipo de Tienda (m²)",
+    formula: "SUM(glaVacante) por tipo de espacio; Vacancia % = glaVacante / glaTotal * 100",
+    detail: "Descompone la vacancia en m² por cada tipo de espacio, con la tasa de vacancia total como línea de referencia."
+  },
+  chart_ventas_ultimo_mes: {
+    title: "Ventas del Último Mes por Categoría (UF/m²)",
+    formula: "salesUfM2 = SUM(salesUf) / GLA ocupada; para el período más reciente disponible",
+    detail: "Comparación de UF/m² de ventas por categoría de tamaño en el último período con datos."
+  },
+  chart_ventas_cruce: {
+    title: "Ventas por Dimensión (UF/m²) — Cruce",
+    formula: "UF/m² = SUM(salesUf) / GLA ocupada; agrupado por dos dimensiones simultáneamente",
+    detail: "Gráfico de barras agrupadas derivado del cruce de dos dimensiones de ventas."
+  },
+  chart_costo_ocupacion_by_tamano: {
+    title: "Costo de Ocupación por Categoría (%)",
+    formula: "Costo % = SUM(facturación UF por categoría) / SUM(ventas UF por categoría) * 100",
+    detail: "Evolución mensual del costo de ocupación segmentada por categoría de tamaño de local (Tienda Mayor, Mediana, etc.)."
+  },
+  chart_costo_ocupacion_by_piso: {
+    title: "Costo de Ocupación por Piso (%)",
+    formula: "Costo % = SUM(facturación UF por piso) / SUM(ventas UF por piso) * 100",
+    detail: "Evolución mensual del costo de ocupación segmentada por piso del mall."
   }
 } as const satisfies Record<string, MetricFormulaDefinition>;
 
 export type MetricFormulaId = keyof typeof METRIC_FORMULAS;
 
-export function getMetricFormula(metricId: MetricFormulaId): MetricFormulaDefinition {
+export function getMetricFormula(metricId: MetricFormulaId): MetricFormulaDefinition | undefined {
   return METRIC_FORMULAS[metricId];
 }

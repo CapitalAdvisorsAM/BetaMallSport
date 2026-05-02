@@ -4,7 +4,7 @@
  */
 
 import { ContractRateType, ContractStatus } from "@prisma/client";
-import { VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
+import { ACCOUNTING_REVENUE_GROUP, VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
 import {
   type DecimalLike,
   toNum,
@@ -118,7 +118,6 @@ export type ReconciliationResult = {
   summary: ReconciliationSummary;
 };
 
-const REVENUE_GROUP = "INGRESOS DE EXPLOTACION";
 const GGCC_KEYWORDS = ["GASTO COMUN", "GASTOS COMUNES", "GGCC"];
 
 function isGgccGroup3(group3: string): boolean {
@@ -141,7 +140,7 @@ export function buildReconciliation(
   const actualGgccByUnit = new Map<string, number>();
   for (const r of accountingRecords) {
     if (!r.unitId) continue;
-    if (r.group1 === REVENUE_GROUP) {
+    if (r.group1 === ACCOUNTING_REVENUE_GROUP) {
       const p = periodKey(r.period);
       // Only count records whose period is in our range
       if (periods.includes(p)) {

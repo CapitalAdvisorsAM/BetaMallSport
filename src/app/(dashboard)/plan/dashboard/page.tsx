@@ -17,6 +17,7 @@ import { toPeriodKey } from "@/lib/real/period-range";
 import { pivotAccounting, pivotSum } from "@/lib/real/accounting-pivot";
 import {
   formatPeriodo,
+  formatPeriodoCorto,
   formatPercent,
   formatSquareMeters,
   formatUf
@@ -131,15 +132,6 @@ function formatWidgetValue(value: number, format: DisplayFormat): string {
   }
 }
 
-const MESES_ES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-
-function formatPeriodoShort(periodo: string): string {
-  const [yearStr, monthStr] = periodo.split("-");
-  const monthIdx = Number(monthStr) - 1;
-  const year = String(Number(yearStr)).slice(-2);
-  return `${MESES_ES[monthIdx] ?? monthStr} ${year}`;
-}
-
 export default async function RentRollDashboardPage(): Promise<JSX.Element> {
   await requireSession();
 
@@ -158,7 +150,7 @@ export default async function RentRollDashboardPage(): Promise<JSX.Element> {
   const periodKey = toPeriodKey(asOfDate);
   const periodDate = new Date(`${periodKey}-01`);
 
-  const [timelineData, activeContracts, dashboardConfigRows, customWidgets, accountingPivot] =
+  const [timelineData, activeContracts, dashboardConfigRows, customWidgets, accountingPivot, rawGlaByCategory] =
     await Promise.all([
       getTimelineData(selectedProjectId, asOfDate),
       prisma.contract.findMany({
@@ -188,6 +180,11 @@ export default async function RentRollDashboardPage(): Promise<JSX.Element> {
         to: periodDate,
         group1: "INGRESOS DE EXPLOTACION",
         scenarios: [AccountingScenario.REAL, AccountingScenario.PPTO]
+      }),
+      prisma.unit.groupBy({
+        by: ["categoriaTamano"],
+        where: { projectId: selectedProjectId, esGLA: true },
+        _sum: { glam2: true }
       })
     ]);
 
@@ -213,6 +210,14 @@ export default async function RentRollDashboardPage(): Promise<JSX.Element> {
   const categoryConcentration = buildCategoryConcentration(
     activeContracts.map((c) => ({ ...c, local: { ...c.local, zona: c.local.zona?.nombre ?? null } }))
   );
+
+  const glaTotalByCategory = rawGlaByCategory
+    .map((r) => ({
+      category: r.categoriaTamano ?? "Sin categoría",
+      totalM2: Number(r._sum.glam2?.toString() ?? "0")
+    }))
+    .filter((r) => r.totalM2 > 0)
+    .sort((a, b) => b.totalM2 - a.totalM2);
 
   const currentYear = new Date().getFullYear();
   const vencimientosPorAnio = buildVencimientosPorAnio(
@@ -256,7 +261,7 @@ export default async function RentRollDashboardPage(): Promise<JSX.Element> {
         id: w.id,
         title: w.title,
         value: formatWidgetValue(latestValue, w.formulaConfig.format),
-        subtitle: formatPeriodoShort(latest.periodo),
+        subtitle: formatPeriodoCorto(latest.periodo),
         sparkline: sparkValues,
         trend: deltaPct !== null ? { value: deltaPct } : undefined,
       };
@@ -293,13 +298,13 @@ export default async function RentRollDashboardPage(): Promise<JSX.Element> {
         <KpiCard
           title="Ingreso contable Real"
           value={formatUf(ingresoRealUf, 0)}
-          subtitle={`Contable · ${formatPeriodoShort(periodKey)}`}
+          subtitle={`Contable · ${formatPeriodoCorto(periodKey)}`}
           trend={ingresoVarianza !== null ? { value: ingresoVarianza } : undefined}
         />
         <KpiCard
           title="Ingreso contable Ppto"
           value={formatUf(ingresoPptoUf, 0)}
-          subtitle={`Presupuesto · ${formatPeriodoShort(periodKey)}`}
+          subtitle={`Presupuesto · ${formatPeriodoCorto(periodKey)}`}
         />
         <KpiCard
           title="Brecha Real vs Ppto"
@@ -331,6 +336,7 @@ export default async function RentRollDashboardPage(): Promise<JSX.Element> {
       <RentRollChartsSection
         periodos={timelineData.periodos}
         categoryConcentration={categoryConcentration}
+        glaTotalByCategory={glaTotalByCategory}
         referencePeriodo={timelineData.asOfPeriodo}
         enabledCharts={enabledCharts}
         waltVariant={waltVariant}

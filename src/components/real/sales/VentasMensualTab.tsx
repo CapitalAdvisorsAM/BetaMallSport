@@ -38,7 +38,9 @@ import {
   buildPeriodoTickFormatter,
   getSeriesColor
 } from "@/lib/charts/theme";
-import { cn, formatPeriodoCorto, formatUf, formatUfPerM2, groupPeriodosByYear } from "@/lib/utils";
+import { cn, formatPeriodoCorto, groupPeriodosByYear } from "@/lib/utils";
+import { YearGroupHeaderRow } from "@/components/ui/YearGroupHeaderRow";
+import { nullValueCls, formatSalesMetric } from "@/lib/real/sales-format";
 import type {
   SalesDimension,
   SalesMetric,
@@ -54,11 +56,6 @@ type Props = {
   hasta: string;
 };
 
-function valueCls(v: number | null): string {
-  if (v === null || v === 0) return "text-slate-300";
-  return "text-slate-800";
-}
-
 function getMetricValue(point: VentasSeriesPoint, metric: SalesMetric, periodTotal: number): number | null {
   if (metric === "uf_m2") return point.salesUfM2;
   if (metric === "uf_total") return point.salesUf;
@@ -69,14 +66,6 @@ function getMetricValue(point: VentasSeriesPoint, metric: SalesMetric, periodTot
   // yoy_pct
   if (point.priorSalesUf === null || point.priorSalesUf === 0) return null;
   return ((point.salesUf - point.priorSalesUf) / Math.abs(point.priorSalesUf)) * 100;
-}
-
-function formatMetric(value: number | null, metric: SalesMetric): string {
-  if (value === null || !Number.isFinite(value)) return "—";
-  if (metric === "uf_m2") return formatUfPerM2(value);
-  if (metric === "uf_total") return formatUf(value, 0);
-  if (metric === "share_pct") return `${value.toFixed(1)}%`;
-  return `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
 }
 
 export function VentasMensualTab({ selectedProjectId, desde, hasta }: Props): JSX.Element {
@@ -117,6 +106,20 @@ export function VentasMensualTab({ selectedProjectId, desde, hasta }: Props): JS
   const periodTotalsUf = useMemo(() => totals.map((t) => t.salesUf), [totals]);
   const yearGroups = useMemo(() => groupPeriodosByYear(periods), [periods]);
 
+  // chart32: last-period bar chart by category
+  const lastPeriodIdx = periods.length - 1;
+  const lastPeriodBarData = useMemo(() => {
+    if (lastPeriodIdx < 0) return [];
+    const totalUf = periodTotalsUf[lastPeriodIdx] ?? 0;
+    return series
+      .map((s) => {
+        const point = s.data[lastPeriodIdx] ?? emptyPoint(periods[lastPeriodIdx] ?? "");
+        const v = getMetricValue(point, metric, totalUf);
+        return { dimension: s.dimension, value: v };
+      })
+      .filter((d) => d.value !== null && d.value !== 0);
+  }, [series, lastPeriodIdx, periodTotalsUf, periods, metric]);
+
   const chartData = useMemo(() => {
     return periods.map((p, i) => {
       const entry: Record<string, string | number | null> = { periodo: p };
@@ -156,6 +159,40 @@ export function VentasMensualTab({ selectedProjectId, desde, hasta }: Props): JS
         </div>
       </ModuleSectionCard>
 
+      {/* chart32 — Ventas del último mes por categoría */}
+      {lastPeriodBarData.length > 0 && (
+        <MetricChartCard
+          title={`${METRIC_LABELS[metric]} por ${SALES_DIMENSION_LABELS[dimension]} · ${periods[lastPeriodIdx] ?? ""}`}
+          metricId="chart_ventas_ultimo_mes"
+          description={`Ventas del último período disponible por ${SALES_DIMENSION_LABELS[dimension].toLowerCase()}.`}
+        >
+          <ResponsiveContainer width="100%" height={chartHeight.sm}>
+            <ComposedChart data={lastPeriodBarData} margin={chartMargins.default}>
+              <CartesianGrid {...chartGridProps} />
+              <XAxis dataKey="dimension" {...chartAxisProps} />
+              <YAxis {...chartAxisProps} tickFormatter={(v: number) => formatSalesMetric(v, metric)} />
+              <Tooltip
+                content={
+                  <ChartTooltip
+                    labelFormatter={(l) => String(l)}
+                    valueFormatter={(value) => {
+                      const v = typeof value === "number" ? value : Number(value ?? 0);
+                      return formatSalesMetric(v, metric);
+                    }}
+                  />
+                }
+              />
+              <Bar
+                dataKey="value"
+                name={METRIC_LABELS[metric]}
+                fill={chartColors.brandPrimary}
+                radius={chartBarRadius}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </MetricChartCard>
+      )}
+
       <MetricChartCard
         title={`${METRIC_LABELS[metric]} por ${SALES_DIMENSION_LABELS[dimension]}`}
         metricId="chart_finance_ventas"
@@ -167,7 +204,7 @@ export function VentasMensualTab({ selectedProjectId, desde, hasta }: Props): JS
             <XAxis dataKey="periodo" {...chartAxisProps} tickFormatter={buildPeriodoTickFormatter(periods.length)} />
             <YAxis
               {...chartAxisProps}
-              tickFormatter={(v: number) => formatMetric(v, metric)}
+              tickFormatter={(v: number) => formatSalesMetric(v, metric)}
             />
             <Tooltip
               content={
@@ -175,7 +212,7 @@ export function VentasMensualTab({ selectedProjectId, desde, hasta }: Props): JS
                   labelFormatter={(l) => formatPeriodoCorto(String(l))}
                   valueFormatter={(value) => {
                     const v = typeof value === "number" ? value : Number(value ?? 0);
-                    return formatMetric(v, metric);
+                    return formatSalesMetric(v, metric);
                   }}
                 />
               }
@@ -214,16 +251,7 @@ export function VentasMensualTab({ selectedProjectId, desde, hasta }: Props): JS
         >
           <table className={`${compactTheme.table} text-xs border-collapse`}>
             <thead className={compactTheme.head}>
-              {yearGroups.length > 1 && (
-                <tr className="bg-brand-700">
-                  <th className="sticky left-0 z-10 bg-brand-700 py-0.5 border-r border-white/10" />
-                  {yearGroups.map(({ year, count }, idx) => (
-                    <th key={year} colSpan={count} className={cn("py-0.5 text-center text-[9px] font-bold uppercase tracking-widest text-white/30", idx > 0 && "border-l border-white/15")}>
-                      {year}
-                    </th>
-                  ))}
-                </tr>
-              )}
+              <YearGroupHeaderRow yearGroups={yearGroups} />
               <tr>
                 <th className={cn(compactTheme.headCell, "sticky left-0 z-10 bg-brand-700 pl-4 pr-3 border-r border-white/10")}>
                   {SALES_DIMENSION_LABELS[dimension]}
@@ -249,9 +277,9 @@ export function VentasMensualTab({ selectedProjectId, desde, hasta }: Props): JS
                     return (
                       <td
                         key={d.period}
-                        className={cn("px-2 py-1.5 text-right border-r border-slate-100", valueCls(v))}
+                        className={cn("px-2 py-1.5 text-right border-r border-slate-100", nullValueCls(v))}
                       >
-                        {formatMetric(v, metric)}
+                        {formatSalesMetric(v, metric)}
                       </td>
                     );
                   })}
@@ -265,7 +293,7 @@ export function VentasMensualTab({ selectedProjectId, desde, hasta }: Props): JS
                   const v = getMetricValue(t, metric, periodTotalsUf[i] ?? 0);
                   return (
                     <td key={t.period} className="px-2 py-2 text-right text-xs font-bold border-r border-white/15">
-                      {formatMetric(v, metric)}
+                      {formatSalesMetric(v, metric)}
                     </td>
                   );
                 })}

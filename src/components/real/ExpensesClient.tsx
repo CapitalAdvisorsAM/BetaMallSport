@@ -9,7 +9,8 @@ import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolbar";
 import { TableDisclosureButton } from "@/components/ui/TableDisclosureButton";
 import { formatEerr } from "@/lib/real/eerr";
-import { cn, formatPercent, groupPeriodosByYear } from "@/lib/utils";
+import { extractApiErrorMessage } from "@/lib/http/client-errors";
+import { cn, formatPercent, formatPeriodoCorto, groupPeriodosByYear } from "@/lib/utils";
 import type {
   ExpenseDetailResponse,
   ExpenseDetailRow,
@@ -24,24 +25,6 @@ type ExpensesClientProps = {
   initialData: ExpensePivotResponse;
 };
 
-const MESES_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-
-function formatPeriodo(p: string): string {
-  const [year, month] = p.split("-");
-  if (!year || !month) return p;
-  return `${MESES_ES[parseInt(month, 10) - 1] ?? month} ${year.slice(2)}`;
-}
-
-async function readErrorMessage(response: Response, fallback: string): Promise<string> {
-  const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) return fallback;
-  try {
-    const data = (await response.json()) as { message?: string };
-    return data.message ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 const HEAD_CLS =
   "min-w-[90px] px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-white/70 border-r border-white/10";
@@ -111,7 +94,7 @@ export function ExpensesClient({
         if (hasta) params.set("to", hasta);
         const response = await fetch(`/api/real/expenses/detail?${params}`);
         if (!response.ok) {
-          throw new Error(await readErrorMessage(response, "Error al cargar el detalle."));
+          throw new Error(await extractApiErrorMessage(response, "Error al cargar el detalle."));
         }
         const payload = (await response.json()) as ExpenseDetailResponse;
         setDetailCache((prev) => new Map(prev).set(key, payload.rows));
@@ -217,7 +200,7 @@ export function ExpensesClient({
                   </th>
                   {data.periods.map((p) => (
                     <th key={p} className={HEAD_CLS}>
-                      {formatPeriodo(p)}
+                      {formatPeriodoCorto(p)}
                     </th>
                   ))}
                   <th className={HEAD_CLS}>Total</th>

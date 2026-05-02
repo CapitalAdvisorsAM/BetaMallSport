@@ -15,6 +15,7 @@ import {
   type GlaUnitInput,
   type TenantRubroByUnitId
 } from "@/lib/real/gla-by-dimension";
+import { toNum } from "@/lib/real/billing-utils";
 import { tenantDimensionGlaForPeriod, periodKey } from "@/lib/real/ventas-timeseries";
 import type {
   VentasCrosstabCell,
@@ -46,12 +47,6 @@ export type CrosstabSaleInput = {
   period: Date;
   salesPesos: DecimalLike;
 };
-
-function toNum(v: DecimalLike | null | undefined): number {
-  if (v === null || v === undefined) return 0;
-  const n = Number(v.toString());
-  return Number.isFinite(n) ? n : 0;
-}
 
 function unitDimensionValue(
   unit: CrosstabUnitInput,

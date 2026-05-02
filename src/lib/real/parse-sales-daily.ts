@@ -70,7 +70,7 @@ export function parseVentasDiarias(buffer: Buffer): FilaVentaDiaria[] {
 
   for (const row of raw) {
     const tipo = str(row["Tipo"]);
-    if (tipo && tipo.toLowerCase() !== "real") continue;
+    if (tipo.toLowerCase() !== "real") continue;
 
     const idCa = str(row["ID CA"]).trim();
     if (!idCa) continue;

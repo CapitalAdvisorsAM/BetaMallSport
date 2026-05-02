@@ -1,14 +1,39 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from "recharts";
+import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { ModuleEmptyState } from "@/components/dashboard/ModuleEmptyState";
 import { ModuleHeader } from "@/components/dashboard/ModuleHeader";
 import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { UnifiedTable } from "@/components/ui/UnifiedTable";
 import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
-import { cn, formatPercent, formatUf, formatUfPerM2 } from "@/lib/utils";
-import type { CostoOcupacionResponse, CostoOcupacionRow } from "@/types/occupancy-cost";
+import {
+  chartAxisProps,
+  chartGridProps,
+  chartHeight,
+  chartLegendProps,
+  chartMargins,
+  buildPeriodoTickFormatter,
+  getSeriesColor
+} from "@/lib/charts/theme";
+import { cn, formatPercent, formatPeriodoCorto, formatUf, formatUfPerM2, getCurrentYearMonth } from "@/lib/utils";
+import type {
+  CostoOcupacionResponse,
+  CostoOcupacionRow,
+  CostoOcupacionTimeseriesResponse
+} from "@/types/occupancy-cost";
 
 const TAMANO_ORDER = [
   "Tienda Mayor",
@@ -102,12 +127,6 @@ function costColorCls(pct: number | null): string {
   return "text-red-700 font-semibold";
 }
 
-function getCurrentYearMonth(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
-}
 
 // ---------------------------------------------------------------------------
 // Group renderer
@@ -178,6 +197,12 @@ type Props = {
   defaultPeriod?: string;
 };
 
+function periodMinus(period: string, months: number): string {
+  const [y, m] = period.split("-").map(Number);
+  const date = new Date(Date.UTC(y, (m ?? 1) - 1 - months, 1));
+  return date.toISOString().slice(0, 7);
+}
+
 export function CostoOcupacionClient({
   selectedProjectId,
   defaultPeriod
@@ -185,6 +210,8 @@ export function CostoOcupacionClient({
   const [period, setPeriod] = useState(defaultPeriod ?? getCurrentYearMonth());
   const [data, setData] = useState<CostoOcupacionResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [tsTamano, setTsTamano] = useState<CostoOcupacionTimeseriesResponse | null>(null);
+  const [tsPiso, setTsPiso] = useState<CostoOcupacionTimeseriesResponse | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!/^\d{4}-\d{2}$/.test(period)) return;
@@ -203,7 +230,25 @@ export function CostoOcupacionClient({
     }
   }, [selectedProjectId, period]);
 
+  const fetchTimeseries = useCallback(async () => {
+    if (!/^\d{4}-\d{2}$/.test(period)) return;
+    const from = periodMinus(period, 11);
+    const baseParams = new URLSearchParams({
+      projectId: selectedProjectId,
+      mode: "timeseries",
+      from,
+      to: period
+    });
+    const [resTamano, resPiso] = await Promise.all([
+      fetch(`/api/real/occupancy-cost?${baseParams}&dimension=tamano`),
+      fetch(`/api/real/occupancy-cost?${baseParams}&dimension=piso`)
+    ]);
+    if (resTamano.ok) setTsTamano((await resTamano.json()) as CostoOcupacionTimeseriesResponse);
+    if (resPiso.ok) setTsPiso((await resPiso.json()) as CostoOcupacionTimeseriesResponse);
+  }, [selectedProjectId, period]);
+
   useEffect(() => { void fetchData(); }, [fetchData]);
+  useEffect(() => { void fetchTimeseries(); }, [fetchTimeseries]);
 
   const rows = useMemo(() => data?.rows ?? [], [data]);
   const groups = useMemo(() => groupByTamano(rows), [rows]);
@@ -228,6 +273,19 @@ export function CostoOcupacionClient({
     };
   }, [rows]);
 
+  function buildTsChartData(ts: CostoOcupacionTimeseriesResponse): Record<string, string | number | null>[] {
+    return ts.periods.map((p, i) => {
+      const entry: Record<string, string | number | null> = { periodo: p };
+      for (const s of ts.series) {
+        entry[s.dimension] = s.data[i] ?? null;
+      }
+      return entry;
+    });
+  }
+
+  const tsTamanoChart = tsTamano ? buildTsChartData(tsTamano) : [];
+  const tsPisoChart = tsPiso ? buildTsChartData(tsPiso) : [];
+
   return (
     <main className="space-y-4">
       <ModuleHeader
@@ -245,6 +303,88 @@ export function CostoOcupacionClient({
           </div>
         }
       />
+
+      {/* chart13 — Costo Ocupación por Categoría (%) */}
+      {tsTamanoChart.length > 0 && tsTamano && (
+        <MetricChartCard
+          title="Costo de Ocupación por Categoría (%)"
+          metricId="chart_costo_ocupacion_by_tamano"
+          description="Evolución mensual del costo de ocupación por categoría de tamaño de local (últimos 12 meses)."
+        >
+          <ResponsiveContainer width="100%" height={chartHeight.md}>
+            <LineChart data={tsTamanoChart} margin={chartMargins.default}>
+              <CartesianGrid {...chartGridProps} />
+              <XAxis dataKey="periodo" {...chartAxisProps} tickFormatter={buildPeriodoTickFormatter(tsTamano.periods.length)} />
+              <YAxis {...chartAxisProps} tickFormatter={(v: number) => formatPercent(v)} domain={[0, "auto"]} />
+              <Tooltip
+                content={
+                  <ChartTooltip
+                    labelFormatter={(l) => formatPeriodoCorto(String(l))}
+                    valueFormatter={(value) => {
+                      const v = typeof value === "number" ? value : Number(value ?? 0);
+                      return formatPercent(v);
+                    }}
+                  />
+                }
+              />
+              <Legend {...chartLegendProps} />
+              {tsTamano.series.map((s, i) => (
+                <Line
+                  key={s.dimension}
+                  type="monotone"
+                  dataKey={s.dimension}
+                  name={s.dimension}
+                  stroke={getSeriesColor(i)}
+                  strokeWidth={2}
+                  dot={false}
+                  connectNulls
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </MetricChartCard>
+      )}
+
+      {/* chart14 — Costo Ocupación por Piso (%) */}
+      {tsPisoChart.length > 0 && tsPiso && (
+        <MetricChartCard
+          title="Costo de Ocupación por Piso (%)"
+          metricId="chart_costo_ocupacion_by_piso"
+          description="Evolución mensual del costo de ocupación por piso del mall (últimos 12 meses)."
+        >
+          <ResponsiveContainer width="100%" height={chartHeight.md}>
+            <LineChart data={tsPisoChart} margin={chartMargins.default}>
+              <CartesianGrid {...chartGridProps} />
+              <XAxis dataKey="periodo" {...chartAxisProps} tickFormatter={buildPeriodoTickFormatter(tsPiso.periods.length)} />
+              <YAxis {...chartAxisProps} tickFormatter={(v: number) => formatPercent(v)} domain={[0, "auto"]} />
+              <Tooltip
+                content={
+                  <ChartTooltip
+                    labelFormatter={(l) => formatPeriodoCorto(String(l))}
+                    valueFormatter={(value) => {
+                      const v = typeof value === "number" ? value : Number(value ?? 0);
+                      return formatPercent(v);
+                    }}
+                  />
+                }
+              />
+              <Legend {...chartLegendProps} />
+              {tsPiso.series.map((s, i) => (
+                <Line
+                  key={s.dimension}
+                  type="monotone"
+                  dataKey={s.dimension}
+                  name={s.dimension}
+                  stroke={getSeriesColor(i)}
+                  strokeWidth={2}
+                  dot={false}
+                  connectNulls
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </MetricChartCard>
+      )}
 
       {/* Content */}
       {loading ? (

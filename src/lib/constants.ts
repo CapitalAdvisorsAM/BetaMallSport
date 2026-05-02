@@ -12,3 +12,4 @@ export const UF_CATCHUP_MAX_DAYS = 30;
 export const MAX_PDF_BYTES = 10 * 1024 * 1024;
 export const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export const VARIABLE_RENT_LAG_MONTHS = 1;
+export const ACCOUNTING_REVENUE_GROUP = "INGRESOS DE EXPLOTACION";

@@ -1,13 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Bar, CartesianGrid, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
+import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
 import { ModuleEmptyState } from "@/components/dashboard/ModuleEmptyState";
 import { ModuleHeader } from "@/components/dashboard/ModuleHeader";
 import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { UnifiedTable } from "@/components/ui/UnifiedTable";
 import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
-import { formatUf, formatUfPerM2 } from "@/lib/utils";
+import { chartAxisProps, chartGridProps, chartHeight, chartMargins, chartColors } from "@/lib/charts/theme";
+import { formatUf, formatUfPerM2, getCurrentYearMonth } from "@/lib/utils";
 import type { DailyDimensionRow, VentasDiariasResponse } from "@/types/sales-daily";
 
 const compactTheme = getTableTheme("compact");
@@ -22,10 +26,6 @@ const TAB_LABELS: Record<DimensionTab, string> = {
   tiendas: "Tiendas"
 };
 
-function getCurrentYearMonth(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
 
 type Props = {
   selectedProjectId: string;
@@ -106,6 +106,35 @@ export function VentasDiariasClient({
           </div>
         }
       />
+
+      {/* chart20 — Ventas Diarias (UF) */}
+      {!loading && data && data.total.values.length > 0 && (
+        <MetricChartCard
+          title={`Ventas Diarias ${data.period} (UF)`}
+          metricId="chart_ventas_diarias_bar"
+          description="Venta total diaria en UF para el período seleccionado."
+        >
+          <ResponsiveContainer width="100%" height={chartHeight.md}>
+            <ComposedChart
+              data={data.total.values.map((v) => ({ dia: v.day, "Ventas UF": v.uf }))}
+              margin={chartMargins.default}
+            >
+              <CartesianGrid {...chartGridProps} />
+              <XAxis dataKey="dia" {...chartAxisProps} tickFormatter={(v: number) => String(v)} />
+              <YAxis {...chartAxisProps} tickFormatter={(v: number) => formatUf(v, 0)} />
+              <Tooltip
+                content={
+                  <ChartTooltip
+                    labelFormatter={(l) => `Día ${String(l)}`}
+                    valueFormatter={(v) => formatUf(typeof v === "number" ? v : Number(v ?? 0))}
+                  />
+                }
+              />
+              <Bar dataKey="Ventas UF" name="Ventas UF" fill={chartColors.brandPrimary} maxBarSize={14} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </MetricChartCard>
+      )}
 
       {loading ? (
         <ModuleLoadingState message="Cargando ventas diarias..." />

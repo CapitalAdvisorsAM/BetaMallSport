@@ -11,7 +11,7 @@ type AccountingInput = {
   group1: string;
 };
 
-const REVENUE_GROUP = "INGRESOS DE EXPLOTACION";
+import { ACCOUNTING_REVENUE_GROUP } from "@/lib/constants";
 
 /**
  * Aggregates actual billing (UF) by unitId from accounting records.
@@ -22,7 +22,7 @@ export function buildActualBillingByUnit(
 ): Map<string, number> {
   const map = new Map<string, number>();
   for (const r of records) {
-    if (r.group1 !== REVENUE_GROUP || !r.unitId) continue;
+    if (r.group1 !== ACCOUNTING_REVENUE_GROUP || !r.unitId) continue;
     map.set(r.unitId, (map.get(r.unitId) ?? 0) + r.valueUf);
   }
   return map;

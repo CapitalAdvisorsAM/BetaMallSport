@@ -20,6 +20,7 @@ import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolba
 import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
 import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { UnifiedTable } from "@/components/ui/UnifiedTable";
+import { YearGroupHeaderRow } from "@/components/ui/YearGroupHeaderRow";
 import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
 import {
   chartAxisProps,
@@ -33,6 +34,7 @@ import {
   getSeriesColor,
 } from "@/lib/charts/theme";
 import { cn, formatPeriodoCorto, formatUf, formatUfPerM2, groupPeriodosByYear } from "@/lib/utils";
+import { signValueCls } from "@/lib/real/sales-format";
 import { GROUP3_FIJO, GROUP3_VARIABLE } from "@/lib/real/facturacion-timeseries";
 import type { FacturacionResponse } from "@/types/billing";
 
@@ -66,11 +68,6 @@ const compactTheme = getTableTheme("compact");
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function valueCls(v: number): string {
-  if (v === 0) return "text-slate-300";
-  return v < 0 ? "text-red-600" : "text-slate-800";
-}
 
 // ---------------------------------------------------------------------------
 // Props
@@ -309,16 +306,7 @@ export function FacturacionClient({
             >
               <table className={`${compactTheme.table} text-xs border-collapse`}>
                 <thead className={compactTheme.head}>
-                  {yearGroups.length > 1 && (
-                    <tr className="bg-brand-700">
-                      <th className="sticky left-0 z-10 bg-brand-700 py-0.5 border-r border-white/10" />
-                      {yearGroups.map(({ year, count }, idx) => (
-                        <th key={year} colSpan={count} className={cn("py-0.5 text-center text-[9px] font-bold uppercase tracking-widest text-white/30", idx > 0 && "border-l border-white/15")}>
-                          {year}
-                        </th>
-                      ))}
-                    </tr>
-                  )}
+                  <YearGroupHeaderRow yearGroups={yearGroups} />
                   <tr>
                     <th className={cn(compactTheme.headCell, "sticky left-0 z-10 bg-brand-700 pl-4 pr-3 border-r border-white/10")}>
                       {DIMENSION_LABELS[dimension]}
@@ -340,7 +328,7 @@ export function FacturacionClient({
                         {s.dimension}
                       </td>
                       {s.data.map((d) => (
-                        <td key={d.period} className={cn("px-2 py-1.5 text-right border-r border-slate-100", valueCls(d.ufPerM2))}>
+                        <td key={d.period} className={cn("px-2 py-1.5 text-right border-r border-slate-100", signValueCls(d.ufPerM2))}>
                           {formatUfPerM2(d.ufPerM2)}
                         </td>
                       ))}

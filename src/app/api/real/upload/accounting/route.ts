@@ -32,6 +32,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const projectId = getFormFieldValue(formData, ["projectId", "proyectoId"]);
+    const forceOverwrite = formData.get("forceOverwrite") === "true";
 
     if (!file || !projectId) throw new ApiError(400, "Se requiere archivo y projectId.");
     if (file.size > 30 * 1024 * 1024) throw new ApiError(400, "El archivo no puede superar 30 MB.");
@@ -324,6 +325,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     let inserted = 0;
     if (records.length > 0) {
+      // Check for manual edits in the affected periods before overwriting
+      if (!forceOverwrite) {
+        const periodDates = periods.map((p) => new Date(`${p}-01`));
+        const editedCount = await prisma.accountingRecord.count({
+          where: {
+            projectId,
+            period: { in: periodDates },
+            isManuallyEdited: true,
+          },
+        });
+
+        if (editedCount > 0) {
+          return NextResponse.json(
+            { warning: true, editedCount, periods },
+            { status: 409 }
+          );
+        }
+      }
+
       for (const period of periods) {
         await prisma.accountingRecord.deleteMany({
           where: { projectId, period: new Date(`${period}-01`) }

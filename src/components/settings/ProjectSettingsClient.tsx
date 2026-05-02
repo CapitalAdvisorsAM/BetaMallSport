@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { extractApiErrorMessage } from "@/lib/http/client-errors";
 
 type ProjectRecord = {
   id: string;
@@ -23,17 +24,6 @@ type ProjectSettingsClientProps = {
   project: ProjectRecord;
   canEdit: boolean;
 };
-
-async function readErrorMessage(response: Response, fallback: string): Promise<string> {
-  const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) return fallback;
-  try {
-    const data = (await response.json()) as { message?: string };
-    return data.message ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 export function ProjectSettingsClient({
   project,
@@ -59,7 +49,7 @@ export function ProjectSettingsClient({
       });
 
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, "No se pudo guardar el proyecto."));
+        throw new Error(await extractApiErrorMessage(response, "No se pudo guardar el proyecto."));
       }
 
       toast.success("Proyecto actualizado correctamente.");

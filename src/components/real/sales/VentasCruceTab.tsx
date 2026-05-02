@@ -1,6 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Bar,
+  CartesianGrid,
+  ComposedChart,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from "recharts";
+import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { ModuleEmptyState } from "@/components/dashboard/ModuleEmptyState";
 import { ModuleLoadingState } from "@/components/dashboard/ModuleLoadingState";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
@@ -14,7 +26,17 @@ import {
   METRIC_LABELS,
   VentasMetricToggle
 } from "@/components/real/sales/VentasMetricToggle";
-import { cn, formatUf, formatUfPerM2 } from "@/lib/utils";
+import {
+  chartAxisProps,
+  chartBarRadius,
+  chartGridProps,
+  chartHeight,
+  chartLegendProps,
+  chartMargins,
+  getSeriesColor
+} from "@/lib/charts/theme";
+import { cn } from "@/lib/utils";
+import { nullValueCls, formatSalesMetric } from "@/lib/real/sales-format";
 import type {
   SalesDimension,
   SalesMetric,
@@ -32,24 +54,11 @@ type Props = {
   hasta: string;
 };
 
-function valueCls(v: number | null): string {
-  if (v === null || v === 0) return "text-slate-300";
-  return "text-slate-800";
-}
-
 function getCellValue(cell: VentasCrosstabCell, metric: SalesMetric): number | null {
   if (metric === "uf_m2") return cell.ufPerM2;
   if (metric === "uf_total") return cell.salesUf;
   if (metric === "share_pct") return cell.sharePct;
   return cell.yoyPct;
-}
-
-function formatCell(value: number | null, metric: SalesMetric): string {
-  if (value === null || !Number.isFinite(value)) return "—";
-  if (metric === "uf_m2") return formatUfPerM2(value);
-  if (metric === "uf_total") return formatUf(value, 0);
-  if (metric === "share_pct") return `${value.toFixed(1)}%`;
-  return `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
 }
 
 function listPeriodsBetween(desde: string, hasta: string): string[] {
@@ -107,6 +116,19 @@ export function VentasCruceTab({ selectedProjectId, desde, hasta }: Props): JSX.
     void fetchData();
   }, [fetchData]);
 
+  // chart33: grouped bar chart data from crosstab
+  const crossChartData = useMemo(() => {
+    if (!data) return [];
+    return data.rows.map((r, ri) => {
+      const entry: Record<string, string | number | null> = { row: r };
+      for (const [ci, col] of data.cols.entries()) {
+        const v = getCellValue(data.cells[ri]?.[ci] ?? { salesUf: 0, ufPerM2: 0, sharePct: null, yoyPct: null }, metric);
+        entry[col] = v;
+      }
+      return entry;
+    });
+  }, [data, metric]);
+
   return (
     <div className="space-y-4">
       <ModuleSectionCard>
@@ -150,7 +172,49 @@ export function VentasCruceTab({ selectedProjectId, desde, hasta }: Props): JSX.
       ) : !data || data.rows.length === 0 ? (
         <ModuleEmptyState message="Sin datos para el cruce seleccionado." />
       ) : (
-        <ModuleSectionCard>
+        <>
+          {/* chart33 — Ventas Tipo × Piso (UF/m²) grouped bar chart */}
+          {crossChartData.length > 0 && (
+            <MetricChartCard
+              title={`${METRIC_LABELS[metric]}: ${SALES_DIMENSION_LABELS[data.rowDim]} × ${SALES_DIMENSION_LABELS[data.colDim]}`}
+              metricId="chart_ventas_cruce"
+              description="Barras agrupadas por dimensión de columna para cada valor de la dimensión de fila."
+            >
+              <ResponsiveContainer width="100%" height={chartHeight.md}>
+                <ComposedChart data={crossChartData} margin={chartMargins.default}>
+                  <CartesianGrid {...chartGridProps} />
+                  <XAxis dataKey="row" {...chartAxisProps} />
+                  <YAxis
+                    {...chartAxisProps}
+                    tickFormatter={(v: number) => formatSalesMetric(v, metric)}
+                  />
+                  <Tooltip
+                    content={
+                      <ChartTooltip
+                        labelFormatter={(l) => String(l)}
+                        valueFormatter={(value) => {
+                          const v = typeof value === "number" ? value : Number(value ?? 0);
+                          return formatSalesMetric(v, metric);
+                        }}
+                      />
+                    }
+                  />
+                  <Legend {...chartLegendProps} />
+                  {data.cols.map((col, i) => (
+                    <Bar
+                      key={col}
+                      dataKey={col}
+                      name={col}
+                      fill={getSeriesColor(i)}
+                      radius={chartBarRadius}
+                    />
+                  ))}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </MetricChartCard>
+          )}
+
+          <ModuleSectionCard>
           <UnifiedTable
             density="compact"
             toolbar={
@@ -190,13 +254,13 @@ export function VentasCruceTab({ selectedProjectId, desde, hasta }: Props): JSX.
                     {data.cells[ri].map((cell, ci) => {
                       const v = getCellValue(cell, metric);
                       return (
-                        <td key={ci} className={cn("px-2 py-1.5 text-right", valueCls(v))}>
-                          {formatCell(v, metric)}
+                        <td key={ci} className={cn("px-2 py-1.5 text-right", nullValueCls(v))}>
+                          {formatSalesMetric(v, metric)}
                         </td>
                       );
                     })}
                     <td className="px-2 py-1.5 text-right font-semibold text-slate-800">
-                      {formatCell(getCellValue(data.rowTotals[ri], metric), metric)}
+                      {formatSalesMetric(getCellValue(data.rowTotals[ri], metric), metric)}
                     </td>
                   </tr>
                 ))}
@@ -206,17 +270,18 @@ export function VentasCruceTab({ selectedProjectId, desde, hasta }: Props): JSX.
                   </td>
                   {data.colTotals.map((t, ci) => (
                     <td key={ci} className="px-2 py-2 text-right text-xs font-bold">
-                      {formatCell(getCellValue(t, metric), metric)}
+                      {formatSalesMetric(getCellValue(t, metric), metric)}
                     </td>
                   ))}
                   <td className="px-2 py-2 text-right text-xs font-bold">
-                    {formatCell(getCellValue(data.grandTotal, metric), metric)}
+                    {formatSalesMetric(getCellValue(data.grandTotal, metric), metric)}
                   </td>
                 </tr>
               </tbody>
             </table>
           </UnifiedTable>
         </ModuleSectionCard>
+        </>
       )}
     </div>
   );

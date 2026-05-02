@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Bar,
   CartesianGrid,
@@ -19,7 +19,12 @@ import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { ProjectPeriodToolbar } from "@/components/dashboard/ProjectPeriodToolbar";
 import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
 import { ChartTooltip } from "@/components/charts/ChartTooltip";
+import { NoteIndicator } from "@/components/notes/NoteIndicator";
 import { UnifiedTable } from "@/components/ui/UnifiedTable";
+import { YearGroupHeaderRow } from "@/components/ui/YearGroupHeaderRow";
+import { useNotesApi } from "@/hooks/useNotesApi";
+import { toLineKey } from "@/lib/notes/line-keys";
+import type { AnalysisNoteRow } from "@/types/notes";
 import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
 import {
   chartAxisProps,
@@ -30,6 +35,7 @@ import {
   chartLegendProps,
   chartMargins,
   buildPeriodoTickFormatter,
+  getSeriesColor,
 } from "@/lib/charts/theme";
 import { cn, formatPercent, formatPeriodoCorto, formatUf, groupPeriodosByYear } from "@/lib/utils";
 import type { GgccDeficitResponse, GgccDeficitPeriodRow } from "@/types/ggcc-deficit";
@@ -64,18 +70,69 @@ type Props = {
   selectedProjectId: string;
   defaultDesde?: string;
   defaultHasta?: string;
+  canEdit: boolean;
+  currentUserId: string;
+  isAdmin: boolean;
+};
+
+export type GgccNotesContext = {
+  projectId: string;
+  notesByLineKey: Map<string, AnalysisNoteRow[]>;
+  canEdit: boolean;
+  currentUserId: string;
+  isAdmin: boolean;
+  refresh: () => void;
 };
 
 export function GgccDeficitClient({
   selectedProjectId,
   defaultDesde,
-  defaultHasta
+  defaultHasta,
+  canEdit,
+  currentUserId,
+  isAdmin
 }: Props): JSX.Element {
   const [desde, setDesde] = useState(defaultDesde ?? "");
   const [hasta, setHasta] = useState(defaultHasta ?? "");
 
   const [data, setData] = useState<GgccDeficitResponse | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const notesApi = useNotesApi();
+  const [notes, setNotes] = useState<AnalysisNoteRow[]>([]);
+
+  const loadNotes = useCallback(() => {
+    void notesApi
+      .listNotes({ projectId: selectedProjectId, view: "CDG" })
+      .then(setNotes)
+      .catch(() => setNotes([]));
+  }, [notesApi, selectedProjectId]);
+
+  useEffect(() => {
+    loadNotes();
+  }, [loadNotes]);
+
+  const notesByLineKey = useMemo(() => {
+    const map = new Map<string, AnalysisNoteRow[]>();
+    for (const note of notes) {
+      const arr = map.get(note.lineKey);
+      if (arr) arr.push(note);
+      else map.set(note.lineKey, [note]);
+    }
+    return map;
+  }, [notes]);
+
+  const notesContext: GgccNotesContext = useMemo(
+    () => ({
+      projectId: selectedProjectId,
+      notesByLineKey,
+      canEdit,
+      currentUserId,
+      isAdmin,
+      refresh: loadNotes
+    }),
+    [selectedProjectId, notesByLineKey, canEdit, currentUserId, isAdmin, loadNotes]
+  );
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -202,6 +259,89 @@ export function GgccDeficitClient({
             </ResponsiveContainer>
           </MetricChartCard>
 
+          {/* chart15 — Cost breakdown stacked bar */}
+          <MetricChartCard
+            title="Desglose Costos Gasto Común (UF)"
+            metricId="chart_ggcc_cost_breakdown"
+            description="Composición mensual del costo total de gastos comunes por categoría."
+          >
+            <ResponsiveContainer width="100%" height={chartHeight.md}>
+              <ComposedChart data={overall.map((r) => ({
+                periodo: r.period,
+                "Contribuciones": Math.abs(r.costBreakdown.contribuciones),
+                "Mano de Obra": Math.abs(r.costBreakdown.manoDeObra),
+                "Gastos Operaciones": Math.abs(r.costBreakdown.gastosOperaciones),
+                "Gastos Admin": Math.abs(r.costBreakdown.gastosAdmin),
+              }))} margin={chartMargins.default}>
+                <CartesianGrid {...chartGridProps} />
+                <XAxis dataKey="periodo" {...chartAxisProps} tickFormatter={buildPeriodoTickFormatter(periods.length)} />
+                <YAxis {...chartAxisProps} tickFormatter={(v: number) => formatUf(v, 0)} />
+                <Tooltip content={<ChartTooltip labelFormatter={(l) => formatPeriodoCorto(String(l))} valueFormatter={(v) => formatUf(typeof v === "number" ? v : Number(v ?? 0))} />} />
+                <Legend {...chartLegendProps} />
+                <Bar dataKey="Contribuciones" stackId="cost" fill={getSeriesColor(0)} radius={[0,0,0,0]} maxBarSize={20} />
+                <Bar dataKey="Mano de Obra" stackId="cost" fill={getSeriesColor(1)} radius={[0,0,0,0]} maxBarSize={20} />
+                <Bar dataKey="Gastos Operaciones" stackId="cost" fill={getSeriesColor(2)} radius={[0,0,0,0]} maxBarSize={20} />
+                <Bar dataKey="Gastos Admin" stackId="cost" fill={getSeriesColor(3)} radius={chartBarRadius} maxBarSize={20} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </MetricChartCard>
+
+          {/* chart38 — Recovery vs Cost per m2 */}
+          <MetricChartCard
+            title="Recuperación vs Costo Real GG.CC. (UF/m²)"
+            metricId="chart_ggcc_recovery_vs_cost_m2"
+            description="Barras: recuperación y costo en UF/m². Línea: déficit %."
+          >
+            <ResponsiveContainer width="100%" height={chartHeight.md}>
+              <ComposedChart data={overall.map((r) => ({
+                periodo: r.period,
+                "Recuperación UF/m²": r.recoveryUfM2,
+                "Costo UF/m²": Math.abs(r.costUfM2),
+                "Deficit %": r.deficitPct,
+              }))} margin={chartMargins.default}>
+                <CartesianGrid {...chartGridProps} />
+                <XAxis dataKey="periodo" {...chartAxisProps} tickFormatter={buildPeriodoTickFormatter(periods.length)} />
+                <YAxis yAxisId="left" {...chartAxisProps} tickFormatter={(v: number) => `${v.toFixed(2)}`} />
+                <YAxis yAxisId="right" orientation="right" {...chartAxisProps} tickFormatter={(v: number) => formatPercent(v, 0)} />
+                <Tooltip content={<ChartTooltip labelFormatter={(l) => formatPeriodoCorto(String(l))} valueFormatter={(v, name) => {
+                  const n = typeof v === "number" ? v : Number(v ?? 0);
+                  return String(name).includes("%") ? formatPercent(n) : `${n.toFixed(3)} UF/m²`;
+                }} />} />
+                <Legend {...chartLegendProps} />
+                <Bar yAxisId="left" dataKey="Recuperación UF/m²" fill={chartColors.positive} radius={chartBarRadius} maxBarSize={18} />
+                <Bar yAxisId="left" dataKey="Costo UF/m²" fill={chartColors.negative} radius={chartBarRadius} maxBarSize={18} />
+                <Line yAxisId="right" type="monotone" dataKey="Deficit %" stroke={chartColors.brandPrimary} strokeWidth={2} dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </MetricChartCard>
+
+          {/* chart39 — Mano de Obra vs Ingresos */}
+          <MetricChartCard
+            title="Costo Mano de Obra vs Ingresos"
+            metricId="chart_ggcc_mdo_vs_ingresos"
+            description="Barras: costo de mano de obra (UF). Línea: % sobre ingresos de explotación."
+          >
+            <ResponsiveContainer width="100%" height={chartHeight.md}>
+              <ComposedChart data={overall.map((r) => ({
+                periodo: r.period,
+                "Mano de Obra (UF)": Math.abs(r.costBreakdown.manoDeObra),
+                "% s/ Ingresos": manoDeObraRatio[r.period] ?? 0,
+              }))} margin={chartMargins.default}>
+                <CartesianGrid {...chartGridProps} />
+                <XAxis dataKey="periodo" {...chartAxisProps} tickFormatter={buildPeriodoTickFormatter(periods.length)} />
+                <YAxis yAxisId="left" {...chartAxisProps} tickFormatter={(v: number) => formatUf(v, 0)} />
+                <YAxis yAxisId="right" orientation="right" {...chartAxisProps} tickFormatter={(v: number) => formatPercent(v, 1)} />
+                <Tooltip content={<ChartTooltip labelFormatter={(l) => formatPeriodoCorto(String(l))} valueFormatter={(v, name) => {
+                  const n = typeof v === "number" ? v : Number(v ?? 0);
+                  return String(name).includes("%") ? formatPercent(n) : formatUf(n);
+                }} />} />
+                <Legend {...chartLegendProps} />
+                <Bar yAxisId="left" dataKey="Mano de Obra (UF)" fill={chartColors.brandLight} radius={chartBarRadius} maxBarSize={18} />
+                <Line yAxisId="right" type="monotone" dataKey="% s/ Ingresos" stroke={chartColors.brandDark} strokeWidth={2} dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </MetricChartCard>
+
           {/* Overall table */}
           <ModuleSectionCard>
             <UnifiedTable
@@ -215,16 +355,7 @@ export function GgccDeficitClient({
               <div className="overflow-x-auto">
                 <table className={`${compactTheme.table} text-xs border-collapse`}>
                   <thead className={compactTheme.head}>
-                    {yearGroups.length > 1 && (
-                      <tr className="bg-brand-700">
-                        <th className="sticky left-0 z-10 bg-brand-700 py-0.5 border-r border-white/10" />
-                        {yearGroups.map(({ year, count }, idx) => (
-                          <th key={year} colSpan={count} className={cn("py-0.5 text-center text-[9px] font-bold uppercase tracking-widest text-white/30", idx > 0 && "border-l border-white/15")}>
-                            {year}
-                          </th>
-                        ))}
-                      </tr>
-                    )}
+                    <YearGroupHeaderRow yearGroups={yearGroups} />
                     <tr>
                       <th className={cn(compactTheme.headCell, "sticky left-0 z-10 bg-brand-700 pl-4 pr-3 border-r border-white/10")}>
                         Concepto
@@ -237,13 +368,13 @@ export function GgccDeficitClient({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {renderConceptRow("Recuperacion", overall, (r) => r.recoveryUf, "text-slate-700", 0)}
-                    {renderConceptRow("Costo Total", overall, (r) => r.costUf, "text-slate-700", 1)}
-                    {renderConceptRow("Deficit UF", overall, (r) => r.deficitUf, "", 2, true)}
-                    {renderConceptRow("Deficit %", overall, (r) => r.deficitPct, "", 3, false, true)}
-                    {renderConceptRow("Recuperacion UF/m\u00B2", overall, (r) => r.recoveryUfM2, "text-slate-600", 4)}
-                    {renderConceptRow("Costo UF/m\u00B2", overall, (r) => r.costUfM2, "text-slate-600", 5)}
-                    {renderConceptRow("Deficit UF/m\u00B2", overall, (r) => r.deficitUfM2, "", 6, true)}
+                    {renderConceptRow("Recuperacion", overall, (r) => r.recoveryUf, "text-slate-700", 0, false, false, { context: notesContext, dimension: "overall" })}
+                    {renderConceptRow("Costo Total", overall, (r) => r.costUf, "text-slate-700", 1, false, false, { context: notesContext, dimension: "overall" })}
+                    {renderConceptRow("Deficit UF", overall, (r) => r.deficitUf, "", 2, true, false, { context: notesContext, dimension: "overall" })}
+                    {renderConceptRow("Deficit %", overall, (r) => r.deficitPct, "", 3, false, true, { context: notesContext, dimension: "overall" })}
+                    {renderConceptRow("Recuperacion UF/m\u00B2", overall, (r) => r.recoveryUfM2, "text-slate-600", 4, false, false, { context: notesContext, dimension: "overall" })}
+                    {renderConceptRow("Costo UF/m\u00B2", overall, (r) => r.costUfM2, "text-slate-600", 5, false, false, { context: notesContext, dimension: "overall" })}
+                    {renderConceptRow("Deficit UF/m\u00B2", overall, (r) => r.deficitUfM2, "", 6, true, false, { context: notesContext, dimension: "overall" })}
                   </tbody>
                 </table>
               </div>
@@ -259,16 +390,7 @@ export function GgccDeficitClient({
               <div className="overflow-x-auto">
                 <table className={`${compactTheme.table} text-xs border-collapse`}>
                   <thead className={compactTheme.head}>
-                    {yearGroups.length > 1 && (
-                      <tr className="bg-brand-700">
-                        <th className="sticky left-0 z-10 bg-brand-700 py-0.5 border-r border-white/10" />
-                        {yearGroups.map(({ year, count }, idx) => (
-                          <th key={year} colSpan={count} className={cn("py-0.5 text-center text-[9px] font-bold uppercase tracking-widest text-white/30", idx > 0 && "border-l border-white/15")}>
-                            {year}
-                          </th>
-                        ))}
-                      </tr>
-                    )}
+                    <YearGroupHeaderRow yearGroups={yearGroups} />
                     <tr>
                       <th className={cn(compactTheme.headCell, "sticky left-0 z-10 bg-brand-700 pl-4 pr-3 border-r border-white/10")}>
                         Componente
@@ -312,16 +434,7 @@ export function GgccDeficitClient({
                     <div className="overflow-x-auto">
                       <table className={`${compactTheme.table} text-xs border-collapse`}>
                         <thead className={compactTheme.head}>
-                          {yearGroups.length > 1 && (
-                            <tr className="bg-brand-700">
-                              <th className="sticky left-0 z-10 bg-brand-700 py-0.5 border-r border-white/10" />
-                              {yearGroups.map(({ year, count }, idx) => (
-                                <th key={year} colSpan={count} className={cn("py-0.5 text-center text-[9px] font-bold uppercase tracking-widest text-white/30", idx > 0 && "border-l border-white/15")}>
-                                  {year}
-                                </th>
-                              ))}
-                            </tr>
-                          )}
+                          <YearGroupHeaderRow yearGroups={yearGroups} />
                           <tr>
                             <th className={cn(compactTheme.headCell, "sticky left-0 z-10 bg-brand-700 pl-4 pr-3 border-r border-white/10")}>
                               Concepto
@@ -334,10 +447,10 @@ export function GgccDeficitClient({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {renderConceptRow("Recuperacion", dim.rows, (r) => r.recoveryUf, "text-slate-700", 0)}
-                          {renderConceptRow("Costo", dim.rows, (r) => r.costUf, "text-slate-700", 1)}
-                          {renderConceptRow("Deficit UF", dim.rows, (r) => r.deficitUf, "", 2, true)}
-                          {renderConceptRow("Deficit %", dim.rows, (r) => r.deficitPct, "", 3, false, true)}
+                          {renderConceptRow("Recuperacion", dim.rows, (r) => r.recoveryUf, "text-slate-700", 0, false, false, { context: notesContext, dimension: dim.dimension })}
+                          {renderConceptRow("Costo", dim.rows, (r) => r.costUf, "text-slate-700", 1, false, false, { context: notesContext, dimension: dim.dimension })}
+                          {renderConceptRow("Deficit UF", dim.rows, (r) => r.deficitUf, "", 2, true, false, { context: notesContext, dimension: dim.dimension })}
+                          {renderConceptRow("Deficit %", dim.rows, (r) => r.deficitPct, "", 3, false, true, { context: notesContext, dimension: dim.dimension })}
                         </tbody>
                       </table>
                     </div>
@@ -357,16 +470,7 @@ export function GgccDeficitClient({
                 <div className="overflow-x-auto">
                   <table className={`${compactTheme.table} text-xs border-collapse`}>
                     <thead className={compactTheme.head}>
-                      {yearGroups.length > 1 && (
-                        <tr className="bg-brand-700">
-                          <th className="sticky left-0 z-10 bg-brand-700 py-0.5 border-r border-white/10" />
-                          {yearGroups.map(({ year, count }, idx) => (
-                            <th key={year} colSpan={count} className={cn("py-0.5 text-center text-[9px] font-bold uppercase tracking-widest text-white/30", idx > 0 && "border-l border-white/15")}>
-                              {year}
-                            </th>
-                          ))}
-                        </tr>
-                      )}
+                      <YearGroupHeaderRow yearGroups={yearGroups} />
                       <tr>
                         <th className={cn(compactTheme.headCell, "sticky left-0 z-10 bg-brand-700 pl-4 pr-3 border-r border-white/10")}>
                           Indicador
@@ -412,12 +516,28 @@ function renderConceptRow(
   baseCls: string,
   idx: number,
   isDeficitUf = false,
-  isDeficitPct = false
+  isDeficitPct = false,
+  notes?: { context: GgccNotesContext; dimension: string }
 ): JSX.Element {
+  const lineKey = notes ? toLineKey("cdg", notes.dimension, label) : null;
   return (
     <tr className={`${getStripedRowClass(idx, "compact")} ${compactTheme.rowHover}`}>
       <td className="sticky left-0 bg-inherit py-1.5 pl-4 pr-3 font-medium text-slate-700">
-        {label}
+        <span className="inline-flex items-center gap-2">
+          {notes && lineKey && (
+            <NoteIndicator
+              projectId={notes.context.projectId}
+              view="CDG"
+              lineKey={lineKey}
+              notes={notes.context.notesByLineKey.get(lineKey) ?? []}
+              canEdit={notes.context.canEdit}
+              currentUserId={notes.context.currentUserId}
+              isAdmin={notes.context.isAdmin}
+              onChange={notes.context.refresh}
+            />
+          )}
+          {label}
+        </span>
       </td>
       {rows.map((r) => {
         const v = getValue(r);

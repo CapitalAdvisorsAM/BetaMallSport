@@ -31,7 +31,7 @@ import {
   chartLegendProps,
   chartMargins,
 } from "@/lib/charts/theme";
-import { formatDecimal, formatUf, cn } from "@/lib/utils";
+import { cn, formatDecimal, formatPeriodoCorto, formatUf } from "@/lib/utils";
 import type { BudgetVsActualResponse } from "@/types/finance";
 
 type BudgetVsActualClientProps = {
@@ -40,12 +40,6 @@ type BudgetVsActualClientProps = {
   defaultHasta?: string;
 };
 
-const MONTH_NAMES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-
-function formatPeriodShort(period: string): string {
-  const [y, m] = period.split("-");
-  return `${MONTH_NAMES[Number(m) - 1]} ${y.slice(2)}`;
-}
 
 function achievementBadge(pct: number): { label: string; className: string } {
   if (pct >= 95) return { label: `${formatDecimal(pct)}%`, className: "bg-emerald-100 text-emerald-700" };
@@ -101,7 +95,7 @@ export function BudgetVsActualClient({
     if (!data) return [];
     return data.monthly.map((m) => ({
       ...m,
-      label: formatPeriodShort(m.period),
+      label: formatPeriodoCorto(m.period),
     }));
   }, [data]);
 
@@ -239,7 +233,7 @@ export function BudgetVsActualClient({
                           : "bg-slate-100 text-slate-600 hover:bg-slate-200",
                       )}
                     >
-                      {formatPeriodShort(p)}
+                      {formatPeriodoCorto(p)}
                     </button>
                   ))}
                 </div>
@@ -280,7 +274,7 @@ export function BudgetVsActualClient({
                     const badge = achievementBadge(displayAchievementPct);
                     return (
                       <tr key={row.tenantId} className={`${getStripedRowClass(index)} ${tableTheme.rowHover}`}>
-                        <td className="sticky left-0 bg-inherit px-4 py-3 font-medium text-slate-800">
+                        <td className="sticky left-0 bg-inherit px-4 py-2 font-medium text-slate-800">
                           <div className="flex items-center gap-2">
                             <Link
                               href={`/tenants/${row.tenantId}`}
@@ -298,25 +292,25 @@ export function BudgetVsActualClient({
                             )}
                           </div>
                         </td>
-                        <td className="px-3 py-3 text-sm text-slate-500">
+                        <td className="px-3 py-2 text-sm text-slate-500">
                           {row.locales.map((l) => l.codigo).join(", ")}
                         </td>
-                        <td className="px-3 py-3 text-right tabular-nums text-slate-700">
+                        <td className="px-3 py-2 text-right tabular-nums text-slate-700">
                           {formatUf(row.glam2, 1)}
                         </td>
-                        <td className="px-3 py-3 text-right tabular-nums text-slate-700">
+                        <td className="px-3 py-2 text-right tabular-nums text-slate-700">
                           {formatUf(displayBudget)}
                         </td>
-                        <td className="px-3 py-3 text-right tabular-nums text-slate-700">
+                        <td className="px-3 py-2 text-right tabular-nums text-slate-700">
                           {formatUf(displayActual)}
                         </td>
-                        <td className={cn("px-3 py-3 text-right tabular-nums", varianceColor(displayVarianceUf))}>
+                        <td className={cn("px-3 py-2 text-right tabular-nums", varianceColor(displayVarianceUf))}>
                           {formatUf(displayVarianceUf)}
                         </td>
-                        <td className={cn("px-3 py-3 text-right tabular-nums", varianceColor(displayVariancePct))}>
+                        <td className={cn("px-3 py-2 text-right tabular-nums", varianceColor(displayVariancePct))}>
                           {formatUf(displayVariancePct, 1)}%
                         </td>
-                        <td className="px-3 py-3 text-center">
+                        <td className="px-3 py-2 text-center">
                           <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", badge.className)}>
                             {badge.label}
                           </span>
@@ -336,22 +330,22 @@ export function BudgetVsActualClient({
                       const footBadge = achievementBadge(totAchievement);
                       return (
                         <tr className="border-t-2 border-brand-700 bg-slate-50 font-semibold text-slate-800">
-                          <td className="sticky left-0 bg-slate-50 px-4 py-3">
+                          <td className="sticky left-0 bg-slate-50 px-4 py-2">
                             Totales ({data.rows.length} arrendatarios)
                           </td>
-                          <td className="px-3 py-3" />
-                          <td className="px-3 py-3 text-right tabular-nums">
+                          <td className="px-3 py-2" />
+                          <td className="px-3 py-2 text-right tabular-nums">
                             {formatUf(data.rows.reduce((a, r) => a + r.glam2, 0), 1)}
                           </td>
-                          <td className="px-3 py-3 text-right tabular-nums">{formatUf(totBudget)}</td>
-                          <td className="px-3 py-3 text-right tabular-nums">{formatUf(totActual)}</td>
-                          <td className={cn("px-3 py-3 text-right tabular-nums", varianceColor(totVarianceUf))}>
+                          <td className="px-3 py-2 text-right tabular-nums">{formatUf(totBudget)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{formatUf(totActual)}</td>
+                          <td className={cn("px-3 py-2 text-right tabular-nums", varianceColor(totVarianceUf))}>
                             {formatUf(totVarianceUf)}
                           </td>
-                          <td className={cn("px-3 py-3 text-right tabular-nums", varianceColor(totVariancePct))}>
+                          <td className={cn("px-3 py-2 text-right tabular-nums", varianceColor(totVariancePct))}>
                             {formatUf(totVariancePct, 1)}%
                           </td>
-                          <td className="px-3 py-3 text-center">
+                          <td className="px-3 py-2 text-center">
                             <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", footBadge.className)}>
                               {footBadge.label}
                             </span>

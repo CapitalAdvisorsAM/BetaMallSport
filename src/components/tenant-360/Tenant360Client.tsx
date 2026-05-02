@@ -23,6 +23,7 @@ import { SalesSeasonalityChart } from "@/components/tenant-360/SalesSeasonalityC
 import { SalesBudgetVsActualSection } from "@/components/tenant-360/SalesBudgetVsActualSection";
 import { RentCompositionChart } from "@/components/tenant-360/RentCompositionChart";
 import { BillingRealizationSection } from "@/components/tenant-360/BillingRealizationSection";
+import { extractApiErrorMessage } from "@/lib/http/client-errors";
 import { cn, formatUf, formatPercent } from "@/lib/utils";
 import type { Tenant360Data, Tenant360SalesPoint } from "@/types/tenant-360";
 
@@ -43,17 +44,6 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "contratos",    label: "Contratos & Ocupacion" },
   { id: "analisis",     label: "Analisis & Proyecciones" },
 ];
-
-async function readErrorMessage(response: Response, fallback: string): Promise<string> {
-  const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) return fallback;
-  try {
-    const data = (await response.json()) as { message?: string };
-    return data.message ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 // ── Sales KPI row — shown at top of Ventas tab ─────────────────────────────
 
@@ -172,7 +162,7 @@ export function Tenant360Client({
       if (hasta) params.set("to", hasta);
       const response = await fetch(`/api/real/tenants/${tenantId}?${params.toString()}`);
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, "Error al cargar datos del arrendatario."));
+        throw new Error(await extractApiErrorMessage(response, "Error al cargar datos del arrendatario."));
       }
       const payload = (await response.json()) as Tenant360Data;
       setData(payload);
