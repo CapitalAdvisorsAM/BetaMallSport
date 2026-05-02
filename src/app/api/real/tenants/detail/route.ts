@@ -1,4 +1,5 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+﻿import { AccountingScenario } from "@prisma/client";
+import { NextRequest, NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import {
   getFinanceFrom,
@@ -31,7 +32,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         where: {
           projectId,
           tenantId,
-          period: periodDate
+          period: periodDate,
+          scenario: AccountingScenario.REAL
         },
         select: {
           group1: true,
@@ -58,7 +60,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       where: {
         projectId,
         tenantId,
-        period: { gte: desdeDate, lte: hastaDate }
+        period: { gte: desdeDate, lte: hastaDate },
+        scenario: AccountingScenario.REAL
       },
       select: {
         group1: true,

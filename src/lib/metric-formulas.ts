@@ -326,7 +326,7 @@ export const METRIC_FORMULAS = {
   },
   chart_finance_ggcc: {
     title: "Deficit de gastos comunes",
-    formula: "Deficit = Recuperacion GGCC - Costos operacionales; Deficit % = Deficit / Recuperacion * 100",
+    formula: "Deficit = Recuperacion GGCC - ABS(Costos operacionales); Deficit % = Deficit / Recuperacion * 100",
     detail: "Compara la recuperacion de gastos comunes vs costos reales de operacion."
   },
   chart_finance_cash_flow: {

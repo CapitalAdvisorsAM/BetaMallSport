@@ -9,8 +9,14 @@ export const accountingMappingSchema = z.object({
 
 export const salesMappingSchema = z.object({
   projectId: z.string().uuid(),
-  salesAccountId: z.number().int(),
+  salesAccountId: z.string().trim().min(1),
   storeName: z.string().min(1),
+  tenantId: z.string().uuid()
+});
+
+export const accountingTenantMappingSchema = z.object({
+  projectId: z.string().uuid(),
+  externalTenant: z.string().trim().min(1),
   tenantId: z.string().uuid()
 });
 
@@ -38,17 +44,83 @@ export async function getSalesMappings(projectId: string) {
   });
 }
 
+export async function getActiveTenants(projectId: string) {
+  return prisma.tenant.findMany({
+    where: { projectId, vigente: true },
+    select: { id: true, rut: true, razonSocial: true, nombreComercial: true },
+    orderBy: { nombreComercial: "asc" }
+  });
+}
+
+export async function getAccountingTenantMappings(projectId: string) {
+  return prisma.accountingTenantMapping.findMany({
+    where: { projectId },
+    include: { tenant: { select: { nombreComercial: true, razonSocial: true, rut: true } } },
+    orderBy: { externalTenant: "asc" }
+  });
+}
+
+export async function getUnmappedAccountingRecords(projectId: string) {
+  const records = await prisma.accountingRecord.findMany({
+    where: {
+      projectId,
+      OR: [{ unitId: null }, { tenantId: null }]
+    },
+    select: {
+      id: true,
+      period: true,
+      unitId: true,
+      tenantId: true,
+      externalUnit: true,
+      externalTenant: true,
+      group1: true,
+      group3: true,
+      denomination: true,
+      valueUf: true,
+      valueClp: true
+    },
+    orderBy: [{ period: "desc" }, { group1: "asc" }, { denomination: "asc" }]
+  });
+
+  return records.map((record) => ({
+    id: record.id,
+    period: record.period.toISOString().slice(0, 7),
+    unitId: record.unitId,
+    tenantId: record.tenantId,
+    externalUnit: record.externalUnit,
+    externalTenant: record.externalTenant,
+    group1: record.group1,
+    group3: record.group3,
+    denomination: record.denomination,
+    valueUf: Number(record.valueUf),
+    valueClp: record.valueClp === null ? null : Number(record.valueClp)
+  }));
+}
+
 export async function getFinanceMappingsData(projectId: string) {
-  const [accountingMappings, salesMappings, units] = await Promise.all([
+  const [
+    accountingMappings,
+    salesMappings,
+    accountingTenantMappings,
+    unmappedAccountingRecords,
+    units,
+    tenants
+  ] = await Promise.all([
     getAccountingMappings(projectId),
     getSalesMappings(projectId),
-    getActiveUnits(projectId)
+    getAccountingTenantMappings(projectId),
+    getUnmappedAccountingRecords(projectId),
+    getActiveUnits(projectId),
+    getActiveTenants(projectId)
   ]);
 
   return {
     accountingMappings,
     salesMappings,
-    units
+    accountingTenantMappings,
+    unmappedAccountingRecords,
+    units,
+    tenants
   };
 }
 
@@ -82,9 +154,10 @@ export async function upsertSalesMapping(
 ) {
   return prisma.salesTenantMapping.upsert({
     where: {
-      projectId_salesAccountId: {
+      projectId_salesAccountId_storeName: {
         projectId: data.projectId,
-        salesAccountId: data.salesAccountId
+        salesAccountId: data.salesAccountId,
+        storeName: data.storeName
       }
     },
     update: {
@@ -96,6 +169,30 @@ export async function upsertSalesMapping(
       projectId: data.projectId,
       salesAccountId: data.salesAccountId,
       storeName: data.storeName,
+      tenantId: data.tenantId,
+      createdBy: userId
+    }
+  });
+}
+
+export async function upsertAccountingTenantMapping(
+  data: z.infer<typeof accountingTenantMappingSchema>,
+  userId: string
+) {
+  return prisma.accountingTenantMapping.upsert({
+    where: {
+      projectId_externalTenant: {
+        projectId: data.projectId,
+        externalTenant: data.externalTenant
+      }
+    },
+    update: {
+      tenantId: data.tenantId,
+      createdBy: userId
+    },
+    create: {
+      projectId: data.projectId,
+      externalTenant: data.externalTenant,
       tenantId: data.tenantId,
       createdBy: userId
     }

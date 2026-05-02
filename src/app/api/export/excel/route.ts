@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import { Prisma } from "@prisma/client";
+import { AccountingScenario, Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { buildRentRollSnapshotRows } from "@/lib/plan/rent-roll-snapshot";
@@ -395,7 +395,8 @@ async function buildFinanzasArrendatariosExport(
             projectId: proyectoId,
             unitId: { in: allLocalIds },
             period: { gte: desdeDate, lte: hastaDate },
-            group1: "INGRESOS DE EXPLOTACION"
+            group1: "INGRESOS DE EXPLOTACION",
+            scenario: AccountingScenario.REAL
           },
           select: {
             unitId: true,
@@ -519,7 +520,8 @@ async function buildFinanzasEerrExport(
   const registros = await prisma.accountingRecord.findMany({
     where: {
       projectId: proyectoId,
-      period: { gte: desdeDate, lte: hastaDate }
+      period: { gte: desdeDate, lte: hastaDate },
+      scenario: AccountingScenario.REAL
     },
     orderBy: { period: "asc" }
   });

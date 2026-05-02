@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+import { AccountingScenario } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
@@ -79,7 +80,8 @@ export async function GET(
         where: {
           projectId,
           tenantId,
-          period: { gte: desdeDate, lte: hastaDate }
+          period: { gte: desdeDate, lte: hastaDate },
+          scenario: AccountingScenario.REAL
         },
         select: {
           unitId: true,

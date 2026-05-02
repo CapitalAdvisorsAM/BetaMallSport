@@ -2,7 +2,7 @@ import * as XLSX from "xlsx";
 import { num, str } from "@/lib/real/parse-utils";
 
 export type FilaVenta = {
-  idCa: number;
+  idCa: string;
   tienda: string;
   mes: Date;
   ventasPesos: number;
@@ -43,10 +43,10 @@ export function parseVentas(buffer: Buffer): FilaVenta[] {
     raw: true
   });
 
-  // Acumular ventas por (idCa, mes)
+  // Acumular ventas por (idCa, tienda, mes)
   type Key = string;
   const acum = new Map<Key, {
-    idCa: number;
+    idCa: string;
     tienda: string;
     mes: Date;
     ventasPesos: number;
@@ -58,10 +58,8 @@ export function parseVentas(buffer: Buffer): FilaVenta[] {
     const tipo = str(row["Tipo"]);
     if (tipo && tipo.toLowerCase() !== "real") continue;
 
-    const idCaRaw = row["ID CA"];
-    if (!idCaRaw) continue;
-    const idCa = parseInt(String(idCaRaw), 10);
-    if (isNaN(idCa)) continue;
+    const idCa = str(row["ID CA"]).trim();
+    if (!idCa) continue;
 
     // Obtener fecha del mes
     let mes: Date | null = null;
@@ -87,7 +85,7 @@ export function parseVentas(buffer: Buffer): FilaVenta[] {
     const tienda = str(row["Tienda"]);
     const categoriaTamano = str(row["Categoría (Tamaño)"] ?? row["Categoria (Tamano)"] ?? "");
 
-    const key: Key = `${idCa}__${mes.toISOString().slice(0, 7)}`;
+    const key: Key = `${idCa}__${tienda}__${mes.toISOString().slice(0, 7)}`;
     const existing = acum.get(key);
     if (existing) {
       existing.ventasPesos += ventasPesos;

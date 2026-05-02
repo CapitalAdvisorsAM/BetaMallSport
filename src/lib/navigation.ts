@@ -81,6 +81,12 @@ export const SETTINGS_SUB_NAV_ITEMS: NavItem[] = [
     match: "startsWith"
   },
   {
+    label: "Plan de cuentas",
+    href: "/settings/chart-of-accounts",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
     label: "Widgets",
     href: "/settings/dashboard",
     enabled: true,
@@ -183,8 +189,26 @@ export const REAL_SUB_NAV_ITEMS: NavItem[] = [
     match: "startsWith"
   },
   {
+    label: "Ventas Diarias",
+    href: "/real/sales-daily",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
     label: "GG.CC.",
     href: "/real/common-charges",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
+    label: "Costo Ocupación",
+    href: "/real/occupancy-cost",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
+    label: "Gráficos",
+    href: "/real/charts",
     enabled: true,
     match: "startsWith"
   }

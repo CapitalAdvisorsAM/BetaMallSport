@@ -73,7 +73,8 @@ function buildDeficitRows(
     const recoveryUf = recoveryByPeriod.get(p) ?? 0;
     const cost = costByPeriod.get(p) ?? emptyBreakdown();
     const costUf = cost.total;
-    const deficitUf = recoveryUf - costUf;
+    const costMagnitudeUf = Math.abs(costUf);
+    const deficitUf = recoveryUf - costMagnitudeUf;
     const deficitPct = recoveryUf !== 0 ? (deficitUf / Math.abs(recoveryUf)) * 100 : 0;
     const gla = glaByPeriod.get(p) ?? 0;
 

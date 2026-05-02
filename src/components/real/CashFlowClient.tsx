@@ -20,8 +20,9 @@ import {
   chartGradientGroup,
   gradientId,
   chartSeriesColors,
+  buildPeriodoTickFormatter,
 } from "@/lib/charts/theme";
-import { cn, formatUf } from "@/lib/utils";
+import { cn, formatPeriodoCorto, formatUf } from "@/lib/utils";
 import type { CashFlowResponse } from "@/types/finance";
 
 type Props = {
@@ -31,11 +32,6 @@ type Props = {
 };
 
 const compactTheme = getTableTheme("compact");
-
-function formatPeriodo(period: string): string {
-  const [year, month] = period.split("-");
-  return month && year ? `${month}/${year.slice(2)}` : period;
-}
 
 function formatAmount(value: number): string {
   if (value === 0) return "—";
@@ -66,7 +62,7 @@ export function CashFlowClient({ selectedProjectId, defaultDesde, defaultHasta }
   }, [fetchData]);
 
   const chartData = (data?.periods ?? []).map((period) => ({
-    period: formatPeriodo(period),
+    period,
     net: data?.netByPeriod[period] ?? 0,
     cumulative: data?.cumulativeByPeriod[period] ?? 0,
   }));
@@ -104,11 +100,12 @@ export function CashFlowClient({ selectedProjectId, defaultDesde, defaultHasta }
                   {chartGradientGroup([{ id: cumulativeGradient, color: chartSeriesColors.actual }])}
                 </defs>
                 <CartesianGrid {...chartGridProps} />
-                <XAxis dataKey="period" {...chartAxisProps} />
+                <XAxis dataKey="period" {...chartAxisProps} tickFormatter={buildPeriodoTickFormatter(data?.periods.length ?? 0)} />
                 <YAxis {...chartAxisProps} tickFormatter={(value: number) => formatUf(value, 0)} />
                 <Tooltip
                   content={
                     <ChartTooltip
+                      labelFormatter={(l) => formatPeriodoCorto(String(l))}
                       valueFormatter={(value) =>
                         typeof value === "number" ? formatUf(value, 0) : String(value ?? "—")
                       }
@@ -132,7 +129,7 @@ export function CashFlowClient({ selectedProjectId, defaultDesde, defaultHasta }
                     <th className={compactTheme.headCell}>Clasificación</th>
                     {data.periods.map((period) => (
                       <th key={period} className={cn(compactTheme.compactHeadCell, "min-w-[84px] text-right")}>
-                        {formatPeriodo(period)}
+                        {formatPeriodoCorto(period)}
                       </th>
                     ))}
                     <th className={cn(compactTheme.compactHeadCell, "text-right")}>Total</th>

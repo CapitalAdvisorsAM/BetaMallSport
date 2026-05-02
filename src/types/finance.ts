@@ -10,6 +10,13 @@ export type LocalRef = {
   nombre: string;
 };
 
+export type TenantRef = {
+  id: string;
+  rut: string;
+  razonSocial: string;
+  nombreComercial: string;
+};
+
 export type TenantFinanceRow = {
   id: string;
   rut: string;
@@ -100,7 +107,7 @@ export type ContableUnmapped = {
 };
 
 export type VentasUnmapped = {
-  idCa: number;
+  idCa: string;
   tienda: string;
   sugerencias: ContableSuggestion[];
 };

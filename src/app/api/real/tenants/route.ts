@@ -1,10 +1,12 @@
 ﻿export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+import { AccountingScenario } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { getFinanceFrom, getFinanceProjectId, getFinanceTo } from "@/lib/real/api-params";
 import { resolveMonthRange } from "@/lib/real/period-range";
+import { buildUfRateMap, getUfRate } from "@/lib/real/uf-lookup";
 import { buildTenantFinanceRows } from "@/lib/real/tenants";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -75,7 +77,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           projectId,
           unitId: { in: unitIds },
           period: { gte: desdeDate, lte: hastaDate },
-          group1: "INGRESOS DE EXPLOTACION"
+          group1: "INGRESOS DE EXPLOTACION",
+          scenario: AccountingScenario.REAL
         },
         select: {
           unitId: true,
@@ -102,10 +105,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       periodo: record.period,
       valorUf: record.valueUf
     }));
+    const ufRateByPeriod = await buildUfRateMap([...new Set(sales.map((sale) => sale.period.toISOString().slice(0, 7)))]);
     const legacySales = sales.map((sale) => ({
       tenantId: sale.tenantId,
       periodo: sale.period.toISOString().slice(0, 7),
-      ventasPesos: sale.salesPesos
+      ventasPesos: (() => {
+        const period = sale.period.toISOString().slice(0, 7);
+        const uf = getUfRate(period, ufRateByPeriod);
+        return uf > 0 ? Number(sale.salesPesos) / uf : 0;
+      })()
     }));
 
     const rows = buildTenantFinanceRows(tenants, legacyAccountingRecords, legacySales);

@@ -28,6 +28,14 @@ const SUPPORTED_TYPES = new Set([
 
 const SKIPPED_LOCAL_CODES = new Set(["-", "GESTION COMERCIAL - NUEVOS LOCALES"]);
 
+const MONTH_MAP = {
+  enero: 1, ene: 1, febrero: 2, feb: 2, marzo: 3, mar: 3,
+  abril: 4, abr: 4, mayo: 5, may: 5, junio: 6, jun: 6,
+  julio: 7, jul: 7, agosto: 8, ago: 8,
+  septiembre: 9, sept: 9, sep: 9,
+  octubre: 10, oct: 10, noviembre: 11, nov: 11, diciembre: 12, dic: 12
+};
+
 function parseArgs(argv) {
   const args = {
     file: process.env.XLSX_PATH || "",
@@ -225,6 +233,105 @@ function appendNote(existingNotes, note) {
   return `${current} | ${note}`;
 }
 
+function lastDayOfMonth(year, month) {
+  return new Date(year, month, 0).getDate();
+}
+
+function addOneDay(dateStr) {
+  const d = new Date(`${dateStr}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return dateToIso(d);
+}
+
+function parseUntilDate(untilStr, fechaTermino) {
+  const s = untilStr.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (/^(el\s+)?termino$/.test(s)) return fechaTermino;
+  const dmyMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(s);
+  if (dmyMatch) {
+    let y = parseInt(dmyMatch[3]);
+    if (y < 100) y += 2000;
+    return `${y}-${dmyMatch[2].padStart(2, "0")}-${dmyMatch[1].padStart(2, "0")}`;
+  }
+  const dmonMatch = /^(\d{1,2})\s+([a-z]+)\s+(\d{2,4})$/.exec(s);
+  if (dmonMatch) {
+    const day = parseInt(dmonMatch[1]);
+    const mon = MONTH_MAP[dmonMatch[2]];
+    let y = parseInt(dmonMatch[3]);
+    if (!mon) return null;
+    if (y < 100) y += 2000;
+    return `${y}-${String(mon).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+  const monYearMatch = /^([a-z]+)\s+(\d{4})$/.exec(s);
+  if (monYearMatch) {
+    const mon = MONTH_MAP[monYearMatch[1]];
+    const y = parseInt(monYearMatch[2]);
+    if (!mon) return null;
+    const lastDay = lastDayOfMonth(y, mon);
+    return `${y}-${String(mon).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  }
+  return null;
+}
+
+// Parsea col 18 (Comentario Renta Fija) en tramos de tarifa escalonada.
+// Retorna [{valor, vigenciaDesde, vigenciaHasta}, ...] o null si no es parseable.
+function parseRentFijaSteps(commentStr, fechaInicio, fechaTermino) {
+  if (!commentStr || !fechaInicio || !fechaTermino) return null;
+  const text = asString(commentStr)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text || text === "-") return null;
+
+  // Split on "/" that is outside parentheses (avoids splitting dates like 31/01/2026)
+  const segments = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    if (text[i] === "(") depth += 1;
+    else if (text[i] === ")") depth -= 1;
+    else if (text[i] === "/" && depth === 0) {
+      const seg = text.slice(start, i).trim();
+      if (seg) segments.push(seg);
+      start = i + 1;
+    }
+  }
+  const last = text.slice(start).trim();
+  if (last) segments.push(last);
+  if (segments.length < 2) return null;
+
+  const rawSteps = [];
+  for (const seg of segments) {
+    const s = seg.trim();
+    let valor = null;
+    let untilDate = null;
+    const parenMatch = /^([\d,.]+)\s*\((?:hasta\s+(?:el\s+)?)?([^)]+)\)/.exec(s);
+    if (parenMatch) {
+      valor = parseNumber(parenMatch[1]);
+      untilDate = parseUntilDate(parenMatch[2], fechaTermino);
+    } else {
+      const noParenMatch = /^([\d,.]+)\s+(?:hasta\s+(?:el\s+)?)?(.+)$/.exec(s);
+      if (noParenMatch) {
+        valor = parseNumber(noParenMatch[1]);
+        untilDate = parseUntilDate(noParenMatch[2], fechaTermino);
+      }
+    }
+    if (valor === null || !untilDate) return null;
+    rawSteps.push({ valor, until: untilDate });
+  }
+
+  if (rawSteps.length < 2) return null;
+
+  const result = [];
+  for (let i = 0; i < rawSteps.length; i += 1) {
+    const desde = i === 0 ? fechaInicio : addOneDay(result[i - 1].vigenciaHasta);
+    const hasta = i === rawSteps.length - 1 ? fechaTermino : rawSteps[i].until;
+    if (desde > hasta) return null;
+    result.push({ valor: rawSteps[i].valor, vigenciaDesde: desde, vigenciaHasta: hasta });
+  }
+  return result;
+}
+
 function buildReportPath(explicitPath) {
   if (explicitPath) return explicitPath;
   const now = new Date();
@@ -304,6 +411,7 @@ function parseRentRoll(filePath, includeExpired) {
         ggccMesesReajuste: parseNumber(row[12]),
         variablePct: parsePercent(row[15]),
         fixedUfM2: parseNumber(row[17]),
+        rentaFijaComment: asString(row[18]),
         diciembre: parseNumber(row[19]),
         fondoPct: parsePercent(row[21]),
         sizeCategory: asString(row[23]),
@@ -354,6 +462,7 @@ function makeContractInput(row, sourceRefCounts) {
       fechaInicio: row.fechaInicio,
       fechaTermino: row.fechaTermino,
       fixedUfM2: row.fixedUfM2,
+      rentaFijaSteps: parseRentFijaSteps(row.rentaFijaComment, row.fechaInicio, row.fechaTermino) || null,
       variablePct: row.variablePct,
       ggccBaseUfM2: row.ggccBaseUfM2,
       ggccAdminPct: row.ggccAdminPct,
@@ -549,13 +658,25 @@ async function syncRate(tx, contratoId, tipo, valor, desde, hasta, extra = {}) {
   // this, the GIST anti-overlap constraint on ContratoTarifa rejects re-runs
   // of the sync that try to in-place UPDATE rows whose range conflicts with
   // another active row in the same logical group.
+  // Existing PORCENTAJE rates may have umbralVentasUf=NULL while the sync passes
+  // Decimal(0). The DB exclusion constraint uses COALESCE(umbralVentasUf,0) so
+  // both are equivalent. We must match either NULL or 0 to find and supersede
+  // the old row before inserting the new one.
+  const umbralDecimal = rateExtra.umbralVentasUf === undefined ? undefined : toDecimal(rateExtra.umbralVentasUf);
+  const umbralWhere =
+    umbralDecimal === undefined
+      ? {}
+      : umbralDecimal === null || umbralDecimal.isZero()
+        ? { OR: [{ umbralVentasUf: null }, { umbralVentasUf: new Prisma.Decimal(0) }] }
+        : { umbralVentasUf: umbralDecimal };
+
   const existing = await tx.contractRate.findFirst({
     where: {
       contratoId,
       supersededAt: null,
       tipo,
       vigenciaDesde: toDate(desde),
-      umbralVentasUf: rateExtra.umbralVentasUf === undefined ? undefined : toDecimal(rateExtra.umbralVentasUf)
+      ...umbralWhere
     }
   });
 
@@ -637,6 +758,45 @@ async function syncGgcc(tx, contratoId, input) {
   return tx.contractCommonExpense.create({ data: { contratoId, ...data } });
 }
 
+async function syncAllRates(tx, contratoId, tipo, steps, input, report) {
+  const newDates = new Set(steps.map((s) => toDate(s.vigenciaDesde).toISOString()));
+
+  // Supersede orphaned active rates BEFORE inserting new steps.
+  // Pre-existing rates with vigenciaDesde values not in the new schedule would
+  // otherwise overlap with the new inserts and trigger the exclusion constraint.
+  const allActive = await tx.contractRate.findMany({
+    where: { contratoId, tipo, supersededAt: null }
+  });
+  for (const orphan of allActive) {
+    if (!newDates.has(orphan.vigenciaDesde.toISOString())) {
+      await tx.contractRate.update({
+        where: { id: orphan.id },
+        data: { supersededAt: new Date(), supersedeReason: "rent-roll excel sync - orphaned step" }
+      });
+    }
+  }
+
+  for (const step of steps) {
+    await syncRate(tx, contratoId, tipo, step.valor, step.vigenciaDesde, step.vigenciaHasta, {
+      report,
+      source: { rowNumber: input.rowNumber, local: input.localCodigo, tenant: input.tenantName }
+    });
+  }
+}
+
+async function supersedePriorSteps(tx, contratoId, tipo, keepDesde) {
+  const keepIso = toDate(keepDesde).toISOString();
+  const active = await tx.contractRate.findMany({ where: { contratoId, tipo, supersededAt: null } });
+  for (const r of active) {
+    if (r.vigenciaDesde.toISOString() !== keepIso) {
+      await tx.contractRate.update({
+        where: { id: r.id },
+        data: { supersededAt: new Date(), supersedeReason: "rent-roll excel sync - orphaned step" }
+      });
+    }
+  }
+}
+
 async function applyInput(tx, projectId, input, existing, sourceRefCounts, report) {
   const unit = await ensureUnit(tx, projectId, input, existing, report);
   const tenant = await ensureTenant(tx, projectId, input, existing, report);
@@ -705,7 +865,13 @@ async function applyInput(tx, projectId, input, existing, sourceRefCounts, repor
     });
   }
 
-  if (input.fixedUfM2 !== null && input.fixedUfM2 !== undefined) {
+  if (input.rentaFijaSteps) {
+    await syncAllRates(tx, contract.id, ContractRateType.FIJO_UF_M2, input.rentaFijaSteps, input, report);
+  } else if (input.fixedUfM2 !== null && input.fixedUfM2 !== undefined) {
+    // No escalation schedule: this is a single full-period rate. Supersede any
+    // orphaned multi-step rates (different vigenciaDesde) from a previous sync
+    // before inserting — otherwise the exclusion constraint fires.
+    await supersedePriorSteps(tx, contract.id, ContractRateType.FIJO_UF_M2, input.fechaInicio);
     await syncRate(tx, contract.id, ContractRateType.FIJO_UF_M2, input.fixedUfM2, input.fechaInicio, input.fechaTermino, {
       report,
       source: { rowNumber: input.rowNumber, local: input.localCodigo, tenant: input.tenantName }
@@ -713,6 +879,7 @@ async function applyInput(tx, projectId, input, existing, sourceRefCounts, repor
   }
 
   if (input.variablePct !== null && input.variablePct !== undefined) {
+    await supersedePriorSteps(tx, contract.id, ContractRateType.PORCENTAJE, input.fechaInicio);
     await syncRate(tx, contract.id, ContractRateType.PORCENTAJE, input.variablePct, input.fechaInicio, input.fechaTermino, {
       umbralVentasUf: new Prisma.Decimal(0),
       report,

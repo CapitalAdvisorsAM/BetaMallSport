@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  diffPct,
+  formatPanelDelta,
   formatPanelValue,
   formatPanelYoy,
   realVsPptoSemaphore,
@@ -90,6 +92,48 @@ describe("yoySemaphore", () => {
 
   it("returns neutral for zero", () => {
     expect(yoySemaphore(0)).toBe("neutral");
+  });
+});
+
+describe("formatPanelDelta", () => {
+  it("returns em dash for null", () => {
+    expect(formatPanelDelta(null, "uf")).toBe("—");
+  });
+
+  it("prefixes positive deltas with +", () => {
+    expect(formatPanelDelta(100, "uf")).toMatch(/^\+/);
+  });
+
+  it("preserves the negative sign for negative deltas", () => {
+    expect(formatPanelDelta(-100, "uf")).toMatch(/^-/);
+  });
+
+  it("formats percent deltas with the % suffix", () => {
+    expect(formatPanelDelta(5, "pct")).toMatch(/5,0%$/);
+  });
+});
+
+describe("diffPct", () => {
+  it("returns null when either side is null", () => {
+    expect(diffPct(null, 100)).toBeNull();
+    expect(diffPct(100, null)).toBeNull();
+  });
+
+  it("returns null when reference is zero", () => {
+    expect(diffPct(100, 0)).toBeNull();
+  });
+
+  it("computes a positive percent diff", () => {
+    expect(diffPct(110, 100)).toBeCloseTo(10);
+  });
+
+  it("computes a negative percent diff", () => {
+    expect(diffPct(90, 100)).toBeCloseTo(-10);
+  });
+
+  it("uses the absolute value of reference so negative ref keeps sign of (real-ref)", () => {
+    // (real - ref) / |ref| = (-50 - -100) / 100 = +50%
+    expect(diffPct(-50, -100)).toBeCloseTo(50);
   });
 });
 

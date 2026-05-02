@@ -24,6 +24,7 @@ export function toPanelCell({ real, ppto, prior }: CellInput): PanelCdgCell {
   return {
     real,
     ppto: ppto ?? null,
+    prior: prior ?? null,
     yoy: yoyPct(real, prior ?? null)
   };
 }

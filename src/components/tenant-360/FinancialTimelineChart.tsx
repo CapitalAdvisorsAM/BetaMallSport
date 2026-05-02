@@ -21,8 +21,9 @@ import {
   chartHeight,
   chartLegendProps,
   chartMargins,
+  buildPeriodoTickFormatter,
 } from "@/lib/charts/theme";
-import { formatPercent, formatUf } from "@/lib/utils";
+import { formatPercent, formatPeriodoCorto, formatUf } from "@/lib/utils";
 import type { Tenant360MonthlyPoint } from "@/types/tenant-360";
 
 type FinancialTimelineChartProps = {
@@ -44,6 +45,7 @@ export function FinancialTimelineChart({ data }: FinancialTimelineChartProps): J
           <XAxis
             dataKey="period"
             {...chartAxisProps}
+            tickFormatter={buildPeriodoTickFormatter(data.length)}
           />
           <YAxis
             yAxisId="left"
@@ -60,6 +62,7 @@ export function FinancialTimelineChart({ data }: FinancialTimelineChartProps): J
           <Tooltip
             content={
               <ChartTooltip
+                labelFormatter={(l) => formatPeriodoCorto(String(l))}
                 valueFormatter={(value, name, entry) => {
                   const v = typeof value === "number" ? value : Number(value ?? 0);
                   if (String(name) === "Costo Ocup. %") return formatPercent(v);

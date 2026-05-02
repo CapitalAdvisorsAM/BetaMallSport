@@ -18,11 +18,11 @@ function normalizeBody(record: Record<string, unknown>) {
         ? record.proyectoId
         : "";
   const salesAccountId =
-    typeof record.salesAccountId === "number"
-      ? record.salesAccountId
-      : typeof record.idCa === "number"
-        ? record.idCa
-        : Number.NaN;
+    typeof record.salesAccountId === "string" || typeof record.salesAccountId === "number"
+      ? String(record.salesAccountId).trim()
+      : typeof record.idCa === "string" || typeof record.idCa === "number"
+        ? String(record.idCa).trim()
+        : "";
   const storeName =
     typeof record.storeName === "string"
       ? record.storeName

@@ -1,18 +1,19 @@
 export const dynamic = "force-dynamic";
 
-import { ContractStatus, MasterStatus, ContractRateType } from "@prisma/client";
+import { AccountingScenario, ContractStatus, MasterStatus, ContractRateType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import {
   buildAlertCounts,
-  buildIngresoDesglosado,
+  buildIngresoDesglosadoFromAccounting,
   buildOcupacionDetalle,
   buildRentaEnRiesgo,
   buildVencimientosPorAnio,
   calculateContractStateCounters,
+  calculateGlaMetrics,
   type KpiContractInput
 } from "@/lib/kpi";
-import { buildUfRateMap } from "@/lib/real/uf-lookup";
+import { pivotAccounting } from "@/lib/real/accounting-pivot";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { computeEstadoContrato, startOfDay } from "@/lib/utils";
@@ -39,6 +40,9 @@ export async function GET(request: Request): Promise<NextResponse> {
     const { searchParams } = new URL(request.url);
     const proyectoId = searchParams.get("projectId");
     const periodo = searchParams.get("periodo") ?? toPeriodo(new Date());
+    const scenarioParam = searchParams.get("scenario")?.toUpperCase();
+    const scenario: AccountingScenario =
+      scenarioParam === "PPTO" ? AccountingScenario.PPTO : AccountingScenario.REAL;
 
     if (!proyectoId) {
       return NextResponse.json({ message: "projectId es obligatorio." }, { status: 400 });
@@ -47,14 +51,14 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "periodo debe tener formato YYYY-MM." }, { status: 400 });
     }
 
-    const cacheKey = buildMetricsCacheKey("dashboard-metrics", [proyectoId, periodo]);
+    const cacheKey = buildMetricsCacheKey("dashboard-metrics", [proyectoId, periodo, scenario]);
     const payload = await getOrSetMetricsCache(
       cacheKey,
       proyectoId,
       120_000,
       async (): Promise<DashboardMetricsResponse> => {
         const today = startOfDay(new Date());
-        const [localesActivos, contratosRaw, groupedStates, ventasPeriodoRaw, energiaPeriodoRaw, valorUf] =
+        const [localesActivos, contratosRaw, groupedStates, valorUf] =
           await Promise.all([
             prisma.unit.findMany({
               where: {
@@ -67,6 +71,7 @@ export async function GET(request: Request): Promise<NextResponse> {
                 esGLA: true,
                 glam2: true,
                 tipo: true,
+                categoriaTamano: true,
                 zona: { select: { nombre: true } }
               }
             }),
@@ -138,44 +143,11 @@ export async function GET(request: Request): Promise<NextResponse> {
               where: { projectId: proyectoId },
               _count: { _all: true }
             }),
-            prisma.tenantSale.findMany({
-              where: {
-                projectId: proyectoId,
-                period: new Date(`${periodo}-01`)
-              },
-              select: {
-                tenantId: true,
-                period: true,
-                salesPesos: true
-              }
-            }),
-            prisma.ingresoEnergia.findMany({
-              where: {
-                projectId: proyectoId,
-                periodo: new Date(`${periodo}-01`)
-              },
-              select: {
-                localId: true,
-                periodo: true,
-                valorUf: true
-              }
-            }),
             prisma.valorUF.findFirst({
               orderBy: { fecha: "desc" },
               select: { fecha: true, valor: true }
             })
           ]);
-
-        const ventasPeriodo = ventasPeriodoRaw.map((sale) => ({
-          arrendatarioId: sale.tenantId,
-          periodo: sale.period.toISOString().slice(0, 7),
-          ventasPesos: sale.salesPesos
-        }));
-        const energiaPeriodo = energiaPeriodoRaw.map((energy) => ({
-          localId: energy.localId,
-          periodo: energy.periodo.toISOString().slice(0, 7),
-          valorUf: energy.valorUf
-        }));
 
         const contratosWithState = contratosRaw
           .map((contract) => {
@@ -264,16 +236,21 @@ export async function GET(request: Request): Promise<NextResponse> {
 
         const localesActivosMapped = localesActivos.map((l) => ({ ...l, zona: l.zona?.nombre ?? null }));
         const ocupacion = buildOcupacionDetalle(localesActivosMapped, activeContractsParaOcupacion);
-        const ufRateMap = await buildUfRateMap([periodo]);
-        const ufRateForPeriodo = ufRateMap.get(periodo) ?? (valorUf ? Number(valorUf.valor.toString()) : 0);
-        const ingresos = buildIngresoDesglosado(
-          vigenteContracts,
-          localesActivosMapped,
-          ventasPeriodo,
-          energiaPeriodo,
+
+        const periodDate = new Date(`${periodo}-01`);
+        const accountingPivot = await pivotAccounting(proyectoId, {
+          from: periodDate,
+          to: periodDate,
+          group1: "INGRESOS DE EXPLOTACION",
+          scenarios: [scenario]
+        });
+        const { glaArrendada } = calculateGlaMetrics(localesActivosMapped, vigenteContracts);
+        const ingresos = buildIngresoDesglosadoFromAccounting({
+          pivot: accountingPivot,
           periodo,
-          ufRateForPeriodo
-        );
+          scenario,
+          glaArrendadaM2: glaArrendada
+        });
         const alertas = buildAlertCounts(
           contratosWithState.map((contract) => ({
             estado: contract.estado,

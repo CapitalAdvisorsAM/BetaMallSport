@@ -19,6 +19,7 @@ export type GlaUnitInput = {
   esGLA: boolean;
   glam2: DecimalLike;
   piso: string;
+  categoriaTamano?: string | null;
   zona?: string | null;
 };
 
@@ -28,7 +29,15 @@ export type GlaContractInput = {
   fechaTermino: Date;
 };
 
-export type DimensionField = "tipo" | "tamano" | "piso";
+export type DimensionField = "tipo" | "tamano" | "piso" | "zona" | "rubro";
+
+/**
+ * Map of unitId → rubro label, derived from active contracts joined to tenants.
+ * Required when computing GLA / sales by `rubro`, since rubro lives on Tenant
+ * (not Unit). Build it once per request from the same contracts payload and
+ * pass it into `buildGlaByDimensionPeriod`.
+ */
+export type TenantRubroByUnitId = Map<string, string | null>;
 
 // ---------------------------------------------------------------------------
 // Size-bucket mapping (mirrors kpi.ts logic)
@@ -46,12 +55,32 @@ const TAMANOS = [
 export type TamanoLabel = (typeof TAMANOS)[number];
 
 export function mapTamanoFromUnit(unit: GlaUnitInput): TamanoLabel {
+  const categoriaTamano = normalizeTamanoLabel(unit.categoriaTamano);
+  if (categoriaTamano) return categoriaTamano;
+
   if (unit.tipo === UnitType.BODEGA) return "Bodega";
   if (unit.tipo === UnitType.MODULO || unit.tipo === UnitType.SIMULADOR) return "Modulo";
   const gla = toNum(unit.glam2);
   if (gla > 200) return "Tienda Mayor";
   if (gla >= 50) return "Tienda Mediana";
   return "Tienda Menor";
+}
+
+function normalizeTamanoLabel(value: string | null | undefined): TamanoLabel | null {
+  if (!value) return null;
+  const normalized = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+  const map: Record<string, TamanoLabel> = {
+    TIENDAMAYOR: "Tienda Mayor",
+    TIENDAMEDIANA: "Tienda Mediana",
+    TIENDAMENOR: "Tienda Menor",
+    MODULO: "Modulo",
+    BODEGA: "Bodega"
+  };
+  return map[normalized] ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -64,14 +93,20 @@ function toNum(v: DecimalLike | null | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function getDimensionValue(unit: GlaUnitInput, field: DimensionField): string | null {
+function getDimensionValue(
+  unit: GlaUnitInput,
+  field: DimensionField,
+  tenantRubroByUnitId?: TenantRubroByUnitId
+): string | null {
   if (field === "tipo") return mapCategoria(unit.zona);
   if (field === "tamano") return mapTamanoFromUnit(unit);
+  if (field === "zona") return unit.zona?.trim() || null;
+  if (field === "rubro") return tenantRubroByUnitId?.get(unit.id) ?? null;
   return unit.piso || null;
 }
 
-function isContractActiveInPeriod(c: GlaContractInput, periodStart: Date, periodEnd: Date): boolean {
-  return c.fechaInicio <= periodEnd && c.fechaTermino >= periodStart;
+function isContractActiveAtPeriodEnd(c: GlaContractInput, periodEnd: Date): boolean {
+  return c.fechaInicio <= periodEnd && c.fechaTermino >= periodEnd;
 }
 
 function periodBounds(period: string): { start: Date; end: Date } {
@@ -94,7 +129,8 @@ export function buildGlaByDimensionPeriod(
   units: GlaUnitInput[],
   contracts: GlaContractInput[],
   periods: string[],
-  dimensionField: DimensionField
+  dimensionField: DimensionField,
+  tenantRubroByUnitId?: TenantRubroByUnitId
 ): {
   occupied: Map<string, Map<string, number>>;
   totals: Map<string, number>;
@@ -102,21 +138,25 @@ export function buildGlaByDimensionPeriod(
   const glaUnits = units.filter((u) => u.esGLA);
   const unitById = new Map(glaUnits.map((u) => [u.id, u]));
 
-  // Total GLA per dimension (static across periods)
+  // Total GLA per dimension (static across periods).
+  // For "rubro", the assignment depends on the active tenant which can change
+  // over time, so a static total is meaningless — fall back to occupied totals.
   const totals = new Map<string, number>();
-  for (const u of glaUnits) {
-    const dim = getDimensionValue(u, dimensionField);
-    if (!dim) continue;
-    totals.set(dim, (totals.get(dim) ?? 0) + toNum(u.glam2));
+  if (dimensionField !== "rubro") {
+    for (const u of glaUnits) {
+      const dim = getDimensionValue(u, dimensionField, tenantRubroByUnitId);
+      if (!dim) continue;
+      totals.set(dim, (totals.get(dim) ?? 0) + toNum(u.glam2));
+    }
   }
 
   // Occupied GLA per dimension per period
   const occupied = new Map<string, Map<string, number>>();
   for (const period of periods) {
-    const { start, end } = periodBounds(period);
+    const { end } = periodBounds(period);
     const occupiedLocalIds = new Set<string>();
     for (const c of contracts) {
-      if (isContractActiveInPeriod(c, start, end)) {
+      if (isContractActiveAtPeriodEnd(c, end)) {
         occupiedLocalIds.add(c.localId);
       }
     }
@@ -124,12 +164,22 @@ export function buildGlaByDimensionPeriod(
     for (const localId of occupiedLocalIds) {
       const unit = unitById.get(localId);
       if (!unit) continue;
-      const dim = getDimensionValue(unit, dimensionField);
+      const dim = getDimensionValue(unit, dimensionField, tenantRubroByUnitId);
       if (!dim) continue;
 
       const periodMap = occupied.get(dim) ?? new Map<string, number>();
       periodMap.set(period, (periodMap.get(period) ?? 0) + toNum(unit.glam2));
       occupied.set(dim, periodMap);
+    }
+  }
+
+  // For rubro: derive totals from the max occupied GLA per dimension across periods.
+  // Conservative: best snapshot of "how much GLA this rubro currently holds".
+  if (dimensionField === "rubro") {
+    for (const [dim, periodMap] of occupied) {
+      let maxGla = 0;
+      for (const v of periodMap.values()) maxGla = Math.max(maxGla, v);
+      totals.set(dim, maxGla);
     }
   }
 
@@ -146,11 +196,11 @@ export function totalOccupiedGlaForPeriod(
 ): number {
   const glaUnits = units.filter((u) => u.esGLA);
   const unitById = new Map(glaUnits.map((u) => [u.id, u]));
-  const { start, end } = periodBounds(period);
+  const { end } = periodBounds(period);
 
   const occupiedLocalIds = new Set<string>();
   for (const c of contracts) {
-    if (isContractActiveInPeriod(c, start, end)) {
+    if (isContractActiveAtPeriodEnd(c, end)) {
       occupiedLocalIds.add(c.localId);
     }
   }

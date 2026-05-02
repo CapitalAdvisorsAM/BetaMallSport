@@ -1,4 +1,8 @@
-import { ContractStatus, UnitType, ContractRateType } from "@prisma/client";
+import { AccountingScenario, ContractStatus, UnitType, ContractRateType } from "@prisma/client";
+import {
+  pivotSum,
+  type AccountingPivotResult
+} from "@/lib/real/accounting-pivot";
 import {
   CONTRACT_EXPIRY_ROW_LIMIT as CONTRACT_EXPIRY_ROW_LIMIT_VALUE,
   CONTRACT_EXPIRY_WINDOWS as CONTRACT_EXPIRY_WINDOWS_VALUE,
@@ -572,6 +576,7 @@ type IngresoLocalInput = {
   tipo: UnitType;
   esGLA: boolean;
   glam2: DecimalLike;
+  categoriaTamano?: string | null;
   zona?: string | null;
 };
 
@@ -677,6 +682,11 @@ export function mapCategoria(zona: string | null | undefined): string | null {
 }
 
 function mapTamano(local: IngresoLocalInput): (typeof TAMANOS_OCUPACION)[number] {
+  const categoriaTamano = mapCategoriaTamano(local.categoriaTamano);
+  if (categoriaTamano) {
+    return categoriaTamano;
+  }
+
   if (local.tipo === UnitType.BODEGA) {
     return "Bodega";
   }
@@ -694,7 +704,26 @@ function mapTamano(local: IngresoLocalInput): (typeof TAMANOS_OCUPACION)[number]
   return "Tienda Menor";
 }
 
-export function buildIngresoDesglosado(
+function mapCategoriaTamano(value: string | null | undefined): (typeof TAMANOS_OCUPACION)[number] | null {
+  const normalized = normalizeLabel(value);
+  const map: Record<string, (typeof TAMANOS_OCUPACION)[number]> = {
+    TIENDAMAYOR: "Tienda Mayor",
+    TIENDAMEDIANA: "Tienda Mediana",
+    TIENDAMENOR: "Tienda Menor",
+    MODULO: "Modulo",
+    BODEGA: "Bodega"
+  };
+
+  return map[normalized] ?? null;
+}
+
+/**
+ * Contract-based projected income breakdown. Used for reconciliation /
+ * "brecha" views that compare expected (contract) vs actual (accounting).
+ * For dashboard ingresos KPIs prefer `buildIngresoDesglosadoFromAccounting`,
+ * which mirrors the Excel CDG SUMIFS pattern over `Data Contable`.
+ */
+export function buildIngresoDesglosadoFromContracts(
   contratos: IngresoContratoInput[],
   locales: IngresoLocalInput[],
   ventasLocales: VentaLocalPeriodoInput[],
@@ -786,6 +815,65 @@ export function buildIngresoDesglosado(
     totalUf,
     facturacionUfM2: glaArrendada > 0 ? totalUf / glaArrendada : 0,
     arriendoFijoUfM2: glaArrendada > 0 ? arriendoFijoUf / glaArrendada : 0
+  };
+}
+
+// GRUPO 3 buckets that feed each IngresoDesglosado field. Mirrors the Excel
+// CDG `EE.RR` rows 14–23 of the v51 workbook (group1=INGRESOS DE EXPLOTACION).
+export const INGRESO_GROUP3 = {
+  arriendoFijoUf: ["ARRIENDO DE LOCAL FIJO"],
+  arriendoVariableUf: ["ARRIENDO DE LOCAL VARIABLE"],
+  simuladoresModulosUf: ["SIMULADORES Y MODULO"],
+  arriendoEspacioUf: ["ARRIENDO DE ESPACIO"],
+  arriendoBodegaUf: ["ARRIENDO BODEGA"],
+  ventaEnergiaUf: ["INGRESOS POR VENTA DE ENERGIA"]
+} as const satisfies Record<keyof Omit<IngresoDesglosado, "totalUf" | "facturacionUfM2" | "arriendoFijoUfM2">, readonly string[]>;
+
+/**
+ * Accounting-driven income breakdown — replaces the contract-based path for
+ * dashboard KPIs. Pivots `AccountingRecord` by (period, group3, scenario),
+ * mirroring the Excel CDG `SUMIFS('Data Contable'!$L:$L, ...)` pattern.
+ *
+ * `pivot` must already cover the requested period. Build it once with
+ * `pivotAccounting()` so multiple breakdowns share a single DB round-trip.
+ *
+ * `glaArrendadaM2` divides `facturacionUfM2` and `arriendoFijoUfM2` —
+ * accounting itself doesn't carry GLA, so the caller passes it in (typically
+ * derived from active contracts via `calculateGlaMetrics`).
+ */
+export function buildIngresoDesglosadoFromAccounting(args: {
+  pivot: AccountingPivotResult;
+  periodo: string;
+  scenario: AccountingScenario;
+  glaArrendadaM2: number;
+}): IngresoDesglosado {
+  const { pivot, periodo, scenario, glaArrendadaM2 } = args;
+
+  const arriendoFijoUf = pivotSum(pivot, periodo, INGRESO_GROUP3.arriendoFijoUf, scenario);
+  const arriendoVariableUf = pivotSum(pivot, periodo, INGRESO_GROUP3.arriendoVariableUf, scenario);
+  const simuladoresModulosUf = pivotSum(pivot, periodo, INGRESO_GROUP3.simuladoresModulosUf, scenario);
+  const arriendoEspacioUf = pivotSum(pivot, periodo, INGRESO_GROUP3.arriendoEspacioUf, scenario);
+  const arriendoBodegaUf = pivotSum(pivot, periodo, INGRESO_GROUP3.arriendoBodegaUf, scenario);
+  const ventaEnergiaUf = pivotSum(pivot, periodo, INGRESO_GROUP3.ventaEnergiaUf, scenario);
+
+  const totalUf =
+    arriendoFijoUf +
+    arriendoVariableUf +
+    simuladoresModulosUf +
+    arriendoEspacioUf +
+    arriendoBodegaUf +
+    ventaEnergiaUf;
+
+  return {
+    arriendoFijoUf,
+    arriendoVariableUf,
+    simuladoresModulosUf,
+    arriendoEspacioUf,
+    arriendoBodegaUf,
+    ventaEnergiaUf,
+    totalUf,
+    facturacionUfM2: glaArrendadaM2 > 0 ? totalUf / glaArrendadaM2 : 0,
+    arriendoFijoUfM2: glaArrendadaM2 > 0 ? arriendoFijoUf / glaArrendadaM2 : 0
   };
 }
 

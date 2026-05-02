@@ -10,6 +10,9 @@ export function resolveMonthRange(desde?: string | null, hasta?: string | null):
   };
 }
 
-export function toPeriodKey(value: Date): string {
-  return value.toISOString().slice(0, 7);
+export function toPeriodKey(value: Date | string): string {
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 7);
+  }
+  return value.slice(0, 7);
 }

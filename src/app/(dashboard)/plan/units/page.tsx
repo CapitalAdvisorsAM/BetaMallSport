@@ -83,17 +83,12 @@ export default async function UnitsPage({
   }
 
   const q = searchParams.q?.trim() ?? "";
-  const detalleId = searchParams.detalle?.trim() ?? "";
   const estado = parseUnitsStatus(searchParams.estado);
   const estadoValue = estado ?? "all";
   const mode = resolveMode(searchParams.seccion);
   const currentPage = parsePage(searchParams.page);
   const canEdit = canWrite(session.user.role);
   const unitsWhere = buildUnitsWhere(selectedProjectId, { q, estado });
-
-  if (detalleId) {
-    unitsWhere.id = detalleId;
-  }
 
 
   let units: Array<{
@@ -175,40 +170,6 @@ export default async function UnitsPage({
     return `/plan/units?${params.toString()}`;
   };
 
-  const buildDetailHref = (id: string | null): string => {
-    const params = new URLSearchParams();
-    params.set("seccion", "ver");
-    if (q) {
-      params.set("q", q);
-    }
-    if (estado) {
-      params.set("estado", estado);
-    }
-    params.set("page", String(currentPage));
-    if (id) {
-      params.set("detalle", id);
-    }
-    return `/plan/units?${params.toString()}`;
-  };
-
-  const selectedUnit =
-    mode === "ver" && detalleId
-      ? await prisma.unit.findFirst({
-          where: { id: detalleId, projectId: selectedProjectId },
-          select: {
-            id: true,
-            codigo: true,
-            nombre: true,
-            tipo: true,
-            piso: true,
-            zonaId: true,
-            glam2: true,
-            esGLA: true,
-            estado: true
-          }
-        })
-      : null;
-
   const filteredExportHref = buildExportExcelUrl({
     dataset: "locales",
     scope: "filtered",
@@ -266,41 +227,6 @@ export default async function UnitsPage({
             </div>
           </section>
 
-          {selectedUnit ? (
-            <section className="space-y-3 rounded-md border border-brand-200 bg-brand-50 p-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-brand-700">
-                  Detalle local {selectedUnit.codigo}
-                </h3>
-                <Button asChild type="button" variant="outline" size="sm">
-                  <Link href={buildDetailHref(null)}>Cerrar detalle</Link>
-                </Button>
-              </div>
-              <div className="grid gap-2 text-sm md:grid-cols-2">
-                <p>
-                  <span className="font-semibold text-slate-700">Nombre:</span> {selectedUnit.nombre || "-"}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-700">Tipo:</span> {selectedUnit.tipo}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-700">Piso:</span> {selectedUnit.piso}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-700">Zona:</span>{" "}
-                  {zones.find((z) => z.id === selectedUnit.zonaId)?.nombre ?? "-"}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-700">GLA m2:</span>{" "}
-                  {formatDecimal(selectedUnit.glam2.toString())}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-700">Estado:</span> {selectedUnit.estado}
-                </p>
-              </div>
-            </section>
-          ) : null}
-
           <section className="rounded-md bg-white p-4 shadow-sm">
             <form className="grid gap-3 md:grid-cols-[1fr_220px_auto]">
               <input type="hidden" name="seccion" value="ver" />
@@ -338,6 +264,7 @@ export default async function UnitsPage({
 
           <section className="rounded-md bg-white shadow-sm">
             <UnitsViewTable
+              projectId={selectedProjectId}
               rows={units.map((unit) => ({
                 id: unit.id,
                 codigo: unit.codigo,
@@ -348,8 +275,6 @@ export default async function UnitsPage({
                 esGLA: unit.esGLA,
                 estado: unit.estado
               }))}
-              detailBaseHref={buildDetailHref(null)}
-              selectedDetailId={detalleId}
             />
             <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
               <span>

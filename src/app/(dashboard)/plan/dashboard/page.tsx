@@ -1,3 +1,4 @@
+import { AccountingScenario } from "@prisma/client";
 import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/permissions";
@@ -13,6 +14,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
 import { toPeriodKey } from "@/lib/real/period-range";
+import { pivotAccounting, pivotSum } from "@/lib/real/accounting-pivot";
 import {
   formatPeriodo,
   formatPercent,
@@ -20,7 +22,7 @@ import {
   formatUf
 } from "@/lib/utils";
 import { buildCategoryConcentration } from "@/lib/plan/category-concentration";
-import { buildVencimientosPorAnio } from "@/lib/kpi";
+import { buildVencimientosPorAnio, INGRESO_GROUP3 } from "@/lib/kpi";
 import { getTimelineData } from "@/lib/plan/timeline";
 
 const RentRollChartsSection = dynamic(
@@ -66,56 +68,53 @@ function buildPlanExclusiveKpis(periodos: ReturnType<typeof getTimelineData> ext
     return { value: ((current - prior) / Math.abs(prior)) * 100 };
   }
 
-  const vacancyCurrent =
-    latest.glaTotalM2 > 0 ? 100 - latest.pctOcupacionGLA : 0;
-  const vacancyPrior =
-    previous && previous.glaTotalM2 > 0 ? 100 - previous.pctOcupacionGLA : null;
+  const vacancyCurrent = latest.glaTotalM2 > 0 ? latest.pctVacanciaGLA : 0;
+  const vacancyPrior = previous && previous.glaTotalM2 > 0 ? previous.pctVacanciaGLA : null;
 
   const ufPerM2Current =
-    latest.glaTotalM2 > 0 ? latest.rentaFijaUf / latest.glaTotalM2 : 0;
+    latest.glaArrendadaM2 > 0 ? latest.rentaFijaUf / latest.glaArrendadaM2 : 0;
   const ufPerM2Prior =
-    previous && previous.glaTotalM2 > 0 ? previous.rentaFijaUf / previous.glaTotalM2 : null;
+    previous && previous.glaArrendadaM2 > 0 ? previous.rentaFijaUf / previous.glaArrendadaM2 : null;
 
-  return [
+  const kpis: PlanKpi[] = [
     {
       id: "plan_ocupacion_pct",
-      title: "% Ocupación",
+      title: "% Ocupacion GLA",
       value: formatPercent(latest.pctOcupacionGLA),
-      subtitle,
+      subtitle: `${formatSquareMeters(latest.glaArrendadaM2)} / ${formatSquareMeters(latest.glaTotalM2)}`,
       sparkline: sparkSlice.map((p) => p.pctOcupacionGLA),
       trend: trendOf(latest.pctOcupacionGLA, previous?.pctOcupacionGLA ?? null)
     },
     {
-      id: "plan_vacancia_pct",
-      title: "% Vacancia",
-      value: formatPercent(vacancyCurrent),
-      subtitle,
-      sparkline: sparkSlice.map((p) =>
-        p.glaTotalM2 > 0 ? 100 - p.pctOcupacionGLA : 0
-      ),
+      id: "plan_gla_arrendada",
+      title: "GLA arrendada",
+      value: formatSquareMeters(latest.glaArrendadaM2),
+      subtitle: `${latest.localesArrendados} locales ocupados`,
+      sparkline: sparkSlice.map((p) => p.glaArrendadaM2),
+      trend: trendOf(latest.glaArrendadaM2, previous?.glaArrendadaM2 ?? null)
+    },
+    {
+      id: "plan_gla_vacante",
+      title: "GLA vacante",
+      value: formatSquareMeters(latest.glaVacanteM2),
+      subtitle: `${formatPercent(vacancyCurrent)} de vacancia - ${latest.localesVacantes} locales`,
+      sparkline: sparkSlice.map((p) => p.glaVacanteM2),
       trend: trendOf(vacancyCurrent, vacancyPrior)
     },
     {
-      id: "plan_uf_por_m2",
-      title: "UF / m² esperado",
+      id: "plan_uf_por_m2_arrendado",
+      title: "UF / m2 arrendado",
       value: formatUf(ufPerM2Current, 3),
-      subtitle,
+      subtitle: `${formatUf(latest.rentaFijaUf, 0)} renta fija`,
       sparkline: sparkSlice.map((p) =>
-        p.glaTotalM2 > 0 ? p.rentaFijaUf / p.glaTotalM2 : 0
+        p.glaArrendadaM2 > 0 ? p.rentaFijaUf / p.glaArrendadaM2 : 0
       ),
       trend: trendOf(ufPerM2Current, ufPerM2Prior)
-    },
-    {
-      id: "plan_walt_meses",
-      title: "WALT",
-      value: latest.waltMeses >= 12
-        ? `${(latest.waltMeses / 12).toFixed(1)} años`
-        : `${latest.waltMeses.toFixed(1)} meses`,
-      subtitle,
-      sparkline: sparkSlice.map((p) => p.waltMeses),
-      trend: trendOf(latest.waltMeses, previous?.waltMeses ?? null)
     }
   ];
+
+  return kpis;
+
 }
 
 function formatWidgetValue(value: number, format: DisplayFormat): string {
@@ -144,33 +143,66 @@ function formatPeriodoShort(periodo: string): string {
 
 export default async function RentRollDashboardPage(): Promise<JSX.Element> {
   await requireSession();
-  const periodoActual = formatPeriodo(toPeriodKey(new Date()));
 
   const { selectedProjectId } = await getProjectContext();
   if (!selectedProjectId) {
     redirect("/");
   }
 
-  const [timelineData, activeContracts, dashboardConfigRows, customWidgets] = await Promise.all([
-    getTimelineData(selectedProjectId),
-    prisma.contract.findMany({
-      where: {
-        projectId: selectedProjectId,
-        estado: { in: ["VIGENTE", "GRACIA"] }
-      },
-      select: {
-        fechaTermino: true,
-        local: {
-          select: {
-            glam2: true,
-            zona: { select: { nombre: true } }
+  const projectSnapshot = await prisma.project.findUnique({
+    where: { id: selectedProjectId },
+    select: { reportDate: true }
+  });
+  const asOfDate = projectSnapshot?.reportDate ?? new Date();
+  const periodoActual = formatPeriodo(toPeriodKey(asOfDate));
+
+  const periodKey = toPeriodKey(asOfDate);
+  const periodDate = new Date(`${periodKey}-01`);
+
+  const [timelineData, activeContracts, dashboardConfigRows, customWidgets, accountingPivot] =
+    await Promise.all([
+      getTimelineData(selectedProjectId, asOfDate),
+      prisma.contract.findMany({
+        where: {
+          projectId: selectedProjectId,
+          estado: { in: ["VIGENTE", "GRACIA"] },
+          // Restrict to the snapshot window so totales y conteos cuadren con
+          // los KPIs del header (que filtran por fecha en timeline.ts).
+          fechaInicio: { lte: asOfDate },
+          fechaTermino: { gte: asOfDate }
+        },
+        select: {
+          fechaTermino: true,
+          cuentaParaVacancia: true,
+          local: {
+            select: {
+              glam2: true,
+              zona: { select: { nombre: true } }
+            }
           }
         }
-      }
-    }),
-    prisma.dashboardConfig.findMany({ orderBy: { position: "asc" } }),
-    prisma.customWidget.findMany({ where: { enabled: true }, orderBy: { position: "asc" } }),
-  ]);
+      }),
+      prisma.dashboardConfig.findMany({ orderBy: { position: "asc" } }),
+      prisma.customWidget.findMany({ where: { enabled: true }, orderBy: { position: "asc" } }),
+      pivotAccounting(selectedProjectId, {
+        from: periodDate,
+        to: periodDate,
+        group1: "INGRESOS DE EXPLOTACION",
+        scenarios: [AccountingScenario.REAL, AccountingScenario.PPTO]
+      })
+    ]);
+
+  const ingresoGroups = [
+    ...INGRESO_GROUP3.arriendoFijoUf,
+    ...INGRESO_GROUP3.arriendoVariableUf,
+    ...INGRESO_GROUP3.simuladoresModulosUf,
+    ...INGRESO_GROUP3.arriendoEspacioUf,
+    ...INGRESO_GROUP3.arriendoBodegaUf,
+    ...INGRESO_GROUP3.ventaEnergiaUf
+  ];
+  const ingresoRealUf = pivotSum(accountingPivot, periodKey, ingresoGroups, AccountingScenario.REAL);
+  const ingresoPptoUf = pivotSum(accountingPivot, periodKey, ingresoGroups, AccountingScenario.PPTO);
+  const ingresoVarianza = ingresoPptoUf > 0 ? ((ingresoRealUf - ingresoPptoUf) / ingresoPptoUf) * 100 : null;
 
   const widgetConfigs = resolveWidgetConfigs(dashboardConfigRows);
   const enabledCharts = new Set(
@@ -258,6 +290,30 @@ export default async function RentRollDashboardPage(): Promise<JSX.Element> {
         </div>
       )}
 
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <KpiCard
+          title="Ingreso contable Real"
+          value={formatUf(ingresoRealUf, 0)}
+          subtitle={`Contable · ${formatPeriodoShort(periodKey)}`}
+          trend={ingresoVarianza !== null ? { value: ingresoVarianza } : undefined}
+        />
+        <KpiCard
+          title="Ingreso contable Ppto"
+          value={formatUf(ingresoPptoUf, 0)}
+          subtitle={`Presupuesto · ${formatPeriodoShort(periodKey)}`}
+        />
+        <KpiCard
+          title="Brecha Real vs Ppto"
+          value={formatUf(ingresoRealUf - ingresoPptoUf, 0)}
+          subtitle={
+            ingresoVarianza !== null
+              ? `${formatPercent(ingresoVarianza)} sobre presupuesto`
+              : "Sin presupuesto cargado"
+          }
+        />
+      </div>
+
+
       {kpiWidgets.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {kpiWidgets.map((k) => (
@@ -276,6 +332,7 @@ export default async function RentRollDashboardPage(): Promise<JSX.Element> {
       <RentRollChartsSection
         periodos={timelineData.periodos}
         categoryConcentration={categoryConcentration}
+        referencePeriodo={timelineData.asOfPeriodo}
         enabledCharts={enabledCharts}
         waltVariant={waltVariant}
         customWidgets={chartWidgets}

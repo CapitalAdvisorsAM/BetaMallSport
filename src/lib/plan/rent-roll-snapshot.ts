@@ -43,7 +43,7 @@ export async function buildRentRollSnapshotRows(
     prisma.contract.findMany({
       where: {
         projectId,
-        estado: { in: [ContractStatus.VIGENTE, ContractStatus.GRACIA] },
+        estado: { not: ContractStatus.TERMINADO_ANTICIPADO },
         fechaInicio: { lte: fechaReferencia },
         fechaTermino: { gte: fechaReferencia }
       },
@@ -56,6 +56,7 @@ export async function buildRentRollSnapshotRows(
             glam2: true,
             esGLA: true,
             tipo: true,
+            categoriaTamano: true,
             zona: { select: { nombre: true } }
           }
         },
@@ -114,6 +115,7 @@ export async function buildRentRollSnapshotRows(
         codigo: true,
         nombre: true,
         tipo: true,
+        categoriaTamano: true,
         esGLA: true,
         glam2: true,
         zona: { select: { nombre: true } }

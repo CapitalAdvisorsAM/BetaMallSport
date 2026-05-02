@@ -139,6 +139,23 @@ export function formatPeriodo(periodo: string): string {
   return `${MESES_ES[parseInt(month, 10) - 1] ?? month} ${year}`;
 }
 
+export function formatPeriodoCorto(periodo: string): string {
+  const [year, month] = periodo.split("-");
+  if (!year || !month) return periodo;
+  return `${MESES_ES[parseInt(month, 10) - 1] ?? month} ${year.slice(-2)}`;
+}
+
+export function groupPeriodosByYear(periods: string[]): { year: string; count: number }[] {
+  const groups: { year: string; count: number }[] = [];
+  for (const p of periods) {
+    const y = p.slice(0, 4);
+    const last = groups[groups.length - 1];
+    if (last?.year === y) last.count++;
+    else groups.push({ year: y, count: 1 });
+  }
+  return groups;
+}
+
 export function slugify(value: string): string {
   const normalized = value
     .normalize("NFD")

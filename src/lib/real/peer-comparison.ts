@@ -1,5 +1,6 @@
-import type { PrismaClient } from "@prisma/client";
+import { AccountingScenario, type PrismaClient } from "@prisma/client";
 import { mapCategoria } from "@/lib/kpi";
+import { buildUfRateMap, getUfRate } from "@/lib/real/uf-lookup";
 import type { PeerComparison, PeerComparisonRow } from "@/types/tenant-360";
 
 type DecimalLike = number | string | { toString(): string };
@@ -82,7 +83,8 @@ export async function buildPeerComparison(
       where: {
         projectId,
         tenantId: { in: allTenantIds },
-        period: { gte: desdeDate, lte: hastaDate }
+        period: { gte: desdeDate, lte: hastaDate },
+        scenario: AccountingScenario.REAL
       },
       select: { tenantId: true, valueUf: true }
     }),
@@ -92,7 +94,7 @@ export async function buildPeerComparison(
         tenantId: { in: allTenantIds },
         period: { gte: desdeDate, lte: hastaDate }
       },
-      select: { tenantId: true, salesPesos: true }
+      select: { tenantId: true, period: true, salesPesos: true }
     })
   ]);
 
@@ -106,26 +108,32 @@ export async function buildPeerComparison(
     );
   }
 
-  // Aggregate sales (in pesos) by tenant
+  const ufRateByPeriod = await buildUfRateMap([
+    ...new Set(salesRecords.map((sale) => sale.period.toISOString().slice(0, 7)))
+  ]);
+
+  // Aggregate sales in UF by tenant.
   const salesByTenant = new Map<string, number>();
   for (const s of salesRecords) {
     if (!s.tenantId) continue;
-    salesByTenant.set(s.tenantId, (salesByTenant.get(s.tenantId) ?? 0) + toNum(s.salesPesos));
+    const period = s.period.toISOString().slice(0, 7);
+    const uf = getUfRate(period, ufRateByPeriod);
+    salesByTenant.set(s.tenantId, (salesByTenant.get(s.tenantId) ?? 0) + (uf > 0 ? toNum(s.salesPesos) / uf : 0));
   }
 
   // Build peer rows
   const peers: PeerComparisonRow[] = [];
   for (const [tid, entry] of tenantMap) {
     const totalBilling = billingByTenant.get(tid) ?? 0;
-    const totalSalesPesos = salesByTenant.get(tid) ?? 0;
+    const totalSalesUf = salesByTenant.get(tid) ?? 0;
     const glam2 = entry.glam2;
 
     peers.push({
       tenantName: entry.name,
       glam2,
       facturacionUfM2: glam2 > 0 ? totalBilling / glam2 : 0,
-      ventasPesosM2: glam2 > 0 ? totalSalesPesos / glam2 : 0,
-      costoOcupacionPct: totalSalesPesos > 0 ? (totalBilling / totalSalesPesos) * 100 : null,
+      ventasPesosM2: glam2 > 0 ? totalSalesUf / glam2 : 0,
+      costoOcupacionPct: totalSalesUf > 0 ? (totalBilling / totalSalesUf) * 100 : null,
       isCurrent: entry.isCurrent
     });
   }

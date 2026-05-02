@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+import { AccountingScenario } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error";
 import { getFinanceFrom, getFinanceProjectId, getFinanceTo } from "@/lib/real/api-params";
@@ -49,7 +50,8 @@ export async function GET(request: Request): Promise<NextResponse> {
         where: {
           projectId,
           period: { gte: desdeDate, lte: hastaDate },
-          group1: "INGRESOS DE EXPLOTACION"
+          group1: "INGRESOS DE EXPLOTACION",
+          scenario: AccountingScenario.REAL
         },
         select: {
           period: true,
@@ -68,6 +70,7 @@ export async function GET(request: Request): Promise<NextResponse> {
           piso: true,
           tipo: true,
           esGLA: true,
+          categoriaTamano: true,
           zona: { select: { nombre: true } }
         }
       }),
@@ -83,6 +86,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       esGLA: u.esGLA,
       glam2: u.glam2,
       piso: u.piso,
+      categoriaTamano: u.categoriaTamano,
       zona: u.zona?.nombre ?? null
     }));
 

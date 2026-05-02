@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/DataTable";
 import {
@@ -24,6 +25,7 @@ type UnitsViewRow = {
 
 type UnitsViewTableProps = {
   rows: UnitsViewRow[];
+  projectId: string;
   selectedDetailId?: string;
   detailBaseHref?: string;
 };
@@ -36,7 +38,7 @@ function toNumber(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export function UnitsViewTable({ rows, selectedDetailId }: UnitsViewTableProps): JSX.Element {
+export function UnitsViewTable({ rows, projectId, selectedDetailId }: UnitsViewTableProps): JSX.Element {
   const tipoOptions = useMemo(
     () => Array.from(new Set(rows.map((row) => row.tipo))).sort(),
     [rows]
@@ -47,11 +49,14 @@ export function UnitsViewTable({ rows, selectedDetailId }: UnitsViewTableProps):
         accessorKey: "codigo",
         header: "Codigo",
         filterFn: "includesString",
-        meta: {
-          linkTo: {
-            triggerDetail: true,
-          },
-        },
+        cell: ({ row }) => (
+          <Link
+            href={`/units/${row.original.id}?proyecto=${projectId}`}
+            className="font-medium text-brand-500 underline underline-offset-2 transition-colors hover:text-brand-700"
+          >
+            {row.original.codigo}
+          </Link>
+        ),
       },
       enumFilterColumn<UnitsViewRow>({
         accessorKey: "tipo",

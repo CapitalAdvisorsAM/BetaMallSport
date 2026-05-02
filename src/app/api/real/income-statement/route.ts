@@ -1,6 +1,7 @@
 ﻿export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+import { AccountingScenario } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { getFinanceFrom, getFinanceProjectId, getFinanceTo } from "@/lib/real/api-params";
@@ -27,7 +28,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       prisma.accountingRecord.findMany({
         where: {
           projectId,
-          period: { gte: desdeDate, lte: hastaDate }
+          period: { gte: desdeDate, lte: hastaDate },
+          scenario: AccountingScenario.REAL
         },
         orderBy: { period: "asc" },
         select: {

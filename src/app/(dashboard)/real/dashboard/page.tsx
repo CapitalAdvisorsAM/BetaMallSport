@@ -3,10 +3,11 @@ import { FinanceDashboardClient } from "@/components/real/FinanceDashboardClient
 import { requireSession } from "@/lib/permissions";
 import { getProjectContext } from "@/lib/project";
 
-function dateToPeriodo(date: Date | null): string | null {
+function dateToPeriodo(date: Date | string | null): string | null {
   if (!date) return null;
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = new Date(date);
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
   return `${year}-${month}`;
 }
 

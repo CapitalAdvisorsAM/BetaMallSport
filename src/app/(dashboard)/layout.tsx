@@ -26,7 +26,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-[#f1f4f9]">
       <header className="bg-gradient-to-r from-brand-900 to-brand-700 shadow-lg">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between md:px-6">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-2 md:flex-row md:items-center md:justify-between md:px-6">
           <div className="flex items-center gap-3">
             <Image
               src="/MallSportLogo.jpg"
@@ -35,8 +35,8 @@ export default async function DashboardLayout({
               height={32}
               className="h-8 w-8 rounded-md object-cover ring-1 ring-white/20"
             />
-            <div>
-              <p className="overline text-white/55">Control de Gestión</p>
+            <div className="shrink-0">
+              <p className="overline whitespace-nowrap text-white/55">Control de Gestión</p>
               <h1
                 className="font-serif text-title font-medium text-white"
                 style={{ fontVariationSettings: '"opsz" 28, "wght" 500' }}

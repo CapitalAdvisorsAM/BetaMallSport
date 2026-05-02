@@ -6,7 +6,7 @@ import { handleApiError } from "@/lib/api-error";
 import { getFinanceFrom, getFinanceProjectId, getFinanceTo } from "@/lib/real/api-params";
 import { generatePeriods, type GlaContractInput, type GlaUnitInput } from "@/lib/real/gla-by-dimension";
 import { buildOccupancyTimeSeries } from "@/lib/real/occupancy-timeseries";
-import { resolveMonthRange } from "@/lib/real/period-range";
+import { resolveMonthRange, toPeriodKey } from "@/lib/real/period-range";
 import { requireSession } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import type { OccupancyTimeSeriesResponse } from "@/types/occupancy";
@@ -22,8 +22,13 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: "projectId requerido." }, { status: 400 });
     }
 
-    const from = getFinanceFrom(searchParams);
-    const to = getFinanceTo(searchParams);
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { reportDate: true }
+    });
+    const reportPeriod = project?.reportDate ? toPeriodKey(project.reportDate) : null;
+    const to = getFinanceTo(searchParams) ?? reportPeriod;
+    const from = getFinanceFrom(searchParams) ?? to;
     const { desdeDate, hastaDate } = resolveMonthRange(from, to);
     const periods = generatePeriods(desdeDate, hastaDate);
 
@@ -36,13 +41,14 @@ export async function GET(request: Request): Promise<NextResponse> {
           piso: true,
           tipo: true,
           esGLA: true,
+          categoriaTamano: true,
           zona: { select: { nombre: true } }
         }
       }),
       prisma.contract.findMany({
         where: {
           projectId: projectId,
-          estado: { in: ["VIGENTE", "GRACIA"] },
+          estado: { not: "TERMINADO_ANTICIPADO" },
           // Solo contratos que cuentan para vacancia ocupan el local en el time-series.
           cuentaParaVacancia: true
         },
@@ -56,6 +62,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       esGLA: u.esGLA,
       glam2: u.glam2,
       piso: u.piso,
+      categoriaTamano: u.categoriaTamano,
       zona: u.zona?.nombre ?? null
     }));
 

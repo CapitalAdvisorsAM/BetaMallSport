@@ -87,6 +87,7 @@ enum DataUploadType {
   TENANTS        @map("ARRENDATARIOS")
   RENT_ROLL
   SALES          @map("VENTAS")
+  SALES_DAILY    @map("VENTAS_DIARIAS")
   ACCOUNTING     @map("CONTABLE")
   BALANCES       @map("BALANCES")
   BANK           @map("BANCO")
@@ -105,6 +106,18 @@ enum DataUploadStatus {
   @@map("EstadoCargaDatos")
 }
 
+enum AccountType {
+  INGRESO
+  COSTO
+  INVERSION
+  OTRO
+}
+
+enum AccountingScenario {
+  REAL
+  PPTO
+}
+
 enum UserRole {
   ADMIN
   CONTABILIDAD
@@ -113,30 +126,33 @@ enum UserRole {
 }
 
 model Project {
-  id                     String                  @id @default(uuid()) @db.Uuid
-  nombre                 String
-  slug                   String                  @unique
-  color                  String
-  glaTotal               Decimal?                @db.Decimal(12, 2)
-  activo                 Boolean                 @default(true)
-  reportDate             DateTime?               @map("fechaReporte") @db.Date
-  createdAt              DateTime                @default(now()) @db.Timestamptz(3)
-  locales                Unit[]
-  zones                  Zone[]
-  tenantSales            TenantSale[]
-  tenantBudgetedSales    TenantBudgetedSale[]
-  ingresoEnergia         IngresoEnergia[]
-  arrendatarios          Tenant[]
-  contratos              Contract[]
-  contratosDia           ContractDay[]
-  dataUploads            DataUpload[]
-  accountingUnitMappings AccountingUnitMapping[]
-  salesTenantMappings    SalesTenantMapping[]
-  accountingRecords      AccountingRecord[]
-  billingAlerts          BillingAlert[]
-  expenseBudgets         ExpenseBudget[]
-  balanceRecords         BalanceRecord[]
-  bankMovements          BankMovement[]
+  id                       String                    @id @default(uuid()) @db.Uuid
+  nombre                   String
+  slug                     String                    @unique
+  color                    String
+  glaTotal                 Decimal?                  @db.Decimal(12, 2)
+  activo                   Boolean                   @default(true)
+  reportDate               DateTime?                 @map("fechaReporte") @db.Date
+  createdAt                DateTime                  @default(now()) @db.Timestamptz(3)
+  locales                  Unit[]
+  zones                    Zone[]
+  tenantSales              TenantSale[]
+  tenantSalesDaily         TenantSaleDaily[]
+  tenantBudgetedSales      TenantBudgetedSale[]
+  ingresoEnergia           IngresoEnergia[]
+  arrendatarios            Tenant[]
+  contratos                Contract[]
+  contratosDia             ContractDay[]
+  dataUploads              DataUpload[]
+  accountingUnitMappings   AccountingUnitMapping[]
+  accountingTenantMappings AccountingTenantMapping[]
+  chartOfAccounts          ChartOfAccount[]
+  salesTenantMappings      SalesTenantMapping[]
+  accountingRecords        AccountingRecord[]
+  billingAlerts            BillingAlert[]
+  expenseBudgets           ExpenseBudget[]
+  balanceRecords           BalanceRecord[]
+  bankMovements            BankMovement[]
 
   @@index([activo])
   @@index([nombre])
@@ -150,17 +166,18 @@ model ValorUF {
 }
 
 model Unit {
-  id        String       @id @default(uuid()) @db.Uuid
-  projectId String       @map("proyectoId") @db.Uuid
-  codigo    String
-  nombre    String
-  glam2     Decimal      @db.Decimal(10, 2)
-  piso      String
-  tipo      UnitType
-  zonaId    String?      @db.Uuid
-  esGLA     Boolean      @default(true)
-  estado    MasterStatus @default(ACTIVO)
-  createdAt DateTime     @default(now()) @db.Timestamptz(3)
+  id              String       @id @default(uuid()) @db.Uuid
+  projectId       String       @map("proyectoId") @db.Uuid
+  codigo          String
+  nombre          String
+  glam2           Decimal      @db.Decimal(10, 2)
+  piso            String
+  tipo            UnitType
+  zonaId          String?      @db.Uuid
+  categoriaTamano String?      @map("categoriaTamano")
+  esGLA           Boolean      @default(true)
+  estado          MasterStatus @default(ACTIVO)
+  createdAt       DateTime     @default(now()) @db.Timestamptz(3)
 
   proyecto               Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
   zona                   Zone?                   @relation(fields: [zonaId], references: [id], onDelete: SetNull)
@@ -244,6 +261,38 @@ model TenantBudgetedSale {
   @@map("VentaPresupuestadaArrendatario")
 }
 
+model TenantSaleDaily {
+  id                   String    @id @default(uuid()) @db.Uuid
+  projectId            String    @map("proyectoId") @db.Uuid
+  tenantId             String?   @map("arrendatarioId") @db.Uuid
+  salesAccountId       String    @map("idCa")
+  storeName            String    @map("tiendaNombre")
+  date                 DateTime  @map("fecha") @db.Date
+  period               DateTime  @map("periodo") @db.Date
+  day                  Int       @map("dia")
+  totalReceipts        Decimal   @map("totalBoletas") @db.Decimal(18, 2)
+  totalExemptReceipts  Decimal   @map("totalBoletasExentas") @db.Decimal(18, 2)
+  totalInvoices        Decimal   @map("totalFacturas") @db.Decimal(18, 2)
+  totalCreditNotes     Decimal   @map("totalNotasCredito") @db.Decimal(18, 2)
+  salesPesos           Decimal   @map("ventasPesos") @db.Decimal(18, 2)
+  registrationDate     DateTime? @map("fechaRegistro") @db.Date
+  sizeCategory         String?   @map("categoriaTamano")
+  typeCategory         String?   @map("categoriaTipo")
+  floor                String?   @map("piso")
+  glaType              String?   @map("glaTipo")
+  createdAt            DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @db.Timestamptz(3)
+
+  project Project @relation(fields: [projectId], references: [id])
+  tenant  Tenant? @relation(fields: [tenantId, projectId], references: [id, projectId])
+
+  @@unique([projectId, salesAccountId, storeName, date])
+  @@index([projectId, date])
+  @@index([projectId, period])
+  @@index([tenantId, date])
+  @@map("VentaArrendatarioDiaria")
+}
+
 model Tenant {
   id              String          @id @default(uuid()) @db.Uuid
   projectId       String          @map("proyectoId") @db.Uuid
@@ -256,13 +305,15 @@ model Tenant {
   category        TenantCategory?
   createdAt       DateTime        @default(now()) @db.Timestamptz(3)
 
-  proyecto            Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  contratos           Contract[]
-  tenantSales         TenantSale[]
-  tenantBudgetedSales TenantBudgetedSale[]
-  salesTenantMappings SalesTenantMapping[]
-  accountingRecords   AccountingRecord[]
-  billingAlerts       BillingAlert[]
+  proyecto                 Project                   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  contratos                Contract[]
+  tenantSales              TenantSale[]
+  tenantSalesDaily         TenantSaleDaily[]
+  tenantBudgetedSales      TenantBudgetedSale[]
+  salesTenantMappings      SalesTenantMapping[]
+  accountingTenantMappings AccountingTenantMapping[]
+  accountingRecords        AccountingRecord[]
+  billingAlerts            BillingAlert[]
 
   @@unique([projectId, rut])
   @@unique([id, projectId])
@@ -555,24 +606,78 @@ model AccountingUnitMapping {
   @@map("MapeoLocalContable")
 }
 
-model AccountingRecord {
-  id           String   @id @default(uuid()) @db.Uuid
-  projectId    String   @map("proyectoId") @db.Uuid
-  unitId       String?  @map("localId") @db.Uuid
-  tenantId     String?  @map("arrendatarioId") @db.Uuid
-  period       DateTime @map("periodo") @db.Date
-  group1       String   @map("grupo1")
-  group3       String   @map("grupo3")
-  denomination String   @map("denominacion")
-  valueUf      Decimal  @map("valorUf") @db.Decimal(14, 4)
-  sizeCategory String?  @map("categoriaTamano")
-  typeCategory String?  @map("categoriaTipo")
-  floor        String?  @map("piso")
-  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+model AccountingTenantMapping {
+  id             String   @id @default(uuid()) @db.Uuid
+  projectId      String   @map("proyectoId") @db.Uuid
+  externalTenant String   @map("arrendatarioExterno")
+  tenantId       String   @map("arrendatarioId") @db.Uuid
+  createdBy      String   @map("creadoPor") @db.Uuid
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  unit    Unit?   @relation(fields: [unitId], references: [id], onDelete: Cascade)
-  tenant  Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  tenant  Tenant  @relation(fields: [tenantId, projectId], references: [id, projectId], onDelete: Cascade)
+
+  @@unique([projectId, externalTenant])
+  @@index([projectId])
+  @@index([tenantId])
+  @@map("MapeoArrendatarioContable")
+}
+
+model ChartOfAccount {
+  id           String       @id @default(uuid()) @db.Uuid
+  projectId    String       @map("proyectoId") @db.Uuid
+  group0       String       @default("") @map("grupo0")
+  group1       String       @map("grupo1")
+  group2       String       @default("") @map("grupo2")
+  group3       String       @map("grupo3")
+  type         AccountType? @map("tipo")
+  alias        String?
+  displayOrder Int?         @map("orden")
+  notes        String?      @map("notas")
+  createdAt    DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime     @updatedAt @db.Timestamptz(3)
+
+  project Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  records AccountingRecord[]
+
+  @@unique([projectId, group0, group1, group2, group3])
+  @@index([projectId])
+  @@index([projectId, group1])
+  @@index([projectId, type])
+  @@map("PlanDeCuentas")
+}
+
+model AccountingRecord {
+  id                    String             @id @default(uuid()) @db.Uuid
+  projectId             String             @map("proyectoId") @db.Uuid
+  unitId                String?            @map("localId") @db.Uuid
+  tenantId              String?            @map("arrendatarioId") @db.Uuid
+  chartOfAccountId      String?            @map("planDeCuentasId") @db.Uuid
+  externalUnit          String?            @map("localExterno")
+  externalTenant        String?            @map("arrendatarioExterno")
+  period                DateTime           @map("periodo") @db.Date
+  group0                String?            @map("grupo0")
+  group1                String             @map("grupo1")
+  group2                String?            @map("grupo2")
+  group3                String             @map("grupo3")
+  denomination          String             @map("denominacion")
+  costCenterCode        String?            @map("clCoste")
+  costCenterDescription String?            @map("descripcionClCoste")
+  valueUf               Decimal            @map("valorUf") @db.Decimal(14, 4)
+  valueClp              Decimal?           @map("valorClp") @db.Decimal(18, 2)
+  sizeCategory          String?            @map("categoriaTamano")
+  typeCategory          String?            @map("categoriaTipo")
+  floor                 String?            @map("piso")
+  documentRef           String?            @map("documento")
+  documentHeader        String?            @map("textoCabDocumento")
+  glaFlag               Boolean?           @map("esGla")
+  scenario              AccountingScenario @default(REAL) @map("escenario")
+  createdAt             DateTime           @default(now()) @db.Timestamptz(3)
+
+  project        Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  unit           Unit?           @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  tenant         Tenant?         @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  chartOfAccount ChartOfAccount? @relation(fields: [chartOfAccountId], references: [id], onDelete: SetNull)
 
   // @@unique removed — replaced by two partial unique indexes in migration SQL
   // to correctly handle nullable unitId (NULL != NULL in PG unique constraints).
@@ -581,7 +686,12 @@ model AccountingRecord {
   @@index([tenantId, period])
   @@index([projectId, group1, period])
   @@index([projectId, group3, period])
+  @@index([projectId, group0, period])
+  @@index([projectId, group2, period])
   @@index([projectId, tenantId, period])
+  @@index([chartOfAccountId, period])
+  @@index([projectId, scenario, period])
+  @@index([projectId, scenario, group3, period])
   @@map("RegistroContable")
 }
 
@@ -611,7 +721,7 @@ model DashboardConfig {
 model SalesTenantMapping {
   id             String   @id @default(uuid()) @db.Uuid
   projectId      String   @map("proyectoId") @db.Uuid
-  salesAccountId Int      @map("idCa")
+  salesAccountId String   @map("idCa")
   storeName      String   @map("tiendaNombre")
   tenantId       String   @map("arrendatarioId") @db.Uuid
   createdBy      String   @map("creadoPor") @db.Uuid
@@ -620,7 +730,7 @@ model SalesTenantMapping {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   tenant  Tenant  @relation(fields: [tenantId, projectId], references: [id, projectId], onDelete: Cascade)
 
-  @@unique([projectId, salesAccountId])
+  @@unique([projectId, salesAccountId, storeName])
   @@index([projectId])
   @@index([tenantId])
   @@map("MapeoVentasArrendatario")

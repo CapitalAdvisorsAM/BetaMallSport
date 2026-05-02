@@ -26,7 +26,7 @@ const SHARED_THEME_TOKENS = {
   row: "border-b border-slate-200",
   rowHover: "hover:bg-brand-50",
   rowStripedLight: "bg-white",
-  rowStripedMuted: "bg-slate-50/60"
+  rowStripedMuted: "bg-slate-50"
 } as const;
 
 const DENSITY_THEME_TOKENS: Record<TableDensity, DensityThemeTokens> = {

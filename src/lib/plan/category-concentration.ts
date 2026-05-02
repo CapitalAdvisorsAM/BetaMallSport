@@ -7,6 +7,11 @@ import { mapCategoria } from "@/lib/kpi";
 import type { RentRollCategoryConcentrationDatum } from "@/components/plan/RentRollCategoryConcentration";
 
 type ContractForConcentration = {
+  // Si está ausente o `true`, el contrato cuenta para la concentración de GLA
+  // arrendado (alineado con la semántica de vacancia). Cuando es `false`,
+  // el contrato existe pero no aporta GLA al cómputo — igual que en los
+  // KPIs de ocupación / vacancia.
+  cuentaParaVacancia?: boolean;
   local: { glam2: number | { toString(): string }; zona: string | null };
 };
 
@@ -16,6 +21,10 @@ export function buildCategoryConcentration(
   const grouped = new Map<string, { glam2: number; contratos: number }>();
 
   for (const contract of contracts) {
+    if (contract.cuentaParaVacancia === false) {
+      continue;
+    }
+
     const glam2 = Number(contract.local.glam2);
     if (glam2 <= 0) {
       continue;

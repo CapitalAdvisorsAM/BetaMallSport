@@ -30,29 +30,40 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }),
       prisma.salesTenantMapping.findMany({
         where: { projectId },
-        select: { salesAccountId: true, tenantId: true },
+        select: { salesAccountId: true, storeName: true, tenantId: true },
       }),
     ]);
-    const tenantBySalesAccountId = new Map(existingMappings.map((mapping) => [mapping.salesAccountId, mapping.tenantId]));
+    const mappingKey = (idCa: string, tienda: string) => `${idCa}__${tienda.trim().toUpperCase()}`;
+    const tenantBySalesStore = new Map(
+      existingMappings.map((mapping) => [
+        mappingKey(mapping.salesAccountId, mapping.storeName),
+        mapping.tenantId
+      ])
+    );
 
-    const uniqueSalesAccountIds = [...new Set(rows.map((row) => row.idCa))];
+    const uniqueStores = new Map<string, { idCa: string; tienda: string }>();
+    for (const row of rows) {
+      const key = mappingKey(row.idCa, row.tienda);
+      if (!uniqueStores.has(key)) uniqueStores.set(key, { idCa: row.idCa, tienda: row.tienda });
+    }
     const unmapped: Array<{
-      idCa: number;
+      idCa: string;
       tienda: string;
       sugerencias: Array<{ nombre: string; rut: string; score: number }>;
     }> = [];
     const newMappings: Array<{
       projectId: string;
-      salesAccountId: number;
+      salesAccountId: string;
       storeName: string;
       tenantId: string;
       createdBy: string;
     }> = [];
 
-    for (const salesAccountId of uniqueSalesAccountIds) {
-      if (tenantBySalesAccountId.has(salesAccountId)) continue;
+    for (const [key, storeEntry] of uniqueStores) {
+      if (tenantBySalesStore.has(key)) continue;
 
-      const store = rows.find((row) => row.idCa === salesAccountId)?.tienda ?? "";
+      const salesAccountId = storeEntry.idCa;
+      const store = storeEntry.tienda;
       const scored = tenants
         .map((tenant) => ({
           ...tenant,
@@ -61,7 +72,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         .sort((a, b) => b.score - a.score);
 
       if (scored[0] && scored[0].score >= 0.7) {
-        tenantBySalesAccountId.set(salesAccountId, scored[0].id);
+        tenantBySalesStore.set(key, scored[0].id);
         newMappings.push({
           projectId,
           salesAccountId,
@@ -90,9 +101,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const BATCH_SIZE = 100;
     const upsertOps = rows
-      .filter((row) => tenantBySalesAccountId.has(row.idCa))
+      .filter((row) => tenantBySalesStore.has(mappingKey(row.idCa, row.tienda)))
       .map((row) => {
-        const tenantId = tenantBySalesAccountId.get(row.idCa)!;
+        const tenantId = tenantBySalesStore.get(mappingKey(row.idCa, row.tienda))!;
         const period = new Date(Date.UTC(row.mes.getFullYear(), row.mes.getMonth(), 1));
         return prisma.tenantSale.upsert({
           where: { tenantId_period: { tenantId, period } },
