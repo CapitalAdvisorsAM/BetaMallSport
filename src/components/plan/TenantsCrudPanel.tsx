@@ -148,12 +148,6 @@ export function TenantsCrudPanel({
   const columns = useMemo<ColumnDef<TenantRecord, unknown>[]>(
     () => [
       {
-        accessorKey: "rut",
-        header: "RUT",
-        filterFn: "includesString",
-        cell: ({ row }) => <span className="whitespace-nowrap">{row.original.rut}</span>
-      },
-      {
         accessorKey: "razonSocial",
         header: "Razon Social",
         enableColumnFilter: false,

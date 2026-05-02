@@ -11,9 +11,19 @@ export type FacturacionDimensionSeries = {
   data: FacturacionSeriesPoint[];
 };
 
+export type BillingTypeTotalsPoint = {
+  period: string;
+  fijoUf: number;
+  fijoUfPerM2: number;
+  variableUf: number;
+  variableUfPerM2: number;
+  pctFijo: number;
+};
+
 export type FacturacionResponse = {
   periods: string[];
   series: FacturacionDimensionSeries[];
   totals: FacturacionSeriesPoint[];
   availableGroup3: string[];
+  billingTypeTotals: BillingTypeTotalsPoint[];
 };

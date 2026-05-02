@@ -124,6 +124,64 @@ export type LocalPeerComparison = {
   peers: LocalPeerStat[];
 };
 
+// --- Local Comercial tab — replicates Excel "Local Comercial" sheet ---
+
+export type LocalCommercialAnalysisRow = {
+  metric: string;
+  byPeriod: Record<string, number | null>;
+  ytd: number | null;
+};
+
+export type LocalCommercialBreakdownRow = {
+  group3: string;
+  byPeriod: Record<string, number>;
+  ytd: number;
+};
+
+export type TenantSelectorEntry = {
+  tenantId: string;
+  tenantName: string;
+  fechaInicio: string;
+  fechaTermino: string;
+  isCurrent: boolean;
+};
+
+export type TenantOnLocalAnalysis = {
+  tenantId: string;
+  tenantName: string;
+  isCurrent: boolean;
+  ids: { unitCodigo: string; dataContableId: string | null; ventasId: string | null };
+  rows: LocalCommercialAnalysisRow[];
+  breakdownUfM2: LocalCommercialBreakdownRow[];
+  breakdownUf: LocalCommercialBreakdownRow[];
+  totalFacturacionUfM2: LocalCommercialAnalysisRow;
+};
+
+export type CategoryAnalysis = {
+  categoria: string;
+  rows: LocalCommercialAnalysisRow[];
+};
+
+export type SimilarLocalRow = {
+  unitId: string;
+  codigo: string;
+  nombre: string;
+  ocupacionM2Current: number;
+  ocupacionYtdM2: number;
+  facturacionYtdUfM2: number;
+  ventasYtdUfM2: number;
+  costoOcupacionYtdPct: number | null;
+  isCurrent: boolean;
+};
+
+export type SimilarLocalsTable = {
+  filterTamano: string | null;
+  filterTipo: string;
+  filterPiso: string | null;
+  rows: SimilarLocalRow[];
+  total: SimilarLocalRow;
+};
+
 // --- Root response ---
 export type Local360Data = {
   profile: Local360Profile;
@@ -140,4 +198,8 @@ export type Local360Data = {
   gapAnalysis: GapAnalysisRow[];
   projections: Tenant360Projection;
   peerComparison: LocalPeerComparison | null;
+  tenantsForSelector: TenantSelectorEntry[];
+  tenantOnLocalAnalysis: TenantOnLocalAnalysis | null;
+  categoryAnalysis: CategoryAnalysis;
+  similarLocalsTable: SimilarLocalsTable;
 };

@@ -1,4 +1,6 @@
 import type { ContractDayStatus, ContractRateType, ContractStatus } from "@prisma/client";
+import type { ContractDiscountType } from "@prisma/client";
+import type { ContractComparison } from "./contract-comparison";
 
 // --- Tenant Profile ---
 export type Tenant360Profile = {
@@ -48,9 +50,14 @@ export type Tenant360Rate = {
   tipo: ContractRateType;
   valor: number;
   umbralVentasUf: number | null;
+  pisoMinimoUf: number | null;
   vigenciaDesde: string;
   vigenciaHasta: string | null;
   esDiciembre: boolean;
+  descuentoTipo: ContractDiscountType | null;
+  descuentoValor: number | null;
+  descuentoDesde: string | null;
+  descuentoHasta: string | null;
 };
 
 // --- Contract GGCC ---
@@ -85,6 +92,7 @@ export type Tenant360Contract = {
   fechaEntrega: string | null;
   fechaApertura: string | null;
   diasGracia: number;
+  cuentaParaVacancia: boolean | null;
   diasRestantes: number;
   multiplicadorDiciembre: number | null;
   multiplicadorJunio: number | null;
@@ -98,6 +106,7 @@ export type Tenant360Contract = {
   historialTarifas: Tenant360Rate[];
   ggccActual: Tenant360Ggcc | null;
   anexos: Tenant360Amendment[];
+  comparison: ContractComparison | null;
 };
 
 // --- Billing Breakdown ---
@@ -116,6 +125,15 @@ export type Tenant360SalesPoint = {
   salesPerM2: number;
   variableRentUf: number;
   salesClp: number | null;
+};
+
+// --- Budget vs Actual Sales ---
+export type Tenant360BudgetSalesPoint = {
+  period: string;
+  actualSalesUf: number;
+  budgetedSalesUf: number;
+  varianceUf: number;
+  variancePct: number | null;
 };
 
 // --- Occupancy Timeline ---
@@ -190,4 +208,5 @@ export type Tenant360Data = {
   projections: Tenant360Projection;
   gapAnalysis: GapAnalysisRow[];
   peerComparison: PeerComparison | null;
+  budgetVsActual: Tenant360BudgetSalesPoint[];
 };

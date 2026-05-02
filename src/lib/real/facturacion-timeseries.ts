@@ -4,6 +4,7 @@
  */
 
 import type {
+  BillingTypeTotalsPoint,
   FacturacionDimensionSeries,
   FacturacionResponse,
   FacturacionSeriesPoint
@@ -25,6 +26,9 @@ export type FacturacionRecord = {
 };
 
 export type DimensionField = "tamano" | "tipo" | "piso";
+
+export const GROUP3_FIJO = "ARRIENDO DE LOCAL FIJO";
+export const GROUP3_VARIABLE = "ARRIENDO DE LOCAL VARIABLE";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -56,14 +60,42 @@ export function buildFacturacionTimeSeries(
   glaTotals: Map<string, number>,
   periods: string[],
   dimensionField: DimensionField,
-  includeBreakdown: boolean
+  includeBreakdown: boolean,
+  group3Filter?: string
 ): FacturacionResponse {
+  // Compute billing-type totals from the unfiltered records
+  const totalGlaAll = [...glaTotals.values()].reduce((s, v) => s + v, 0);
+  const billingTypeTotals: BillingTypeTotalsPoint[] = periods.map((p) => {
+    let fijoUf = 0;
+    let variableUf = 0;
+    let glaM2 = 0;
+    for (const [, periodMap] of glaOccupied) {
+      glaM2 += periodMap.get(p) ?? 0;
+    }
+    if (glaM2 === 0) glaM2 = totalGlaAll;
+    for (const r of records) {
+      if (periodKey(r.period) !== p) continue;
+      const val = toNum(r.valueUf);
+      if (r.group3 === GROUP3_FIJO) fijoUf += val;
+      else if (r.group3 === GROUP3_VARIABLE) variableUf += val;
+    }
+    const fijoUfPerM2 = glaM2 > 0 ? fijoUf / glaM2 : 0;
+    const variableUfPerM2 = glaM2 > 0 ? variableUf / glaM2 : 0;
+    const pctFijo = fijoUf + variableUf > 0 ? fijoUf / (fijoUf + variableUf) : 0;
+    return { period: p, fijoUf, fijoUfPerM2, variableUf, variableUfPerM2, pctFijo };
+  });
+
+  // Apply optional group3 filter before aggregating series
+  const filteredRecords = group3Filter
+    ? records.filter((r) => r.group3 === group3Filter)
+    : records;
+
   // Aggregate billing by dimension + period (and optionally by group3)
   // Key: dimension → period → { total, byGroup3 }
   const agg = new Map<string, Map<string, { total: number; byGroup3: Map<string, number> }>>();
   const allGroup3 = new Set<string>();
 
-  for (const r of records) {
+  for (const r of filteredRecords) {
     const dim = getDimValue(r, dimensionField);
     if (!dim) continue;
 
@@ -108,13 +140,11 @@ export function buildFacturacionTimeSeries(
   });
 
   // Build totals (aggregate across all dimensions)
-  const totalGlaAll = [...glaTotals.values()].reduce((s, v) => s + v, 0);
   const totals: FacturacionSeriesPoint[] = periods.map((p) => {
     let totalUf = 0;
     for (const [, periodMap] of agg) {
       totalUf += periodMap.get(p)?.total ?? 0;
     }
-    // Sum occupied GLA across all dimensions for this period
     let glaM2 = 0;
     for (const [, periodMap] of glaOccupied) {
       glaM2 += periodMap.get(p) ?? 0;
@@ -127,6 +157,7 @@ export function buildFacturacionTimeSeries(
     periods,
     series,
     totals,
-    availableGroup3: [...allGroup3].sort()
+    availableGroup3: [...allGroup3].sort(),
+    billingTypeTotals
   };
 }

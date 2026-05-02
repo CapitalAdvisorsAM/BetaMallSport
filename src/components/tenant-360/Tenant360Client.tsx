@@ -20,6 +20,7 @@ import { ProjectionsSection } from "@/components/tenant-360/ProjectionsSection";
 import { PeerComparisonSection } from "@/components/tenant-360/PeerComparisonSection";
 import { SalesYoYChart } from "@/components/tenant-360/SalesYoYChart";
 import { SalesSeasonalityChart } from "@/components/tenant-360/SalesSeasonalityChart";
+import { SalesBudgetVsActualSection } from "@/components/tenant-360/SalesBudgetVsActualSection";
 import { RentCompositionChart } from "@/components/tenant-360/RentCompositionChart";
 import { BillingRealizationSection } from "@/components/tenant-360/BillingRealizationSection";
 import { cn, formatUf, formatPercent } from "@/lib/utils";
@@ -32,14 +33,15 @@ type Tenant360ClientProps = {
   defaultHasta?: string;
 };
 
-type TabId = "resumen" | "ventas" | "facturacion" | "contratos" | "analisis";
+type TabId = "resumen" | "ventas" | "presupuesto" | "facturacion" | "contratos" | "analisis";
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: "resumen",     label: "Resumen" },
-  { id: "ventas",      label: "Ventas" },
-  { id: "facturacion", label: "Facturacion" },
-  { id: "contratos",   label: "Contratos & Ocupacion" },
-  { id: "analisis",    label: "Analisis & Proyecciones" },
+  { id: "resumen",      label: "Resumen" },
+  { id: "ventas",       label: "Ventas" },
+  { id: "presupuesto",  label: "Presupuesto" },
+  { id: "facturacion",  label: "Facturacion" },
+  { id: "contratos",    label: "Contratos & Ocupacion" },
+  { id: "analisis",     label: "Analisis & Proyecciones" },
 ];
 
 async function readErrorMessage(response: Response, fallback: string): Promise<string> {
@@ -271,6 +273,13 @@ export function Tenant360Client({
               <SalesPerformanceSection data={data.salesPerformance} />
               <SalesYoYChart data={data.salesPerformance} />
               <SalesSeasonalityChart data={data.salesPerformance} />
+            </div>
+          )}
+
+          {/* Tab: Presupuesto */}
+          {activeTab === "presupuesto" && (
+            <div className="space-y-6">
+              <SalesBudgetVsActualSection data={data.budgetVsActual} />
             </div>
           )}
 

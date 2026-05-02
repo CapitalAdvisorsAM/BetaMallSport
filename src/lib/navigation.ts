@@ -165,6 +165,12 @@ export const REAL_SUB_NAV_ITEMS: NavItem[] = [
     match: "startsWith"
   },
   {
+    label: "Gastos",
+    href: "/real/expenses",
+    enabled: true,
+    match: "startsWith"
+  },
+  {
     label: "EE.FF",
     href: "/real/cash-flow-statement",
     enabled: true,

@@ -12,7 +12,8 @@ import {
 import type {
   OccupancyDimensionRow,
   OccupancyPeriodSnapshot,
-  OccupancyTimeSeriesResponse
+  OccupancyTimeSeriesResponse,
+  VacantUnitRow
 } from "@/types/occupancy";
 
 // ---------------------------------------------------------------------------
@@ -55,6 +56,45 @@ function buildTotalsRow(rows: OccupancyDimensionRow[]): OccupancyDimensionRow {
 }
 
 // ---------------------------------------------------------------------------
+// Vacant units for a period
+// ---------------------------------------------------------------------------
+
+function periodEnd(period: string): Date {
+  const start = new Date(`${period}-01T00:00:00Z`);
+  const y = start.getUTCFullYear();
+  const m = start.getUTCMonth();
+  return new Date(Date.UTC(y, m + 1, 0));
+}
+
+function buildVacantUnits(
+  units: GlaUnitInput[],
+  contracts: GlaContractInput[],
+  period: string
+): VacantUnitRow[] {
+  const end = periodEnd(period);
+  const occupiedIds = new Set<string>();
+  for (const c of contracts) {
+    if (c.fechaInicio <= end && c.fechaTermino >= end) {
+      occupiedIds.add(c.localId);
+    }
+  }
+
+  return units
+    .filter((u) => u.esGLA && !occupiedIds.has(u.id))
+    .map((u) => ({
+      id: u.id,
+      codigo: u.codigo ?? "",
+      nombre: u.nombre ?? null,
+      piso: u.piso,
+      tipo: u.tipo,
+      categoriaTamano: u.categoriaTamano ?? null,
+      zona: u.zona ?? null,
+      glam2: Number(u.glam2.toString())
+    }))
+    .sort((a, b) => a.piso.localeCompare(b.piso) || a.codigo.localeCompare(b.codigo));
+}
+
+// ---------------------------------------------------------------------------
 // Main builder
 // ---------------------------------------------------------------------------
 
@@ -81,5 +121,8 @@ export function buildOccupancyTimeSeries(
     return { period, byType, bySize, byFloor, totals };
   });
 
-  return { periods, snapshots };
+  const lastPeriod = periods[periods.length - 1];
+  const vacantUnits = lastPeriod ? buildVacantUnits(units, contracts, lastPeriod) : [];
+
+  return { periods, snapshots, vacantUnits };
 }

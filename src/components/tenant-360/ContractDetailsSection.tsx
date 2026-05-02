@@ -1,12 +1,14 @@
 "use client";
 
 import { Fragment, useState } from "react";
+import Link from "next/link";
+import { ContractComparisonSection } from "@/components/contracts/ContractComparisonSection";
 import { ModuleSectionCard } from "@/components/dashboard/ModuleSectionCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { TableDisclosureButton } from "@/components/ui/TableDisclosureButton";
 import { getStripedRowClass, tableTheme } from "@/components/ui/table-theme";
 import { cn, formatSquareMeters, formatUf } from "@/lib/utils";
-import type { Tenant360Contract } from "@/types/tenant-360";
+import type { Tenant360Contract, Tenant360Rate } from "@/types/tenant-360";
 
 type ContractDetailsSectionProps = {
   contracts: Tenant360Contract[];
@@ -19,6 +21,23 @@ function rateLabel(tipo: string): string {
     case "PORCENTAJE": return "% Variable";
     default: return tipo;
   }
+}
+
+function rateValueLabel(rate: Tenant360Rate): string {
+  if (rate.tipo === "PORCENTAJE") {
+    return `${formatUf(rate.valor, 2)}%`;
+  }
+  return formatUf(rate.valor);
+}
+
+function discountLabel(rate: Tenant360Rate): string {
+  if (!rate.descuentoTipo || rate.descuentoValor === null) {
+    return "\u2014";
+  }
+  if (rate.descuentoTipo === "PORCENTAJE") {
+    return `${formatUf(rate.descuentoValor * 100, 1)}%`;
+  }
+  return `${formatUf(rate.descuentoValor)} UF`;
 }
 
 export function ContractDetailsSection({ contracts }: ContractDetailsSectionProps): JSX.Element {
@@ -65,7 +84,14 @@ export function ContractDetailsSection({ contracts }: ContractDetailsSectionProp
                       </div>
                       <p className="ml-6 text-xs text-slate-400">{c.localNombre} &middot; {formatSquareMeters(c.localGlam2)}</p>
                     </td>
-                    <td className="px-3 py-2.5 text-sm tabular-nums text-slate-600">{c.numeroContrato}</td>
+                    <td className="px-3 py-2.5 text-sm tabular-nums">
+                      <Link
+                        href={`/plan/contracts/${c.id}`}
+                        className="font-mono text-[11px] font-medium text-brand-500 underline underline-offset-2 transition-colors hover:text-brand-700"
+                      >
+                        {c.numeroContrato}
+                      </Link>
+                    </td>
                     <td className="px-3 py-2.5"><StatusBadge status={c.estado} /></td>
                     <td className="px-3 py-2.5 text-right text-sm tabular-nums text-slate-700">
                       {c.tarifaActual ? (
@@ -82,7 +108,70 @@ export function ContractDetailsSection({ contracts }: ContractDetailsSectionProp
                     </td>
                   </tr>
 
-                  {/* Expanded detail */}
+                  {/* Condiciones Comerciales \u2014 always visible */}
+                  <tr className="bg-slate-50/40">
+                    <td colSpan={7} className="px-4 py-2.5">
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs sm:grid-cols-4 lg:grid-cols-6">
+                        <div>
+                          <span className="text-slate-400">Entrega</span>
+                          <span className="ml-1.5 font-medium tabular-nums text-slate-700">{c.fechaEntrega ?? "\u2014"}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Apertura</span>
+                          <span className="ml-1.5 font-medium tabular-nums text-slate-700">{c.fechaApertura ?? "\u2014"}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Gracia</span>
+                          <span className="ml-1.5 font-medium tabular-nums text-slate-700">{c.diasGracia}d</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Fondo prom.</span>
+                          <span className="ml-1.5 font-medium tabular-nums text-slate-700">
+                            {c.pctFondoPromocion !== null ? `${c.pctFondoPromocion}%` : "\u2014"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">CC</span>
+                          <span className="ml-1.5 font-medium text-slate-700">{c.codigoCC ?? "\u2014"}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Vacancia KPI</span>
+                          <span className="ml-1.5 font-medium text-slate-700">
+                            {c.cuentaParaVacancia === null ? "\u2014" : c.cuentaParaVacancia ? "Si" : "No"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Mult. jun.</span>
+                          <span className="ml-1.5 font-medium tabular-nums text-slate-700">
+                            {c.multiplicadorJunio !== null ? `${c.multiplicadorJunio}x` : "\u2014"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Mult. jul.</span>
+                          <span className="ml-1.5 font-medium tabular-nums text-slate-700">
+                            {c.multiplicadorJulio !== null ? `${c.multiplicadorJulio}x` : "\u2014"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Mult. ago.</span>
+                          <span className="ml-1.5 font-medium tabular-nums text-slate-700">
+                            {c.multiplicadorAgosto !== null ? `${c.multiplicadorAgosto}x` : "\u2014"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Mult. dic.</span>
+                          <span className="ml-1.5 font-medium tabular-nums text-slate-700">
+                            {c.multiplicadorDiciembre !== null ? `${c.multiplicadorDiciembre}x` : "\u2014"}
+                          </span>
+                        </div>
+                      </div>
+                      {c.notas ? (
+                        <p className="mt-2 whitespace-pre-wrap rounded bg-white px-3 py-2 text-xs text-slate-500">{c.notas}</p>
+                      ) : null}
+                    </td>
+                  </tr>
+
+                  {/* Expanded detail \u2014 rates, GGCC, amendments, comparison */}
                   {isExpanded ? (
                     <tr className="bg-slate-50/50">
                       <td colSpan={7} className="px-4 py-3">
@@ -97,20 +186,24 @@ export function ContractDetailsSection({ contracts }: ContractDetailsSectionProp
                                     <th className={tableTheme.compactHeadCell}>Tipo</th>
                                     <th className={`${tableTheme.compactHeadCell} text-right`}>Valor</th>
                                     <th className={`${tableTheme.compactHeadCell} text-right`}>Umbral UF</th>
+                                    <th className={`${tableTheme.compactHeadCell} text-right`}>Piso Min.</th>
                                     <th className={tableTheme.compactHeadCell}>Desde</th>
                                     <th className={tableTheme.compactHeadCell}>Hasta</th>
                                     <th className={tableTheme.compactHeadCell}>Dic.</th>
+                                    <th className={tableTheme.compactHeadCell}>Descuento</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                   {c.historialTarifas.map((t, i) => (
                                     <tr key={i}>
                                       <td className="px-3 py-1 text-slate-600">{rateLabel(t.tipo)}</td>
-                                      <td className="px-3 py-1 text-right tabular-nums text-slate-700">{formatUf(t.valor)}</td>
+                                      <td className="px-3 py-1 text-right tabular-nums text-slate-700">{rateValueLabel(t)}</td>
                                       <td className="px-3 py-1 text-right tabular-nums text-slate-500">{t.umbralVentasUf !== null && t.umbralVentasUf !== 0 ? formatUf(t.umbralVentasUf) : "\u2014"}</td>
+                                      <td className="px-3 py-1 text-right tabular-nums text-slate-500">{t.pisoMinimoUf !== null ? formatUf(t.pisoMinimoUf) : "\u2014"}</td>
                                       <td className="px-3 py-1 tabular-nums text-slate-500">{t.vigenciaDesde}</td>
                                       <td className="px-3 py-1 tabular-nums text-slate-500">{t.vigenciaHasta ?? "\u2014"}</td>
                                       <td className="px-3 py-1 text-slate-500">{t.esDiciembre ? "Si" : ""}</td>
+                                      <td className="px-3 py-1 text-slate-500">{discountLabel(t)}</td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -165,21 +258,15 @@ export function ContractDetailsSection({ contracts }: ContractDetailsSectionProp
                             </div>
                           ) : null}
 
-                          {/* Contract meta */}
-                          <div className="flex flex-wrap gap-4 text-xs text-slate-400">
-                            {c.codigoCC ? <span>CC: {c.codigoCC}</span> : null}
-                            {c.diasGracia > 0 ? <span>Gracia: {c.diasGracia}d</span> : null}
-                            {c.multiplicadorDiciembre !== null ? <span>Mult. dic: {c.multiplicadorDiciembre}x</span> : null}
-                            {c.multiplicadorJunio !== null ? <span>Mult. jun: {c.multiplicadorJunio}x</span> : null}
-                            {c.multiplicadorJulio !== null ? <span>Mult. jul: {c.multiplicadorJulio}x</span> : null}
-                            {c.multiplicadorAgosto !== null ? <span>Mult. ago: {c.multiplicadorAgosto}x</span> : null}
-                            {c.pctFondoPromocion !== null ? <span>Fondo prom: {c.pctFondoPromocion}%</span> : null}
-                            {c.pdfUrl ? (
-                              <a href={c.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-brand-500 underline underline-offset-2 hover:text-brand-700">
+                          <ContractComparisonSection comparison={c.comparison} compact />
+
+                          {c.pdfUrl ? (
+                            <div>
+                              <a href={c.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-500 underline underline-offset-2 hover:text-brand-700">
                                 Ver PDF
                               </a>
-                            ) : null}
-                          </div>
+                            </div>
+                          ) : null}
                         </div>
                       </td>
                     </tr>

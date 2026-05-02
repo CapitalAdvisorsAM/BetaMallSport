@@ -27,13 +27,20 @@ export const OPERATING_COST_GROUPS = new Set([
   "GASTOS INMOBILIARIA",
 ]);
 
-// Grupos BAJO el EBITDA (no operacionales)
-export const BELOW_EBITDA_GROUPS = new Set([
+// Grupos entre EBITDA y EBIT (depreciación / amortización)
+export const EBIT_GROUPS = new Set([
   "DEPRECIACION",
   "EDI",
-  "IMPUESTOS",
-  "RESULTADO NO OPERACIONAL",
 ]);
+
+// Grupos entre EBIT y Resultado del Ejercicio
+export const RESULTADO_GROUPS = new Set([
+  "RESULTADO NO OPERACIONAL",
+  "IMPUESTOS",
+]);
+
+// Unión — todos los grupos bajo el EBITDA
+export const BELOW_EBITDA_GROUPS = new Set([...EBIT_GROUPS, ...RESULTADO_GROUPS]);
 
 export const COST_GROUPS = new Set([...OPERATING_COST_GROUPS, ...BELOW_EBITDA_GROUPS]);
 
@@ -134,7 +141,7 @@ export function buildEerrData(
   const sections = new Map<string, EerrSection>();
 
   for (const registro of registros) {
-    const tipo: "ingreso" | "costo" = COST_GROUPS.has(registro.grupo1) ? "costo" : "ingreso";
+    const tipo: "ingreso" | "costo" = OPERATING_COST_GROUPS.has(registro.grupo1) ? "costo" : "ingreso";
     const periodoKey = registro.periodo.toISOString().slice(0, 7);
     // CDG ya almacena los valores con signo correcto — sin negación adicional.
     const valor = Number(registro.valorUf);
@@ -159,7 +166,7 @@ export function buildEerrData(
 
   // Inyectar presupuesto (sin crear lineas nuevas si el real no existe — sí se crean para que aparezcan)
   for (const b of budgets) {
-    const tipo: "ingreso" | "costo" = COST_GROUPS.has(b.grupo1) ? "costo" : "ingreso";
+    const tipo: "ingreso" | "costo" = OPERATING_COST_GROUPS.has(b.grupo1) ? "costo" : "ingreso";
     const periodoKey = b.periodo.toISOString().slice(0, 7);
     const valor = Number(b.valorUf);
 
@@ -197,29 +204,36 @@ export function buildEerrData(
     line.presupuestoTotal = (line.presupuestoTotal ?? 0) + valor;
   }
 
-  // EBITDA = suma de todas las secciones SOBRE la línea (valores ya vienen con signo del CDG)
-  const ebitda = { porPeriodo: {} as Record<string, number>, total: 0 };
-  const ebit   = { porPeriodo: {} as Record<string, number>, total: 0 };
-  const pptoEbitda = { porPeriodo: {} as Record<string, number>, total: 0 };
-  const pptoEbit   = { porPeriodo: {} as Record<string, number>, total: 0 };
+  const ebitda    = { porPeriodo: {} as Record<string, number>, total: 0 };
+  const ebit      = { porPeriodo: {} as Record<string, number>, total: 0 };
+  const resultado = { porPeriodo: {} as Record<string, number>, total: 0 };
+  const pptoEbitda    = { porPeriodo: {} as Record<string, number>, total: 0 };
+  const pptoEbit      = { porPeriodo: {} as Record<string, number>, total: 0 };
+  const pptoResultado = { porPeriodo: {} as Record<string, number>, total: 0 };
   const hasBudgets = budgets.length > 0;
 
   sections.forEach((section) => {
-    const isAbove = !BELOW_EBITDA_GROUPS.has(section.grupo1);
+    const isAbove    = !BELOW_EBITDA_GROUPS.has(section.grupo1);
+    const isEbitLine = EBIT_GROUPS.has(section.grupo1);
+
     for (const [p, v] of Object.entries(section.porPeriodo)) {
-      if (isAbove) ebitda.porPeriodo[p] = (ebitda.porPeriodo[p] ?? 0) + v;
-      ebit.porPeriodo[p] = (ebit.porPeriodo[p] ?? 0) + v;
+      if (isAbove)               ebitda.porPeriodo[p]    = (ebitda.porPeriodo[p]    ?? 0) + v;
+      if (isAbove || isEbitLine) ebit.porPeriodo[p]      = (ebit.porPeriodo[p]      ?? 0) + v;
+                                 resultado.porPeriodo[p] = (resultado.porPeriodo[p] ?? 0) + v;
     }
-    if (isAbove) ebitda.total += section.total;
-    ebit.total += section.total;
+    if (isAbove)               ebitda.total    += section.total;
+    if (isAbove || isEbitLine) ebit.total      += section.total;
+                               resultado.total += section.total;
 
     if (hasBudgets && section.presupuestoPorPeriodo) {
       for (const [p, v] of Object.entries(section.presupuestoPorPeriodo)) {
-        if (isAbove) pptoEbitda.porPeriodo[p] = (pptoEbitda.porPeriodo[p] ?? 0) + v;
-        pptoEbit.porPeriodo[p] = (pptoEbit.porPeriodo[p] ?? 0) + v;
+        if (isAbove)               pptoEbitda.porPeriodo[p]    = (pptoEbitda.porPeriodo[p]    ?? 0) + v;
+        if (isAbove || isEbitLine) pptoEbit.porPeriodo[p]      = (pptoEbit.porPeriodo[p]      ?? 0) + v;
+                                   pptoResultado.porPeriodo[p] = (pptoResultado.porPeriodo[p] ?? 0) + v;
       }
-      if (isAbove) pptoEbitda.total += section.presupuestoTotal ?? 0;
-      pptoEbit.total += section.presupuestoTotal ?? 0;
+      if (isAbove)               pptoEbitda.total    += section.presupuestoTotal ?? 0;
+      if (isAbove || isEbitLine) pptoEbit.total      += section.presupuestoTotal ?? 0;
+                                 pptoResultado.total += section.presupuestoTotal ?? 0;
     }
   });
 
@@ -264,8 +278,10 @@ export function buildEerrData(
     secciones,
     ebitda,
     ebit,
-    presupuestoEbitda: hasBudgets ? pptoEbitda : null,
-    presupuestoEbit: hasBudgets ? pptoEbit : null
+    resultado,
+    presupuestoEbitda:    hasBudgets ? pptoEbitda    : null,
+    presupuestoEbit:      hasBudgets ? pptoEbit      : null,
+    presupuestoResultado: hasBudgets ? pptoResultado : null
   };
 }
 

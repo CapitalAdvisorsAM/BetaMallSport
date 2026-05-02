@@ -15,6 +15,8 @@ type DecimalLike = number | string | { toString(): string };
 
 export type GlaUnitInput = {
   id: string;
+  codigo?: string;
+  nombre?: string | null;
   tipo: UnitType;
   esGLA: boolean;
   glam2: DecimalLike;

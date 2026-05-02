@@ -38,7 +38,6 @@ export function TenantHistoryTable({
           <thead className={tableTheme.head}>
             <tr>
               <th className={tableTheme.compactHeadCell}>Arrendatario</th>
-              <th className={tableTheme.compactHeadCell}>RUT</th>
               <th className={tableTheme.compactHeadCell}>Inicio</th>
               <th className={tableTheme.compactHeadCell}>Término</th>
               <th className={`${tableTheme.compactHeadCell} text-right`}>Días en rango</th>
@@ -70,7 +69,6 @@ export function TenantHistoryTable({
                         </Link>
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 font-mono text-xs text-slate-600">{entry.tenantRut}</td>
                     <td className="px-3 py-2.5 text-sm text-slate-600">{formatDateString(entry.fechaInicio)}</td>
                     <td className="px-3 py-2.5 text-sm text-slate-600">{formatDateString(entry.fechaTermino)}</td>
                     <td className="px-3 py-2.5 text-right text-sm tabular-nums text-slate-700">{entry.daysInRange.toLocaleString("es-CL")}</td>
@@ -89,7 +87,7 @@ export function TenantHistoryTable({
                   </tr>
                   {isExpanded ? (
                     <tr className={getStripedRowClass(index)}>
-                      <td colSpan={9} className="px-5 py-4">
+                      <td colSpan={8} className="px-5 py-4">
                         <ExpandedDetail rates={entry.rateEvolution} discounts={entry.discounts} />
                       </td>
                     </tr>

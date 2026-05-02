@@ -77,18 +77,21 @@ export function ChartOfAccountsClient({
         accessorKey: "group1",
         header: "GRUPO 1",
         filterFn: "includesString",
+        meta: { filterType: "text" },
         cell: ({ row }) => <span className="text-sm font-medium text-slate-700">{row.original.group1}</span>
       },
       {
         accessorKey: "group3",
         header: "GRUPO 3",
         filterFn: "includesString",
+        meta: { filterType: "text" },
         cell: ({ row }) => <span className="text-sm text-slate-700">{row.original.group3}</span>
       },
       {
         accessorKey: "group0",
         header: "GRUPO 0",
         filterFn: "includesString",
+        meta: { filterType: "text" },
         cell: ({ row }) => (
           <span className="text-xs text-slate-500">{row.original.group0 || "—"}</span>
         )
@@ -97,6 +100,7 @@ export function ChartOfAccountsClient({
         accessorKey: "group2",
         header: "GRUPO 2",
         filterFn: "includesString",
+        meta: { filterType: "text" },
         cell: ({ row }) => (
           <span className="text-xs text-slate-500">{row.original.group2 || "—"}</span>
         )
@@ -133,6 +137,7 @@ export function ChartOfAccountsClient({
         accessorKey: "alias",
         header: "Alias",
         filterFn: "includesString",
+        meta: { filterType: "text" },
         cell: ({ row }) => (
           <Input
             disabled={!canEdit || savingId === row.original.id}
@@ -174,6 +179,7 @@ export function ChartOfAccountsClient({
         accessorKey: "notes",
         header: "Notas",
         filterFn: "includesString",
+        meta: { filterType: "text" },
         cell: ({ row }) => (
           <Input
             disabled={!canEdit || savingId === row.original.id}

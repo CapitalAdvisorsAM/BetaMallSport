@@ -7,6 +7,7 @@ import {
   ComposedChart,
   Legend,
   Line,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -33,6 +34,7 @@ import {
   getSeriesColor,
 } from "@/lib/charts/theme";
 import { cn, formatPeriodoCorto, formatUf, formatUfPerM2, groupPeriodosByYear } from "@/lib/utils";
+import { GROUP3_FIJO, GROUP3_VARIABLE } from "@/lib/real/facturacion-timeseries";
 import type { FacturacionResponse } from "@/types/billing";
 
 // ---------------------------------------------------------------------------
@@ -40,11 +42,24 @@ import type { FacturacionResponse } from "@/types/billing";
 // ---------------------------------------------------------------------------
 
 type DimensionTab = "tamano" | "tipo" | "piso";
+type BillingTypeFilter = "all" | "fijo" | "variable";
 
 const DIMENSION_LABELS: Record<DimensionTab, string> = {
   tamano: "Categoría (Tamaño)",
   tipo: "Categoría (Tipo)",
   piso: "Piso"
+};
+
+const BILLING_TYPE_LABELS: Record<BillingTypeFilter, string> = {
+  all: "Todos",
+  fijo: "Solo Fijo",
+  variable: "Solo Variable"
+};
+
+const BILLING_TYPE_GROUP3: Record<BillingTypeFilter, string | undefined> = {
+  all: undefined,
+  fijo: GROUP3_FIJO,
+  variable: GROUP3_VARIABLE
 };
 
 const compactTheme = getTableTheme("compact");
@@ -76,7 +91,9 @@ export function FacturacionClient({
   const [desde, setDesde] = useState(defaultDesde ?? "");
   const [hasta, setHasta] = useState(defaultHasta ?? "");
   const [dimension, setDimension] = useState<DimensionTab>("tamano");
+  const [billingType, setBillingType] = useState<BillingTypeFilter>("all");
   const [breakdown, setBreakdown] = useState(false);
+  const [chartView, setChartView] = useState<"lines" | "bars">("lines");
 
   const [data, setData] = useState<FacturacionResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -91,6 +108,8 @@ export function FacturacionClient({
       });
       if (desde) params.set("from", desde);
       if (hasta) params.set("to", hasta);
+      const g3 = BILLING_TYPE_GROUP3[billingType];
+      if (g3) params.set("group3Filter", g3);
       const res = await fetch(`/api/real/billing?${params}`);
       if (res.ok) {
         setData((await res.json()) as FacturacionResponse);
@@ -98,7 +117,7 @@ export function FacturacionClient({
     } finally {
       setLoading(false);
     }
-  }, [selectedProjectId, dimension, breakdown, desde, hasta]);
+  }, [selectedProjectId, dimension, billingType, breakdown, desde, hasta]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
@@ -154,6 +173,23 @@ export function FacturacionClient({
               </button>
             ))}
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-slate-500">Tipo ingreso</span>
+            {(Object.keys(BILLING_TYPE_LABELS) as BillingTypeFilter[]).map((bt) => (
+              <button
+                key={bt}
+                onClick={() => setBillingType(bt)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                  billingType === bt
+                    ? "bg-brand-700 text-white"
+                    : "border border-slate-200 text-slate-600 hover:border-brand-300 hover:text-brand-700"
+                )}
+              >
+                {BILLING_TYPE_LABELS[bt]}
+              </button>
+            ))}
+          </div>
           <label className="flex items-center gap-1.5 text-xs text-slate-600">
             <input
               type="checkbox"
@@ -179,9 +215,27 @@ export function FacturacionClient({
         <>
           {/* Chart */}
           <MetricChartCard
-            title={`Facturación All-In (UF/m²) por ${DIMENSION_LABELS[dimension]}`}
+            title={`Facturación${billingType !== "all" ? ` ${BILLING_TYPE_LABELS[billingType]}` : " All-In"} (UF/m²) por ${DIMENSION_LABELS[dimension]}`}
             metricId="chart_finance_occupancy"
-            description="Barras: UF/m² por dimensión. Línea: total UF/m²."
+            description={`${chartView === "lines" ? "Líneas" : "Barras"}: UF/m² por dimensión. Línea gruesa: total UF/m².`}
+            actions={
+              <div className="flex overflow-hidden rounded-md border border-slate-200">
+                {(["lines", "bars"] as const).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setChartView(v)}
+                    className={cn(
+                      "px-3 py-1 text-xs font-medium transition-colors",
+                      chartView === v
+                        ? "bg-brand-700 text-white"
+                        : "text-slate-500 hover:bg-slate-50"
+                    )}
+                  >
+                    {v === "lines" ? "Líneas" : "Barras"}
+                  </button>
+                ))}
+              </div>
+            }
           >
             <ResponsiveContainer width="100%" height={chartHeight.lg}>
               <ComposedChart data={chartData} margin={chartMargins.default}>
@@ -200,27 +254,49 @@ export function FacturacionClient({
                   }
                 />
                 <Legend {...chartLegendProps} />
-                {dimensionKeys.map((key, i) => (
-                  <Bar
-                    key={key}
-                    dataKey={key}
-                    name={key}
-                    fill={getSeriesColor(i)}
-                    radius={chartBarRadius}
-                  />
-                ))}
+                {chartView === "lines"
+                  ? dimensionKeys.map((key, i) => (
+                      <Line
+                        key={key}
+                        type="monotone"
+                        dataKey={key}
+                        name={key}
+                        stroke={getSeriesColor(i)}
+                        strokeWidth={1.5}
+                        dot={false}
+                        activeDot={{ r: 3, strokeWidth: 0 }}
+                      />
+                    ))
+                  : dimensionKeys.map((key, i) => (
+                      <Bar
+                        key={key}
+                        dataKey={key}
+                        name={key}
+                        fill={getSeriesColor(i)}
+                        radius={chartBarRadius}
+                        maxBarSize={5}
+                      />
+                    ))}
                 <Line
                   type="monotone"
                   dataKey="Total UF/m²"
                   name="Total UF/m²"
-                  stroke={chartColors.axisMuted}
-                  strokeDasharray="4 2"
+                  stroke={chartColors.brandDark}
+                  strokeDasharray="6 3"
                   dot={false}
-                  strokeWidth={1.5}
+                  strokeWidth={2.5}
                 />
               </ComposedChart>
             </ResponsiveContainer>
           </MetricChartCard>
+
+          {/* Fijo vs Variable chart */}
+          {data.billingTypeTotals.length > 0 && (
+            <FijoVsVariableChart
+              billingTypeTotals={data.billingTypeTotals}
+              periods={periods}
+            />
+          )}
 
           {/* Table */}
           <ModuleSectionCard>
@@ -289,5 +365,58 @@ export function FacturacionClient({
         </>
       )}
     </main>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Fijo vs Variable chart (chart36)
+// ---------------------------------------------------------------------------
+
+type FijoVsVariableProps = {
+  billingTypeTotals: import("@/types/billing").BillingTypeTotalsPoint[];
+  periods: string[];
+};
+
+function FijoVsVariableChart({ billingTypeTotals, periods }: FijoVsVariableProps): JSX.Element {
+  const chartData = periods.map((p, i) => {
+    const t = billingTypeTotals[i];
+    return {
+      periodo: p,
+      Fijo: t?.fijoUfPerM2 ?? 0,
+      Variable: t?.variableUfPerM2 ?? 0,
+      "% Fijo": (t?.pctFijo ?? 0) * 100
+    };
+  });
+
+  return (
+    <MetricChartCard
+      title="Ingreso Fijo vs Variable (UF/m²) y % Fijo"
+      metricId="chart_fijo_vs_variable"
+      description="Barras: UF/m² de arriendo fijo y variable. Línea: participación del ingreso fijo (eje der.)."
+    >
+      <ResponsiveContainer width="100%" height={chartHeight.md}>
+        <ComposedChart data={chartData} margin={chartMargins.default}>
+          <CartesianGrid {...chartGridProps} />
+          <XAxis dataKey="periodo" {...chartAxisProps} tickFormatter={buildPeriodoTickFormatter(periods.length)} />
+          <YAxis yAxisId="left" {...chartAxisProps} tickFormatter={(v: number) => formatUfPerM2(v)} />
+          <YAxis yAxisId="right" orientation="right" {...chartAxisProps} tickFormatter={(v: number) => `${v.toFixed(0)}%`} domain={[0, 100]} />
+          <Tooltip
+            content={
+              <ChartTooltip
+                labelFormatter={(l) => formatPeriodoCorto(String(l))}
+                valueFormatter={(value, name) => {
+                  const v = typeof value === "number" ? value : Number(value ?? 0);
+                  return name === "% Fijo" ? `${v.toFixed(1)}%` : formatUfPerM2(v);
+                }}
+              />
+            }
+          />
+          <Legend {...chartLegendProps} />
+          <Bar yAxisId="left" dataKey="Fijo" name="Fijo" fill={chartColors.brandPrimary} radius={chartBarRadius} maxBarSize={18} />
+          <Bar yAxisId="left" dataKey="Variable" name="Variable" fill={chartColors.goldLight} radius={chartBarRadius} maxBarSize={18} />
+          <Line yAxisId="right" type="monotone" dataKey="% Fijo" name="% Fijo" stroke={chartColors.brandDark} strokeWidth={2} dot={false} strokeDasharray="4 2" />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </MetricChartCard>
   );
 }

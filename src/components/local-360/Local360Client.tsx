@@ -13,6 +13,11 @@ import { TenantHistoryTimeline } from "@/components/local-360/TenantHistoryTimel
 import { TenantHistoryTable } from "@/components/local-360/TenantHistoryTable";
 import { EnergyCostSection } from "@/components/local-360/EnergyCostSection";
 import { LocalPeerComparisonSection } from "@/components/local-360/LocalPeerComparisonSection";
+import { LocalCommercialClassificationCard } from "@/components/local-360/LocalCommercialClassificationCard";
+import { TenantOnLocalAnalysisSection } from "@/components/local-360/TenantOnLocalAnalysisSection";
+import { CategoryAnalysisSection } from "@/components/local-360/CategoryAnalysisSection";
+import { SimilarLocalsTableSection } from "@/components/local-360/SimilarLocalsTableSection";
+import { ContractDetailsSection } from "@/components/tenant-360/ContractDetailsSection";
 import { FinancialTimelineChart } from "@/components/tenant-360/FinancialTimelineChart";
 import { FacturacionPerM2Chart } from "@/components/tenant-360/FacturacionPerM2Chart";
 import { BillingBreakdownSection } from "@/components/tenant-360/BillingBreakdownSection";
@@ -31,12 +36,14 @@ type Local360ClientProps = {
   selectedProjectId: string;
   defaultDesde?: string;
   defaultHasta?: string;
+  defaultTenantId?: string;
 };
 
-type TabId = "resumen" | "historia" | "ventas" | "facturacion" | "analisis";
+type TabId = "resumen" | "comercial" | "historia" | "ventas" | "facturacion" | "analisis";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "resumen",     label: "Resumen" },
+  { id: "comercial",   label: "Local Comercial" },
   { id: "historia",    label: "Historia de Arrendatarios" },
   { id: "ventas",      label: "Ventas" },
   { id: "facturacion", label: "Facturación & Ocupación" },
@@ -59,10 +66,12 @@ export function Local360Client({
   selectedProjectId,
   defaultDesde,
   defaultHasta,
+  defaultTenantId,
 }: Local360ClientProps): JSX.Element {
   const router = useRouter();
   const [desde, setDesde] = useState(defaultDesde ?? "");
   const [hasta, setHasta] = useState(defaultHasta ?? "");
+  const [selectedTenantId, setSelectedTenantId] = useState<string | null>(defaultTenantId ?? null);
   const [data, setData] = useState<Local360Data | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,18 +84,32 @@ export function Local360Client({
       const params = new URLSearchParams({ projectId: selectedProjectId });
       if (desde) params.set("from", desde);
       if (hasta) params.set("to", hasta);
+      if (selectedTenantId) params.set("tenantId", selectedTenantId);
       const response = await fetch(`/api/real/units/${unitId}?${params.toString()}`);
       if (!response.ok) {
         throw new Error(await readErrorMessage(response, "Error al cargar datos del local."));
       }
       const payload = (await response.json()) as Local360Data;
       setData(payload);
+      // If we didn't pass a tenantId, the server picked the default (current tenant).
+      // Sync the local state so the dropdown reflects it.
+      if (!selectedTenantId && payload.tenantOnLocalAnalysis) {
+        setSelectedTenantId(payload.tenantOnLocalAnalysis.tenantId);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado.");
     } finally {
       setLoading(false);
     }
-  }, [unitId, selectedProjectId, desde, hasta]);
+  }, [unitId, selectedProjectId, desde, hasta, selectedTenantId]);
+
+  const handleTenantChange = (tenantId: string) => {
+    setSelectedTenantId(tenantId);
+    const params = new URLSearchParams(window.location.search);
+    if (tenantId) params.set("tenantId", tenantId);
+    else params.delete("tenantId");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  };
 
   useEffect(() => {
     void fetchData();
@@ -160,6 +183,30 @@ export function Local360Client({
             </div>
           )}
 
+          {activeTab === "comercial" && (
+            <div className="space-y-6">
+              <LocalCommercialClassificationCard
+                profile={data.profile}
+                tenants={data.tenantsForSelector}
+                selectedTenantId={data.tenantOnLocalAnalysis?.tenantId ?? null}
+                onTenantChange={handleTenantChange}
+                selectedTenantName={data.tenantOnLocalAnalysis?.tenantName ?? null}
+                selectedDataContableId={data.tenantOnLocalAnalysis?.ids.dataContableId ?? null}
+                selectedVentasId={data.tenantOnLocalAnalysis?.ids.ventasId ?? null}
+              />
+              {data.tenantOnLocalAnalysis ? (
+                <TenantOnLocalAnalysisSection
+                  data={data.tenantOnLocalAnalysis}
+                  periods={periods}
+                />
+              ) : (
+                <ModuleEmptyState message="No hay arrendatarios con contratos en este local para el rango seleccionado." />
+              )}
+              <CategoryAnalysisSection data={data.categoryAnalysis} periods={periods} />
+              <SimilarLocalsTableSection data={data.similarLocalsTable} />
+            </div>
+          )}
+
           {activeTab === "historia" && (
             <div className="space-y-6">
               <TenantHistoryTimeline
@@ -170,6 +217,7 @@ export function Local360Client({
                 history={data.tenantHistory}
                 selectedProjectId={selectedProjectId}
               />
+              <ContractDetailsSection contracts={data.contracts} />
             </div>
           )}
 

@@ -88,6 +88,7 @@ export function RentRollDashboardTable({
         header: "Local",
         filterFn: "includesString",
         meta: {
+          filterType: "text",
           linkTo: {
             path: "/plan/units",
             idKey: "localId",
@@ -120,6 +121,7 @@ export function RentRollDashboardTable({
         accessorKey: "arrendatario",
         header: "Arrendatario",
         filterFn: "includesString",
+        meta: { filterType: "text" },
         cell: ({ row }) => {
           if (row.original.vacante || !row.original.tenantId) {
             return <span className="whitespace-nowrap text-slate-400">—</span>;
@@ -156,7 +158,9 @@ export function RentRollDashboardTable({
         id: "contractId",
         header: "Contrato",
         accessorFn: (row) => (row.vacante ? "" : row.id),
+        filterFn: "includesString",
         meta: {
+          filterType: "text",
           linkTo: {
             path: "/plan/contracts",
             idKey: "id",

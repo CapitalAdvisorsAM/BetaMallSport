@@ -49,6 +49,7 @@ export function UnitsViewTable({ rows, projectId, selectedDetailId }: UnitsViewT
         accessorKey: "codigo",
         header: "Codigo",
         filterFn: "includesString",
+        meta: { filterType: "text" },
         cell: ({ row }) => (
           <Link
             href={`/units/${row.original.id}?proyecto=${projectId}`}
@@ -67,11 +68,15 @@ export function UnitsViewTable({ rows, projectId, selectedDetailId }: UnitsViewT
       {
         accessorKey: "piso",
         header: "Piso",
+        filterFn: "includesString",
+        meta: { filterType: "text" },
         cell: ({ row }) => <span className="whitespace-nowrap">{row.original.piso}</span>
       },
       {
         accessorKey: "zona",
         header: "Zona",
+        filterFn: "includesString",
+        meta: { filterType: "text" },
         cell: ({ row }) => <span className="whitespace-nowrap">{row.original.zona ?? "-"}</span>
       },
       numberFilterColumn<UnitsViewRow>({
@@ -103,7 +108,7 @@ export function UnitsViewTable({ rows, projectId, selectedDetailId }: UnitsViewT
             : "rounded-full border-slate-300 bg-slate-200 text-slate-700"
       })
     ],
-    [tipoOptions]
+    [tipoOptions, projectId]
   );
 
   const { table } = useDataTable(rows, columns);

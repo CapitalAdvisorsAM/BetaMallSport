@@ -41,6 +41,7 @@ describe("buildBudgetVsActual — estado GRACIA", () => {
     const contracts = [makeContract({ estado: ContractStatus.GRACIA })];
     const result = buildBudgetVsActual(contracts, [], [], ["2026-06"]);
     expect(result.rows[0].budgetUf).toBe(0);
+    expect(result.rows[0].byPeriod["2026-06"].budgetUf).toBe(0);
     expect(result.summary.totalBudgetUf).toBe(0);
   });
 
@@ -49,6 +50,7 @@ describe("buildBudgetVsActual — estado GRACIA", () => {
     const result = buildBudgetVsActual(contracts, [], [], ["2026-06"]);
     // 1 * 100 = 100
     expect(result.rows[0].budgetUf).toBe(100);
+    expect(result.rows[0].byPeriod["2026-06"].budgetUf).toBe(100);
   });
 });
 
@@ -81,6 +83,7 @@ describe("buildBudgetVsActual — variable rent lag", () => {
     // fixed = 1 * 100 = 100; variable = max(0, 5000/1 * 10/100 - 100) = 400
     // total = 500
     expect(result.rows[0].budgetUf).toBe(500);
+    expect(result.rows[0].byPeriod["2026-06"].budgetUf).toBe(500);
   });
 
   it("flags missingSalesPeriods when PORCENTAJE rate but no budgeted sale for lag month", () => {
@@ -106,6 +109,7 @@ describe("buildBudgetVsActual — variable rent lag", () => {
     ];
     const result = buildBudgetVsActual(contracts, [], [], ["2026-06"]);
     expect(result.rows[0].missingSalesPeriods).toContain("2026-06");
+    expect(result.rows[0].byPeriod["2026-06"].missingSales).toBe(true);
   });
 
   it("does not flag missing sales when there are no PORCENTAJE rates", () => {
@@ -140,5 +144,6 @@ describe("buildBudgetVsActual — actual billing", () => {
     ];
     const result = buildBudgetVsActual(contracts, records, [], ["2026-06"]);
     expect(result.rows[0].actualUf).toBe(120);
+    expect(result.rows[0].byPeriod["2026-06"].actualUf).toBe(120);
   });
 });
