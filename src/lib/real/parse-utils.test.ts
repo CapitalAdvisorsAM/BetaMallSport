@@ -97,7 +97,7 @@ describe("parser smoke tests", () => {
 
     expect(filas).toHaveLength(1);
     expect(filas[0]).toMatchObject({
-      idCa: 10,
+      idCa: "10",
       tienda: "Store 10",
       ventasPesos: 40,
       categoriaTamano: "Grande"
