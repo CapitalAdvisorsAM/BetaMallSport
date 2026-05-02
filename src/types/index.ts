@@ -12,6 +12,12 @@ export type {
   ContractWriteApiResponse
 } from "./contracts";
 export type {
+  ContractComparison,
+  ContractComparisonMatchLevel,
+  ContractComparisonMetric,
+  ContractComparisonRow
+} from "./contract-comparison";
+export type {
   RentRollMetricRow,
   RentRollSummary,
   RentRollMetricsResponse
@@ -27,7 +33,8 @@ export type {
 export type {
   OccupancyDimensionRow,
   OccupancyPeriodSnapshot,
-  OccupancyTimeSeriesResponse
+  OccupancyTimeSeriesResponse,
+  VacantUnitRow
 } from "./occupancy";
 export type {
   FacturacionDimensionSeries,
@@ -67,6 +74,12 @@ export type {
   GgccDeficitResponse
 } from "./ggcc-deficit";
 export type {
+  ExpenseDetailResponse,
+  ExpenseDetailRow,
+  ExpensePivotResponse,
+  ExpensePivotRow
+} from "./expenses";
+export type {
   Tenant360Data,
   Tenant360Profile,
   Tenant360QuickStats,
@@ -83,7 +96,8 @@ export type {
   BillingCategory,
   OccupancyDayEntry,
   PeerComparison,
-  PeerComparisonRow
+  PeerComparisonRow,
+  Tenant360BudgetSalesPoint
 } from "./tenant-360";
 export type {
   Local360Data,

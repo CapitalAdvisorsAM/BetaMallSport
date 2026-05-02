@@ -8,11 +8,13 @@ import { VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
 import { getFinanceFrom, getFinanceProjectId, getFinanceTo } from "@/lib/real/api-params";
 import { resolveMonthRange, toPeriodKey } from "@/lib/real/period-range";
 import { legacyDiscountFields } from "@/lib/contracts/rate-history";
+import { loadContractComparison } from "@/lib/contracts/contract-comparison";
 import { attributeSalesToLocal, buildLocal360Data } from "@/lib/real/local-360";
 import type {
   RawContractWithTenant,
   RawTenantContractFootprint,
   RawPeerUnitStat,
+  RawCategoryUnit,
 } from "@/lib/real/local-360";
 import { buildUfRateMap } from "@/lib/real/uf-lookup";
 import { shiftPeriod, toNum } from "@/lib/real/billing-utils";
@@ -30,6 +32,7 @@ export async function GET(
     const unitId = params.id;
     const from = getFinanceFrom(searchParams);
     const to = getFinanceTo(searchParams);
+    const requestedTenantId = searchParams.get("tenantId");
 
     if (!projectId) {
       throw new ApiError(400, "projectId requerido.");
@@ -249,6 +252,139 @@ export async function GET(
       }));
     }
 
+    // ---- Local Comercial tab data ----
+    const categoryUnitsRaw = await prisma.unit.findMany({
+      where: {
+        projectId,
+        tipo: unit.tipo,
+        estado: "ACTIVO",
+      },
+      select: {
+        id: true,
+        codigo: true,
+        nombre: true,
+        glam2: true,
+        piso: true,
+        categoriaTamano: true,
+        tipo: true,
+      },
+    });
+
+    const categoryUnitIds = categoryUnitsRaw.map((u) => u.id);
+
+    const [categoryAccountingRecordsRaw, categoryContractDaysRaw, categoryContracts] =
+      categoryUnitIds.length > 0
+        ? await Promise.all([
+            prisma.accountingRecord.findMany({
+              where: {
+                projectId,
+                unitId: { in: categoryUnitIds },
+                period: { gte: desdeDate, lte: hastaDate },
+                scenario: AccountingScenario.REAL,
+              },
+              select: {
+                unitId: true,
+                period: true,
+                group1: true,
+                group3: true,
+                denomination: true,
+                valueUf: true,
+              },
+            }),
+            prisma.contractDay.findMany({
+              where: {
+                projectId,
+                localId: { in: categoryUnitIds },
+                fecha: { gte: desdeDate, lte: hastaDate },
+              },
+              select: {
+                localId: true,
+                fecha: true,
+                estadoDia: true,
+                glam2: true,
+              },
+            }),
+            prisma.contract.findMany({
+              where: {
+                projectId,
+                OR: [
+                  { localId: { in: categoryUnitIds } },
+                  { locales: { some: { localId: { in: categoryUnitIds } } } },
+                ],
+                fechaInicio: { lte: hastaDate },
+                fechaTermino: { gte: lagFromDate },
+              },
+              select: {
+                arrendatarioId: true,
+                localId: true,
+                fechaInicio: true,
+                fechaTermino: true,
+                local: { select: { glam2: true } },
+              },
+            }),
+          ])
+        : [[], [], []];
+
+    const categoryTenantIds = [...new Set(categoryContracts.map((c) => c.arrendatarioId))];
+    const categoryAllFootprints = categoryTenantIds.length > 0
+      ? await prisma.contract.findMany({
+          where: {
+            projectId,
+            arrendatarioId: { in: categoryTenantIds },
+            fechaInicio: { lte: hastaDate },
+            fechaTermino: { gte: lagFromDate },
+          },
+          select: {
+            arrendatarioId: true,
+            localId: true,
+            fechaInicio: true,
+            fechaTermino: true,
+            local: { select: { glam2: true } },
+          },
+        })
+      : [];
+
+    const categoryRawSalesQuery = categoryTenantIds.length > 0
+      ? await prisma.tenantSale.findMany({
+          where: {
+            projectId,
+            tenantId: { in: categoryTenantIds },
+            period: { gte: desdeDate, lte: hastaDate },
+          },
+          select: { tenantId: true, period: true, salesPesos: true },
+        })
+      : [];
+
+    const categoryUnits: RawCategoryUnit[] = categoryUnitsRaw.map((u) => ({
+      id: u.id,
+      codigo: u.codigo,
+      nombre: u.nombre,
+      glam2: u.glam2,
+      piso: u.piso,
+      categoriaTamano: u.categoriaTamano,
+      tipo: u.tipo,
+    }));
+
+    const categoryTenantFootprints: RawTenantContractFootprint[] = categoryAllFootprints.map((c) => ({
+      arrendatarioId: c.arrendatarioId,
+      localId: c.localId,
+      fechaInicio: c.fechaInicio,
+      fechaTermino: c.fechaTermino,
+      glam2: c.local.glam2,
+    }));
+
+    // Strict similar-locals filter: Tamaño + Tipo + Piso must all match.
+    const similarUnitIds = new Set<string>(
+      categoryUnitsRaw
+        .filter(
+          (u) =>
+            u.categoriaTamano === unit.categoriaTamano &&
+            u.tipo === unit.tipo &&
+            u.piso === unit.piso,
+        )
+        .map((u) => u.id),
+    );
+
     // Project active discounts back into the legacy 4-field shape so billing
     // calculations actually apply them.
     const contractsWithDiscounts: RawContractWithTenant[] = contracts.map((c) => ({
@@ -264,6 +400,19 @@ export async function GET(
         };
       }),
     }));
+    const contractComparisons = new Map(
+      await Promise.all(
+        contracts.map(async (contract) => [
+          contract.id,
+          await loadContractComparison({
+            projectId,
+            contractId: contract.id,
+            desdeDate,
+            hastaDate,
+          }),
+        ] as const),
+      ),
+    );
 
     const data = buildLocal360Data({
       unit,
@@ -278,6 +427,14 @@ export async function GET(
       ufRateByPeriod,
       rangeFromDate: desdeDate,
       rangeToDate: hastaDate,
+      selectedTenantId: requestedTenantId,
+      contractComparisons,
+      categoryUnits,
+      categoryAccountingRecords: categoryAccountingRecordsRaw,
+      categoryContractDays: categoryContractDaysRaw,
+      categoryTenantFootprints,
+      categoryRawSales: categoryRawSalesQuery,
+      similarUnitIds,
     });
 
     return NextResponse.json(data);

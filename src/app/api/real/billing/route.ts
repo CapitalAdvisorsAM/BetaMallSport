@@ -7,6 +7,8 @@ import { handleApiError } from "@/lib/api-error";
 import { getFinanceFrom, getFinanceProjectId, getFinanceTo } from "@/lib/real/api-params";
 import {
   buildFacturacionTimeSeries,
+  GROUP3_FIJO,
+  GROUP3_VARIABLE,
   type DimensionField,
   type FacturacionRecord
 } from "@/lib/real/facturacion-timeseries";
@@ -44,6 +46,12 @@ export async function GET(request: Request): Promise<NextResponse> {
       : "tamano";
 
     const breakdown = searchParams.get("breakdown") === "true";
+
+    const rawGroup3Filter = searchParams.get("group3Filter") ?? "";
+    const group3Filter =
+      rawGroup3Filter === GROUP3_FIJO || rawGroup3Filter === GROUP3_VARIABLE
+        ? rawGroup3Filter
+        : undefined;
 
     const [rawRecords, rawUnits, rawContracts] = await Promise.all([
       prisma.accountingRecord.findMany({
@@ -113,7 +121,8 @@ export async function GET(request: Request): Promise<NextResponse> {
       glaTotals,
       periods,
       dimension,
-      breakdown
+      breakdown,
+      group3Filter
     );
 
     return NextResponse.json(result);

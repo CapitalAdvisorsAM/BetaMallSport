@@ -152,7 +152,6 @@ export function ReconciliationClient({
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-400">{row.original.rut}</p>
           </div>
         ),
       },
@@ -166,9 +165,11 @@ export function ReconciliationClient({
         id: "glam2",
         accessorKey: "glam2",
         header: "GLA (m²)",
+        filterFn: "inNumberRange",
         meta: {
           align: "right",
           isNumeric: true,
+          filterType: "number" as const,
           summary: { type: "sum" as const, formatter: (v: number) => formatUf(v, 1) },
         },
         cell: ({ getValue }: CellContext<ReconciliationRow, unknown>) => formatUf(getValue() as number, 1),
@@ -178,9 +179,11 @@ export function ReconciliationClient({
         id: "expectedUf",
         accessorKey: "expectedUf",
         header: "Esperado (UF)",
+        filterFn: "inNumberRange",
         meta: {
           align: "right",
           isNumeric: true,
+          filterType: "number" as const,
           summary: { type: "sum" as const, formatter: (v: number) => formatUf(v) },
         },
         cell: ({ getValue }: CellContext<ReconciliationRow, unknown>) => formatUf(getValue() as number),
@@ -189,9 +192,11 @@ export function ReconciliationClient({
         id: "actualUf",
         accessorKey: "actualUf",
         header: "Real (UF)",
+        filterFn: "inNumberRange",
         meta: {
           align: "right",
           isNumeric: true,
+          filterType: "number" as const,
           summary: { type: "sum" as const, formatter: (v: number) => formatUf(v) },
         },
         cell: ({ getValue }: CellContext<ReconciliationRow, unknown>) => formatUf(getValue() as number),
@@ -226,9 +231,11 @@ export function ReconciliationClient({
         id: "expectedGgccUf",
         accessorKey: "expectedGgccUf",
         header: "GGCC Esperado (UF)",
+        filterFn: "inNumberRange",
         meta: {
           align: "right",
           isNumeric: true,
+          filterType: "number" as const,
           summary: { type: "sum" as const, formatter: (v: number) => formatUf(v) },
         },
         cell: ({ getValue }: CellContext<ReconciliationRow, unknown>) => formatUf(getValue() as number),
@@ -237,9 +244,11 @@ export function ReconciliationClient({
         id: "actualGgccUf",
         accessorKey: "actualGgccUf",
         header: "GGCC Real (UF)",
+        filterFn: "inNumberRange",
         meta: {
           align: "right",
           isNumeric: true,
+          filterType: "number" as const,
           summary: { type: "sum" as const, formatter: (v: number) => formatUf(v) },
         },
         cell: ({ getValue }: CellContext<ReconciliationRow, unknown>) => formatUf(getValue() as number),

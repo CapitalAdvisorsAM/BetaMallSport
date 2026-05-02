@@ -123,6 +123,13 @@ export default async function TenantsPage({
       numeroContrato: string;
       fechaInicio: Date;
       fechaTermino: Date | null;
+      diasGracia: number;
+      codigoCC: string | null;
+      pctFondoPromocion: import("@prisma/client").Prisma.Decimal | null;
+      multiplicadorJunio: import("@prisma/client").Prisma.Decimal | null;
+      multiplicadorJulio: import("@prisma/client").Prisma.Decimal | null;
+      multiplicadorAgosto: import("@prisma/client").Prisma.Decimal | null;
+      multiplicadorDiciembre: import("@prisma/client").Prisma.Decimal | null;
       local: { codigo: string; nombre: string } | null;
     }>;
   }> = [];
@@ -167,6 +174,13 @@ export default async function TenantsPage({
                 numeroContrato: true,
                 fechaInicio: true,
                 fechaTermino: true,
+                diasGracia: true,
+                codigoCC: true,
+                pctFondoPromocion: true,
+                multiplicadorJunio: true,
+                multiplicadorJulio: true,
+                multiplicadorAgosto: true,
+                multiplicadorDiciembre: true,
                 local: { select: { codigo: true, nombre: true } }
               }
             }
@@ -421,7 +435,14 @@ export default async function TenantsPage({
                     numeroContrato: c.numeroContrato,
                     fechaInicio: c.fechaInicio.toISOString().slice(0, 10),
                     fechaTermino: c.fechaTermino?.toISOString().slice(0, 10) ?? null,
-                    local: c.local
+                    local: c.local,
+                    diasGracia: c.diasGracia,
+                    codigoCC: c.codigoCC,
+                    pctFondoPromocion: c.pctFondoPromocion !== null ? Number(c.pctFondoPromocion.toString()) : null,
+                    multiplicadorJunio: c.multiplicadorJunio !== null ? Number(c.multiplicadorJunio.toString()) : null,
+                    multiplicadorJulio: c.multiplicadorJulio !== null ? Number(c.multiplicadorJulio.toString()) : null,
+                    multiplicadorAgosto: c.multiplicadorAgosto !== null ? Number(c.multiplicadorAgosto.toString()) : null,
+                    multiplicadorDiciembre: c.multiplicadorDiciembre !== null ? Number(c.multiplicadorDiciembre.toString()) : null,
                   }))
                 };
               })}

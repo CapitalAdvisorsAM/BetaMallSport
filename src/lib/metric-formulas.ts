@@ -348,6 +348,16 @@ export const METRIC_FORMULAS = {
     title: "Contratos activos en período",
     formula: "COUNT(contratos en estado OCUPADO o GRACIA en el período seleccionado)",
     detail: "Total de contratos con estado activo (OCUPADO o GRACIA) durante el período."
+  },
+  chart_fijo_vs_variable: {
+    title: "Ingreso Fijo vs Variable (UF/m²)",
+    formula: "Fijo UF/m² = ARRIENDO DE LOCAL FIJO / GLA ocupada; Variable UF/m² = ARRIENDO DE LOCAL VARIABLE / GLA ocupada; % Fijo = Fijo / (Fijo + Variable)",
+    detail: "Compara la intensidad de facturación fija y variable mensual, mostrando la participación relativa del ingreso fijo."
+  },
+  chart_allin_breakdown: {
+    title: "Breakdown All-In del Arrendatario (UF/m²)",
+    formula: "UF/m² por tipo de cobro = SUM(valueUf por group3) / GLA ocupada",
+    detail: "Descompone el UF/m² total facturado por tipo de cobro: arriendo fijo, variable, GG.CC. y otros ingresos."
   }
 } as const satisfies Record<string, MetricFormulaDefinition>;
 

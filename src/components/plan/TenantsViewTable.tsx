@@ -57,6 +57,7 @@ export function TenantsViewTable({
         accessorKey: "nombreComercial",
         header: "Arrendatario",
         filterFn: "includesString",
+        meta: { filterType: "text" },
         cell: ({ row }) => (
           <Link
             href={`/tenants/${row.original.id}`}
@@ -64,16 +65,6 @@ export function TenantsViewTable({
           >
             {row.original.nombreComercial}
           </Link>
-        ),
-      },
-      {
-        accessorKey: "rut",
-        header: "RUT",
-        filterFn: "includesString",
-        cell: ({ row }) => (
-          <span className="whitespace-nowrap font-mono text-[11px] text-slate-500">
-            {row.original.rut}
-          </span>
         ),
       },
       statusBadgeColumn<TenantsViewRow>({
@@ -90,9 +81,11 @@ export function TenantsViewTable({
       {
         accessorKey: "contratosAsociados",
         header: "Contratos",
+        filterFn: "inNumberRange",
         meta: {
           isNumeric: true,
           align: "right",
+          filterType: "number",
           summary: { type: "sum" },
         },
         cell: ({ row }) => (
@@ -102,9 +95,11 @@ export function TenantsViewTable({
       {
         accessorKey: "contratosVigentes",
         header: "Activos período",
+        filterFn: "inNumberRange",
         meta: {
           isNumeric: true,
           align: "right",
+          filterType: "number",
           summary: { type: "sum" },
         },
         cell: ({ row }) => (
@@ -118,6 +113,7 @@ export function TenantsViewTable({
         header: "N° contrato",
         filterFn: "includesString",
         enableSorting: false,
+        meta: { filterType: "text" },
         cell: ({ row }) => (
           <span className="block border-l border-slate-200 pl-3 font-mono text-[11px] text-slate-500">
             {row.original.contratosVigentesNumeros || "—"}

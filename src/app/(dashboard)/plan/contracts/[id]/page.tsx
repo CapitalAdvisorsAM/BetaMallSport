@@ -8,10 +8,13 @@ import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
 import { Button } from "@/components/ui/button";
 import { ContractDetailEditButton } from "@/components/contracts/ContractDetailEditButton";
 import { ContractDetailDeleteButton } from "@/components/contracts/ContractDetailDeleteButton";
+import { ContractComparisonSection } from "@/components/contracts/ContractComparisonSection";
 import { canWrite, requireSession } from "@/lib/permissions";
 import { legacyDiscountFields } from "@/lib/contracts/rate-history";
+import { loadContractComparison } from "@/lib/contracts/contract-comparison";
 import { prisma } from "@/lib/prisma";
 import { getProjectContext } from "@/lib/project";
+import { resolveMonthRange } from "@/lib/real/period-range";
 import { cn, formatDate, formatDateString, formatUf } from "@/lib/utils";
 import { MS_PER_DAY } from "@/lib/constants";
 import type { ContractManagerListItem } from "@/types";
@@ -80,7 +83,8 @@ export default async function ContractDetailPage({
     redirect("/");
   }
 
-  const [contract, allUnits, allTenants] = await Promise.all([
+  const { desdeDate, hastaDate } = resolveMonthRange(null, null);
+  const [contract, allUnits, allTenants, comparison] = await Promise.all([
     prisma.contract.findFirst({
       where: { id: params.id, projectId: selectedProjectId },
       ...detailQueryArgs,
@@ -98,7 +102,13 @@ export default async function ContractDetailPage({
           select: { id: true, nombreComercial: true },
           orderBy: { nombreComercial: "asc" }
         })
-      : Promise.resolve([] as Array<{ id: string; nombreComercial: string }>)
+      : Promise.resolve([] as Array<{ id: string; nombreComercial: string }>),
+    loadContractComparison({
+      projectId: selectedProjectId,
+      contractId: params.id,
+      desdeDate,
+      hastaDate
+    })
   ]);
 
   if (!contract) notFound();
@@ -234,60 +244,67 @@ export default async function ContractDetailPage({
               <p className="text-slate-400">Fecha termino</p>
               <p className="text-sm font-medium tabular-nums text-slate-700">{formatDate(contract.fechaTermino)}</p>
             </div>
-            {contract.fechaEntrega ? (
-              <div>
-                <p className="text-slate-400">Fecha entrega</p>
-                <p className="text-sm font-medium tabular-nums text-slate-700">{formatDate(contract.fechaEntrega)}</p>
-              </div>
-            ) : null}
-            {contract.fechaApertura ? (
-              <div>
-                <p className="text-slate-400">Fecha apertura</p>
-                <p className="text-sm font-medium tabular-nums text-slate-700">{formatDate(contract.fechaApertura)}</p>
-              </div>
-            ) : null}
-            {contract.diasGracia > 0 ? (
-              <div>
-                <p className="text-slate-400">Dias de gracia</p>
-                <p className="text-sm font-medium tabular-nums text-slate-700">{contract.diasGracia}</p>
-              </div>
-            ) : null}
-            {contract.codigoCC ? (
-              <div>
-                <p className="text-slate-400">Codigo CC</p>
-                <p className="text-sm font-medium text-slate-700">{contract.codigoCC}</p>
-              </div>
-            ) : null}
-            {contract.pctFondoPromocion ? (
-              <div>
-                <p className="text-slate-400">Fondo promocion</p>
-                <p className="text-sm font-medium tabular-nums text-slate-700">{contract.pctFondoPromocion.toString()}%</p>
-              </div>
-            ) : null}
-            {contract.multiplicadorDiciembre ? (
-              <div>
-                <p className="text-slate-400">Multiplicador diciembre</p>
-                <p className="text-sm font-medium tabular-nums text-slate-700">{contract.multiplicadorDiciembre.toString()}x</p>
-              </div>
-            ) : null}
-            {contract.multiplicadorJunio ? (
-              <div>
-                <p className="text-slate-400">Multiplicador junio</p>
-                <p className="text-sm font-medium tabular-nums text-slate-700">{contract.multiplicadorJunio.toString()}x</p>
-              </div>
-            ) : null}
-            {contract.multiplicadorJulio ? (
-              <div>
-                <p className="text-slate-400">Multiplicador julio</p>
-                <p className="text-sm font-medium tabular-nums text-slate-700">{contract.multiplicadorJulio.toString()}x</p>
-              </div>
-            ) : null}
-            {contract.multiplicadorAgosto ? (
-              <div>
-                <p className="text-slate-400">Multiplicador agosto</p>
-                <p className="text-sm font-medium tabular-nums text-slate-700">{contract.multiplicadorAgosto.toString()}x</p>
-              </div>
-            ) : null}
+          </div>
+        </div>
+
+        {/* Condiciones Comerciales */}
+        <div>
+          <h4 className="mb-2 border-l-2 border-brand-300 pl-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Condiciones Comerciales</h4>
+          <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-3 lg:grid-cols-4">
+            <div>
+              <p className="text-slate-400">Fecha entrega</p>
+              <p className="text-sm font-medium tabular-nums text-slate-700">
+                {contract.fechaEntrega ? formatDate(contract.fechaEntrega) : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-slate-400">Fecha apertura</p>
+              <p className="text-sm font-medium tabular-nums text-slate-700">
+                {contract.fechaApertura ? formatDate(contract.fechaApertura) : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-slate-400">Dias de gracia</p>
+              <p className="text-sm font-medium tabular-nums text-slate-700">{contract.diasGracia}</p>
+            </div>
+            <div>
+              <p className="text-slate-400">Vacancia KPI</p>
+              <p className="text-sm font-medium text-slate-700">{contract.cuentaParaVacancia ? "Si" : "No"}</p>
+            </div>
+            <div>
+              <p className="text-slate-400">Codigo CC</p>
+              <p className="text-sm font-medium text-slate-700">{contract.codigoCC ?? "—"}</p>
+            </div>
+            <div>
+              <p className="text-slate-400">Fondo promocion</p>
+              <p className="text-sm font-medium tabular-nums text-slate-700">
+                {contract.pctFondoPromocion !== null ? `${contract.pctFondoPromocion.toString()}%` : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-slate-400">Mult. junio</p>
+              <p className="text-sm font-medium tabular-nums text-slate-700">
+                {contract.multiplicadorJunio !== null ? `${contract.multiplicadorJunio.toString()}x` : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-slate-400">Mult. julio</p>
+              <p className="text-sm font-medium tabular-nums text-slate-700">
+                {contract.multiplicadorJulio !== null ? `${contract.multiplicadorJulio.toString()}x` : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-slate-400">Mult. agosto</p>
+              <p className="text-sm font-medium tabular-nums text-slate-700">
+                {contract.multiplicadorAgosto !== null ? `${contract.multiplicadorAgosto.toString()}x` : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-slate-400">Mult. diciembre</p>
+              <p className="text-sm font-medium tabular-nums text-slate-700">
+                {contract.multiplicadorDiciembre !== null ? `${contract.multiplicadorDiciembre.toString()}x` : "—"}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -516,6 +533,8 @@ export default async function ContractDetailPage({
             </UnifiedTable>
           </div>
         ) : null}
+
+        <ContractComparisonSection comparison={comparison} />
 
         {/* Anexos */}
         {contract.anexos.length > 0 ? (

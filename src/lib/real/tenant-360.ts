@@ -30,6 +30,7 @@ import type {
   Tenant360Ggcc,
   Tenant360Amendment,
   Tenant360SalesPoint,
+  Tenant360BudgetSalesPoint,
   Tenant360Projection,
   ExpiringContract,
   GapAnalysisRow,
@@ -37,6 +38,7 @@ import type {
   OccupancyDayEntry,
   PeerComparison
 } from "@/types/tenant-360";
+import type { ContractComparison } from "@/types/contract-comparison";
 
 // ---------------------------------------------------------------------------
 // Input types — shape of raw Prisma data passed in from the API route
@@ -60,6 +62,7 @@ export type RawContractRate = {
   tipo: ContractRateType;
   valor: DecimalLike;
   umbralVentasUf?: DecimalLike | null;
+  pisoMinimoUf?: DecimalLike | null;
   vigenciaDesde: Date;
   vigenciaHasta: Date | null;
   esDiciembre: boolean;
@@ -107,6 +110,7 @@ export type RawContract = {
   fechaEntrega: Date | null;
   fechaApertura: Date | null;
   diasGracia: number;
+  cuentaParaVacancia?: boolean;
   multiplicadorDiciembre: DecimalLike | null;
   multiplicadorJunio: DecimalLike | null;
   multiplicadorJulio: DecimalLike | null;
@@ -135,6 +139,11 @@ export type RawUnitSale = {
   salesPesos: DecimalLike;
 };
 
+export type RawBudgetedSale = {
+  period: Date;
+  salesPesos: DecimalLike;
+};
+
 export type RawContractDay = {
   localId: string;
   local?: { codigo: string } | null;
@@ -153,10 +162,12 @@ export type BuildTenant360Input = {
   contracts: RawContract[];
   accountingRecords: RawAccountingRecord[];
   sales: RawUnitSale[];
+  budgetedSales?: RawBudgetedSale[];
   contractDays: RawContractDay[];
   latestUf: RawUfValue | null;
   periods: string[];
   peerComparison?: PeerComparison | null;
+  contractComparisons?: Map<string, ContractComparison | null>;
   ufRateByPeriod?: Map<string, number>;
 };
 
@@ -165,7 +176,19 @@ export type BuildTenant360Input = {
 // ---------------------------------------------------------------------------
 
 export function buildTenant360Data(input: BuildTenant360Input): Tenant360Data {
-  const { tenant, contracts, accountingRecords, sales, contractDays, latestUf, periods, peerComparison, ufRateByPeriod = new Map() } = input;
+  const {
+    tenant,
+    contracts,
+    accountingRecords,
+    sales,
+    budgetedSales = [],
+    contractDays,
+    latestUf,
+    periods,
+    peerComparison,
+    contractComparisons = new Map(),
+    ufRateByPeriod = new Map()
+  } = input;
 
   const activeContracts = contracts.filter(
     (c) => c.estado === ContractStatus.VIGENTE || c.estado === ContractStatus.GRACIA
@@ -176,12 +199,13 @@ export function buildTenant360Data(input: BuildTenant360Input): Tenant360Data {
   const quickStats = buildQuickStats(activeContracts, kpiContracts, latestUf);
   const monthlyTimeline = buildMonthlyTimeline(accountingRecords, sales, periods, quickStats.totalLeasedM2, ufRateByPeriod);
   const kpis = buildKpis(kpiContracts, monthlyTimeline, latestUf, quickStats.totalLeasedM2);
-  const serializedContracts = serializeContracts(contracts);
+  const serializedContracts = serializeContracts(contracts, contractComparisons);
   const billingBreakdown = buildBillingBreakdown(accountingRecords);
   const salesPerformance = buildSalesPerformance(sales, activeContracts, periods, quickStats.totalLeasedM2, ufRateByPeriod);
   const occupancyDays = serializeOccupancyDays(contractDays);
   const projections = buildProjections(activeContracts);
   const gapAnalysis = buildGapAnalysis(activeContracts, accountingRecords, sales, periods, contractDays, ufRateByPeriod);
+  const budgetVsActual = buildBudgetVsActual(sales, budgetedSales, periods, ufRateByPeriod);
 
   return {
     profile,
@@ -194,7 +218,8 @@ export function buildTenant360Data(input: BuildTenant360Input): Tenant360Data {
     occupancyDays,
     projections,
     gapAnalysis,
-    peerComparison: peerComparison ?? null
+    peerComparison: peerComparison ?? null,
+    budgetVsActual
   };
 }
 
@@ -258,6 +283,7 @@ function toKpiContracts(contracts: RawContract[]): KpiContractInput[] {
       localGlam2: c.local.glam2,
       arrendatarioNombre: "",
       numeroContrato: c.numeroContrato,
+      fechaInicio: c.fechaInicio,
       fechaTermino: c.fechaTermino,
       tarifaVariablePct: variableRate ? variableRate.valor : null,
       tarifa: rate ? { tipo: rate.tipo, valor: rate.valor } as KpiTarifaInput : null,
@@ -305,7 +331,7 @@ function buildKpis(
   const rentaFijaMensualUf = calculateFixedRentUf(kpiContracts);
   const ufValue = latestUf ? toNum(latestUf.valor) : 0;
   const ggccEstimadoUf = calculateEstimatedGgccUf(kpiContracts);
-  const waltMeses = calculateWalt(kpiContracts, new Date());
+  const waltMeses = calculateWalt(kpiContracts);
 
   const totalBilling = timeline.reduce((s, p) => s + p.billingUf, 0);
   const totalSales = timeline.reduce((s, p) => s + p.salesUf, 0);
@@ -379,9 +405,15 @@ function serializeRate(r: RawContractRate): Tenant360Rate {
     tipo: r.tipo,
     valor: toNum(r.valor),
     umbralVentasUf: r.umbralVentasUf !== undefined && r.umbralVentasUf !== null ? toNum(r.umbralVentasUf) : null,
+    pisoMinimoUf: r.pisoMinimoUf !== undefined && r.pisoMinimoUf !== null ? toNum(r.pisoMinimoUf) : null,
     vigenciaDesde: dateStr(r.vigenciaDesde)!,
     vigenciaHasta: dateStr(r.vigenciaHasta),
-    esDiciembre: r.esDiciembre
+    esDiciembre: r.esDiciembre,
+    descuentoTipo: r.descuentoTipo ?? null,
+    descuentoValor:
+      r.descuentoValor !== undefined && r.descuentoValor !== null ? toNum(r.descuentoValor) : null,
+    descuentoDesde: dateStr(r.descuentoDesde),
+    descuentoHasta: dateStr(r.descuentoHasta)
   };
 }
 
@@ -409,7 +441,10 @@ function serializeAmendment(a: RawContractAmendment): Tenant360Amendment {
   };
 }
 
-function serializeContracts(contracts: RawContract[]): Tenant360Contract[] {
+function serializeContracts(
+  contracts: RawContract[],
+  comparisons: Map<string, ContractComparison | null>
+): Tenant360Contract[] {
   const today = startOfDay(new Date());
 
   return contracts.map((c) => {
@@ -432,6 +467,7 @@ function serializeContracts(contracts: RawContract[]): Tenant360Contract[] {
       fechaEntrega: dateStr(c.fechaEntrega),
       fechaApertura: dateStr(c.fechaApertura),
       diasGracia: c.diasGracia,
+      cuentaParaVacancia: c.cuentaParaVacancia ?? null,
       diasRestantes,
       multiplicadorDiciembre: c.multiplicadorDiciembre !== null ? toNum(c.multiplicadorDiciembre) : null,
       multiplicadorJunio: c.multiplicadorJunio !== null ? toNum(c.multiplicadorJunio) : null,
@@ -444,7 +480,8 @@ function serializeContracts(contracts: RawContract[]): Tenant360Contract[] {
       tarifaActual: currentRate ? serializeRate(currentRate) : null,
       historialTarifas: c.tarifas.map(serializeRate),
       ggccActual: currentGgcc ? serializeGgcc(currentGgcc) : null,
-      anexos: c.anexos.map(serializeAmendment)
+      anexos: c.anexos.map(serializeAmendment),
+      comparison: comparisons.get(c.id) ?? null
     };
   });
 }
@@ -718,5 +755,38 @@ export function buildGapAnalysis(
       gapProRataUf,
       gapProRataPct
     };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Budget vs Actual Sales
+// ---------------------------------------------------------------------------
+
+export function buildBudgetVsActual(
+  sales: RawUnitSale[],
+  budgetedSales: RawBudgetedSale[],
+  periods: string[],
+  ufRateByPeriod: Map<string, number> = new Map()
+): Tenant360BudgetSalesPoint[] {
+  const actualUfByPeriod = new Map<string, number>();
+  for (const s of sales) {
+    const p = periodKey(s.period);
+    const uf = ufRateByPeriod.get(p) ?? 0;
+    actualUfByPeriod.set(p, (actualUfByPeriod.get(p) ?? 0) + (uf > 0 ? toNum(s.salesPesos) / uf : 0));
+  }
+
+  const budgetUfByPeriod = new Map<string, number>();
+  for (const b of budgetedSales) {
+    const p = periodKey(b.period);
+    const uf = ufRateByPeriod.get(p) ?? 0;
+    budgetUfByPeriod.set(p, (budgetUfByPeriod.get(p) ?? 0) + (uf > 0 ? toNum(b.salesPesos) / uf : 0));
+  }
+
+  return periods.map((period) => {
+    const actualSalesUf = actualUfByPeriod.get(period) ?? 0;
+    const budgetedSalesUf = budgetUfByPeriod.get(period) ?? 0;
+    const varianceUf = actualSalesUf - budgetedSalesUf;
+    const variancePct = budgetedSalesUf > 0 ? (varianceUf / budgetedSalesUf) * 100 : null;
+    return { period, actualSalesUf, budgetedSalesUf, varianceUf, variancePct };
   });
 }

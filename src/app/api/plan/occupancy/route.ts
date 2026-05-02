@@ -37,6 +37,8 @@ export async function GET(request: Request): Promise<NextResponse> {
         where: { projectId: projectId, estado: "ACTIVO" },
         select: {
           id: true,
+          codigo: true,
+          nombre: true,
           glam2: true,
           piso: true,
           tipo: true,
@@ -58,6 +60,8 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     const units: GlaUnitInput[] = rawUnits.map((u) => ({
       id: u.id,
+      codigo: u.codigo,
+      nombre: u.nombre,
       tipo: u.tipo,
       esGLA: u.esGLA,
       glam2: u.glam2,

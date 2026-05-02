@@ -17,6 +17,7 @@ import type {
   BudgetVsActualResponse,
   BudgetVsActualMonthly,
   BudgetVsActualTenantRow,
+  BudgetVsActualTenantPeriod,
   BudgetVsActualSummary,
 } from "@/types/finance";
 
@@ -128,6 +129,8 @@ export function buildBudgetVsActual(
     let totalBudgetUf = 0;
     let totalActualUf = 0;
     const missingSalesPeriods = new Set<string>();
+    const perPeriodBudget = new Map<string, number>();
+    const perPeriodActual = new Map<string, number>();
 
     for (const c of tenantContracts) {
       localesMap.set(c.localId, { codigo: c.local.codigo, nombre: c.local.nombre });
@@ -164,11 +167,28 @@ export function buildBudgetVsActual(
 
         totalBudgetUf += expected.totalUf;
         monthlyBudget.set(period, (monthlyBudget.get(period) ?? 0) + expected.totalUf);
+        perPeriodBudget.set(period, (perPeriodBudget.get(period) ?? 0) + expected.totalUf);
 
         const unitActual = actualByUnitPeriod.get(c.localId)?.get(period) ?? 0;
         totalActualUf += unitActual;
         monthlyActual.set(period, (monthlyActual.get(period) ?? 0) + unitActual);
+        perPeriodActual.set(period, (perPeriodActual.get(period) ?? 0) + unitActual);
       }
+    }
+
+    const byPeriod: Record<string, BudgetVsActualTenantPeriod> = {};
+    for (const period of periods) {
+      const budget = perPeriodBudget.get(period) ?? 0;
+      const actual = perPeriodActual.get(period) ?? 0;
+      const variance = budget - actual;
+      byPeriod[period] = {
+        budgetUf: budget,
+        actualUf: actual,
+        varianceUf: variance,
+        variancePct: budget > 0 ? (variance / budget) * 100 : 0,
+        achievementPct: budget > 0 ? (actual / budget) * 100 : 0,
+        missingSales: missingSalesPeriods.has(period),
+      };
     }
 
     const varianceUf = totalBudgetUf - totalActualUf;
@@ -187,6 +207,7 @@ export function buildBudgetVsActual(
       variancePct,
       achievementPct,
       missingSalesPeriods: [...missingSalesPeriods].sort(),
+      byPeriod,
     });
   }
 

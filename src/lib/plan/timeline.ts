@@ -74,6 +74,7 @@ type HistoricalDayRow = {
   tarifaDia: number;
   tipo: UnitType;
   localEsGLA: boolean;
+  fechaInicio: Date | null;
   fechaTermino: Date | null;
 };
 
@@ -89,7 +90,6 @@ type FutureContractRow = {
     esGLA: boolean;
   };
   tarifas: Array<{
-    tipo: ContractRateType;
     valor: Prisma.Decimal;
     vigenciaDesde: Date;
     vigenciaHasta: Date | null;
@@ -134,6 +134,7 @@ function uniqueActiveGlaContractsAtMonthEnd(
 
   for (const contract of contracts) {
     if (!contract.local.esGLA) continue;
+    if (!contract.fechaInicio || !contract.fechaTermino) continue;
     if (contract.fechaInicio > monthEnd || contract.fechaTermino < monthEnd) continue;
     byLocal.set(contract.localId, preferFutureContract(byLocal.get(contract.localId), contract));
   }
@@ -251,6 +252,7 @@ async function buildHistoricalPeriodos(
       },
       contrato: {
         select: {
+          fechaInicio: true,
           fechaTermino: true
         }
       }
@@ -280,6 +282,7 @@ async function buildHistoricalPeriodos(
       tarifaDia: dia.tarifaDia.toNumber(),
       tipo: dia.local.tipo,
       localEsGLA: dia.local.esGLA,
+      fechaInicio: dia.contrato?.fechaInicio ?? null,
       fechaTermino: dia.contrato?.fechaTermino ?? null
     });
   }
@@ -328,25 +331,20 @@ async function buildHistoricalPeriodos(
     const activeContractsForWalt = Array.from(
       occupiedRows.reduce(
         (acc, dia) => {
-          if (
-            !dia.contratoId ||
-            !dia.fechaTermino
-          ) {
-            return acc;
-          }
+          if (!dia.contratoId || !dia.fechaInicio || !dia.fechaTermino) return acc;
           if (!acc.has(dia.localId)) {
             acc.set(dia.localId, {
+              fechaInicio: dia.fechaInicio,
               fechaTermino: dia.fechaTermino,
               localGlam2: dia.glam2
             });
           }
           return acc;
         },
-        new Map<string, { fechaTermino: Date; localGlam2: number }>()
+        new Map<string, { fechaInicio: Date; fechaTermino: Date; localGlam2: number }>()
       ).values()
     );
-    const snapshotDate = new Date(lastDateStr);
-    const waltMeses = round2(calculateWalt(activeContractsForWalt, snapshotDate));
+    const waltMeses = round2(calculateWalt(activeContractsForWalt));
 
     // rentaFijaUf: sum of tarifaDia * glam2 for all days in the month,
     // then divide by unique dates count to normalize to monthly
@@ -444,10 +442,9 @@ async function buildFuturePeriodos(
       tarifas: {
         where: {
           supersededAt: null,
-          tipo: { in: [ContractRateType.FIJO_UF_M2, ContractRateType.FIJO_UF] }
+          tipo: ContractRateType.FIJO_UF_M2
         },
         select: {
-          tipo: true,
           valor: true,
           vigenciaDesde: true,
           vigenciaHasta: true
@@ -462,6 +459,7 @@ async function buildFuturePeriodos(
   // Find max fechaTermino across all active contracts
   let maxFechaTermino: Date | null = null;
   for (const c of activeContracts) {
+    if (!c.fechaTermino) continue;
     if (!maxFechaTermino || c.fechaTermino > maxFechaTermino) {
       maxFechaTermino = c.fechaTermino;
     }
@@ -486,6 +484,7 @@ async function buildFuturePeriodos(
   // Vencimientos: how many contracts end in each month
   const vencimientosByMonth = new Map<string, number>();
   for (const c of activeContracts) {
+    if (!c.fechaTermino) continue;
     const key = toPeriodoKey(c.fechaTermino);
     vencimientosByMonth.set(key, (vencimientosByMonth.get(key) ?? 0) + 1);
   }
@@ -516,16 +515,7 @@ async function buildFuturePeriodos(
         return desde <= midMonth && (hasta === null || hasta >= midMonth);
       });
 
-      let renta = 0;
-      if (tarifaVigente) {
-        const valor = tarifaVigente.valor.toNumber();
-        if (tarifaVigente.tipo === ContractRateType.FIJO_UF_M2) {
-          renta = valor * glam2;
-        } else {
-          // FIJO_UF
-          renta = valor;
-        }
-      }
+      const renta = tarifaVigente ? tarifaVigente.valor.toNumber() * glam2 : 0;
 
       rentaFijaUf += renta;
 
@@ -549,10 +539,10 @@ async function buildFuturePeriodos(
     const waltMeses = round2(
       calculateWalt(
         activeAtMonthEnd.map((contract) => ({
+          fechaInicio: contract.fechaInicio,
           fechaTermino: contract.fechaTermino,
           localGlam2: contract.local.glam2
-        })),
-        monthEnd
+        }))
       )
     );
 

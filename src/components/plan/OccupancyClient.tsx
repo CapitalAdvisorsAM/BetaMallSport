@@ -21,6 +21,9 @@ import { MetricChartCard } from "@/components/dashboard/MetricChartCard";
 import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { UnifiedTable } from "@/components/ui/UnifiedTable";
 import { getStripedRowClass, getTableTheme } from "@/components/ui/table-theme";
+import { useDataTable } from "@/hooks/useDataTable";
+import { DataTable } from "@/components/ui/DataTable";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
   chartAxisProps,
   chartColors,
@@ -32,9 +35,11 @@ import {
   buildPeriodoTickFormatter,
 } from "@/lib/charts/theme";
 import { cn, formatPercent, formatPeriodoCorto, formatUf } from "@/lib/utils";
+import { unitTypeBadge } from "@/lib/units/unit-type-badge";
 import type {
   OccupancyDimensionRow,
-  OccupancyTimeSeriesResponse
+  OccupancyTimeSeriesResponse,
+  VacantUnitRow
 } from "@/types/occupancy";
 
 // ---------------------------------------------------------------------------
@@ -70,6 +75,59 @@ function getRowsForDimension(
   if (dim === "tamano") return snapshot.bySize;
   return snapshot.byFloor;
 }
+
+const vacantColumns: ColumnDef<VacantUnitRow, unknown>[] = [
+  {
+    accessorKey: "codigo",
+    header: "Código",
+    filterFn: "includesString",
+    meta: { filterType: "text" },
+  },
+  {
+    accessorKey: "nombre",
+    header: "Nombre",
+    filterFn: "includesString",
+    meta: { filterType: "text" },
+    cell: ({ row }) => row.original.nombre ?? "–",
+  },
+  {
+    accessorKey: "piso",
+    header: "Piso",
+    meta: { filterType: "string", align: "center" },
+  },
+  {
+    accessorKey: "tipo",
+    header: "Tipo",
+    meta: { filterType: "string", align: "center" },
+    cell: ({ row }) => {
+      const badge = unitTypeBadge(row.original.tipo);
+      return (
+        <span className={cn("rounded border px-1.5 py-0.5 text-xs font-medium", badge.className)}>
+          {badge.label}
+        </span>
+      );
+    },
+  },
+  {
+    accessorKey: "categoriaTamano",
+    header: "Categoría",
+    meta: { filterType: "string" },
+    cell: ({ row }) => row.original.categoriaTamano ?? "–",
+  },
+  {
+    accessorKey: "glam2",
+    header: "GLA (m²)",
+    filterFn: "inNumberRange",
+    meta: { filterType: "number", isNumeric: true, align: "right" },
+    cell: ({ row }) => formatUf(row.original.glam2),
+  },
+  {
+    accessorKey: "zona",
+    header: "Zona",
+    meta: { filterType: "string" },
+    cell: ({ row }) => row.original.zona ?? "–",
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Props
@@ -119,6 +177,9 @@ export function OccupancyClient({
   const lastSnapshot = snapshots[snapshots.length - 1] ?? null;
   const currentRows = lastSnapshot ? getRowsForDimension(lastSnapshot, dimension) : [];
   const totals = lastSnapshot?.totals ?? null;
+  const vacantUnits: VacantUnitRow[] = data?.vacantUnits ?? [];
+
+  const { table: vacantTable } = useDataTable(vacantUnits, vacantColumns);
 
   // Collect all unique dimension values across all snapshots for chart series
   const allDimensions = new Set<string>();
@@ -251,6 +312,7 @@ export function OccupancyClient({
                 </p>
               }
             >
+
               <table className={`${compactTheme.table} text-xs`}>
                 <thead className={compactTheme.head}>
                   <tr>
@@ -294,6 +356,29 @@ export function OccupancyClient({
                 </tbody>
               </table>
             </UnifiedTable>
+          </ModuleSectionCard>
+
+          {/* Vacant units */}
+          <ModuleSectionCard>
+            <div className="flex items-center gap-3 px-4 py-3">
+              <p className="text-sm font-semibold text-slate-700">Locales Vacantes</p>
+              <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
+                {vacantUnits.length} locales
+              </span>
+              {vacantUnits.length > 0 && (
+                <span className="text-xs text-slate-400">
+                  {formatUf(vacantUnits.reduce((s, u) => s + u.glam2, 0))} m²
+                </span>
+              )}
+              <span className="ml-auto text-xs text-slate-400">
+                Periodo: {lastSnapshot?.period ?? "–"}
+              </span>
+            </div>
+            <DataTable
+              table={vacantTable}
+              density="compact"
+              emptyMessage="Sin locales vacantes en este período."
+            />
           </ModuleSectionCard>
         </>
       )}

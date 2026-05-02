@@ -24,14 +24,14 @@ export function PeerComparisonSection({ data }: PeerComparisonSectionProps): JSX
 
       <div className="grid gap-4 p-5 sm:grid-cols-3">
         <MetricCard
-          label="Facturacion (UF/m²)"
+          label="Facturacion mensual (UF/m²)"
           current={data.currentFacturacionUfM2}
           average={data.avgFacturacionUfM2}
           diff={diffFacturacion}
           higherIsBetter={false}
         />
         <MetricCard
-          label="Ventas (UF/m²)"
+          label="Ventas mensual (UF/m²)"
           current={data.currentVentasPesosM2}
           average={data.avgVentasPesosM2}
           diff={diffVentas}
@@ -57,8 +57,8 @@ export function PeerComparisonSection({ data }: PeerComparisonSectionProps): JSX
             <tr className="border-b border-slate-200 text-xs font-semibold uppercase text-slate-500">
               <th className="px-3 py-2">Arrendatario</th>
               <th className="px-3 py-2 text-right">GLA (m²)</th>
-              <th className="px-3 py-2 text-right">Facturacion (UF/m²)</th>
-              <th className="px-3 py-2 text-right">Ventas (UF/m²)</th>
+              <th className="px-3 py-2 text-right">Facturacion mensual (UF/m²)</th>
+              <th className="px-3 py-2 text-right">Ventas mensual (UF/m²)</th>
               <th className="px-3 py-2 text-right">Costo Ocupacion</th>
             </tr>
           </thead>

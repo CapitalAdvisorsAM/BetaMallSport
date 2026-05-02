@@ -84,9 +84,10 @@ export async function buildPeerComparison(
         projectId,
         tenantId: { in: allTenantIds },
         period: { gte: desdeDate, lte: hastaDate },
-        scenario: AccountingScenario.REAL
+        scenario: AccountingScenario.REAL,
+        group1: "INGRESOS DE EXPLOTACION",
       },
-      select: { tenantId: true, valueUf: true }
+      select: { tenantId: true, valueUf: true, period: true }
     }),
     prisma.tenantSale.findMany({
       where: {
@@ -98,41 +99,59 @@ export async function buildPeerComparison(
     })
   ]);
 
-  // Aggregate billing by tenant
+  // Aggregate billing by tenant; track distinct active months per tenant for
+  // monthly-average normalization (so UF/m² is comparable against the tenant's
+  // own KPI card and the Local Comercial YTD weighted average).
   const billingByTenant = new Map<string, number>();
+  const billingMonthsByTenant = new Map<string, Set<string>>();
   for (const rec of billingRecords) {
     if (!rec.tenantId) continue;
-    billingByTenant.set(
-      rec.tenantId,
-      (billingByTenant.get(rec.tenantId) ?? 0) + toNum(rec.valueUf)
-    );
+    const valueUf = toNum(rec.valueUf);
+    billingByTenant.set(rec.tenantId, (billingByTenant.get(rec.tenantId) ?? 0) + valueUf);
+    if (valueUf > 0) {
+      const period = rec.period.toISOString().slice(0, 7);
+      const set = billingMonthsByTenant.get(rec.tenantId) ?? new Set<string>();
+      set.add(period);
+      billingMonthsByTenant.set(rec.tenantId, set);
+    }
   }
 
   const ufRateByPeriod = await buildUfRateMap([
     ...new Set(salesRecords.map((sale) => sale.period.toISOString().slice(0, 7)))
   ]);
 
-  // Aggregate sales in UF by tenant.
+  // Aggregate sales in UF by tenant + active sales months per tenant.
   const salesByTenant = new Map<string, number>();
+  const salesMonthsByTenant = new Map<string, Set<string>>();
   for (const s of salesRecords) {
     if (!s.tenantId) continue;
     const period = s.period.toISOString().slice(0, 7);
     const uf = getUfRate(period, ufRateByPeriod);
-    salesByTenant.set(s.tenantId, (salesByTenant.get(s.tenantId) ?? 0) + (uf > 0 ? toNum(s.salesPesos) / uf : 0));
+    const salesUf = uf > 0 ? toNum(s.salesPesos) / uf : 0;
+    salesByTenant.set(s.tenantId, (salesByTenant.get(s.tenantId) ?? 0) + salesUf);
+    if (salesUf > 0) {
+      const set = salesMonthsByTenant.get(s.tenantId) ?? new Set<string>();
+      set.add(period);
+      salesMonthsByTenant.set(s.tenantId, set);
+    }
   }
 
-  // Build peer rows
+  // Build peer rows — UF/m² is monthly-average to match the Local Comercial tab.
   const peers: PeerComparisonRow[] = [];
   for (const [tid, entry] of tenantMap) {
     const totalBilling = billingByTenant.get(tid) ?? 0;
     const totalSalesUf = salesByTenant.get(tid) ?? 0;
     const glam2 = entry.glam2;
+    const billingMonths = billingMonthsByTenant.get(tid)?.size ?? 0;
+    const salesMonths = salesMonthsByTenant.get(tid)?.size ?? 0;
+    const avgMonthlyBilling = billingMonths > 0 ? totalBilling / billingMonths : 0;
+    const avgMonthlySalesUf = salesMonths > 0 ? totalSalesUf / salesMonths : 0;
 
     peers.push({
       tenantName: entry.name,
       glam2,
-      facturacionUfM2: glam2 > 0 ? totalBilling / glam2 : 0,
-      ventasPesosM2: glam2 > 0 ? totalSalesUf / glam2 : 0,
+      facturacionUfM2: glam2 > 0 ? avgMonthlyBilling / glam2 : 0,
+      ventasPesosM2: glam2 > 0 ? avgMonthlySalesUf / glam2 : 0,
       costoOcupacionPct: totalSalesUf > 0 ? (totalBilling / totalSalesUf) * 100 : null,
       isCurrent: entry.isCurrent
     });

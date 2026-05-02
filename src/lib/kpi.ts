@@ -51,6 +51,7 @@ export type KpiContractInput = {
   arrendatarioId?: string;
   arrendatarioNombre: string;
   numeroContrato: string;
+  fechaInicio: Date;
   fechaTermino: Date;
   tarifaVariablePct?: DecimalLike | null;
   variableRentTiers?: Array<{ umbralVentasUf: number; pct: number }>;
@@ -322,32 +323,20 @@ export function calculateEstimatedGgccUf(contracts: KpiContractInput[]): number 
   }, 0);
 }
 
-/**
- * Calculates the weighted average lease term in months for active contracts.
- * @param contracts - Active contracts at the selected snapshot date
- * @param fechaReferencia - Snapshot date used to measure remaining term
- * @returns Weighted average remaining term in months
- * @remarks Formula: sum(mesesRestantes x glam2) / sum(glam2)
- */
 export function calculateWalt(
-  contracts: Array<Pick<KpiContractInput, "fechaTermino" | "localGlam2">>,
-  fechaReferencia: Date
+  contracts: Array<Pick<KpiContractInput, "fechaInicio" | "fechaTermino" | "localGlam2">>
 ): number {
   const acumulado = contracts.reduce(
     (acc, contract) => {
       const glam2 = toFiniteNumber(contract.localGlam2);
-      if (glam2 <= 0) {
-        return acc;
-      }
-
-      const mesesRestantes = Math.max(0, diffMonths(fechaReferencia, contract.fechaTermino));
-      acc.weightedMonths += mesesRestantes * glam2;
+      if (glam2 <= 0) return acc;
+      const duracionMeses = Math.max(0, diffMonths(contract.fechaInicio, contract.fechaTermino));
+      acc.weightedMonths += duracionMeses * glam2;
       acc.totalGla += glam2;
       return acc;
     },
     { weightedMonths: 0, totalGla: 0 }
   );
-
   return acumulado.totalGla > 0 ? acumulado.weightedMonths / acumulado.totalGla : 0;
 }
 

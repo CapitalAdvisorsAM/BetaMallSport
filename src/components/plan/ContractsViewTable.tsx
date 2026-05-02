@@ -42,6 +42,7 @@ export function ContractsViewTable({
         accessorKey: "numeroContrato",
         header: "N contrato",
         filterFn: "includesString",
+        meta: { filterType: "text" },
         cell: ({ row }) => (
           <Link
             href={`/plan/contracts/${row.original.id}`}
@@ -55,12 +56,14 @@ export function ContractsViewTable({
         accessorKey: "locales",
         header: "Locales",
         filterFn: "includesString",
+        meta: { filterType: "text" },
         cell: ({ row }) => <span>{row.original.locales}</span>
       },
       {
         accessorKey: "arrendatario",
         header: "Arrendatario",
         filterFn: "includesString",
+        meta: { filterType: "text" },
         cell: ({ row }) => (
           <Link
             href={`/tenants/${row.original.arrendatarioId}`}
@@ -93,12 +96,14 @@ export function ContractsViewTable({
         accessorKey: "fechaInicio",
         header: "Inicio",
         filterFn: "includesString",
+        meta: { filterType: "text" },
         cell: ({ row }) => <span className="whitespace-nowrap">{formatDateString(row.original.fechaInicio)}</span>
       },
       {
         accessorKey: "fechaTermino",
         header: "Termino",
         filterFn: "includesString",
+        meta: { filterType: "text" },
         cell: ({ row }) => <span className="whitespace-nowrap">{formatDateString(row.original.fechaTermino)}</span>
       },
       {

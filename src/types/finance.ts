@@ -88,10 +88,12 @@ export type EerrSection = {
 export type EerrData = {
   periodos: string[];
   secciones: EerrSection[];
-  ebitda: { porPeriodo: Record<string, number>; total: number };
-  ebit:   { porPeriodo: Record<string, number>; total: number };
-  presupuestoEbitda?: { porPeriodo: Record<string, number>; total: number } | null;
-  presupuestoEbit?: { porPeriodo: Record<string, number>; total: number } | null;
+  ebitda:    { porPeriodo: Record<string, number>; total: number };
+  ebit:      { porPeriodo: Record<string, number>; total: number };
+  resultado: { porPeriodo: Record<string, number>; total: number };
+  presupuestoEbitda?:    { porPeriodo: Record<string, number>; total: number } | null;
+  presupuestoEbit?:      { porPeriodo: Record<string, number>; total: number } | null;
+  presupuestoResultado?: { porPeriodo: Record<string, number>; total: number } | null;
 };
 
 export type ContableSuggestion = {
@@ -171,6 +173,15 @@ export type BudgetVsActualMonthly = {
   achievementPct: number;
 };
 
+export type BudgetVsActualTenantPeriod = {
+  budgetUf: number;
+  actualUf: number;
+  varianceUf: number;
+  variancePct: number;
+  achievementPct: number;
+  missingSales: boolean;
+};
+
 export type BudgetVsActualTenantRow = {
   tenantId: string;
   rut: string;
@@ -184,6 +195,7 @@ export type BudgetVsActualTenantRow = {
   achievementPct: number;
   /** Periods (YYYY-MM) where the contract has a PORCENTAJE tarifa but no sales were reported for the lagged period. */
   missingSalesPeriods: string[];
+  byPeriod: Record<string, BudgetVsActualTenantPeriod>;
 };
 
 export type BudgetVsActualSummary = {

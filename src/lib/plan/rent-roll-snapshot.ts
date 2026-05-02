@@ -254,10 +254,10 @@ export async function buildRentRollSnapshotRows(
 
   const walt = calculateWalt(
     contracts.map((contract) => ({
+      fechaInicio: contract.fechaInicio,
       fechaTermino: contract.fechaTermino,
       localGlam2: contract.local.glam2
-    })),
-    fechaReferencia
+    }))
   );
 
   const ocupacionDetalle = buildOcupacionDetalle(

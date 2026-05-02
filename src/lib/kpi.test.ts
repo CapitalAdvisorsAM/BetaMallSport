@@ -35,6 +35,7 @@ function makeContract(overrides: Partial<KpiContractInput>): KpiContractInput {
     localGlam2: "100",
     arrendatarioNombre: "Acme",
     numeroContrato: "CTR-1",
+    fechaInicio: new Date("2025-04-10T00:00:00.000Z"),
     fechaTermino: new Date("2026-04-10T00:00:00.000Z"),
     tarifa: null,
     ggcc: null,
@@ -131,56 +132,56 @@ describe("rent KPIs", () => {
     expect(result.subtitle.startsWith("UF desactualizada (10d)")).toBe(true);
   });
 
-  it("calculates WALT weighted by GLA using remaining lease term", () => {
-    const snapshotDate = new Date("2026-04-01T00:00:00.000Z");
+  it("calculates WALT weighted by GLA using total lease duration", () => {
     const contracts = [
       makeContract({
         id: "walt-1",
         localGlam2: "100",
-        fechaTermino: new Date("2027-04-01T00:00:00.000Z")
+        fechaInicio: new Date("2025-04-01T00:00:00.000Z"),
+        fechaTermino: new Date("2027-04-01T00:00:00.000Z") // 24 months
       }),
       makeContract({
         id: "walt-2",
         localGlam2: "50",
-        fechaTermino: new Date("2026-10-01T00:00:00.000Z")
+        fechaInicio: new Date("2025-10-01T00:00:00.000Z"),
+        fechaTermino: new Date("2026-10-01T00:00:00.000Z") // 12 months
       })
     ];
-
-    expect(calculateWalt(contracts, snapshotDate)).toBe(10);
+    // (24 × 100 + 12 × 50) / 150 = 3000 / 150 = 20
+    expect(calculateWalt(contracts)).toBe(20);
   });
 
-  it("returns zero WALT when all contracts are expired at the snapshot date", () => {
-    const snapshotDate = new Date("2026-04-01T00:00:00.000Z");
+  it("returns zero WALT when all contracts have zero duration", () => {
     const contracts = [
       makeContract({
-        id: "expired-1",
+        id: "zero-dur-1",
         localGlam2: "120",
+        fechaInicio: new Date("2026-03-31T00:00:00.000Z"),
         fechaTermino: new Date("2026-03-31T00:00:00.000Z")
       }),
       makeContract({
-        id: "expired-2",
+        id: "zero-dur-2",
         localGlam2: "80",
+        fechaInicio: new Date("2025-12-31T00:00:00.000Z"),
         fechaTermino: new Date("2025-12-31T00:00:00.000Z")
       })
     ];
 
-    expect(calculateWalt(contracts, snapshotDate)).toBe(0);
+    expect(calculateWalt(contracts)).toBe(0);
   });
 
   it("returns zero WALT when no active contracts with positive GLA are provided", () => {
-    const snapshotDate = new Date("2026-04-01T00:00:00.000Z");
-
-    expect(calculateWalt([], snapshotDate)).toBe(0);
+    expect(calculateWalt([])).toBe(0);
     expect(
       calculateWalt(
         [
           makeContract({
             id: "zero-gla",
             localGlam2: "0",
+            fechaInicio: new Date("2025-09-01T00:00:00.000Z"),
             fechaTermino: new Date("2026-09-01T00:00:00.000Z")
           })
-        ],
-        snapshotDate
+        ]
       )
     ).toBe(0);
   });

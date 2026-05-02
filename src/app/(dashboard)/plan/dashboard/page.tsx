@@ -60,7 +60,6 @@ function buildPlanExclusiveKpis(periodos: ReturnType<typeof getTimelineData> ext
 
   const latest = historical[historical.length - 1];
   const previous = historical.length >= 2 ? historical[historical.length - 2] : null;
-  const subtitle = formatPeriodoShort(latest.periodo);
   const sparkSlice = historical.slice(-SPARK_POINTS);
 
   function trendOf(current: number, prior: number | null): { value: number } | undefined {

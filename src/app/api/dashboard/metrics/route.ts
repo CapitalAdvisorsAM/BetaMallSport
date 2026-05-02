@@ -182,6 +182,7 @@ export async function GET(request: Request): Promise<NextResponse> {
               localGlam2: contract.local.glam2,
               arrendatarioNombre: contract.arrendatario.nombreComercial,
               numeroContrato: contract.numeroContrato,
+              fechaInicio: contract.fechaInicio,
               fechaTermino: contract.fechaTermino,
               tarifaVariablePct: tarifasVariable[0]?.valor ?? null,
               variableRentTiers: variableRentTiers.length > 0 ? variableRentTiers : undefined,

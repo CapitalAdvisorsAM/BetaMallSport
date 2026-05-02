@@ -13,6 +13,7 @@ export default async function UnitDetailPage({
     to?: string;
     desde?: string;
     hasta?: string;
+    tenantId?: string;
   };
 }): Promise<JSX.Element> {
   await requireSession();
@@ -28,6 +29,7 @@ export default async function UnitDetailPage({
       selectedProjectId={selectedProjectId}
       defaultDesde={searchParams.from ?? searchParams.desde}
       defaultHasta={searchParams.to ?? searchParams.hasta}
+      defaultTenantId={searchParams.tenantId}
     />
   );
 }

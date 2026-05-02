@@ -8,6 +8,7 @@ import { VARIABLE_RENT_LAG_MONTHS } from "@/lib/constants";
 import { getFinanceFrom, getFinanceProjectId, getFinanceTo } from "@/lib/real/api-params";
 import { resolveMonthRange, toPeriodKey } from "@/lib/real/period-range";
 import { legacyDiscountFields } from "@/lib/contracts/rate-history";
+import { loadContractComparison } from "@/lib/contracts/contract-comparison";
 import { buildTenant360Data } from "@/lib/real/tenant-360";
 import { buildPeerComparison } from "@/lib/real/peer-comparison";
 import { buildUfRateMap } from "@/lib/real/uf-lookup";
@@ -75,7 +76,7 @@ export async function GET(
     const contractIds = contracts.map((c) => c.id);
 
     // Phase 2: parallel data fetch
-    const [accountingRecords, sales, contractDays, latestUf] = await Promise.all([
+    const [accountingRecords, sales, budgetedSales, contractDays, latestUf] = await Promise.all([
       prisma.accountingRecord.findMany({
         where: {
           projectId,
@@ -103,6 +104,15 @@ export async function GET(
           }
         },
         select: { tenantId: true, period: true, salesPesos: true },
+        orderBy: { period: "asc" }
+      }),
+      prisma.tenantBudgetedSale.findMany({
+        where: {
+          projectId,
+          tenantId,
+          period: { gte: desdeDate, lte: hastaDate }
+        },
+        select: { period: true, salesPesos: true },
         orderBy: { period: "asc" }
       }),
       contractIds.length > 0
@@ -154,6 +164,19 @@ export async function GET(
 
     const lagPeriods = periods.map((p) => shiftPeriod(p, -VARIABLE_RENT_LAG_MONTHS));
     const ufRateByPeriod = await buildUfRateMap([...new Set([...periods, ...lagPeriods])]);
+    const contractComparisons = new Map(
+      await Promise.all(
+        contracts.map(async (contract) => [
+          contract.id,
+          await loadContractComparison({
+            projectId,
+            contractId: contract.id,
+            desdeDate,
+            hastaDate
+          })
+        ] as const)
+      )
+    );
 
     // Project active discounts back into the legacy 4-field shape so billing
     // calculations (calcExpectedIncome inside buildTenant360Data) actually apply
@@ -177,10 +200,12 @@ export async function GET(
       contracts: contractsWithDiscounts,
       accountingRecords,
       sales,
+      budgetedSales,
       contractDays,
       latestUf,
       periods,
       peerComparison,
+      contractComparisons,
       ufRateByPeriod,
     });
 

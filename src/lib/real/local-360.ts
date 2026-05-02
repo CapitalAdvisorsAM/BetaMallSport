@@ -29,7 +29,15 @@ import type {
   EnergyMonthlyPoint,
   LocalPeerComparison,
   LocalPeerStat,
+  TenantSelectorEntry,
+  TenantOnLocalAnalysis,
+  CategoryAnalysis,
+  SimilarLocalsTable,
+  SimilarLocalRow,
+  LocalCommercialAnalysisRow,
+  LocalCommercialBreakdownRow,
 } from "@/types/local-360";
+import type { ContractComparison } from "@/types/contract-comparison";
 import type {
   Tenant360Contract,
   Tenant360Rate,
@@ -88,6 +96,16 @@ export type RawPeerUnitStat = {
   totalBillingUf: number;
 };
 
+export type RawCategoryUnit = {
+  id: string;
+  codigo: string;
+  nombre: string;
+  glam2: DecimalLike;
+  piso: string | null;
+  categoriaTamano: string | null;
+  tipo: UnitType;
+};
+
 export type BuildLocal360Input = {
   unit: RawUnit;
   contracts: RawContractWithTenant[];
@@ -101,6 +119,15 @@ export type BuildLocal360Input = {
   ufRateByPeriod?: Map<string, number>;
   rangeFromDate: Date;
   rangeToDate: Date;
+  // --- Local Comercial tab inputs (optional for backward-compat with tests) ---
+  selectedTenantId?: string | null;
+  contractComparisons?: Map<string, ContractComparison | null>;
+  categoryUnits?: RawCategoryUnit[];
+  categoryAccountingRecords?: RawAccountingRecord[];
+  categoryContractDays?: RawContractDay[];
+  categoryTenantFootprints?: RawTenantContractFootprint[];
+  categoryRawSales?: RawUnitSale[];
+  similarUnitIds?: Set<string>;
 };
 
 // ---------------------------------------------------------------------------
@@ -565,9 +592,16 @@ function serializeContractRate(r: RawContract["tarifas"][number]): Tenant360Rate
     valor: toNum(r.valor),
     umbralVentasUf:
       r.umbralVentasUf !== undefined && r.umbralVentasUf !== null ? toNum(r.umbralVentasUf) : null,
+    pisoMinimoUf:
+      r.pisoMinimoUf !== undefined && r.pisoMinimoUf !== null ? toNum(r.pisoMinimoUf) : null,
     vigenciaDesde: dateStr(r.vigenciaDesde) ?? "",
     vigenciaHasta: dateStr(r.vigenciaHasta),
     esDiciembre: r.esDiciembre,
+    descuentoTipo: r.descuentoTipo ?? null,
+    descuentoValor:
+      r.descuentoValor !== undefined && r.descuentoValor !== null ? toNum(r.descuentoValor) : null,
+    descuentoDesde: dateStr(r.descuentoDesde),
+    descuentoHasta: dateStr(r.descuentoHasta),
   };
 }
 
@@ -593,7 +627,10 @@ function serializeContractAmendment(a: RawContract["anexos"][number]): Tenant360
   };
 }
 
-function serializeContracts(contracts: RawContractWithTenant[]): Tenant360Contract[] {
+function serializeContracts(
+  contracts: RawContractWithTenant[],
+  comparisons: Map<string, ContractComparison | null>,
+): Tenant360Contract[] {
   const today = startOfDay(new Date());
   return contracts.map((c) => {
     const currentRate = findCurrentRate(c.tarifas);
@@ -614,6 +651,7 @@ function serializeContracts(contracts: RawContractWithTenant[]): Tenant360Contra
       fechaEntrega: dateStr(c.fechaEntrega),
       fechaApertura: dateStr(c.fechaApertura),
       diasGracia: c.diasGracia,
+      cuentaParaVacancia: c.cuentaParaVacancia ?? null,
       diasRestantes,
       multiplicadorDiciembre: c.multiplicadorDiciembre !== null ? toNum(c.multiplicadorDiciembre) : null,
       multiplicadorJunio: c.multiplicadorJunio !== null ? toNum(c.multiplicadorJunio) : null,
@@ -627,6 +665,7 @@ function serializeContracts(contracts: RawContractWithTenant[]): Tenant360Contra
       historialTarifas: c.tarifas.map(serializeContractRate),
       ggccActual: currentGgcc ? serializeContractGgcc(currentGgcc) : null,
       anexos: c.anexos.map(serializeContractAmendment),
+      comparison: comparisons.get(c.id) ?? null,
     };
   });
 }
@@ -681,6 +720,563 @@ function buildProjections(contracts: RawContractWithTenant[]): Tenant360Projecti
 }
 
 // ---------------------------------------------------------------------------
+// Local Comercial tab — replicates the Excel "Local Comercial" sheet
+// ---------------------------------------------------------------------------
+
+function buildTenantsForSelector(
+  contracts: RawContractWithTenant[],
+): TenantSelectorEntry[] {
+  const today = startOfDay(new Date());
+  const seen = new Map<string, TenantSelectorEntry>();
+  for (const c of contracts) {
+    const tenantId = c.arrendatario.id;
+    const isCurrent = isContractCurrent(c, today);
+    const existing = seen.get(tenantId);
+    const fechaInicio = dateStr(c.fechaInicio) ?? "";
+    const fechaTermino = dateStr(c.fechaTermino) ?? "";
+    if (!existing) {
+      seen.set(tenantId, {
+        tenantId,
+        tenantName: c.arrendatario.nombreComercial || c.arrendatario.razonSocial,
+        fechaInicio,
+        fechaTermino,
+        isCurrent,
+      });
+      continue;
+    }
+    if (fechaInicio < existing.fechaInicio) existing.fechaInicio = fechaInicio;
+    if (fechaTermino > existing.fechaTermino) existing.fechaTermino = fechaTermino;
+    if (isCurrent) existing.isCurrent = true;
+  }
+  return [...seen.values()].sort((a, b) => b.fechaInicio.localeCompare(a.fechaInicio));
+}
+
+function pickAnalysisTenantId(
+  contracts: RawContractWithTenant[],
+  requestedTenantId: string | null,
+): string | null {
+  if (requestedTenantId && contracts.some((c) => c.arrendatario.id === requestedTenantId)) {
+    return requestedTenantId;
+  }
+  const today = startOfDay(new Date());
+  const current = contracts.find((c) => isContractCurrent(c, today));
+  if (current) return current.arrendatario.id;
+  const sorted = [...contracts].sort(
+    (a, b) => b.fechaInicio.getTime() - a.fechaInicio.getTime(),
+  );
+  return sorted[0]?.arrendatario.id ?? null;
+}
+
+function periodHasOverlap(
+  period: string,
+  fechaInicio: Date,
+  fechaTermino: Date,
+): boolean {
+  const [y, m] = period.split("-").map(Number);
+  const start = new Date(Date.UTC(y, m - 1, 1));
+  const end = new Date(Date.UTC(y, m, 0));
+  return fechaInicio <= end && fechaTermino >= start;
+}
+
+function tenantLocalContractWindows(
+  contracts: RawContractWithTenant[],
+  tenantId: string,
+  thisUnitId: string,
+): { fechaInicio: Date; fechaTermino: Date }[] {
+  return contracts
+    .filter((c) => c.arrendatarioId === tenantId && c.localId === thisUnitId)
+    .map((c) => ({ fechaInicio: c.fechaInicio, fechaTermino: c.fechaTermino }));
+}
+
+function periodInTenantWindows(
+  period: string,
+  windows: { fechaInicio: Date; fechaTermino: Date }[],
+): boolean {
+  return windows.some((w) => periodHasOverlap(period, w.fechaInicio, w.fechaTermino));
+}
+
+function buildAnalysisRow(
+  metric: string,
+  values: (number | null)[],
+  periods: string[],
+  ytd: number | null,
+): LocalCommercialAnalysisRow {
+  const byPeriod: Record<string, number | null> = {};
+  periods.forEach((p, i) => {
+    byPeriod[p] = values[i] ?? null;
+  });
+  return { metric, byPeriod, ytd };
+}
+
+function sumNonNull(values: (number | null)[]): number {
+  return values.reduce<number>((acc, v) => acc + (v ?? 0), 0);
+}
+
+function ratioYtd(numerator: number, denominator: number): number | null {
+  if (denominator <= 0) return null;
+  return numerator / denominator;
+}
+
+function buildTenantOnLocalAnalysis(input: {
+  unit: RawUnit;
+  contracts: RawContractWithTenant[];
+  accountingRecords: RawAccountingRecord[];
+  attributedSales: RawUnitSale[];
+  tenantId: string | null;
+  periods: string[];
+  glam2: number;
+  ufRateByPeriod: Map<string, number>;
+}): TenantOnLocalAnalysis | null {
+  const { unit, contracts, accountingRecords, attributedSales, tenantId, periods, glam2, ufRateByPeriod } = input;
+  if (!tenantId) return null;
+
+  const tenantContract = contracts.find((c) => c.arrendatario.id === tenantId);
+  if (!tenantContract) return null;
+
+  const windows = tenantLocalContractWindows(contracts, tenantId, unit.id);
+  if (windows.length === 0) return null;
+
+  const ocupacionM2: number[] = periods.map((p) =>
+    periodInTenantWindows(p, windows) ? glam2 : 0,
+  );
+
+  const billingByPeriod = new Map<string, number>();
+  for (const r of accountingRecords) {
+    const p = periodKey(r.period);
+    if (!periodInTenantWindows(p, windows)) continue;
+    billingByPeriod.set(p, (billingByPeriod.get(p) ?? 0) + toNum(r.valueUf));
+  }
+
+  const salesPesosByPeriod = new Map<string, number>();
+  for (const s of attributedSales) {
+    if (s.tenantId !== tenantId) continue;
+    const p = periodKey(s.period);
+    salesPesosByPeriod.set(p, (salesPesosByPeriod.get(p) ?? 0) + toNum(s.salesPesos));
+  }
+
+  const facturacionUfM2: (number | null)[] = [];
+  const ventaClp: (number | null)[] = [];
+  const ventaUf: (number | null)[] = [];
+  const ventaUfM2: (number | null)[] = [];
+  const costoPct: (number | null)[] = [];
+
+  for (let i = 0; i < periods.length; i += 1) {
+    const period = periods[i];
+    const m2 = ocupacionM2[i];
+    const billingUf = billingByPeriod.get(period) ?? 0;
+    facturacionUfM2.push(m2 > 0 ? billingUf / m2 : 0);
+
+    const salesPesos = salesPesosByPeriod.get(period) ?? 0;
+    ventaClp.push(salesPesos);
+    const ufRate = ufRateByPeriod.get(period) ?? 0;
+    const salesUf = ufRate > 0 ? salesPesos / ufRate : 0;
+    ventaUf.push(salesUf);
+    ventaUfM2.push(m2 > 0 ? salesUf / m2 : 0);
+
+    if (salesUf <= 0) {
+      costoPct.push(null);
+    } else {
+      costoPct.push((billingUf / salesUf) * 100);
+    }
+  }
+
+  const totalM2 = sumNonNull(ocupacionM2);
+  const totalBillingUf = [...billingByPeriod.values()].reduce((s, v) => s + v, 0);
+  const totalSalesPesos = [...salesPesosByPeriod.values()].reduce((s, v) => s + v, 0);
+  const totalSalesUf = ventaUf.reduce<number>((s, v) => s + (v ?? 0), 0);
+
+  const rows: LocalCommercialAnalysisRow[] = [
+    buildAnalysisRow("Ocupación Cliente (M2)", ocupacionM2, periods, totalM2),
+    buildAnalysisRow(
+      "Facturación Cliente (UF/M2)",
+      facturacionUfM2,
+      periods,
+      ratioYtd(totalBillingUf, totalM2),
+    ),
+    buildAnalysisRow("Venta Cliente (CLP)", ventaClp, periods, totalSalesPesos),
+    buildAnalysisRow("Venta Cliente (UF)", ventaUf, periods, totalSalesUf),
+    buildAnalysisRow(
+      "Venta Cliente (UF/M2)",
+      ventaUfM2,
+      periods,
+      ratioYtd(totalSalesUf, totalM2),
+    ),
+    buildAnalysisRow(
+      "Costo Ocupación Cliente (%)",
+      costoPct,
+      periods,
+      totalSalesUf > 0 ? (totalBillingUf / totalSalesUf) * 100 : null,
+    ),
+  ];
+
+  // Breakdown by group3 within tenant contract window
+  const breakdownUfByPeriod = new Map<string, Map<string, number>>();
+  for (const r of accountingRecords) {
+    const p = periodKey(r.period);
+    if (!periodInTenantWindows(p, windows)) continue;
+    const group = r.group3;
+    const map = breakdownUfByPeriod.get(group) ?? new Map<string, number>();
+    map.set(p, (map.get(p) ?? 0) + toNum(r.valueUf));
+    breakdownUfByPeriod.set(group, map);
+  }
+
+  const breakdownUf: LocalCommercialBreakdownRow[] = [];
+  const breakdownUfM2: LocalCommercialBreakdownRow[] = [];
+  const breakdownGroups = [...breakdownUfByPeriod.keys()].sort();
+  for (const group of breakdownGroups) {
+    const map = breakdownUfByPeriod.get(group) ?? new Map<string, number>();
+    const byPeriodUf: Record<string, number> = {};
+    const byPeriodUfM2: Record<string, number> = {};
+    let ytdUf = 0;
+    for (let i = 0; i < periods.length; i += 1) {
+      const period = periods[i];
+      const valueUf = map.get(period) ?? 0;
+      byPeriodUf[period] = valueUf;
+      const m2 = ocupacionM2[i];
+      byPeriodUfM2[period] = m2 > 0 ? valueUf / m2 : 0;
+      ytdUf += valueUf;
+    }
+    breakdownUf.push({ group3: group, byPeriod: byPeriodUf, ytd: ytdUf });
+    breakdownUfM2.push({
+      group3: group,
+      byPeriod: byPeriodUfM2,
+      ytd: totalM2 > 0 ? ytdUf / totalM2 : 0,
+    });
+  }
+
+  const totalRow: LocalCommercialAnalysisRow = buildAnalysisRow(
+    "Total Facturación Cliente",
+    facturacionUfM2,
+    periods,
+    ratioYtd(totalBillingUf, totalM2),
+  );
+
+  const tenantName =
+    tenantContract.arrendatario.nombreComercial ||
+    tenantContract.arrendatario.razonSocial;
+
+  const today = startOfDay(new Date());
+  const isCurrent = contracts.some(
+    (c) => c.arrendatario.id === tenantId && isContractCurrent(c, today),
+  );
+
+  const dataContableId = tenantContract.codigoCC ?? null;
+  const ventasId = tenantContract.arrendatario.nombreComercial || null;
+
+  return {
+    tenantId,
+    tenantName,
+    isCurrent,
+    ids: { unitCodigo: unit.codigo, dataContableId, ventasId },
+    rows,
+    breakdownUfM2,
+    breakdownUf,
+    totalFacturacionUfM2: totalRow,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Per-unit aggregates — shared by category analysis and similar locals table
+// ---------------------------------------------------------------------------
+
+type PerUnitAggregate = {
+  unitId: string;
+  glam2: number;
+  ocupacionByPeriod: number[];      // m² occupied per period (0 or unit glam2)
+  billingUfByPeriod: number[];
+  salesPesosByPeriod: number[];
+  salesUfByPeriod: number[];
+};
+
+function buildOccupancyByPeriod(
+  unitGlam2: number,
+  unitId: string,
+  contractDays: RawContractDay[],
+  periods: string[],
+): number[] {
+  const occupiedPeriods = new Set<string>();
+  for (const d of contractDays) {
+    if (d.localId !== unitId) continue;
+    if (d.estadoDia !== "OCUPADO" && d.estadoDia !== "GRACIA") continue;
+    occupiedPeriods.add(periodKey(d.fecha));
+  }
+  return periods.map((p) => (occupiedPeriods.has(p) ? unitGlam2 : 0));
+}
+
+function attributeSalesAcrossUnits(input: {
+  units: RawCategoryUnit[];
+  tenantFootprints: RawTenantContractFootprint[];
+  rawSales: RawUnitSale[];
+  periods: string[];
+  ufRateByPeriod: Map<string, number>;
+}): Map<string, { pesosByPeriod: Map<string, number>; ufByPeriod: Map<string, number> }> {
+  const { units, tenantFootprints, rawSales, periods, ufRateByPeriod } = input;
+  const out = new Map<string, { pesosByPeriod: Map<string, number>; ufByPeriod: Map<string, number> }>();
+  const unitIds = new Set(units.map((u) => u.id));
+  for (const id of unitIds) {
+    out.set(id, { pesosByPeriod: new Map(), ufByPeriod: new Map() });
+  }
+
+  // For each tenant-period, total GLA across all their footprints
+  // (across the project, not just category) and per-unit GLA inside the category.
+  function periodBounds(period: string): { start: Date; end: Date } {
+    const [y, m] = period.split("-").map(Number);
+    const start = new Date(Date.UTC(y, m - 1, 1));
+    const end = new Date(Date.UTC(y, m, 0));
+    return { start, end };
+  }
+
+  const periodSet = new Set(periods);
+
+  // tenant -> period -> { totalGla, perUnitGla: Map<unitId, gla> }
+  const layout = new Map<string, Map<string, { totalGla: number; perUnitGla: Map<string, number> }>>();
+  for (const period of periods) {
+    const { start, end } = periodBounds(period);
+    for (const f of tenantFootprints) {
+      if (f.fechaInicio > end || f.fechaTermino < start) continue;
+      const tenantMap = layout.get(f.arrendatarioId) ?? new Map();
+      const entry = tenantMap.get(period) ?? { totalGla: 0, perUnitGla: new Map<string, number>() };
+      const g = toNum(f.glam2);
+      entry.totalGla += g;
+      if (unitIds.has(f.localId)) {
+        entry.perUnitGla.set(f.localId, (entry.perUnitGla.get(f.localId) ?? 0) + g);
+      }
+      tenantMap.set(period, entry);
+      layout.set(f.arrendatarioId, tenantMap);
+    }
+  }
+
+  for (const sale of rawSales) {
+    const period = periodKey(sale.period);
+    if (!periodSet.has(period)) continue;
+    const tenantMap = layout.get(sale.tenantId);
+    if (!tenantMap) continue;
+    const entry = tenantMap.get(period);
+    if (!entry || entry.totalGla <= 0) continue;
+    const salesPesos = toNum(sale.salesPesos);
+    const ufRate = ufRateByPeriod.get(period) ?? 0;
+    const salesUf = ufRate > 0 ? salesPesos / ufRate : 0;
+    for (const [unitId, gla] of entry.perUnitGla) {
+      if (gla <= 0) continue;
+      const share = gla / entry.totalGla;
+      const bucket = out.get(unitId);
+      if (!bucket) continue;
+      bucket.pesosByPeriod.set(period, (bucket.pesosByPeriod.get(period) ?? 0) + salesPesos * share);
+      bucket.ufByPeriod.set(period, (bucket.ufByPeriod.get(period) ?? 0) + salesUf * share);
+    }
+  }
+
+  return out;
+}
+
+function buildPerUnitAggregates(input: {
+  units: RawCategoryUnit[];
+  accountingRecords: RawAccountingRecord[];
+  contractDays: RawContractDay[];
+  tenantFootprints: RawTenantContractFootprint[];
+  rawSales: RawUnitSale[];
+  periods: string[];
+  ufRateByPeriod: Map<string, number>;
+}): PerUnitAggregate[] {
+  const { units, accountingRecords, contractDays, tenantFootprints, rawSales, periods, ufRateByPeriod } = input;
+
+  const billingByUnitPeriod = new Map<string, Map<string, number>>();
+  for (const r of accountingRecords) {
+    if (!r.unitId) continue;
+    const p = periodKey(r.period);
+    const map = billingByUnitPeriod.get(r.unitId) ?? new Map<string, number>();
+    map.set(p, (map.get(p) ?? 0) + toNum(r.valueUf));
+    billingByUnitPeriod.set(r.unitId, map);
+  }
+
+  const attributed = attributeSalesAcrossUnits({
+    units,
+    tenantFootprints,
+    rawSales,
+    periods,
+    ufRateByPeriod,
+  });
+
+  return units.map((u) => {
+    const unitGlam2 = toNum(u.glam2);
+    const ocupacionByPeriod = buildOccupancyByPeriod(unitGlam2, u.id, contractDays, periods);
+    const billingMap = billingByUnitPeriod.get(u.id) ?? new Map<string, number>();
+    const billingUfByPeriod = periods.map((p) => billingMap.get(p) ?? 0);
+    const salesBucket = attributed.get(u.id) ?? { pesosByPeriod: new Map(), ufByPeriod: new Map() };
+    const salesPesosByPeriod = periods.map((p) => salesBucket.pesosByPeriod.get(p) ?? 0);
+    const salesUfByPeriod = periods.map((p) => salesBucket.ufByPeriod.get(p) ?? 0);
+    return {
+      unitId: u.id,
+      glam2: unitGlam2,
+      ocupacionByPeriod,
+      billingUfByPeriod,
+      salesPesosByPeriod,
+      salesUfByPeriod,
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Category analysis — aggregates the same 6 metrics across all units of tipo
+// ---------------------------------------------------------------------------
+
+function buildCategoryAnalysis(input: {
+  unit: RawUnit;
+  perUnitAggregates: PerUnitAggregate[];
+  periods: string[];
+}): CategoryAnalysis {
+  const { unit, perUnitAggregates, periods } = input;
+  const periodCount = periods.length;
+
+  const ocupacion = new Array(periodCount).fill(0);
+  const billing = new Array(periodCount).fill(0);
+  const salesPesos = new Array(periodCount).fill(0);
+  const salesUf = new Array(periodCount).fill(0);
+
+  for (const a of perUnitAggregates) {
+    for (let i = 0; i < periodCount; i += 1) {
+      ocupacion[i] += a.ocupacionByPeriod[i];
+      billing[i] += a.billingUfByPeriod[i];
+      salesPesos[i] += a.salesPesosByPeriod[i];
+      salesUf[i] += a.salesUfByPeriod[i];
+    }
+  }
+
+  const facturacionUfM2: (number | null)[] = ocupacion.map((m2, i) =>
+    m2 > 0 ? billing[i] / m2 : 0,
+  );
+  const ventaClp: (number | null)[] = salesPesos.map((v) => v);
+  const ventaUf: (number | null)[] = salesUf.map((v) => v);
+  const ventaUfM2: (number | null)[] = ocupacion.map((m2, i) =>
+    m2 > 0 ? salesUf[i] / m2 : 0,
+  );
+  const costoPct: (number | null)[] = salesUf.map((sUf, i) =>
+    sUf > 0 ? (billing[i] / sUf) * 100 : null,
+  );
+
+  const totalM2 = ocupacion.reduce((s: number, v: number) => s + v, 0);
+  const totalBilling = billing.reduce((s: number, v: number) => s + v, 0);
+  const totalSalesPesos = salesPesos.reduce((s: number, v: number) => s + v, 0);
+  const totalSalesUf = salesUf.reduce((s: number, v: number) => s + v, 0);
+
+  const rows: LocalCommercialAnalysisRow[] = [
+    buildAnalysisRow("Ocupación Categoría (M2)", ocupacion, periods, totalM2),
+    buildAnalysisRow(
+      "Facturación Categoría (UF/M2)",
+      facturacionUfM2,
+      periods,
+      ratioYtd(totalBilling, totalM2),
+    ),
+    buildAnalysisRow("Venta Categoría (CLP)", ventaClp, periods, totalSalesPesos),
+    buildAnalysisRow("Venta Categoría (UF)", ventaUf, periods, totalSalesUf),
+    buildAnalysisRow(
+      "Venta Categoría (UF/M2)",
+      ventaUfM2,
+      periods,
+      ratioYtd(totalSalesUf, totalM2),
+    ),
+    buildAnalysisRow(
+      "Costo Ocupación Categoría (%)",
+      costoPct,
+      periods,
+      totalSalesUf > 0 ? (totalBilling / totalSalesUf) * 100 : null,
+    ),
+  ];
+
+  return { categoria: String(unit.tipo), rows };
+}
+
+// ---------------------------------------------------------------------------
+// Similar locals table — peers matching Tamaño + Tipo + Piso (strict)
+// ---------------------------------------------------------------------------
+
+function aggregateToSimilarRow(input: {
+  unit: { id: string; codigo: string; nombre: string };
+  aggregate: PerUnitAggregate;
+  isCurrent: boolean;
+}): SimilarLocalRow {
+  const { unit, aggregate, isCurrent } = input;
+  const periodCount = aggregate.ocupacionByPeriod.length;
+  const ytdM2 = aggregate.ocupacionByPeriod.reduce((s: number, v: number) => s + v, 0);
+  const ytdBilling = aggregate.billingUfByPeriod.reduce((s: number, v: number) => s + v, 0);
+  const ytdSalesUf = aggregate.salesUfByPeriod.reduce((s: number, v: number) => s + v, 0);
+
+  let currentM2 = 0;
+  for (let i = periodCount - 1; i >= 0; i -= 1) {
+    if (aggregate.ocupacionByPeriod[i] > 0) {
+      currentM2 = aggregate.ocupacionByPeriod[i];
+      break;
+    }
+  }
+
+  return {
+    unitId: unit.id,
+    codigo: unit.codigo,
+    nombre: unit.nombre,
+    ocupacionM2Current: currentM2,
+    ocupacionYtdM2: ytdM2,
+    facturacionYtdUfM2: ytdM2 > 0 ? ytdBilling / ytdM2 : 0,
+    ventasYtdUfM2: ytdM2 > 0 ? ytdSalesUf / ytdM2 : 0,
+    costoOcupacionYtdPct: ytdSalesUf > 0 ? (ytdBilling / ytdSalesUf) * 100 : null,
+    isCurrent,
+  };
+}
+
+function buildSimilarLocalsTable(input: {
+  unit: RawUnit;
+  similarUnits: RawCategoryUnit[];
+  similarAggregates: PerUnitAggregate[];
+}): SimilarLocalsTable {
+  const { unit, similarUnits, similarAggregates } = input;
+  const aggregateById = new Map<string, PerUnitAggregate>();
+  for (const a of similarAggregates) aggregateById.set(a.unitId, a);
+
+  const rows: SimilarLocalRow[] = similarUnits
+    .map((u) => {
+      const aggregate = aggregateById.get(u.id);
+      if (!aggregate) return null;
+      return aggregateToSimilarRow({
+        unit: { id: u.id, codigo: u.codigo, nombre: u.nombre },
+        aggregate,
+        isCurrent: u.id === unit.id,
+      });
+    })
+    .filter((r): r is SimilarLocalRow => r !== null)
+    .sort((a, b) => a.codigo.localeCompare(b.codigo));
+
+  const totalCurrentM2 = rows.reduce((s, r) => s + r.ocupacionM2Current, 0);
+  const totalYtdM2 = rows.reduce((s, r) => s + r.ocupacionYtdM2, 0);
+  const totalBilling = similarAggregates.reduce(
+    (s, a) => s + a.billingUfByPeriod.reduce((acc: number, v: number) => acc + v, 0),
+    0,
+  );
+  const totalSalesUf = similarAggregates.reduce(
+    (s, a) => s + a.salesUfByPeriod.reduce((acc: number, v: number) => acc + v, 0),
+    0,
+  );
+
+  const total: SimilarLocalRow = {
+    unitId: "__total__",
+    codigo: "Total",
+    nombre: "Total",
+    ocupacionM2Current: totalCurrentM2,
+    ocupacionYtdM2: totalYtdM2,
+    facturacionYtdUfM2: totalYtdM2 > 0 ? totalBilling / totalYtdM2 : 0,
+    ventasYtdUfM2: totalYtdM2 > 0 ? totalSalesUf / totalYtdM2 : 0,
+    costoOcupacionYtdPct: totalSalesUf > 0 ? (totalBilling / totalSalesUf) * 100 : null,
+    isCurrent: false,
+  };
+
+  return {
+    filterTamano: unit.categoriaTamano,
+    filterTipo: String(unit.tipo),
+    filterPiso: unit.piso,
+    rows,
+    total,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Main orchestrator
 // ---------------------------------------------------------------------------
 
@@ -698,6 +1294,14 @@ export function buildLocal360Data(input: BuildLocal360Input): Local360Data {
     ufRateByPeriod = new Map(),
     rangeFromDate,
     rangeToDate,
+    selectedTenantId = null,
+    contractComparisons = new Map(),
+    categoryUnits = [],
+    categoryAccountingRecords = [],
+    categoryContractDays = [],
+    categoryTenantFootprints = [],
+    categoryRawSales = [],
+    similarUnitIds = new Set<string>(),
   } = input;
 
   const profile = buildLocalProfile(unit);
@@ -745,10 +1349,47 @@ export function buildLocal360Data(input: BuildLocal360Input): Local360Data {
   const occupancyDays = serializeOccupancyDays(contractDays);
   const energyTimeline = buildEnergyTimeline(energyEntries, periods);
   const projections = buildProjections(contracts);
-  const serializedContracts = serializeContracts(contracts);
+  const serializedContracts = serializeContracts(contracts, contractComparisons);
 
   const totalBillingUf = monthlyTimeline.reduce((s, p) => s + p.billingUf, 0);
   const peerComparison = buildLocalPeerComparison(unit.id, glam2, totalBillingUf, peerStats);
+
+  const tenantsForSelector = buildTenantsForSelector(contracts);
+  const analysisTenantId = pickAnalysisTenantId(contracts, selectedTenantId);
+  const tenantOnLocalAnalysis = buildTenantOnLocalAnalysis({
+    unit,
+    contracts,
+    accountingRecords,
+    attributedSales,
+    tenantId: analysisTenantId,
+    periods,
+    glam2,
+    ufRateByPeriod,
+  });
+
+  const categoryAggregates = buildPerUnitAggregates({
+    units: categoryUnits,
+    accountingRecords: categoryAccountingRecords,
+    contractDays: categoryContractDays,
+    tenantFootprints: categoryTenantFootprints,
+    rawSales: categoryRawSales,
+    periods,
+    ufRateByPeriod,
+  });
+
+  const categoryAnalysis = buildCategoryAnalysis({
+    unit,
+    perUnitAggregates: categoryAggregates,
+    periods,
+  });
+
+  const similarUnits = categoryUnits.filter((u) => similarUnitIds.has(u.id));
+  const similarAggregates = categoryAggregates.filter((a) => similarUnitIds.has(a.unitId));
+  const similarLocalsTable = buildSimilarLocalsTable({
+    unit,
+    similarUnits,
+    similarAggregates,
+  });
 
   return {
     profile,
@@ -765,5 +1406,9 @@ export function buildLocal360Data(input: BuildLocal360Input): Local360Data {
     gapAnalysis,
     projections,
     peerComparison,
+    tenantsForSelector,
+    tenantOnLocalAnalysis,
+    categoryAnalysis,
+    similarLocalsTable,
   };
 }
