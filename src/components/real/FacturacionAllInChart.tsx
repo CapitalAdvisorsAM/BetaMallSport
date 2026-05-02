@@ -46,7 +46,6 @@ export function FacturacionAllInChart({ data }: Props): JSX.Element | null {
   // Recompute breakdown totals across all dimensions.
   const chartData = periods.map((p, i) => {
     const entry: Record<string, string | number> = { periodo: p };
-    let periodTotal = 0;
     for (const g3 of group3Keys) {
       let g3Sum = 0;
       for (const s of series) {
@@ -56,7 +55,6 @@ export function FacturacionAllInChart({ data }: Props): JSX.Element | null {
       // Average across dimension count that have this breakdown
       const dimCount = series.filter((s) => (s.data[i]?.breakdown?.[g3] ?? 0) > 0).length || 1;
       entry[g3] = g3Sum / dimCount;
-      periodTotal += g3Sum / dimCount;
     }
     entry["Total UF/m²"] = totals[i]?.ufPerM2 ?? 0;
     return entry;
